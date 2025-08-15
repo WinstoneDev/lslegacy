@@ -1,4 +1,4 @@
-MadeInFrance.RegisterServerEvent('madeinfrance:AddClothesInInventory', function(item, label, data)
+MadeInFrance.RegisterServerEvent('AddClothesInInventory', function(item, label, data)
     local player = MadeInFrance.GetPlayerFromId(source)
     
     MadeInFrance.Inventory.AddItemInInventory(player, item, 1, label, nil, data)
@@ -10,7 +10,7 @@ for k,v in pairs(Config.zoneClothShop) do
     for i=1, #v, 1 do
         number = number + 1
         MadeInFrance.RegisterZone('Magasin de vêtements n°'..number, v[i].coords, function(source)
-            MadeInFrance.SendEventToClient('madeinfrance:openClothMenu', source, v.Header, v.Type)
+            MadeInFrance.SendEventToClient('openClothMenu', source, v.Header, v.Type)
         end, 10.0, true, {
             markerType = 25,
             markerColor = {r = 0, g = 125, b = 255, a = 255},

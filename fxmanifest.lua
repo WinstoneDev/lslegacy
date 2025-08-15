@@ -23,6 +23,7 @@ client_scripts {
     'dependencies/RageUI/menu/items/*.lua',
     'dependencies/RageUI/menu/panels/*.lua',
     'dependencies/RageUI/menu/windows/*.lua',
+    'client/datastore.lua',
     'client/anticheat.lua',
     'client/zones.lua',
     'client/richpresence.lua',
@@ -32,7 +33,6 @@ client_scripts {
     'client/player/pickup.lua',
     'inventory/utils.lua',
     'inventory/client/main.lua',
-    'module/interaction/cl_interact.lua',
     'module/adminmenu/cl_admin.lua',
     'module/skincreator/cl_camera.lua',
     'module/skincreator/cl_charcreator.lua',
@@ -55,7 +55,6 @@ server_scripts {
     'server/zones.lua',
     'server/player/*.lua',
     'inventory/server/main.lua',
-    'module/interaction/sv_interact.lua',
     'module/adminmenu/sv_admin.lua',
     'module/skincreator/sv_charcreator.lua',
     'module/identity/sv_identity.lua',
@@ -63,7 +62,8 @@ server_scripts {
     'module/bank/sv_paymentMenu.lua',
     'module/clothshop/sv_clothshop.lua',
     'server/deferallsCards.lua',
-    'server/anticheat.lua'
+    'server/anticheat.lua',
+    'server/datastore.lua',
 }
 
 exports {

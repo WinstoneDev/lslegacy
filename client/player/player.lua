@@ -8,6 +8,11 @@ MadeInFrance.RegisterClientEvent('UpdatePlayer', function(data)
     MadeInFrance.PlayerData = data
 end)
 
+MadeInFrance.RegisterClientEvent('UpdateServerPlayer', function()
+    local data = MadeInFrance.PlayerData
+    MadeInFrance.SendEventToServer('ReceiveUpdateServerPlayer', data)
+end)
+
 function GetPlayerInventoryItems()
     return MadeInFrance.PlayerData.inventory or {}
 end
@@ -25,30 +30,60 @@ function GetOriginalLabel(item)
 end
 
 CreateThread( function()
+    while true do
+        TriggerEvent('skinchanger:getSkin', function(skin)
+            MadeInFrance.PlayerData.skin = skin
+        end)
+       Wait(10000)
+    end
+end)
+
+CreateThread( function()
     for a = 1, 15 do
-        EnableDispatchService(a, false) -- Pas de dispatch
+        EnableDispatchService(a, false)
     end
     while true do
-       Citizen.Wait(0)
+        Wait(100)
+        playerPed = PlayerPedId()
+        playerLocalisation = GetEntityCoords(playerPed)
+        ClearAreaOfCops(playerLocalisation.x, playerLocalisation.y, playerLocalisation.z, 400.0)
+        SetMaxWantedLevel(0)
+        ClearPlayerWantedLevel(PlayerId())
+        SetPoliceIgnorePlayer(PlayerId(), true)
+        SetRelationshipBetweenGroups(1, GetHashKey("AMBIENT_GANG_LOST"), GetHashKey("PLAYER"))
+        SetRelationshipBetweenGroups(1, GetHashKey("AMBIENT_GANG_MEXICAN"), GetHashKey("PLAYER"))
+        SetRelationshipBetweenGroups(1, GetHashKey("AMBIENT_GANG_FAMILY"), GetHashKey("PLAYER"))
+        SetRelationshipBetweenGroups(1, GetHashKey("AMBIENT_GANG_BALLAS"), GetHashKey("PLAYER"))
+        SetRelationshipBetweenGroups(1, GetHashKey("AMBIENT_GANG_MARABUNTE"), GetHashKey("PLAYER"))
+        SetRelationshipBetweenGroups(1, GetHashKey("AMBIENT_GANG_CULT"), GetHashKey("PLAYER"))
+        SetRelationshipBetweenGroups(1, GetHashKey("COP"), GetHashKey("PLAYER"))
+        SetRelationshipBetweenGroups(1, GetHashKey("SECURITY_GUARD"), GetHashKey("PLAYER"))
+        SetPedCanBeTargettedByPlayer(PlayerPedId(), false)
         RestorePlayerStamina(PlayerId(), 1.0)
         SetEntityProofs(PlayerPedId(), false, true, true, true, false, false, false, false)
-        DisablePlayerVehicleRewards(PlayerId()) -- Pas de drop d'arme véhicule
-        DisableControlAction(0, 199, true) -- Pas la Map sur P
-        SetPedSuffersCriticalHits(PlayerPedId(), false) -- Pas de NoHeadShot
-        SetWeaponDamageModifier(GetHashKey("WEAPON_UNARMED"), 0.5) -- Dégat cout de poing
-        InvalidateIdleCam() -- Disable cinématique AFK
-        SetPedHelmet(PlayerPedId(), false) -- Pas de casque auto sur les moto
+        DisablePlayerVehicleRewards(PlayerId()) 
+        DisableControlAction(0, 199, true) 
+        SetPedSuffersCriticalHits(PlayerPedId(), false) 
+        SetWeaponDamageModifier(GetHashKey("WEAPON_UNARMED"), 0.5)
+        InvalidateIdleCam()
+        SetPedHelmet(PlayerPedId(), false) 
         HideHudComponentThisFrame(19)
         HideHudComponentThisFrame(20)
         BlockWeaponWheelThisFrame()
         SetPedCanSwitchWeapon(PlayerPedId(), false)
-        DisablePoliceReports() -- Disable Police Call
-        if IsPedInAnyVehicle(GetPlayerPed(-1), false) then
-            if GetPedInVehicleSeat(GetVehiclePedIsIn(GetPlayerPed(-1), false), 0) == GetPlayerPed(-1) then
-                if GetIsTaskActive(GetPlayerPed(-1), 165) then
-                    SetPedIntoVehicle(GetPlayerPed(-1), GetVehiclePedIsIn(GetPlayerPed(-1), false), 0)
+        DisablePoliceReports()
+        if IsPedInAnyVehicle(PlayerPedId(), false) then
+            if GetPedInVehicleSeat(GetVehiclePedIsIn(PlayerPedId(), false), 0) == PlayerPedId() then
+                if GetIsTaskActive(PlayerPedId(), 165) then
+                    SetPedIntoVehicle(PlayerPedId(), GetVehiclePedIsIn(PlayerPedId(), false), 0)
                 end
             end
         end
     end
+end)
+
+MadeInFrance.RegisterClientEvent('debug', function()
+   ExecuteCommand('p1')
+   Wait(1000)
+   ExecuteCommand('p2')
 end)

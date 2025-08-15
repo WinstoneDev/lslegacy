@@ -1,6 +1,11 @@
 ---@class MadeInFrance.ServerPlayers
 MadeInFrance.ServerPlayers = {}
 
+MadeInFrance.RegisterServerEvent('ReceiveUpdateServerPlayer', function(data)
+    local source = source
+    MadeInFrance.ServerPlayers[source] = data
+end)
+
 local function GetPlayerDiscord(source)
     local _source = source
     local discord = nil
@@ -90,6 +95,7 @@ AddEventHandler("registerPlayer", function()
                 MadeInFrance.RegisterPeds(MadeInFrance.RegisteredZones)
                 Config.Development.Print("Successfully registered player " .. GetPlayerName(source))
                 MadeInFrance.SendEventToClient('zones:registerBlips', source, MadeInFrance.RegisteredZones)
+                MadeInFrance.SendEventToClient('UpdateDatastore', source, MadeInFrance.DataStores)
             else
                 MadeInFrance.ServerPlayers[source] = {
                     id = result[1].id,
@@ -137,6 +143,7 @@ AddEventHandler("registerPlayer", function()
                 MadeInFrance.RegisterPeds(MadeInFrance.RegisteredZones)
                 Config.Development.Print("Successfully registered player " .. GetPlayerName(source))
                 MadeInFrance.SendEventToClient('zones:registerBlips', source, MadeInFrance.RegisteredZones)
+                MadeInFrance.SendEventToClient('UpdateDatastore', source, MadeInFrance.DataStores)
             end
         end)
     else
@@ -152,9 +159,12 @@ CreateThread(function()
             if player.coords ~= coords then
                 player.coords = coords
                 MadeInFrance.SendEventToClient('UpdatePlayer', player.source, MadeInFrance.ServerPlayers[player.source])
+                MadeInFrance.SendEventToClient('UpdateDatastore', player.source, MadeInFrance.DataStores)
+                Wait(500)
+                MadeInFrance.SendEventToClient('UpdateServerPlayer', player.source)
             end
         end
-        Wait(5000)
+        Wait(30000)
     end
 end)
 
@@ -163,24 +173,29 @@ CreateThread(function()
         for k, player in pairs(MadeInFrance.ServerPlayers) do
             local _source = player.source
             local coords = MadeInFrance.GetEntityCoords(_source)
-            MySQL.Async.execute('UPDATE players SET coords = @coords WHERE id = @id', {
+            MySQL.Async.execute('UPDATE players SET coords = @coords, skin = @skin, inventory = @inventory, money = @money WHERE id = @id', {
                 ['@coords'] = json.encode(MadeInFrance.ServerPlayers[_source].coords),
                 ['@id'] = MadeInFrance.ServerPlayers[_source].id,
+                ["@skin"] = json.encode(MadeInFrance.ServerPlayers[_source].skin),
+                ['@inventory'] = json.encode(MadeInFrance.ServerPlayers[_source].inventory),
+                ['@money'] = json.encode({cash = MadeInFrance.ServerPlayers[_source].cash, dirty = MadeInFrance.ServerPlayers[_source].dirty}),
+                ['@health'] = GetEntityHealth(GetPlayerPed(_source))
             })  
         end
-        Wait(10000)
+        Wait(30000)
     end
 end)
 
 MadeInFrance.AddEventHandler('playerDropped', function()
     local _source = source
     if MadeInFrance.ServerPlayers[_source] then
-        MySQL.Async.execute('UPDATE players SET coords = @coords, inventory = @inventory, money = @money, health = @health WHERE id = @id', {
+        MySQL.Async.execute('UPDATE players SET coords = @coords, inventory = @inventory, money = @money, health = @health, skin = @skin WHERE id = @id', {
             ['@coords'] = json.encode(MadeInFrance.ServerPlayers[_source].coords),
             ['@inventory'] = json.encode(MadeInFrance.ServerPlayers[_source].inventory),
             ['@money'] = json.encode({cash = MadeInFrance.ServerPlayers[_source].cash, dirty = MadeInFrance.ServerPlayers[_source].dirty}),
             ['@id'] = MadeInFrance.ServerPlayers[_source].id,
-            ['@health'] = GetEntityHealth(GetPlayerPed(source))
+            ['@health'] = GetEntityHealth(GetPlayerPed(source)),
+            ['@skin'] = json.encode(MadeInFrance.ServerPlayers[_source].skin)
         })
         MadeInFrance.ServerPlayers[_source] = nil
         Config.Development.Print("Player " .. _source .. " disconnected")

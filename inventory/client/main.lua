@@ -1,3 +1,58 @@
+local CurrentVehicle = nil
+
+RegisterCommand('p1', function()
+   createPedScreen()
+end)
+
+RegisterCommand('p2', function()
+   deletePedScreen()
+end)
+
+RegisterCommand('p3', function()
+   refreshPedScreen()
+end)
+
+function createPedScreen()
+   CreateThread(function()
+       heading = GetEntityHeading(PlayerPedId())
+       SetFrontendActive(true)
+       ActivateFrontendMenu(GetHashKey("FE_MENU_VERSION_EMPTY_NO_BACKGROUND"), true, -1)
+       Citizen.Wait(100)
+       N_0x98215325a695e78a(false)
+
+       PlayerPedPreview = ClonePed(PlayerPedId(), heading, false, false)
+       local PosPedPreview = GetEntityCoords(PlayerPedPreview)
+       SetEntityCoords(PlayerPedPreview, PosPedPreview.x, PosPedPreview.y, PosPedPreview.z - 100)
+       FreezeEntityPosition(PlayerPedPreview, true)
+       SetEntityVisible(PlayerPedPreview, false, false)
+       NetworkSetEntityInvisibleToNetwork(PlayerPedPreview, false)
+       Wait(200)
+       SetPedAsNoLongerNeeded(PlayerPedPreview)
+       GivePedToPauseMenu(PlayerPedPreview, 1)
+       SetPauseMenuPedLighting(true)
+       SetPauseMenuPedSleepState(true)
+       ReplaceHudColourWithRgba(117, 0, 0, 0, 0)
+       previewPed = PlayerPedPreview
+   end)
+end
+
+function deletePedScreen()
+   if DoesEntityExist(previewPed) then
+       DeleteEntity(previewPed)
+       SetFrontendActive(false)
+       ReplaceHudColourWithRgba(117, 0, 0, 0, 190)
+       previewPed = nil
+   end
+end
+
+function refreshPedScreen()
+   if DoesEntityExist(previewPed) then
+       deletePedScreen()
+       Wait(200)
+       createPedScreen()
+   end
+end
+
 function SetFieldValueFromNameEncode(stringName, data)
 	SetResourceKvp(stringName, json.encode(data))
 end
@@ -46,19 +101,9 @@ function DisableControlInventory()
     end)
 end
 
-RegisterCommand('invbug', function()
-    if invbug then 
-        SetNuiFocus(false, false)
-        SetKeepInputMode(false)
-    else
-        SetNuiFocus(true, true)
-        SetKeepInputMode(true)
-    end
-    invbug = not invbug
-end)
-
 function openInventory()
     isInInventory = true
+    ExecuteCommand('p1')
     currentMenu = 'items'
     loadPlayerInventory(currentMenu)
     SendNUIMessage({action = "display", type = "normal"})
@@ -71,10 +116,12 @@ end
 
 function closeInventory()
     isInInventory = false
+    ExecuteCommand('p2')
     SendNUIMessage({action = "hide"})
     SetNuiFocus(false, false)
     SetKeepInputMode(false)
     DisplayRadar(true)
+    CurrentVehicle = nil
 end
 
 RegisterNUICallback('escape', function(data, cb)
@@ -92,10 +139,7 @@ RegisterNUICallback("GetNearPlayers", function(data, cb)
     if target then
         closeInventory()
         if data.item.type == "item_standard" then
-            if data.item.name == "carte" then
-                RageUI.CloseAll()
-            end
-           MadeInFrance.SendEventToServer('madeinfrance:transfer', {
+            MadeInFrance.SendEventToServer('transfer', {
                 name = data.item.name,
                 count = data.number,
                 label = data.item.label,
@@ -148,28 +192,13 @@ RegisterNUICallback("RenameItem", function(data, cb)
         if result ~= nil then
             local count = tonumber(data.number)
             if result ~= data.item.label and tonumber(count) and count ~= nil then
-                MadeInFrance.SendEventToServer("madeinfrance:renameItem", data.item.name, data.item.label, result, count, data.item.uniqueId)
+                MadeInFrance.SendEventToServer("renameItem", data.item.name, data.item.label, result, count, data.item.uniqueId)
             else
-                MadeInFrance.ShowNotification("~r~Impossible l'item a déjà ce label.")
+                MadeInFrance.ShowNotification(nil, "Impossible l'item a déjà ce label.", 'error')
             end
         end
     end 
 end)
-
-local currentWeapon = nil
-
--- Citizen.CreateThread(function()
---     while true do
---         local weaponSelected = GetSelectedPedWeapon(PlayerPedId())
-
---         if weaponSelected ~= GetHashKey("weapon_unarmed") then
---             if currentWeapon == nil then
---                 RemoveAllPedWeapons(PlayerPedId(), false)
---             end
---         end
---         Wait(1000)
---     end
--- end)
 
 function useWeapon(name, label)
     if currentWeapon == name then
@@ -180,17 +209,14 @@ function useWeapon(name, label)
         GiveWeaponToPed(PlayerPedId(), name, 0, false, true)
         local originalLabel = Config.Items[name].label
         if originalLabel ~= nil and label == originalLabel then
-            MadeInFrance.ShowNotification("Vous avez équipé votre ~g~"..label.."~s~.")
+            MadeInFrance.ShowNotification(nil, "Vous avez équipé votre "..label..".", 'info')
         else
-            MadeInFrance.ShowNotification("Vous avez équipé votre ~g~"..originalLabel.." '"..label.."'~s~.")
+            MadeInFrance.ShowNotification(nil, "Vous avez équipé votre "..originalLabel.." '"..label.."'.", 'info')
         end
     end
 end
 
 RegisterNUICallback("UseItem", function(data, cb)
-    if data.item.name == 'carte' then
-        closeInventory()
-    end
     if data.item.type == "item_standard" then
         if string.match(data.item.name, "weapon_") then
             useWeapon(data.item.name, data.item.label)
@@ -214,15 +240,17 @@ RegisterNUICallback("UseItem", function(data, cb)
                     if skins[data.item.name][1] ~= data.item.data[1] or skins[data.item.name][2] ~= data.item.data[2] then
                         MadeInFrance.TriggerLocalEvent('skinchanger:change', data.item.name..'_1', data.item.data[1])
                         MadeInFrance.TriggerLocalEvent('skinchanger:change', data.item.name..'_2', data.item.data[2])
+                        ExecuteCommand('p3')
                     else
                         MadeInFrance.TriggerLocalEvent('skinchanger:change', data.item.name..'_1', clothes[1])
                         MadeInFrance.TriggerLocalEvent('skinchanger:change', data.item.name..'_2', clothes[2])
+                        ExecuteCommand('p3')
                     end
                 else
-                    MadeInFrance.SendEventToServer('madeinfrance:useItem', data.item.name, data.item.data)
+                    MadeInFrance.SendEventToServer('useItem', data.item.name, data.item.data)
                 end
             else
-                MadeInFrance.SendEventToServer('madeinfrance:useItem', data.item.name)
+                MadeInFrance.SendEventToServer('useItem', data.item.name)
             end
         end
     end
@@ -239,7 +267,7 @@ RegisterNUICallback("DropItem", function(data, cb)
         local pHeading = GetEntityHeading(pPed)
         
         if tonumber(data.number) then
-            MadeInFrance.SendEventToServer('madeinfrance:addItemPickup', data.item.name, data.item.type, data.item.label, data.number, {x = pCoords.x, y = pCoords.y, z = pCoords.z, w = pHeading}, data.item.uniqueId, data.item.data)
+            MadeInFrance.SendEventToServer('addItemPickup', data.item.name, data.item.type, data.item.label, data.number, {x = pCoords.x, y = pCoords.y, z = pCoords.z, w = pHeading}, data.item.uniqueId, data.item.data)
             TaskPlayAnim(PlayerPedId(), "random@domestic", "pickup_low" , 8.0, -8.0, 1780, 35, 0.0, false, false, false)
         end
     elseif data.item.type ~= 'item_standard' then
@@ -248,7 +276,7 @@ RegisterNUICallback("DropItem", function(data, cb)
         local pHeading = GetEntityHeading(pPed)
         
         if tonumber(data.number) then
-            MadeInFrance.SendEventToServer('madeinfrance:addItemPickup', data.item.type, nil, data.item.label, tonumber(data.number), {x = pCoords.x, y = pCoords.y, z = pCoords.z, w = pHeading})
+            MadeInFrance.SendEventToServer('addItemPickup', data.item.type, nil, data.item.label, tonumber(data.number), {x = pCoords.x, y = pCoords.y, z = pCoords.z, w = pHeading})
             TaskPlayAnim(PlayerPedId(), "random@domestic", "pickup_low" , 8.0, -8.0, 1780, 35, 0.0, false, false, false)
         end
     end
@@ -266,11 +294,11 @@ function GramsOrKg(weight)
     end
 end
 
-function loadPlayerInventory(result)
+function loadPlayerInventory(result, vehicle)
     items = {}
     fastItems = {}
     weight = GramsOrKg(MadeInFrance.PlayerData.weight or 0)
-    textweight = weight.. " / 45KG"
+    textweight = weight.. " / "..Config.Informations["MaxWeight"]..'KG'
     inventory = MadeInFrance.PlayerData.inventory
     cash = MadeInFrance.PlayerData.cash
     dirty = MadeInFrance.PlayerData.dirty
@@ -322,6 +350,7 @@ function loadPlayerInventory(result)
                 })
             end
         end
+        SendNUIMessage({ action = "setItems", itemList = items, fastItems = fastItems, text = textweight, crMenu = result})
     elseif result == 'clothes' then 
         for k, v in pairs(inventory) do
             if ItemVetement[v.name] then
@@ -336,8 +365,57 @@ function loadPlayerInventory(result)
                 })
             end
         end
+        SendNUIMessage({ action = "setItems", itemList = items, fastItems = fastItems, text = textweight, crMenu = result})
+    elseif result == 'vehicle' then
+        local datastore = MadeInFrance.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
+        if not datastore then
+            MadeInFrance.DataStore.RegisterTrunk(vehicle)
+            while MadeInFrance.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle)) == nil do
+                Wait(100)
+            end
+            datastore = MadeInFrance.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
+            inventory = datastore.inventory
+            trunkWeight = GramsOrKg(MadeInFrance.DataStore.GetInventoryWeight(inventory) or 0)
+            trunkMaxWeight = 50
+
+            weightText = trunkWeight.. " / "..trunkMaxWeight..'KG'
+
+            SendNUIMessage({
+                action = "setSecondInventoryItems",
+                itemList = inventory,
+                fastItems = fastItems
+            })
+
+            local plate = GetVehicleNumberPlateText(vehicle)
+            SendNUIMessage({
+                action = "setInfoText",
+                text = "Poids coffre : " .. weightText .. " Plaque : " .. plate
+            })
+            Wait(100)
+            loadPlayerInventory('items')
+        else
+            datastore = MadeInFrance.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
+            inventory = datastore.inventory
+            trunkWeight = MadeInFrance.DataStore.GetInventoryWeight(inventory)
+            trunkMaxWeight = 50
+            
+            weightText = string.format("%.1f / %d KG", trunkWeight, trunkMaxWeight)
+
+            SendNUIMessage({
+                action = "setSecondInventoryItems",
+                itemList = inventory,
+                fastItems = fastItems
+            })
+
+            local plate = GetVehicleNumberPlateText(vehicle)
+            SendNUIMessage({
+                action = "setInfoText",
+                text = "Poids coffre : " .. weightText .. " Plaque : " .. plate
+            })
+            Wait(100)
+            loadPlayerInventory('items')
+        end
     end
-    SendNUIMessage({ action = "setItems", itemList = items, fastItems = fastItems, text = textweight, crMenu = currentMenu})
 end
 
 RegisterNUICallback("PutIntoFast", function(data, cb)
@@ -368,12 +446,41 @@ RegisterNUICallback("TakeFromFast", function(data, cb)
 	cb("ok")
 end)
 
-RegisterKeyMapping('+openinventory', 'Ouverture inventaire', 'keyboard', 'TAB')
-RegisterKeyMapping('+keybind1', 'Slot d\'arme 1', 'keyboard', '1')
-RegisterKeyMapping('+keybind2', 'Slot d\'arme 2', 'keyboard', '2')
-RegisterKeyMapping('+keybind3', 'Slot d\'arme 3', 'keyboard', '3')
+RegisterNUICallback("PutIntoTrunk", function(data, cb)
+    if currentMenu == 'vehicle' then
+        local datastore = MadeInFrance.DataStore.GetTrunk(GetVehicleNumberPlateText(CurrentVehicle))
+        Wait(100)
+        MadeInFrance.SendEventToServer('PutIntoTrunk', {
+            name = data.item.name,
+            count = data.number,
+            label = data.item.label,
+            uniqueId = data.item.uniqueId,
+            data = data.item.data
+        }, datastore.name)
+        Wait(250)
+        loadPlayerInventory(currentMenu, CurrentVehicle)
+    end
+	cb("ok")
+end)
 
-RegisterCommand('+openinventory', function()
+RegisterNUICallback("TakeFromTrunk", function(data, cb)
+    if currentMenu == 'vehicle' then
+        local datastore = MadeInFrance.DataStore.GetTrunk(GetVehicleNumberPlateText(CurrentVehicle))
+        Wait(100)
+        MadeInFrance.SendEventToServer('TakeFromTrunk', {
+            name = data.item.name,
+            count = data.number,
+            label = data.item.label,
+            uniqueId = data.item.uniqueId,
+            data = data.item.data
+        }, datastore.name)
+        Wait(250)
+        loadPlayerInventory(currentMenu, CurrentVehicle)
+    end
+    cb("ok")
+end)
+
+Keys.Register('TAB', 'TAB', 'Ouverture inventaire', function()
     if not isInInventory then
         openInventory()
     elseif isInInventory then 
@@ -381,15 +488,15 @@ RegisterCommand('+openinventory', function()
     end
 end)
 
-RegisterCommand('+keybind1', function()
+Keys.Register('1', '1', 'Slot d\'arme 1', function()
     useitem(1)
 end)
 
-RegisterCommand('+keybind2', function()
+Keys.Register('2', '2', 'Slot d\'arme 2', function()
     useitem(2)
 end)
 
-RegisterCommand('+keybind3', function()
+Keys.Register('3', '3', 'Slot d\'arme 3', function()
     useitem(3)
 end)
 
@@ -399,7 +506,11 @@ function useitem(num)
             if string.match(FastWeapons[num].name, "weapon_") then
                 useWeapon(FastWeapons[num].name, FastWeapons[num].label)
             else
-                MadeInFrance.SendEventToServer('madeinfrance:useItem', FastWeapons[num].name)
+                if FastWeapons[num].data == nil then
+                    MadeInFrance.SendEventToServer('useItem', FastWeapons[num].name)
+                else
+                    MadeInFrance.SendEventToServer('useItem', FastWeapons[num].name, FastWeapons[num].data)
+                end
             end
         end
     end
@@ -431,3 +542,28 @@ function SetKeepInputMode(bool)
         end)
     end
 end
+
+function openTrunkInventory(vehicle)
+    isInInventory = true
+    currentMenu = 'vehicle'
+    loadPlayerInventory(currentMenu, vehicle)
+    SendNUIMessage({action = "display", type = "trunk"})
+    SendNUIMessage({action = "setWeightText", text = ""})
+    SetNuiFocus(true, true)
+    SetKeepInputMode(true)
+    DisableControlInventory()
+    DisplayRadar(false)
+    ExecuteCommand('p1')
+end
+
+Keys.Register('K', 'K', 'Ouvrir le coffre du véhicule', function()
+    if isInInventory then return end
+    local ped = PlayerPedId()
+    local vehicle = MadeInFrance.GetClosestVehicle(GetEntityCoords(ped), 3.0)
+    if vehicle ~= 0 then
+        openTrunkInventory(vehicle)
+        CurrentVehicle = vehicle
+    else
+        MadeInFrance.ShowNotification(nil, "Aucun véhicule à proximité.", 'error')
+    end
+end)

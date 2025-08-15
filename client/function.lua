@@ -1,6 +1,6 @@
 MadeInFrance = {}
 MadeInFrance.RegisteredClientEvents = {}
-MadeInFrance.Token = {}
+MadeInFrance.Token = nil
 MadeInFrance.Math = {}
 
 MadeInFrance.TriggerLocalEvent = function(name, ...)
@@ -31,7 +31,7 @@ MadeInFrance.RegisterClientEvent = function(name, execute)
     end
 end
 
-MadeInFrance.RegisterClientEvent("madeinfrance:addTokenEvent", function(data)
+MadeInFrance.RegisterClientEvent("addTokenEvent", function(data)
     MadeInFrance.Token = data
 end)
 
@@ -45,11 +45,9 @@ MadeInFrance.AddEventHandler = function(name, execute)
 end
 
 MadeInFrance.SendEventToServer = function(eventName, ...)
-    local resourceName = GetCurrentResourceName()
-
-    if MadeInFrance.Token[resourceName] then
-        tokenEvent = MadeInFrance.Token[resourceName]
-        TriggerServerEvent('madeinfrance:useEvent', eventName, tokenEvent, ...)
+    if MadeInFrance.Token then
+        token = MadeInFrance.Token
+        TriggerServerEvent('useEvent', eventName, token, ...)
     else
         Config.Development.Print("Injector detected " .. eventName)
     end
@@ -130,11 +128,9 @@ MadeInFrance.SetCoords = function(coords)
     SetEntityCoords(PlayerPedId(), coords.x, coords.y, coords.z)
 end
 
-MadeInFrance.ShowNotification = function(message)
-    if not message then return end
-    SetNotificationTextEntry("STRING")
-    AddTextComponentString(message)
-    DrawNotification(false, false)
+MadeInFrance.ShowNotification = function(title, message, icon, time)
+    time = time or 5000
+    TriggerEvent('brutal_notify:SendAlert', title, message, time, icon)
 end
 
 MadeInFrance.GetClosestPlayer = function(player, distance)
@@ -157,6 +153,21 @@ MadeInFrance.GetClosestPlayer = function(player, distance)
     return closestPlayer
 end
 
+MadeInFrance.GetClosestVehicle = function(coords, distance)
+    if not coords then return end
+    if not distance then return end
+    local closestVehicle, closestDistance = nil, distance or -1
+    for _, vehicle in ipairs(GetGamePool('CVehicle')) do
+        local vehicleCoords = GetEntityCoords(vehicle)
+        local dist = #(coords - vehicleCoords)
+        if closestDistance == -1 or closestDistance > dist then
+            closestVehicle = vehicle
+            closestDistance = dist
+        end
+    end
+    return closestVehicle
+end
+
 MadeInFrance.RequestAnimDict = function(animDict, cb)
 	if not HasAnimDictLoaded(animDict) then
 		RequestAnimDict(animDict)
@@ -170,8 +181,9 @@ MadeInFrance.RequestAnimDict = function(animDict, cb)
 	end
 end
 
-MadeInFrance.RegisterClientEvent('madeinfrance:notify', function(message)
-    MadeInFrance.ShowNotification(message)
+MadeInFrance.RegisterClientEvent('notify', function(title, message, icon, time)
+    time = time or 5000
+    TriggerEvent('brutal_notify:SendAlert', title, message, time, icon)
 end)
 
 MadeInFrance.Math.Round = function(value, numDecimalPlaces)

@@ -111,3 +111,39 @@ RegisterCommand('pos', function()
     Config.Development.Print(GetEntityCoords(PlayerPedId()))
     Config.Development.Print(GetEntityHeading(PlayerPedId()))
 end)
+
+-- -- Afficher/mettre à jour le HUD natif "Cash / Bank"
+-- local function setNativeMoney(cash, bank, showMs)
+--     -- 1) on met à jour les stats
+--     StatSetInt(`MP0_WALLET_BALANCE`, cash or 0, true) -- portefeuille
+--     StatSetInt(`BANK_BALANCE`, bank or 0, true)       -- banque
+
+--     -- 2) on déclenche l’affichage du HUD natif pour qq secondes
+--     Citizen.InvokeNative(0x170F541E1CADD1DE, true) -- (wrapper utilisé par Rockstar)
+--     SetMultiplayerWalletCash()
+--     SetMultiplayerBankCash()
+--     Citizen.InvokeNative(0x170F541E1CADD1DE, false)
+
+--     -- 3) garder le HUD visible un moment si tu veux
+--     local untilTime = GetGameTimer() + (showMs or 5000)
+--     CreateThread(function()
+--         while GetGameTimer() < untilTime do
+--             Wait(0)
+--             DisplayCash(true)               -- autorise le rendu du cash
+--             ShowHudComponentThisFrame(4)    -- composant HUD "MP cash"
+--         end
+--         RemoveMultiplayerWalletCash()
+--         RemoveMultiplayerBankCash()
+--     end)
+-- end
+
+-- -- Exemple de commande: /setmoney 1500 20000
+-- RegisterCommand('setmoney', function(_, args)
+--     setNativeMoney(tonumber(args[1]) or 0, tonumber(args[2]) or 0, 5000)
+-- end)
+
+-- -- Pour montrer juste une notif de variation (+$ / bank) sans tout réafficher :
+-- -- /cashdelta 500 -1000  → +500 cash, -1000 bank (animation en haut-droite)
+-- RegisterCommand('cashdelta', function(_, args)
+--     ChangeFakeMpCash(tonumber(args[1]) or 0, tonumber(args[2]) or 0)
+-- end)

@@ -8,61 +8,6 @@ Citizen.CreateThread( function()
     end
 end)
 
---RegisterCommand('p1', function()
---    createPedScreen()
---end)
---
---RegisterCommand('p2', function()
---    deletePedScreen()
---end)
---
---RegisterCommand('p3', function()
---    refreshPedScreen()
---end)
---
---function createPedScreen()
---    CreateThread(function()
---        heading = GetEntityHeading(PlayerPedId())
---        SetFrontendActive(true)
---        ActivateFrontendMenu(GetHashKey("FE_MENU_VERSION_EMPTY_NO_BACKGROUND"), true, -1)
---        Citizen.Wait(100)
---        N_0x98215325a695e78a(false)
---
---        PlayerPedPreview = ClonePed(PlayerPedId(), heading, true, false)
---        local PosPedPreview = GetEntityCoords(PlayerPedPreview)
---        SetEntityCoords(PlayerPedPreview, PosPedPreview.x, PosPedPreview.y, PosPedPreview.z - 100)
---        FreezeEntityPosition(PlayerPedPreview, true)
---        SetEntityVisible(PlayerPedPreview, false, false)
---        NetworkSetEntityInvisibleToNetwork(PlayerPedPreview, false)
---        Wait(200)
---        SetPedAsNoLongerNeeded(PlayerPedPreview)
---        GivePedToPauseMenu(PlayerPedPreview, 1)
---        SetPauseMenuPedLighting(true)
---        SetPauseMenuPedSleepState(true)
---        ReplaceHudColourWithRgba(117, 0, 0, 0, 0)
---        previewPed = PlayerPedPreview
---    end)
---end
---
---function deletePedScreen()
---    if DoesEntityExist(previewPed) then
---        DeleteEntity(previewPed)
---        SetFrontendActive(false)
---        ReplaceHudColourWithRgba(117, 0, 0, 0, 190)
---        previewPed = nil
---    end
---end
---
---function refreshPedScreen()
---    if DoesEntityExist(previewPed) then
---        deletePedScreen()
---        Wait(200)
---        createPedScreen()
---    end
---end
-
---
-
 local Administration = {
     ListInfos = 1,
     ListVeh = 1,
@@ -199,7 +144,7 @@ function SetScaleformParams(scaleform, data)
 		PopScaleformMovieFunctionVoid()
 	end
 end
-function CreateScaleform(name, data) -- Créer un scalform
+function CreateScaleform(name, data) 
 	if not name or string.len(name) <= 0 then return end
 	local scaleform = RequestScaleformMovie(name)
 
@@ -303,7 +248,7 @@ function Administration:StartSpectate(player)
     Administration.CamTarget = player
     Administration.CamTarget.PedHandle = GetPlayerPed(player.id)
     if not DoesEntityExist(Administration.CamTarget.PedHandle) then
-        ESX.ShowNotification("~r~Vous etes trop loin de la cible.")
+        MadeInFrance.ShowNotification("Administration","Vous etes trop loin de la cible.", 'error')
         return
     end
     NetworkSetInSpectatorMode(1, Administration.CamTarget.PedHandle)

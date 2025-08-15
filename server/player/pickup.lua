@@ -2,7 +2,7 @@
 MadeInFrance.Pickup = {}
 MadeInFrance.PickupId = 0
 
-MadeInFrance.RegisterServerEvent('madeinfrance:addItemPickup', function(itemName, itemType, itemLabel, itemCount, itemCoords, uniqueId, data)
+MadeInFrance.RegisterServerEvent('addItemPickup', function(itemName, itemType, itemLabel, itemCount, itemCoords, uniqueId, data)
 	local _src = source
     local player = MadeInFrance.GetPlayerFromId(_src)
     if itemType == "item_standard" then
@@ -15,10 +15,10 @@ MadeInFrance.RegisterServerEvent('madeinfrance:addItemPickup', function(itemName
                 MadeInFrance.Pickup[pickupId] = pTable
                 MadeInFrance.PickupId = pickupId
                 MadeInFrance.Inventory.RemoveItemInInventory(player, itemName, itemCount, itemLabel)
-                MadeInFrance.SendEventToClient('madeinfrance:interactItemPickup', -1, "create", pTable)
-                MadeInFrance.SendEventToClient('madeinfrance:notify', _src, itemCount..' '..itemLabel..' ont été ~r~retiré(s)~s~ à votre inventaire.')
+                MadeInFrance.SendEventToClient('interactItemPickup', -1, "create", pTable)
+                MadeInFrance.SendEventToClient('notify', _src, nil, itemCount..' '..itemLabel..' ont été retiré(s) de votre inventaire.', 'success')
             else
-                MadeInFrance.SendEventToClient('madeinfrance:notify', _src, 'Vous n\'avez pas assez de '..itemLabel..'.')
+                MadeInFrance.SendEventToClient('notify', _src, nil, 'Vous n\'avez pas assez de '..itemLabel..'.', 'error')
             end
         end
     end
@@ -32,10 +32,10 @@ MadeInFrance.RegisterServerEvent('madeinfrance:addItemPickup', function(itemName
                 MadeInFrance.Pickup[pickupId] = pTable
                 MadeInFrance.PickupId = pickupId
                 MadeInFrance.Money.RemovePlayerMoney(player, itemCount)
-                MadeInFrance.SendEventToClient('madeinfrance:interactItemPickup', -1, "create", pTable)
-                MadeInFrance.SendEventToClient('madeinfrance:notify', _src, itemCount..'$ ont été retiré(s) à votre inventaire.')
+                MadeInFrance.SendEventToClient('interactItemPickup', -1, "create", pTable)
+                MadeInFrance.SendEventToClient('notify', _src, nil, itemCount..'$ ont été retiré(s) de votre inventaire.', 'success')
             else
-                MadeInFrance.SendEventToClient('madeinfrance:notify', _src, 'Vous n\'avez pas assez de $.')
+                MadeInFrance.SendEventToClient('notify', _src, nil, 'Vous n\'avez pas assez de $.', 'error')
             end
         end
         if itemName == 'item_dirty' then
@@ -46,16 +46,16 @@ MadeInFrance.RegisterServerEvent('madeinfrance:addItemPickup', function(itemName
                 MadeInFrance.Pickup[pickupId] = pTable
                 MadeInFrance.PickupId = pickupId
                 MadeInFrance.Money.RemovePlayerDirtyMoney(player, itemCount)
-                MadeInFrance.SendEventToClient('madeinfrance:interactItemPickup', -1, "create", pTable)
-                MadeInFrance.SendEventToClient('madeinfrance:notify', _src, itemCount..'$ ont été retiré(s) à votre inventaire.')
+                MadeInFrance.SendEventToClient('interactItemPickup', -1, "create", pTable)
+                MadeInFrance.SendEventToClient('notify', _src, nil, itemCount..'$ ont été retiré(s) de votre inventaire.', 'success')
             else
-                MadeInFrance.SendEventToClient('madeinfrance:notify', _src, 'Vous n\'avez pas assez de $.')
+                MadeInFrance.SendEventToClient('notify', _src, nil, 'Vous n\'avez pas assez de $.', 'error')
             end
         end 
     end
 end)
 
-MadeInFrance.RegisterServerEvent('madeinfrance:removeItemPickup', function(data)
+MadeInFrance.RegisterServerEvent('removeItemPickup', function(data)
     local _src = source
     local player = MadeInFrance.GetPlayerFromId(_src)
 
@@ -64,29 +64,29 @@ MadeInFrance.RegisterServerEvent('madeinfrance:removeItemPickup', function(data)
                 if data.type == 'item_cash' then
                     MadeInFrance.Pickup[data.id] = nil
                     MadeInFrance.Money.AddPlayerMoney(player, data.count)
-                    MadeInFrance.SendEventToClient('madeinfrance:notify', _src, data.count..'$ ont été ajouté(s) à votre inventaire.')
-                    MadeInFrance.SendEventToClient('madeinfrance:interactItemPickup', -1, "retrieve", data)
+                    MadeInFrance.SendEventToClient('notify', _src, nil, data.count..'$ ont été ajouté(s) à votre inventaire.', 'success')
+                    MadeInFrance.SendEventToClient('interactItemPickup', -1, "retrieve", data)
                 end
 
                 if data.type == 'item_dirty' then
                     MadeInFrance.Pickup[data.id] = nil
                     MadeInFrance.Money.AddPlayerDirtyMoney(player, data.count)
-                    MadeInFrance.SendEventToClient('madeinfrance:notify', _src, data.count..'$ ont été ajouté(s) à votre inventaire.')
-                    MadeInFrance.SendEventToClient('madeinfrance:interactItemPickup', -1, "retrieve", data)
+                    MadeInFrance.SendEventToClient('notify', _src, nil, data.count..'$ ont été ajouté(s) à votre inventaire.', 'success')
+                    MadeInFrance.SendEventToClient('interactItemPickup', -1, "retrieve", data)
                 end
 
                 if data.type == "item_standard" then
                     if MadeInFrance.Inventory.CanCarryItem(player, data.name, tonumber(data.count)) then
                         MadeInFrance.Pickup[data.id] = nil
                         MadeInFrance.Inventory.AddItemInInventory(player, data.name, tonumber(data.count), data.label, data.uniqueId, data.data)
-                        MadeInFrance.SendEventToClient('madeinfrance:interactItemPickup', -1, "retrieve", data)
-                        MadeInFrance.SendEventToClient('madeinfrance:notify', _src, data.count..' '..data.label..' ont été ~g~ajouté(s)~s~ à votre inventaire.')
+                        MadeInFrance.SendEventToClient('interactItemPickup', -1, "retrieve", data)
+                        MadeInFrance.SendEventToClient('notify', _src, nil, data.count..' '..data.label..' ont été ajouté(s) à votre inventaire.', 'success')
                     else
-                        MadeInFrance.SendEventToClient('madeinfrance:notify', source, '~r~Vous n\'avez plus de place.')
+                        MadeInFrance.SendEventToClient('notify', source, nil, 'Vous n\'avez plus de place.', 'error')
                     end
                 end
         else
-            MadeInFrance.SendEventToClient('madeinfrance:notify', source, '~r~ERREUR.')
+            MadeInFrance.SendEventToClient('notify', source, nil, 'ERREUR.', 'error')
         end
     end
 end)

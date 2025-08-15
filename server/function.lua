@@ -2,7 +2,6 @@
 MadeInFrance = {}
 MadeInFrance.Math = {}
 MadeInFrance.Event = {}
-MadeInFrance.Resource = {}
 MadeInFrance.Token = {}
 MadeInFrance.addTokenClient = {}
 MadeInFrance.PlayersLimit = {}
@@ -11,30 +10,34 @@ MadeInFrance.RateLimit = {
     ['MessageAdmin'] = 25,
     ['TeleportPlayers'] = 35,
     ['SetBucket'] = 30,
-    ['madeinfrance:saveskin'] = 70,
+    ['saveskin'] = 70,
     ['SetIdentity'] = 30,
-    ['zones:haveInteract'] = 25,
-    ['madeinfrance:renameItem'] = 25,
-    ['madeinfrance:useItem'] = 40,
-    ['madeinfrance:transfer'] = 40,
-    ['madeinfrance:addItemPickup'] = 30,
-    ['madeinfrance:removeItemPickup'] = 40,
-    ['madeinfrance:haveExitedZone'] = 40,
-    ['madeinfrance:GetBankAccounts'] = 40,
-    ['madeinfrance:BankCreateAccount'] = 25,
-    ['madeinfrance:AddClothesInInventory'] = 30,
-    ['madeinfrance:BankChangeAccountStatus'] = 30,
-    ['madeinfrance:BankDeleteAccount'] = 30,
-    ['madeinfrance:BankCreateCard'] = 30,
-    ['madeinfrance:BankwithdrawMoney'] = 30,
-    ['madeinfrance:BankAddMoney'] = 30,
-    ['madeinfrance:attemptToPayMenu'] = 30,
-    ['madeinfrance:pay'] = 30
+    ['zones:haveInteract'] = 50,
+    ['renameItem'] = 25,
+    ['useItem'] = 40,
+    ['transfer'] = 40,
+    ['addItemPickup'] = 30,
+    ['removeItemPickup'] = 40,
+    ['haveExitedZone'] = 40,
+    ['GetBankAccounts'] = 40,
+    ['BankCreateAccount'] = 25,
+    ['AddClothesInInventory'] = 30,
+    ['BankChangeAccountStatus'] = 30,
+    ['BankDeleteAccount'] = 30,
+    ['BankCreateCard'] = 30,
+    ['BankwithdrawMoney'] = 30,
+    ['BankAddMoney'] = 30,
+    ['attemptToPayMenu'] = 30,
+    ['pay'] = 30,
+    ['ReceiveUpdateServerPlayer'] = 30,
+    ['RegisterDataStore'] = 30,
+    ['PutIntoTrunk'] = 30,
+    ['TakeFromTrunk'] = 30,
 }
 
 Citizen.CreateThread(function()
     while true do 
-        Wait(10000)
+        Wait(15000)
         MadeInFrance.PlayersLimit = {}
     end
 end)
@@ -79,11 +82,7 @@ MadeInFrance.GeneratorToken = function(_source)
 	for i = 1, 150 do
 		token = token .. string.char(math.random(97, 122))
 	end
-    if MadeInFrance.Token[_source][token] then
-        MadeInFrance.GeneratorToken(_source)
-    else
-        return token
-    end
+    return token
 end
 
 ---GeneratorTokenConnecting
@@ -95,20 +94,9 @@ MadeInFrance.GeneratorTokenConnecting = function(_source)
     if not MadeInFrance.addTokenClient[_source] then
         MadeInFrance.addTokenClient[_source] = _source
 
-        MadeInFrance.Resource[_source] = {}
-        MadeInFrance.Token[_source] = {}
+        MadeInFrance.Token[_source] = MadeInFrance.GeneratorToken(_source)
 
-        for i = 0, GetNumResources(), 1 do
-            local resourceName = GetResourceByFindIndex(i)
-    
-            if resourceName then
-                token = MadeInFrance.GeneratorToken(_source)
-                MadeInFrance.Resource[_source][resourceName] = token
-                MadeInFrance.Token[_source][token] = resourceName
-            end
-        end
-
-        MadeInFrance.SendEventToClient("madeinfrance:addTokenEvent", _source, MadeInFrance.Resource[_source])
+        MadeInFrance.SendEventToClient("addTokenEvent", _source, MadeInFrance.Token[_source])
     else
         DropPlayer(_source, 'Injector detected ╭∩╮（︶_︶）╭∩╮')
     end
@@ -117,17 +105,14 @@ end
 ---GeneratorNewToken
 ---@type function
 ---@param _source number
----@param resourceName string
----@param lastToken string
 ---@return any
 ---@public
-MadeInFrance.GeneratorNewToken = function(_source, resourceName, lastToken)
+MadeInFrance.GeneratorNewToken = function(_source)
     token = MadeInFrance.GeneratorToken(_source)
 
-    MadeInFrance.Token[_source][lastToken] = nil
-    MadeInFrance.Resource[_source][resourceName] = token
-    MadeInFrance.Token[_source][token] = resourceName
-    MadeInFrance.SendEventToClient("madeinfrance:addTokenEvent", _source, MadeInFrance.Resource[_source])
+    MadeInFrance.Token[_source] = nil
+    MadeInFrance.Token[_source] = token
+    MadeInFrance.SendEventToClient("addTokenEvent", _source,  MadeInFrance.Token[_source])
 end
 
 ---RegisterServerEvent
@@ -154,7 +139,7 @@ end
 ---@public
 MadeInFrance.UseServerEvent = function(eventName, src, ...)
     if MadeInFrance.Event[eventName] then
-        if eventName ~= "madeinfrance:updateNumberPlayer" and eventName ~= "DropInjectorDetected" then
+        if eventName ~= "updateNumberPlayer" and eventName ~= "DropInjectorDetected" then
             if not MadeInFrance.PlayersLimit[eventName] then
                 MadeInFrance.PlayersLimit[eventName] = {}
             end
@@ -173,18 +158,18 @@ MadeInFrance.UseServerEvent = function(eventName, src, ...)
     end
 end
 
-RegisterNetEvent("madeinfrance:useEvent")
-AddEventHandler("madeinfrance:useEvent", function(eventName, tokenResource, ...)
+RegisterNetEvent("useEvent")
+AddEventHandler("useEvent", function(eventName, token, ...)
     local _src = source
-
-    if eventName and tokenResource and MadeInFrance.Token[_src][tokenResource] then
-        MadeInFrance.GeneratorNewToken(_src, MadeInFrance.Token[_src][tokenResource], tokenResource)
+    if eventName and token and MadeInFrance.Token[_src] == token then
+        MadeInFrance.GeneratorNewToken(_src)
         MadeInFrance.UseServerEvent(eventName, _src, ...)
         Config.Development.Print("Successfully triggered server event " .. eventName)
     else
-        print('Injector detected - madeinfrance:useEvent : '.._src)
-        DropPlayer(_src, 'Injector detected ╭∩╮（︶_︶）╭∩╮')
-        Config.Development.Print("Injector detected ╭∩╮（︶_︶）╭∩╮ " .. eventName)
+        if eventName ~= "updateNumberPlayer" and eventName ~= "DropInjectorDetected" and eventName ~= "ReceiveUpdateServerPlayer" and eventName ~= "useItem" then
+            DropPlayer(_src, 'Injector detected ╭∩╮（︶_︶）╭∩╮')
+            Config.Development.Print("Injector detected ╭∩╮（︶_︶）╭∩╮ " .. eventName)
+        end
     end
 end)
 
@@ -242,13 +227,13 @@ MadeInFrance.GetEntityCoords = function(entity)
     return vector3(_entity.x, _entity.y, _entity.z)
 end
 
-MadeInFrance.RegisterServerEvent('madeinfrance:updateNumberPlayer', function()
+MadeInFrance.RegisterServerEvent('updateNumberPlayer', function()
     local _source = source
     local number = 0
     for key, value in pairs(MadeInFrance.ServerPlayers) do
         number = number + 1
     end
-    MadeInFrance.SendEventToClient('madeinfrance:receiveNumberPlayers', _source, number)
+    MadeInFrance.SendEventToClient('receiveNumberPlayers', _source, number)
 end)
 
 MadeInFrance.RegisterServerEvent('DropInjectorDetected', function()
@@ -310,7 +295,7 @@ MadeInFrance.SpawnPed = function(hash, coords, anim)
     return ped
 end
 
----stringsplit
+---StringSplit
 ---@type function
 ---@param string string
 ---@param sep string
@@ -326,4 +311,19 @@ MadeInFrance.StringSplit = function(string, sep)
         i = i + 1
     end
     return t
+end
+
+---CreateDuplicationOfATableWithoutFunctions
+---@type function
+---@param table table
+---@return table
+---@public
+MadeInFrance.CreateDuplicationOfATableWithoutFunctions = function(table)
+    local newTable = {}
+    for k, v in pairs(table) do
+        if not type(v) == "function" then
+            newTable[k] = v
+        end
+    end
+    return newTable
 end

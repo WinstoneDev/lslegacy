@@ -36,13 +36,13 @@ window.addEventListener("message", function(event) {
                 $("#rename").addClass("disabled");
                 $("#use").addClass("disabled");
 
-                // if (itemData !== undefined && itemData.name !== undefined) {
-                //     $(this).css('background-image', 'url(\'img/items/' + itemData.name + '.png\'');
-                //     $("#drop").removeClass("disabled");
-                //     $("#use").removeClass("disabled");
-                //     $("#rename").removeClass("disabled");
-                //     $("#give").removeClass("disabled");
-                // }
+                if (itemData !== undefined && itemData.name !== undefined) {
+                    $(this).css('background-image', 'url(\'img/items/' + itemData.name + '.png\'');
+                    $("#drop").removeClass("disabled");
+                    $("#use").removeClass("disabled");
+                    $("#rename").removeClass("disabled");
+                    $("#give").removeClass("disabled");
+                }
                 
             },
             stop: function() {
@@ -58,7 +58,50 @@ window.addEventListener("message", function(event) {
             }
         });
     } else if (event.data.action == "setSecondInventoryItems") {
-        secondInventorySetup(event.data.itemList);
+        secondInventorySetup(event.data.itemList, event.data.fastItems);
+        $('.item').draggable({
+            helper: 'clone',
+            appendTo: 'body',
+            zIndex: 99999,
+            revert: 'invalid',
+            start: function(event, ui) {
+                if (disabled) {
+                    return false;
+                }
+                $(this).css('background-image', 'none');
+                let itemData = $(this).data("item");
+                let inventoryType = $(this).data("inventory"); 
+
+                if (inventoryType === "second") {
+                    $("#drop").addClass("disabled");
+                    $("#give").addClass("disabled");
+                    $("#rename").addClass("disabled");
+                    $("#use").addClass("disabled");
+                } else {
+                    if (itemData !== undefined && itemData.name !== undefined) {
+                        $(this).css('background-image', 'url(\'img/items/' + itemData.name + '.png\'');
+                        $("#drop").removeClass("disabled");
+                        $("#use").removeClass("disabled");
+                        $("#rename").removeClass("disabled");
+                        $("#give").removeClass("disabled");
+                    }
+                }
+            },
+            stop: function() {
+                let itemData = $(this).data("item");
+                let inventoryType = $(this).data("inventory");
+
+                if (itemData !== undefined && itemData.name !== undefined) {
+                    $(this).css('background-image', 'url(\'img/items/' + itemData.name + '.png\'');
+                }
+                if (inventoryType === "main") {
+                    $("#drop").removeClass("disabled");
+                    $("#use").removeClass("disabled");
+                    $("#rename").removeClass("disabled");
+                    $("#give").removeClass("disabled");
+                }
+            }
+        });
     } else if (event.data.action == "setShopInventoryItems") {
         shopInventorySetup(event.data.itemList)
     } else if (event.data.action == "setInfoText") {
@@ -159,7 +202,7 @@ function makeDraggables() {
     });
 }
 
-function secondInventorySetup(items) {
+function secondInventorySetup(items, fastItems) {
     $("#otherInventory").html("");
     $.each(items, function(index, item) {
         count = setCount(item);
@@ -169,6 +212,21 @@ function secondInventorySetup(items) {
         $('#itemOther-' + index).data('item', item);
         $('#itemOther-' + index).data('inventory', "second");
     });
+
+    $("#playerInventoryFastItems").html("");
+    var i;
+    for (i = 1; i < 4; i++) {
+        $("#playerInventoryFastItems").append('<div class="slotFast"><div id="itemFast-' + i + '" class="item" >' + '<div class="keybind">' + i + '</div><div class="item-count"></div> <div class="item-name"></div> </div ><div class="item-name-bg"></div></div>');
+    }
+    $.each(fastItems, function(index, item) {
+        count = setCount(item);
+        $('#itemFast-' + item.slot).css("background-image", 'url(\'img/items/' + item.name + '.png\')');
+        $('#itemFast-' + item.slot).html('<div class="keybind">' + item.slot + '</div><div class="item-count">' + count + '</div> <div class="item-name">' + item.label + '</div> <div class="item-name-bg"></div>');
+        $('#itemFast-' + item.slot).data('item', item);
+        $('#itemFast-' + item.slot).data('inventory', "fast");
+    });
+
+    makeDraggables()
 }
 
 function shopInventorySetup(items) {
@@ -278,49 +336,62 @@ $(document).ready(function() {
     });
 
     $('#use').droppable({
-        hoverClass: 'hoverControl',
-        drop: function(event, ui) {
-            itemData = ui.draggable.data("item");
-            if (itemData.usable) {
-                $.post("http://madeinfrance/UseItem", JSON.stringify({
-                    item: itemData
-                }));
-            }
+    hoverClass: 'hoverControl',
+    drop: function(event, ui) {
+        let itemData = ui.draggable.data("item");
+        let inventoryType = ui.draggable.data("inventory");
+
+        if (itemData.usable && inventoryType === "main") {
+            $.post("http://madeinfrance/UseItem", JSON.stringify({
+                item: itemData
+            }));
         }
-    });
+    }
+});
 
     $('#give').droppable({
         hoverClass: 'hoverControl',
         drop: function(event, ui) {
-            player = $(this).data("player");
-            itemData = ui.draggable.data("item");
-            $.post("http://madeinfrance/GetNearPlayers", JSON.stringify({
-                player: player,
-                item: itemData,
-                number: parseInt($("#count").val())
-            }));
+            let itemData = ui.draggable.data("item");
+            let inventoryType = ui.draggable.data("inventory");
+
+            if (inventoryType === "main") {
+                $.post("http://madeinfrance/GetNearPlayers", JSON.stringify({
+                    player: $(this).data("player"),
+                    item: itemData,
+                    number: parseInt($("#count").val())
+                }));
+            }
         }
     });
 
     $('#drop').droppable({
         hoverClass: 'hoverControl',
         drop: function(event, ui) {
-            itemData = ui.draggable.data("item");
-            $.post("http://madeinfrance/DropItem", JSON.stringify({
-                item: itemData,
-                number: parseInt($("#count").val())
-            }));
+            let itemData = ui.draggable.data("item");
+            let inventoryType = ui.draggable.data("inventory");
+
+            if (inventoryType === "main") {
+                $.post("http://madeinfrance/DropItem", JSON.stringify({
+                    item: itemData,
+                    number: parseInt($("#count").val())
+                }));
+            }
         }
     });
 
     $('#rename').droppable({
         hoverClass: 'hoverControl',
         drop: function(event, ui) {
-            itemData = ui.draggable.data("item");
-            $.post("http://madeinfrance/RenameItem", JSON.stringify({
-                item: itemData,
-                number: parseInt($("#count").val())
-            }));
+            let itemData = ui.draggable.data("item");
+            let inventoryType = ui.draggable.data("inventory");
+
+            if (inventoryType === "main") {
+                $.post("http://madeinfrance/RenameItem", JSON.stringify({
+                    item: itemData,
+                    number: parseInt($("#count").val())
+                }));
+            }
         }
     });
 

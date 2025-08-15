@@ -52,10 +52,10 @@ MadeInFrance.RegisterClientEvent('zones:enteredZone', function(zone)
             end
         else
             pedEntity = nil
-            MadeInFrance.SendEventToServer('madeinfrance:haveExitedZone')
+            MadeInFrance.SendEventToServer('haveExitedZone')
             RageUI.CloseAll()
             break
         end
-        Wait(0)
+        Wait(10)
     end
 end)

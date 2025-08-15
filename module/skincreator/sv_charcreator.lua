@@ -3,7 +3,7 @@ MadeInFrance.RegisterServerEvent("SetBucket", function(number)
     SetPlayerRoutingBucket(_src, number)
 end)
 
-MadeInFrance.RegisterServerEvent('madeinfrance:saveskin', function(skin)
+MadeInFrance.RegisterServerEvent('saveskin', function(skin)
     local _src = source
     local player = MadeInFrance.GetPlayerFromId(_src)
     MySQL.Async.execute('UPDATE players SET skin = @skin WHERE id = @id', {

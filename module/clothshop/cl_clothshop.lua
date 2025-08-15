@@ -150,11 +150,11 @@ function Clothes:OpenMenu(header)
                             end,
                             onSelected = function()
                                 local message = 'Achat d\'un pantalon '..i
-                                MadeInFrance.SendEventToServer('madeinfrance:attemptToPayMenu', message, 30)
+                                MadeInFrance.SendEventToServer('attemptToPayMenu', message, 30)
                                 paymentMenu.actions = {
                                     onSucess = function()
                                         MadeInFrance.TriggerLocalEvent('skinchanger:getSkin', function(skin)
-                                            MadeInFrance.SendEventToServer('madeinfrance:AddClothesInInventory', 'pants', 'Pantalon '..i, {skin.pants_1, skin.pants_2})
+                                            MadeInFrance.SendEventToServer('AddClothesInInventory', 'pants', 'Pantalon '..i, {skin.pants_1, skin.pants_2})
                                         end)
                                     end,
                                     onFailed = function()
@@ -183,11 +183,11 @@ function Clothes:OpenMenu(header)
                             end,
                             onSelected = function()
                                 local message = 'Achat d\'une paire de chaussures '..i
-                                MadeInFrance.SendEventToServer('madeinfrance:attemptToPayMenu', message, 30)
+                                MadeInFrance.SendEventToServer('attemptToPayMenu', message, 30)
                                 paymentMenu.actions = {
                                     onSucess = function()
                                         MadeInFrance.TriggerLocalEvent('skinchanger:getSkin', function(skin)
-                                            MadeInFrance.SendEventToServer('madeinfrance:AddClothesInInventory', 'shoes', 'Chaussure '..i, {skin.shoes_1, skin.shoes_2})
+                                            MadeInFrance.SendEventToServer('AddClothesInInventory', 'shoes', 'Chaussure '..i, {skin.shoes_1, skin.shoes_2})
                                         end)
                                     end,
                                     onFailed = function()
@@ -216,11 +216,11 @@ function Clothes:OpenMenu(header)
                             end,
                             onSelected = function()
                                 local message = 'Achat d\'un sac '..i
-                                MadeInFrance.SendEventToServer('madeinfrance:attemptToPayMenu', message, 30)
+                                MadeInFrance.SendEventToServer('attemptToPayMenu', message, 30)
                                 paymentMenu.actions = {
                                     onSucess = function()
                                         MadeInFrance.TriggerLocalEvent('skinchanger:getSkin', function(skin)
-                                            MadeInFrance.SendEventToServer('madeinfrance:AddClothesInInventory', 'bag', 'Sac '..i, {skin.bags_1, skin.bags_2})
+                                            MadeInFrance.SendEventToServer('AddClothesInInventory', 'bag', 'Sac '..i, {skin.bags_1, skin.bags_2})
                                         end)
                                     end,
                                     onFailed = function()
@@ -249,11 +249,11 @@ function Clothes:OpenMenu(header)
                             end,
                             onSelected = function()
                                 local message = 'Achat d\'un chapeau '..i
-                                MadeInFrance.SendEventToServer('madeinfrance:attemptToPayMenu', message, 30)
+                                MadeInFrance.SendEventToServer('attemptToPayMenu', message, 30)
                                 paymentMenu.actions = {
                                     onSucess = function()
                                         MadeInFrance.TriggerLocalEvent('skinchanger:getSkin', function(skin)
-                                            MadeInFrance.SendEventToServer('madeinfrance:AddClothesInInventory', 'helmet', 'Chapeau '..i, {skin.helmet_1, skin.helmet_2})
+                                            MadeInFrance.SendEventToServer('AddClothesInInventory', 'helmet', 'Chapeau '..i, {skin.helmet_1, skin.helmet_2})
                                         end)
                                     end,
                                     onFailed = function()
@@ -282,11 +282,11 @@ function Clothes:OpenMenu(header)
                             end,
                             onSelected = function()
                                 local message = 'Achat d\'une paire de lunettes '..i
-                                MadeInFrance.SendEventToServer('madeinfrance:attemptToPayMenu', message, 30)
+                                MadeInFrance.SendEventToServer('attemptToPayMenu', message, 30)
                                 paymentMenu.actions = {
                                     onSucess = function()
                                         MadeInFrance.TriggerLocalEvent('skinchanger:getSkin', function(skin)
-                                            MadeInFrance.SendEventToServer('madeinfrance:AddClothesInInventory', 'glasses', 'Lunettes '..i, {skin.glasses_1, skin.glasses_2})
+                                            MadeInFrance.SendEventToServer('AddClothesInInventory', 'glasses', 'Lunettes '..i, {skin.glasses_1, skin.glasses_2})
                                         end)
                                     end,
                                     onFailed = function()
@@ -315,11 +315,11 @@ function Clothes:OpenMenu(header)
                             end,
                             onSelected = function()
                                 local message = 'Achat d\'une Oreillette '..i
-                                MadeInFrance.SendEventToServer('madeinfrance:attemptToPayMenu', message, 30)
+                                MadeInFrance.SendEventToServer('attemptToPayMenu', message, 30)
                                 paymentMenu.actions = {
                                     onSucess = function()
                                         MadeInFrance.TriggerLocalEvent('skinchanger:getSkin', function(skin)
-                                            MadeInFrance.SendEventToServer('madeinfrance:AddClothesInInventory', 'ears', 'Oreillette '..i, {skin.ears_1, skin.ears_2})
+                                            MadeInFrance.SendEventToServer('AddClothesInInventory', 'ears', 'Oreillette '..i, {skin.ears_1, skin.ears_2})
                                         end)
                                     end,
                                     onFailed = function()
@@ -345,7 +345,7 @@ function Clothes:OpenMenu(header)
     end
 end
 
-MadeInFrance.RegisterClientEvent('madeinfrance:openClothMenu', function(header, type)
+MadeInFrance.RegisterClientEvent('openClothMenu', function(header, type)
     if type == "Cloth" then
         Clothes:OpenMenu(header)
     end

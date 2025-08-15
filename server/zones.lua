@@ -52,7 +52,7 @@ MadeInFrance.RegisterServerEvent('zones:haveInteract', function(zone)
     end)
 end)
 
-MadeInFrance.RegisterServerEvent('madeinfrance:haveExitedZone', function()
+MadeInFrance.RegisterServerEvent('haveExitedZone', function()
     local _src = source
     local player = MadeInFrance.GetPlayerFromId(_src)
     player.currentZone = "Aucune"

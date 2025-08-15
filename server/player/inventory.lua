@@ -296,7 +296,7 @@ MadeInFrance.Inventory.RenameItemLabel = function(player, name, lastLabel, newLa
     if not exist then
         table.insert(inventory, {name = itemName, label = newLabel, count = quantity})
     end
-    MadeInFrance.SendEventToClient('madeinfrance:notify', player.source, "Vous avez changé le nom ~b~"..lastLabel.."~s~ en ~b~"..newLabel.."~s~.")
+    MadeInFrance.SendEventToClient('notify', player.source, nil, "Vous avez changé le nom "..lastLabel.." en "..newLabel..".", 'success')
     player.inventory = inventory
     MadeInFrance.SendEventToClient('UpdatePlayer', player.source, player)
 end
@@ -323,12 +323,12 @@ MadeInFrance.UseItem = function(item, ...)
     end
 end
 
-MadeInFrance.RegisterServerEvent('madeinfrance:renameItem', function(name, lastLabel, newLabel, quantity, uniqueId)
+MadeInFrance.RegisterServerEvent('renameItem', function(name, lastLabel, newLabel, quantity, uniqueId)
     local player = MadeInFrance.GetPlayerFromId(source)
     MadeInFrance.Inventory.RenameItemLabel(player, name, lastLabel, newLabel, quantity, uniqueId)
 end)
 
-MadeInFrance.RegisterServerEvent('madeinfrance:useItem', function(item, ...)
+MadeInFrance.RegisterServerEvent('useItem', function(item, ...)
     local player = MadeInFrance.GetPlayerFromId(source)
     if MadeInFrance.Inventory.GetInventoryItem(player, item) ~= nil then
         if MadeInFrance.Inventory.GetInventoryItem(player, item).count > 0 then
@@ -337,7 +337,7 @@ MadeInFrance.RegisterServerEvent('madeinfrance:useItem', function(item, ...)
     end
 end)
 
-MadeInFrance.RegisterServerEvent('madeinfrance:transfer', function(table)
+MadeInFrance.RegisterServerEvent('transfer', function(table)
     local source = source
     local sourcePed = GetPlayerPed(source)
     local targetPed = GetPlayerPed(table.target)
@@ -349,15 +349,15 @@ MadeInFrance.RegisterServerEvent('madeinfrance:transfer', function(table)
                 if MadeInFrance.Inventory.CanCarryItem(target, table.name, table.count) then
                     MadeInFrance.Inventory.RemoveItemInInventory(player, table.name, table.count, table.label)
                     MadeInFrance.Inventory.AddItemInInventory(target, table.name, table.count, table.label, table.uniqueId, table.data)
-                    MadeInFrance.SendEventToClient('madeinfrance:notify', table.target,  table.count..' '..table.label..' ont été ~g~ajouté(s)~s~ à votre inventaire.')
-                    MadeInFrance.SendEventToClient('madeinfrance:notify', source, table.count..' '..table.label..' ont été ~r~retiré(s)~s~ à votre inventaire.')
+                    MadeInFrance.SendEventToClient('notify', table.target, nil, table.count..' '..table.label..' ont été ajouté(s) à votre inventaire.', 'success')
+                    MadeInFrance.SendEventToClient('notify', source, nil, table.count..' '..table.label..' ont été retiré(s) de votre inventaire.', 'success')
                 else
-                    MadeInFrance.SendEventToClient('madeinfrance:notify', table.target, '~r~Vous ne pouvez pas transporter cet objet.')
-                    MadeInFrance.SendEventToClient('madeinfrance:notify', source, '~r~La personne ne peut pas transporter cet objet.')
+                    MadeInFrance.SendEventToClient('notify', table.target, nil, 'Vous ne pouvez pas transporter cet objet.', 'error')
+                    MadeInFrance.SendEventToClient('notify', source, nil, 'La personne ne peut pas transporter cet objet.', 'error')
                 end
             end
         end
     else
-        MadeInFrance.SendEventToClient('madeinfrance:notify', source, '~r~Il n\'y a aucune personne aux alentours de vous.')
+        MadeInFrance.SendEventToClient('notify', source, nil, 'Il n\'y a aucune personne aux alentours de vous.', 'error')
     end
 end)

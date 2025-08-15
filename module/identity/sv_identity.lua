@@ -3,9 +3,9 @@ MadeInFrance.RegisterZone('Récupération de pièce d\'identité', vector3(-1093
     local identity = MadeInFrance.Inventory.GetInventoryItem(player, 'idcard')
     if identity == nil then
         MadeInFrance.Inventory.AddItemInInventory(player, 'idcard', 1, player.characterInfos.Prenom.." "..player.characterInfos.NDF, nil, player.characterInfos)
-        MadeInFrance.SendEventToClient('madeinfrance:notify', source,  '1 '..player.characterInfos.Prenom.." "..player.characterInfos.NDF..' ont été ~g~ajouté(s)~s~ à votre inventaire.')
+        MadeInFrance.SendEventToClient('notify', source,  nil, '1 '..player.characterInfos.Prenom.." "..player.characterInfos.NDF..' ont été ajouté(s) à votre inventaire.', 'success')
     else
-        MadeInFrance.SendEventToClient('madeinfrance:notify', source, 'Vous avez ~r~déjà~s~ une pièce d\'identité.')
+        MadeInFrance.SendEventToClient('notify', source, nil, 'Vous avez déjà une pièce d\'identité.', 'error')
     end
 end, 10.0, false, {
     markerType = 25,
@@ -31,5 +31,5 @@ end, 10.0, false, {
 })
 
 MadeInFrance.RegisterUsableItem("idcard", function(data)
-    MadeInFrance.SendEventToClient('madeinfrance:useIdCard', source, data)
+    MadeInFrance.SendEventToClient('useIdCard', source, data)
 end)

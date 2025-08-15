@@ -143,8 +143,13 @@ MadeInFrance.RegisterCommand('clearall', 3, function(player, args, showError, ra
 end, {help = "Clear le chat pour tout le monde"}, false)
 
 MadeInFrance.RegisterCommand('announce', 3, function(player, args, showError, rawCommand)
-	MadeInFrance.SendEventToClient('madeinfrance:notify', -1, '~b~Annonce Serveur~s~\n'..table.concat(args, " "))
-end, {help = "Affiche un message pour tout le serveur", validate = true, arguments = {{name = 'message', help = 'Message', type = 'fullstring'}}}, false)
+	local text = ""
+    sm = MadeInFrance.StringSplit(rawCommand, " ")
+    for i = 2, #sm do
+        text = text ..sm[i].. " " 
+    end
+	MadeInFrance.SendEventToClient('notify', -1, 'Administration', text, 'warning')
+end, {help = "Affiche un message pour tout le serveur", validate = false, arguments = {{name = 'message', help = 'Message', type = 'fullstring'}}}, false)
 
 MadeInFrance.RegisterCommand('kick', 1, function(player, args, showError, rawCommand)
 	local player = args.playerId
@@ -160,15 +165,26 @@ end, {help = "Permet de déconnecter un joueur", validate = false, arguments = {
 
 MadeInFrance.RegisterCommand('sync', 0, function(player, args, showError, rawCommand)
 	local source = player.source
-	MySQL.Async.execute('UPDATE players SET coords = @coords, inventory = @inventory, money = @money, health = @health WHERE id = @id', {
+	MySQL.Async.execute('UPDATE players SET coords = @coords, inventory = @inventory, money = @money, health = @health, skin = @skin WHERE id = @id', {
         ['@coords'] = json.encode(MadeInFrance.ServerPlayers[source].coords),
         ['@inventory'] = json.encode(MadeInFrance.ServerPlayers[source].inventory),
         ['@money'] = json.encode({cash = MadeInFrance.ServerPlayers[source].cash, dirty = MadeInFrance.ServerPlayers[source].dirty}),
         ['@id'] = MadeInFrance.ServerPlayers[source].id,
-        ['@health'] = GetEntityHealth(GetPlayerPed(source))
+        ['@health'] = GetEntityHealth(GetPlayerPed(source)),
+		['@skin'] = json.encode(MadeInFrance.ServerPlayers[source].skin)
     })
-	MadeInFrance.SendEventToClient('madeinfrance:notify', source, '~g~Sync~s~\nVous avez bien synchronisé votre personnage.')
+	MadeInFrance.SendEventToClient('UpdatePlayer', source, MadeInFrance.ServerPlayers[source])
+	MadeInFrance.SendEventToClient('UpdateDatastore', source, MadeInFrance.DataStore)
+	Wait(500)
+	MadeInFrance.SendEventToClient('UpdateServerPlayer', source)
+	MadeInFrance.SendEventToClient('notify', source, 'Sync', 'Vous avez bien synchronisé votre personnage.', 'success')
 end, {help = "Permet de synchroniser son joueur"}, false)
+
+MadeInFrance.RegisterCommand('debug', 0, function(player, args, showError, rawCommand)
+	local source = player.source
+	MadeInFrance.SendEventToClient('debug', source)
+	MadeInFrance.SendEventToClient('notify', source, nil, 'Vous avez bien débug votre personnage.', 'success')
+end, {help = "Permet de débug son joueur"}, false)
 
 MadeInFrance.RegisterCommand('ban', 1, function(player, args, showError, rawCommand)
     local player = args.playerId
@@ -192,3 +208,16 @@ MadeInFrance.RegisterCommand('unban', 1, function(player, args, showError, rawCo
 		Shared.Anticheat.ReloadFromDatabase()
 	end
 end, {help = "Permet de débannir un joueur", validate = false, arguments = {{name = 'id', help = 'ID du bannissement', type = 'number'}}}, true)
+
+MadeInFrance.RegisterCommand('giveitem', 1, function(player, args, showError, rawCommand)
+	local item = args.item
+	local quantity = args.quantity or 1
+	local targetPlayer = args.playerId
+
+	if item and targetPlayer then
+    	MadeInFrance.Inventory.AddItemInInventory(targetPlayer, item, quantity)
+		MadeInFrance.SendEventToClient('notify', targetPlayer.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. 'x ' .. MadeInFrance.Inventory.GetInfosItem(item).label, 'success')
+	else
+		showError('Veuillez spécifier un item et un joueur cible.')
+	end
+end, {help = "Permet de donner un item à un joueur", validate = false, arguments = {{name = 'playerId', help = 'ID du joueur cible', type = 'player'}, {name = 'item', help = 'Nom de l\'item', type = 'string'}, {name = 'quantity', help = 'Quantité de l\'item', type = 'number'}}}, false)

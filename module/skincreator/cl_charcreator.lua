@@ -766,13 +766,6 @@ local inPrincipal = true
 local itemButton = false
 local inCamera = false
 
--- RegisterNetEvent('RefreshDiamond')
--- AddEventHandler('RefreshDiamond', function()
---     ESX.TriggerServerCallback("GetDimandPlayer", function(result)
---         CreaPerso.Diamond = result
---     end)
--- end)
-
 function MenuCreaPerso()
     if not CreaPerso.openedMenu then
         for i = 1, GetNumberOfPedDrawableVariations(PlayerPedId(), 2) do
@@ -814,9 +807,6 @@ function MenuCreaPerso()
         for i = 1, GetNumHeadOverlayValues(6)-1 do
             table.insert(CreaPerso.ComplexionValue, {Name = tostring(i)})
         end
-        -- ESX.TriggerServerCallback("GetDimandPlayer", function(result)
-        --     CreaPerso.Diamond = result
-        -- end)
         Wait(1000)
         CreaPerso.openedMenu = true
         RageUI.Visible(CreaPerso.menu, true)
@@ -910,10 +900,10 @@ function MenuCreaPerso()
                                 end
                             end
                             if CreaPerso.NDF == nil or CreaPerso.Prenom == nil or CreaPerso.DDN == nil or CreaPerso.Taille == nil or CreaPerso.Sexe == nil or CreaPerso.LDN == nil then
-                                MadeInFrance.ShowNotification("~r~Veuillez réessayer de faire votre identité")
+                                MadeInFrance.ShowNotification(nil, "Veuillez réessayer de faire votre identité", 'error')
                             else
                                 MadeInFrance.TriggerLocalEvent('skinchanger:getSkin', function(skin)
-                                    MadeInFrance.SendEventToServer('madeinfrance:saveskin', skin)
+                                    MadeInFrance.SendEventToServer('saveskin', skin)
                                 end)
                                 MadeInFrance.SendEventToServer("SetIdentity", CreaPerso.NDF, CreaPerso.Prenom, CreaPerso.DDN, CreaPerso.Sexe, CreaPerso.Taille, CreaPerso.LDN)
                                 CreatorZoomOut(GetCreatorCam())
@@ -945,7 +935,7 @@ function MenuCreaPerso()
                                 SetEntityHeading(GetPlayerPed(-1), 125.39)
                                 Wait(2500)
                                 DoScreenFadeIn(2500)
-                                MadeInFrance.ShowNotification("~g~Vous avez créé votre personnage.")
+                                MadeInFrance.ShowNotification(nil, "Vous avez créé votre personnage.", 'success')
                             end
                         end
                     })

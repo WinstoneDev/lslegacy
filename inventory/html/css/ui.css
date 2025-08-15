@@ -246,22 +246,24 @@ input[type=number] {
 }
 
 .controls-div {
-    position: absolute;
+    position: fixed;
+    bottom: -70px; 
     left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%)
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+    z-index: 999;
+    background: none;
 }
-
 .control {
-    width: 200px;
+    width: 140px;
     height: 40px;
-    background-color: rgba(0, 0, 0, .4);
-    border-radius: 13px;
-    margin: 40px;
+    background-color: rgba(0, 0, 0, 0.5);
+    border-radius: 10px;
     text-align: center;
     font-size: 16px;
-    vertical-align: middle;
     line-height: 40px;
+    cursor: pointer;
 }
 
 .control.disabled {

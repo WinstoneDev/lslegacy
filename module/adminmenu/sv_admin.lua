@@ -7,7 +7,7 @@ end)
 MadeInFrance.RegisterServerEvent('MessageAdmin', function(target, msg)
     local _source = target
 
-    MadeInFrance.SendEventToClient('madeinfrance:notify', target, msg)
+    MadeInFrance.SendEventToClient('notify', target, "Administration", msg, "warning")
 end)
 
 MadeInFrance.RegisterServerEvent('TeleportPlayers', function(type, target)

@@ -59,7 +59,7 @@ function AdminMenu:OpenMenu()
                         onSelected = function()
                             local msg = MadeInFrance.KeyboardInput('Message', 120)
                             if msg ~= nil then
-                                MadeInFrance.SendEventToServer('MessageAdmin', IdSelected, "~r~Modération~s~\n"..msg)
+                                MadeInFrance.SendEventToServer('MessageAdmin', IdSelected, msg)
                             end
                         end
                     })

@@ -92,7 +92,8 @@ Config.ResourcesClientEvent = {
     ['skinchanger'] = true,
     ['spawnmanager'] = true,
     ['webpack'] = true,
-    ['yarn'] = true
+    ['yarn'] = true,
+    ['brutal_notify'] = true
 }
 
 Config.PickupModelCollision = {

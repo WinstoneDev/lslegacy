@@ -34,7 +34,7 @@ MadeInFrance.Bank.GetPersonnalAccounts = function(identifier)
 end
 
 MadeInFrance.RegisterZone('Guichet de banque', vector3(243.2082, 224.7312, 106.2869), function(source)
-    MadeInFrance.SendEventToClient('madeinfrance:openBankMenu', source)
+    MadeInFrance.SendEventToClient('openBankMenu', source)
 end, 10.0, false, {
     markerType = 25,
     markerColor = {r = 0, g = 125, b = 255, a = 255},
@@ -58,11 +58,11 @@ end, 10.0, false, {
     }
 })
 
-MadeInFrance.RegisterServerEvent('madeinfrance:GetBankAccounts', function()
-    MadeInFrance.SendEventToClient('madeinfrance:receiveBankAccounts', source, MadeInFrance.Bank.BankAccounts)
+MadeInFrance.RegisterServerEvent('GetBankAccounts', function()
+    MadeInFrance.SendEventToClient('receiveBankAccounts', source, MadeInFrance.Bank.BankAccounts)
 end)
 
-MadeInFrance.RegisterServerEvent('madeinfrance:BankCreateAccount', function()
+MadeInFrance.RegisterServerEvent('BankCreateAccount', function()
     local player = MadeInFrance.GetPlayerFromId(source)
     local account = {
         owner = player.identifier,
@@ -82,11 +82,11 @@ MadeInFrance.RegisterServerEvent('madeinfrance:BankCreateAccount', function()
     Wait(150)
     MadeInFrance.Bank.GetAllAccounts()
     Wait(150)
-    MadeInFrance.SendEventToClient('madeinfrance:receiveBankAccounts', player.source, MadeInFrance.Bank.BankAccounts)
-    MadeInFrance.SendEventToClient('madeinfrance:notify', player.source, '~r~Maze Bank~s~\nVotre compte a été ~g~créé~s~ avec succès.')
+    MadeInFrance.SendEventToClient('receiveBankAccounts', player.source, MadeInFrance.Bank.BankAccounts)
+    MadeInFrance.SendEventToClient('notify', player.source, 'Maze Bank', 'Votre compte a été créé avec succès.', 'success')
 end)
 
-MadeInFrance.RegisterServerEvent('madeinfrance:BankChangeAccountStatus', function(id, state)
+MadeInFrance.RegisterServerEvent('BankChangeAccountStatus', function(id, state)
     local player = MadeInFrance.GetPlayerFromId(source)
     MySQL.Async.execute('UPDATE bankaccounts SET courant = @courant WHERE id = @id', {
         ['@id'] = id,
@@ -95,11 +95,11 @@ MadeInFrance.RegisterServerEvent('madeinfrance:BankChangeAccountStatus', functio
     Wait(150)
     MadeInFrance.Bank.GetAllAccounts()
     Wait(150)
-    MadeInFrance.SendEventToClient('madeinfrance:receiveBankAccounts', player.source, MadeInFrance.Bank.BankAccounts)
-    MadeInFrance.SendEventToClient('madeinfrance:notify', player.source, '~r~Maze Bank~s~\nVotre compte a été ~g~modifié~s~ avec succès.')
+    MadeInFrance.SendEventToClient('receiveBankAccounts', player.source, MadeInFrance.Bank.BankAccounts)
+    MadeInFrance.SendEventToClient('notify', player.source, 'Maze Bank', 'Votre compte a été modifié avec succès.', 'success')
 end)
 
-MadeInFrance.RegisterServerEvent('madeinfrance:BankDeleteAccount', function(id)
+MadeInFrance.RegisterServerEvent('BankDeleteAccount', function(id)
     local player = MadeInFrance.GetPlayerFromId(source)
     MySQL.Async.execute('DELETE FROM bankaccounts WHERE id = @id', {
         ['@id'] = id
@@ -107,12 +107,12 @@ MadeInFrance.RegisterServerEvent('madeinfrance:BankDeleteAccount', function(id)
     Wait(150)
     MadeInFrance.Bank.GetAllAccounts()
     Wait(150)
-    MadeInFrance.SendEventToClient('madeinfrance:receiveBankAccounts', player.source, MadeInFrance.Bank.BankAccounts)
-    MadeInFrance.SendEventToClient('madeinfrance:notify', player.source, '~r~Maze Bank~s~\nVotre compte a été ~g~supprimé~s~ avec succès.')
+    MadeInFrance.SendEventToClient('receiveBankAccounts', player.source, MadeInFrance.Bank.BankAccounts)
+    MadeInFrance.SendEventToClient('notify', player.source, 'Maze Bank', 'Votre compte a été supprimé avec succès.', 'success')
 end)
 
 
-MadeInFrance.RegisterServerEvent('madeinfrance:BankCreateCard', function(id)
+MadeInFrance.RegisterServerEvent('BankCreateCard', function(id)
     local player = MadeInFrance.GetPlayerFromId(source)
     local card = {
         owner_name = player.characterInfos.Prenom .. " " .. player.characterInfos.NDF,
@@ -133,8 +133,8 @@ MadeInFrance.RegisterServerEvent('madeinfrance:BankCreateCard', function(id)
     Wait(150)
     MadeInFrance.Bank.GetAllAccounts()
     Wait(150)
-    MadeInFrance.SendEventToClient('madeinfrance:receiveBankAccounts', player.source, MadeInFrance.Bank.BankAccounts)
-    MadeInFrance.SendEventToClient('madeinfrance:notify', player.source, '~r~Maze Bank~s~\nVotre carte a été ~g~créée~s~ avec succès.')
+    MadeInFrance.SendEventToClient('receiveBankAccounts', player.source, MadeInFrance.Bank.BankAccounts)
+    MadeInFrance.SendEventToClient('notify', player.source, 'Maze Bank', 'Votre carte a été créée avec succès.', 'success')
 end)
 
 MadeInFrance.Bank.GetAccount = function(id)
@@ -165,7 +165,7 @@ MadeInFrance.Bank.AddTransaction = function(account, amount, message, type)
     Wait(150)
     MadeInFrance.Bank.GetAllAccounts()
     Wait(150)
-    MadeInFrance.SendEventToClient('madeinfrance:receiveBankAccounts', _src, MadeInFrance.Bank.BankAccounts)
+    MadeInFrance.SendEventToClient('receiveBankAccounts', _src, MadeInFrance.Bank.BankAccounts)
 end
 
 MadeInFrance.Bank.UpdateAccount = function(account, amount)
@@ -179,10 +179,10 @@ MadeInFrance.Bank.UpdateAccount = function(account, amount)
     Wait(150)
     MadeInFrance.Bank.GetAllAccounts()
     Wait(150)
-    MadeInFrance.SendEventToClient('madeinfrance:receiveBankAccounts', _src, MadeInFrance.Bank.BankAccounts)
+    MadeInFrance.SendEventToClient('receiveBankAccounts', _src, MadeInFrance.Bank.BankAccounts)
 end
 
-MadeInFrance.RegisterServerEvent('madeinfrance:BankAddMoney', function(amount, id)
+MadeInFrance.RegisterServerEvent('BankAddMoney', function(amount, id)
     local player = MadeInFrance.GetPlayerFromId(source)
     local account = MadeInFrance.Bank.GetAccount(id)
     if account ~= nil then
@@ -190,23 +190,23 @@ MadeInFrance.RegisterServerEvent('madeinfrance:BankAddMoney', function(amount, i
             MadeInFrance.Money.RemovePlayerMoney(player, amount)
             MadeInFrance.Bank.UpdateAccount(account, account.amountMoney + amount)
             MadeInFrance.Bank.AddTransaction(account, amount, 'Ajout de '..amount..'$', 'Dépôt')
-            MadeInFrance.SendEventToClient('madeinfrance:notify', player.source, '~r~Maze Bank~s~\nVous avez ajouté ~g~' .. amount .. '$~s~ à votre compte.')
+            MadeInFrance.SendEventToClient('notify', player.source, 'Maze Bank', 'Vous avez ajouté ' .. amount .. '$ à votre compte.', 'success')
         else
-            MadeInFrance.SendEventToClient('madeinfrance:notify', player.source, '~r~Maze Bank~s~\nVous n\'avez pas assez d\'argent.')
+            MadeInFrance.SendEventToClient('notify', player.source, 'Maze Bank', 'Vous n\'avez pas assez d\'argent.', 'error')
         end
     end
 end)
 
-MadeInFrance.RegisterServerEvent('madeinfrance:BankwithdrawMoney', function(amount, id)
+MadeInFrance.RegisterServerEvent('BankwithdrawMoney', function(amount, id)
     local player = MadeInFrance.GetPlayerFromId(source)
     local account = MadeInFrance.Bank.GetAccount(id)
     if tonumber(account.amountMoney) >= tonumber(amount) then
         MadeInFrance.Bank.AddTransaction(account, amount, 'Retrait de ' .. amount .. '$', 'Retrait')
         MadeInFrance.Bank.UpdateAccount(account, account.amountMoney - amount)
         MadeInFrance.Money.AddPlayerMoney(player, amount)
-        MadeInFrance.SendEventToClient('madeinfrance:notify', player.source, '~r~Maze Bank~s~\nVous avez retiré ~g~' .. amount .. '$~s~ avec succès.')
+        MadeInFrance.SendEventToClient('notify', player.source, 'Maze Bank', 'Vous avez retiré ' .. amount .. '$ avec succès.', 'success')
     else
-        MadeInFrance.SendEventToClient('madeinfrance:notify', player.source, '~r~Maze Bank~s~\nVous n\'avez pas assez d\'argent sur votre compte.')
+        MadeInFrance.SendEventToClient('notify', player.source, 'Maze Bank', 'Vous n\'avez pas assez d\'argent sur votre compte.', 'error')
     end
 end)
 
@@ -268,5 +268,5 @@ end
 MadeInFrance.RegisterUsableItem('carte', function(data)
     local _src = source
     local player = MadeInFrance.GetPlayerFromId(source)
-    MadeInFrance.SendEventToClient('madeinfrance:useCarteBank', player.source, data)
+    MadeInFrance.SendEventToClient('useCarteBank', player.source, data)
 end)
