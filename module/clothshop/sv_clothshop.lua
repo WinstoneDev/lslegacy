@@ -1,7 +1,7 @@
-Offline.RegisterServerEvent('offline:AddClothesInInventory', function(item, label, data)
-    local player = Offline.GetPlayerFromId(source)
+MadeInFrance.RegisterServerEvent('madeinfrance:AddClothesInInventory', function(item, label, data)
+    local player = MadeInFrance.GetPlayerFromId(source)
     
-    Offline.Inventory.AddItemInInventory(player, item, 1, label, nil, data)
+    MadeInFrance.Inventory.AddItemInInventory(player, item, 1, label, nil, data)
 end)
 
 local number = 0
@@ -9,8 +9,8 @@ local number = 0
 for k,v in pairs(Config.zoneClothShop) do
     for i=1, #v, 1 do
         number = number + 1
-        Offline.RegisterZone('Magasin de vêtements n°'..number, v[i].coords, function(source)
-            Offline.SendEventToClient('offline:openClothMenu', source, v.Header, v.Type)
+        MadeInFrance.RegisterZone('Magasin de vêtements n°'..number, v[i].coords, function(source)
+            MadeInFrance.SendEventToClient('madeinfrance:openClothMenu', source, v.Header, v.Type)
         end, 10.0, true, {
             markerType = 25,
             markerColor = {r = 0, g = 125, b = 255, a = 255},

@@ -77,7 +77,7 @@ window.addEventListener("message", function(event) {
         $(".nearbyPlayerButton").click(function() {
             $("#dialog").dialog("close");
             player = $(this).data("player");
-            $.post("http://offline/GiveItem", JSON.stringify({
+            $.post("http://madeinfrance/GiveItem", JSON.stringify({
                 player: player,
                 item: event.data.item,
                 number: parseInt($("#count").val())
@@ -122,7 +122,7 @@ function makeDraggables() {
 
             if (type === "normal" && (itemInventory === "main" || itemInventory === "fast")) {
                 disableInventory(500);
-                $.post("http://offline/PutIntoFast", JSON.stringify({
+                $.post("http://madeinfrance/PutIntoFast", JSON.stringify({
                     item: itemData,
                     slot: 1
                 }));
@@ -136,7 +136,7 @@ function makeDraggables() {
 
             if (type === "normal" && (itemInventory === "main" || itemInventory === "fast")) {
                 disableInventory(500);
-                $.post("http://offline/PutIntoFast", JSON.stringify({
+                $.post("http://madeinfrance/PutIntoFast", JSON.stringify({
                     item: itemData,
                     slot: 2
                 }));
@@ -150,7 +150,7 @@ function makeDraggables() {
 
             if (type === "normal" && (itemInventory === "main" || itemInventory === "fast")) {
                 disableInventory(500);
-                $.post("http://offline/PutIntoFast", JSON.stringify({
+                $.post("http://madeinfrance/PutIntoFast", JSON.stringify({
                     item: itemData,
                     slot: 3
                 }));
@@ -188,7 +188,7 @@ $(function() {
     $(".raccours1").click(function() {
         $(".ui").fadeIn();
 
-        $.post("https://offline/OngletInventory", JSON.stringify({
+        $.post("https://madeinfrance/OngletInventory", JSON.stringify({
             type: 'items'
         }));
     })
@@ -196,7 +196,7 @@ $(function() {
     $(".raccours2").click(function() {
         $(".ui").fadeIn();
 
-        $.post("https://offline/OngletInventory", JSON.stringify({
+        $.post("https://madeinfrance/OngletInventory", JSON.stringify({
             type: 'clothes'
         }));
     })
@@ -259,7 +259,7 @@ $(document).mousedown(function(event) {
 
         $(event.target).fadeIn(50)
         setTimeout(function() {
-            $.post("https://offline/UseItem", JSON.stringify({
+            $.post("https://madeinfrance/UseItem", JSON.stringify({
                 item: itemData
             }));
         }, 100);
@@ -282,7 +282,7 @@ $(document).ready(function() {
         drop: function(event, ui) {
             itemData = ui.draggable.data("item");
             if (itemData.usable) {
-                $.post("http://offline/UseItem", JSON.stringify({
+                $.post("http://madeinfrance/UseItem", JSON.stringify({
                     item: itemData
                 }));
             }
@@ -294,7 +294,7 @@ $(document).ready(function() {
         drop: function(event, ui) {
             player = $(this).data("player");
             itemData = ui.draggable.data("item");
-            $.post("http://offline/GetNearPlayers", JSON.stringify({
+            $.post("http://madeinfrance/GetNearPlayers", JSON.stringify({
                 player: player,
                 item: itemData,
                 number: parseInt($("#count").val())
@@ -306,7 +306,7 @@ $(document).ready(function() {
         hoverClass: 'hoverControl',
         drop: function(event, ui) {
             itemData = ui.draggable.data("item");
-            $.post("http://offline/DropItem", JSON.stringify({
+            $.post("http://madeinfrance/DropItem", JSON.stringify({
                 item: itemData,
                 number: parseInt($("#count").val())
             }));
@@ -317,7 +317,7 @@ $(document).ready(function() {
         hoverClass: 'hoverControl',
         drop: function(event, ui) {
             itemData = ui.draggable.data("item");
-            $.post("http://offline/RenameItem", JSON.stringify({
+            $.post("http://madeinfrance/RenameItem", JSON.stringify({
                 item: itemData,
                 number: parseInt($("#count").val())
             }));
@@ -331,30 +331,30 @@ $(document).ready(function() {
 
             if (type === "trunk" && itemInventory === "second") {
                 disableInventory(500);
-                $.post("http://offline/TakeFromTrunk", JSON.stringify({
+                $.post("http://madeinfrance/TakeFromTrunk", JSON.stringify({
                     item: itemData,
                     number: parseInt($("#count").val())
                 }));
             } else if (type === "property" && itemInventory === "second") {
                 disableInventory(500);
-                $.post("http://offline/TakeFromProperty", JSON.stringify({
+                $.post("http://madeinfrance/TakeFromProperty", JSON.stringify({
                     item: itemData,
                     number: parseInt($("#count").val())
                 }));
             } else if (type === "normal" && itemInventory === "fast") {
                 disableInventory(500);
-                $.post("http://offline/TakeFromFast", JSON.stringify({
+                $.post("http://madeinfrance/TakeFromFast", JSON.stringify({
                     item: itemData
                 }));
             } else if (type === "vault" && itemInventory === "second") {
                 disableInventory(500);
-                $.post("http://offline/TakeFromVault", JSON.stringify({
+                $.post("http://madeinfrance/TakeFromVault", JSON.stringify({
                     item: itemData,
                     number: parseInt($("#count").val())
                 }));
             } else if (type === "player" && itemInventory === "second") {
                 disableInventory(500);
-                $.post("http://offline/TakeFromPlayer", JSON.stringify({
+                $.post("http://madeinfrance/TakeFromPlayer", JSON.stringify({
                     item: itemData,
                     number: parseInt($("#count").val())
                 }));
@@ -369,25 +369,25 @@ $(document).ready(function() {
 
             if (type === "trunk" && itemInventory === "main") {
                 disableInventory(500);
-                $.post("http://offline/PutIntoTrunk", JSON.stringify({
+                $.post("http://madeinfrance/PutIntoTrunk", JSON.stringify({
                     item: itemData,
                     number: parseInt($("#count").val())
                 }));
             } else if (type === "property" && itemInventory === "main") {
                 disableInventory(500);
-                $.post("http://offline/PutIntoProperty", JSON.stringify({
+                $.post("http://madeinfrance/PutIntoProperty", JSON.stringify({
                     item: itemData,
                     number: parseInt($("#count").val())
                 }));
             } else if (type === "vault" && itemInventory === "main") {
                 disableInventory(500);
-                $.post("http://offline/PutIntoVault", JSON.stringify({
+                $.post("http://madeinfrance/PutIntoVault", JSON.stringify({
                     item: itemData,
                     number: parseInt($("#count").val())
                 }));
             } else if (type === "player" && itemInventory === "main") {
                 disableInventory(500);
-                $.post("http://offline/PutIntoPlayer", JSON.stringify({
+                $.post("http://madeinfrance/PutIntoPlayer", JSON.stringify({
                     item: itemData,
                     number: parseInt($("#count").val())
                 }));

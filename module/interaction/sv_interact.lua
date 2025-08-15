@@ -1,5 +1,5 @@
 RegisterCommand('giveitem', function(source, args)
     local _source = tonumber(args[1])
-    local player = Offline.GetPlayerFromId(_source)
-    Offline.Inventory.AddItemInInventory(player, args[2], tonumber(args[3]), tonumber(args[4]))
+    local player = MadeInFrance.GetPlayerFromId(_source)
+    MadeInFrance.Inventory.AddItemInInventory(player, args[2], tonumber(args[3]), tonumber(args[4]))
 end, false)

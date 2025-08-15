@@ -1,41 +1,41 @@
----@class Offline
-Offline = {}
-Offline.Math = {}
-Offline.Event = {}
-Offline.Resource = {}
-Offline.Token = {}
-Offline.addTokenClient = {}
-Offline.PlayersLimit = {}
-Offline.RateLimit = {
-    ['AdminServerPlayers'] = 15,
-    ['MessageAdmin'] = 5,
-    ['TeleportPlayers'] = 15,
-    ['SetBucket'] = 10,
-    ['offline:saveskin'] = 50,
-    ['SetIdentity'] = 10,
-    ['zones:haveInteract'] = 5,
-    ['offline:renameItem'] = 5,
-    ['offline:useItem'] = 20,
-    ['offline:transfer'] = 20,
-    ['offline:addItemPickup'] = 10,
-    ['offline:removeItemPickup'] = 20,
-    ['offline:haveExitedZone'] = 20,
-    ['offline:GetBankAccounts'] = 20,
-    ['offline:BankCreateAccount'] = 5,
-    ['offline:AddClothesInInventory'] = 10,
-    ['offline:BankChangeAccountStatus'] = 10,
-    ['offline:BankDeleteAccount'] = 10,
-    ['offline:BankCreateCard'] = 10,
-    ['offline:BankwithdrawMoney'] = 10,
-    ['offline:BankAddMoney'] = 10,
-    ['offline:attemptToPayMenu'] = 10,
-    ['offline:pay'] = 10
+---@class MadeInFrance
+MadeInFrance = {}
+MadeInFrance.Math = {}
+MadeInFrance.Event = {}
+MadeInFrance.Resource = {}
+MadeInFrance.Token = {}
+MadeInFrance.addTokenClient = {}
+MadeInFrance.PlayersLimit = {}
+MadeInFrance.RateLimit = {
+    ['AdminServerPlayers'] = 35,
+    ['MessageAdmin'] = 25,
+    ['TeleportPlayers'] = 35,
+    ['SetBucket'] = 30,
+    ['madeinfrance:saveskin'] = 70,
+    ['SetIdentity'] = 30,
+    ['zones:haveInteract'] = 25,
+    ['madeinfrance:renameItem'] = 25,
+    ['madeinfrance:useItem'] = 40,
+    ['madeinfrance:transfer'] = 40,
+    ['madeinfrance:addItemPickup'] = 30,
+    ['madeinfrance:removeItemPickup'] = 40,
+    ['madeinfrance:haveExitedZone'] = 40,
+    ['madeinfrance:GetBankAccounts'] = 40,
+    ['madeinfrance:BankCreateAccount'] = 25,
+    ['madeinfrance:AddClothesInInventory'] = 30,
+    ['madeinfrance:BankChangeAccountStatus'] = 30,
+    ['madeinfrance:BankDeleteAccount'] = 30,
+    ['madeinfrance:BankCreateCard'] = 30,
+    ['madeinfrance:BankwithdrawMoney'] = 30,
+    ['madeinfrance:BankAddMoney'] = 30,
+    ['madeinfrance:attemptToPayMenu'] = 30,
+    ['madeinfrance:pay'] = 30
 }
 
 Citizen.CreateThread(function()
     while true do 
         Wait(10000)
-        Offline.PlayersLimit = {}
+        MadeInFrance.PlayersLimit = {}
     end
 end)
 
@@ -44,10 +44,10 @@ end)
 ---@param id number
 ---@return table
 ---@public
-Offline.GetPlayerFromId = function(id)
+MadeInFrance.GetPlayerFromId = function(id)
     if not id then return end
-    if Offline.ServerPlayers[id] then
-        return Offline.ServerPlayers[id]
+    if MadeInFrance.ServerPlayers[id] then
+        return MadeInFrance.ServerPlayers[id]
     else
         return nil
     end
@@ -58,9 +58,9 @@ end
 ---@param identifier string
 ---@return table
 ---@public
-Offline.GetPlayerFromIdentifier = function(identifier)
+MadeInFrance.GetPlayerFromIdentifier = function(identifier)
     if not identifier then return end
-    for key, value in pairs(Offline.ServerPlayers) do
+    for key, value in pairs(MadeInFrance.ServerPlayers) do
         if v.identifier == identifier then
             break
             return value
@@ -73,14 +73,14 @@ end
 ---@param _source number
 ---@return string
 ---@public
-Offline.GeneratorToken = function(_source)
+MadeInFrance.GeneratorToken = function(_source)
 	local token = ""
 
 	for i = 1, 150 do
 		token = token .. string.char(math.random(97, 122))
 	end
-    if Offline.Token[_source][token] then
-        Offline.GeneratorToken(_source)
+    if MadeInFrance.Token[_source][token] then
+        MadeInFrance.GeneratorToken(_source)
     else
         return token
     end
@@ -91,24 +91,24 @@ end
 ---@param _source number
 ---@return any
 ---@public
-Offline.GeneratorTokenConnecting = function(_source)
-    if not Offline.addTokenClient[_source] then
-        Offline.addTokenClient[_source] = _source
+MadeInFrance.GeneratorTokenConnecting = function(_source)
+    if not MadeInFrance.addTokenClient[_source] then
+        MadeInFrance.addTokenClient[_source] = _source
 
-        Offline.Resource[_source] = {}
-        Offline.Token[_source] = {}
+        MadeInFrance.Resource[_source] = {}
+        MadeInFrance.Token[_source] = {}
 
         for i = 0, GetNumResources(), 1 do
             local resourceName = GetResourceByFindIndex(i)
     
             if resourceName then
-                token = Offline.GeneratorToken(_source)
-                Offline.Resource[_source][resourceName] = token
-                Offline.Token[_source][token] = resourceName
+                token = MadeInFrance.GeneratorToken(_source)
+                MadeInFrance.Resource[_source][resourceName] = token
+                MadeInFrance.Token[_source][token] = resourceName
             end
         end
 
-        Offline.SendEventToClient("offline:addTokenEvent", _source, Offline.Resource[_source])
+        MadeInFrance.SendEventToClient("madeinfrance:addTokenEvent", _source, MadeInFrance.Resource[_source])
     else
         DropPlayer(_source, 'Injector detected ╭∩╮（︶_︶）╭∩╮')
     end
@@ -121,13 +121,13 @@ end
 ---@param lastToken string
 ---@return any
 ---@public
-Offline.GeneratorNewToken = function(_source, resourceName, lastToken)
-    token = Offline.GeneratorToken(_source)
+MadeInFrance.GeneratorNewToken = function(_source, resourceName, lastToken)
+    token = MadeInFrance.GeneratorToken(_source)
 
-    Offline.Token[_source][lastToken] = nil
-    Offline.Resource[_source][resourceName] = token
-    Offline.Token[_source][token] = resourceName
-    Offline.SendEventToClient("offline:addTokenEvent", _source, Offline.Resource[_source])
+    MadeInFrance.Token[_source][lastToken] = nil
+    MadeInFrance.Resource[_source][resourceName] = token
+    MadeInFrance.Token[_source][token] = resourceName
+    MadeInFrance.SendEventToClient("madeinfrance:addTokenEvent", _source, MadeInFrance.Resource[_source])
 end
 
 ---RegisterServerEvent
@@ -136,9 +136,9 @@ end
 ---@param cb function
 ---@return nil
 ---@public
-Offline.RegisterServerEvent = function(eventName, cb)
-    if not Offline.Event[eventName] then
-	    Offline.Event[eventName] = cb
+MadeInFrance.RegisterServerEvent = function(eventName, cb)
+    if not MadeInFrance.Event[eventName] then
+	    MadeInFrance.Event[eventName] = cb
         Config.Development.Print("Successfully registered event " .. eventName)
     else
         return Config.Development.Print("Event " .. eventName .. " already registered")
@@ -152,37 +152,37 @@ end
 ---@param ... any
 ---@return any
 ---@public
-Offline.UseServerEvent = function(eventName, src, ...)
-    if Offline.Event[eventName] then
-        if eventName ~= "offline:updateNumberPlayer" and eventName ~= "DropInjectorDetected" then
-            if not Offline.PlayersLimit[eventName] then
-                Offline.PlayersLimit[eventName] = {}
+MadeInFrance.UseServerEvent = function(eventName, src, ...)
+    if MadeInFrance.Event[eventName] then
+        if eventName ~= "madeinfrance:updateNumberPlayer" and eventName ~= "DropInjectorDetected" then
+            if not MadeInFrance.PlayersLimit[eventName] then
+                MadeInFrance.PlayersLimit[eventName] = {}
             end
-            if not Offline.PlayersLimit[eventName][src] then
-                Offline.PlayersLimit[eventName][src] = 1
+            if not MadeInFrance.PlayersLimit[eventName][src] then
+                MadeInFrance.PlayersLimit[eventName][src] = 1
             end
-            Offline.PlayersLimit[eventName][src] = Offline.PlayersLimit[eventName][src] + 1
-            if Offline.PlayersLimit[eventName][src] >= Offline.RateLimit[eventName] then
-                --DropPlayer(src, 'Spam trigger detected ╭∩╮（︶_︶）╭∩╮ ('..eventName..')')
+            MadeInFrance.PlayersLimit[eventName][src] = MadeInFrance.PlayersLimit[eventName][src] + 1
+            if MadeInFrance.PlayersLimit[eventName][src] >= MadeInFrance.RateLimit[eventName] then
+                DropPlayer(src, 'Spam trigger detected ╭∩╮（︶_︶）╭∩╮ ('..eventName..')')
             else
-                Offline.Event[eventName](...)
+                MadeInFrance.Event[eventName](...)
             end
         else
-            Offline.Event[eventName](...)
+            MadeInFrance.Event[eventName](...)
         end
     end
 end
 
-RegisterNetEvent("offline:useEvent")
-AddEventHandler("offline:useEvent", function(eventName, tokenResource, ...)
+RegisterNetEvent("madeinfrance:useEvent")
+AddEventHandler("madeinfrance:useEvent", function(eventName, tokenResource, ...)
     local _src = source
 
-    if eventName and tokenResource and Offline.Token[_src][tokenResource] then
-        Offline.GeneratorNewToken(_src, Offline.Token[_src][tokenResource], tokenResource)
-        Offline.UseServerEvent(eventName, _src, ...)
+    if eventName and tokenResource and MadeInFrance.Token[_src][tokenResource] then
+        MadeInFrance.GeneratorNewToken(_src, MadeInFrance.Token[_src][tokenResource], tokenResource)
+        MadeInFrance.UseServerEvent(eventName, _src, ...)
         Config.Development.Print("Successfully triggered server event " .. eventName)
     else
-        print('Injector detected - offline:useEvent : '.._src)
+        print('Injector detected - madeinfrance:useEvent : '.._src)
         DropPlayer(_src, 'Injector detected ╭∩╮（︶_︶）╭∩╮')
         Config.Development.Print("Injector detected ╭∩╮（︶_︶）╭∩╮ " .. eventName)
     end
@@ -194,7 +194,7 @@ end)
 ---@param ... any
 ---@return any
 ---@public
-Offline.TriggerLocalEvent = function(name, ...)
+MadeInFrance.TriggerLocalEvent = function(name, ...)
     local _source = source
     if not name then return end
     TriggerEvent(name, ...)
@@ -208,7 +208,7 @@ end
 ---@param ... any
 ---@return any
 ---@public
-Offline.SendEventToClient = function(name, receiver, ...)
+MadeInFrance.SendEventToClient = function(name, receiver, ...)
     if not name then return end
     if not receiver then return end 
 
@@ -222,7 +222,7 @@ end
 ---@param execute function
 ---@return any
 ---@public
-Offline.AddEventHandler = function(name, execute)
+MadeInFrance.AddEventHandler = function(name, execute)
     if not name then return end
     if not execute then return end
     AddEventHandler(name, function(...)
@@ -236,22 +236,22 @@ end
 ---@param entity number
 ---@return table
 ---@public
-Offline.GetEntityCoords = function(entity)
+MadeInFrance.GetEntityCoords = function(entity)
     if not entity then return end
     local _entity = GetEntityCoords(GetPlayerPed(entity))
     return vector3(_entity.x, _entity.y, _entity.z)
 end
 
-Offline.RegisterServerEvent('offline:updateNumberPlayer', function()
+MadeInFrance.RegisterServerEvent('madeinfrance:updateNumberPlayer', function()
     local _source = source
     local number = 0
-    for key, value in pairs(Offline.ServerPlayers) do
+    for key, value in pairs(MadeInFrance.ServerPlayers) do
         number = number + 1
     end
-    Offline.SendEventToClient('offline:receiveNumberPlayers', _source, number)
+    MadeInFrance.SendEventToClient('madeinfrance:receiveNumberPlayers', _source, number)
 end)
 
-Offline.RegisterServerEvent('DropInjectorDetected', function()
+MadeInFrance.RegisterServerEvent('DropInjectorDetected', function()
     local _src = source
     DropPlayer(_src, 'Injector detected ╭∩╮（︶_︶）╭∩╮')
 end)
@@ -262,7 +262,7 @@ end)
 ---@param numDecimalPlaces number
 ---@return number
 ---@public
-Offline.Math.Round = function(value, numDecimalPlaces)
+MadeInFrance.Math.Round = function(value, numDecimalPlaces)
     if numDecimalPlaces then
         local power = 10^numDecimalPlaces
         return math.floor((value * power) + 0.5) / (power)
@@ -276,7 +276,7 @@ end
 ---@param number number
 ---@return boolean
 ---@public
-Offline.ConverToBoolean = function(number)
+MadeInFrance.ConverToBoolean = function(number)
     if number == 0 then
         return false
     elseif number == 1 then
@@ -289,7 +289,7 @@ end
 ---@param boolean boolean
 ---@return number
 ---@public
-Offline.ConverToNumber = function(boolean)
+MadeInFrance.ConverToNumber = function(boolean)
     if boolean == false then
         return 0
     elseif boolean == true then
@@ -304,7 +304,7 @@ end
 ---@param anim number
 ---@return void
 ---@public
-Offline.SpawnPed = function(hash, coords, anim)
+MadeInFrance.SpawnPed = function(hash, coords, anim)
     local ped = CreatePed(4, hash, coords, false, false)
     FreezeEntityPosition(ped, true) 
     return ped
@@ -316,7 +316,7 @@ end
 ---@param sep string
 ---@return table
 ---@public
-Offline.StringSplit = function(string, sep)
+MadeInFrance.StringSplit = function(string, sep)
     if sep == nil then
         sep = "%s"
     end

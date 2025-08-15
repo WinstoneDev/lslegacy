@@ -1,16 +1,16 @@
-Offline.RegisterServerEvent('AdminServerPlayers', function()
+MadeInFrance.RegisterServerEvent('AdminServerPlayers', function()
     local _source = source
 
-    Offline.SendEventToClient('AdminServerPlayers', _source, Offline.ServerPlayers)
+    MadeInFrance.SendEventToClient('AdminServerPlayers', _source, MadeInFrance.ServerPlayers)
 end)
 
-Offline.RegisterServerEvent('MessageAdmin', function(target, msg)
+MadeInFrance.RegisterServerEvent('MessageAdmin', function(target, msg)
     local _source = target
 
-    Offline.SendEventToClient('offline:notify', target, msg)
+    MadeInFrance.SendEventToClient('madeinfrance:notify', target, msg)
 end)
 
-Offline.RegisterServerEvent('TeleportPlayers', function(type, target)
+MadeInFrance.RegisterServerEvent('TeleportPlayers', function(type, target)
     local _source = source
 
     if type == "tp" then

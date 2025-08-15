@@ -1,19 +1,19 @@
-Offline.PlayerData = {}
+MadeInFrance.PlayerData = {}
 
-Offline.RegisterClientEvent('InitPlayer', function(data)
-    Offline.PlayerData = data
+MadeInFrance.RegisterClientEvent('InitPlayer', function(data)
+    MadeInFrance.PlayerData = data
 end)
 
-Offline.RegisterClientEvent('UpdatePlayer', function(data)
-    Offline.PlayerData = data
+MadeInFrance.RegisterClientEvent('UpdatePlayer', function(data)
+    MadeInFrance.PlayerData = data
 end)
 
 function GetPlayerInventoryItems()
-    return Offline.PlayerData.inventory or {}
+    return MadeInFrance.PlayerData.inventory or {}
 end
 
 function GetPlayerInventoryWeight()
-    return Offline.PlayerData.weight or 0
+    return MadeInFrance.PlayerData.weight or 0
 end
 
 function GetOriginalLabel(item)

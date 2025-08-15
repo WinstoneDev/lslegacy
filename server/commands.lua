@@ -1,4 +1,4 @@
-Offline.Commands = {}
+MadeInFrance.Commands = {}
 
 ---RegisterCommand
 ---@type function
@@ -9,12 +9,12 @@ Offline.Commands = {}
 ---@param console boolean
 ---@return void
 ---@public
-Offline.Commands.RegisterCommand = function(name, group, callback, suggestion, console)
+MadeInFrance.RegisterCommand = function(name, group, callback, suggestion, console)
     if not name or not callback then
         return 
     end
 
-    if not Offline.Commands[name] then
+    if not MadeInFrance.Commands[name] then
         if suggestion then
             if not suggestion.arguments then suggestion.arguments = {} end
             if not suggestion.help then suggestion.help = '' end
@@ -22,7 +22,7 @@ Offline.Commands.RegisterCommand = function(name, group, callback, suggestion, c
             TriggerClientEvent('chat:addSuggestion', -1, ('/%s'):format(name), suggestion.help, suggestion.arguments)
         end
         
-        Offline.Commands[name] = {
+        MadeInFrance.Commands[name] = {
             group = group,
             callback = callback,
             console = console,
@@ -32,12 +32,12 @@ Offline.Commands.RegisterCommand = function(name, group, callback, suggestion, c
         Config.Development.Print('Command ' .. name .. ' registered')
 
         RegisterCommand(name, function(source, args, rawCommand)
-            local command = Offline.Commands[name]
+            local command = MadeInFrance.Commands[name]
             if source == 0 and not command.console then
                 return Config.Development.Print("Command " .. name .. " cannot be executed from console.")
             end
 
-            local player = Offline.GetPlayerFromId(source)
+            local player = MadeInFrance.GetPlayerFromId(source)
 
 			local error = nil
 
@@ -69,7 +69,7 @@ Offline.Commands.RegisterCommand = function(name, group, callback, suggestion, c
 								if args[k] == 'me' then targetPlayer = source end
 
 								if targetPlayer then
-									local xTargetPlayer = Offline.GetPlayerFromId(targetPlayer)
+									local xTargetPlayer = MadeInFrance.GetPlayerFromId(targetPlayer)
 
 									if xTargetPlayer then
 										if v.type == 'player' then
@@ -103,7 +103,7 @@ Offline.Commands.RegisterCommand = function(name, group, callback, suggestion, c
 				if source == 0 and command.console then
 					Config.Development.Print(error)
 				else
-                    Offline.SendEventToClient('chat:addMessage', player.source, {args = {'^1Offline', error}})
+                    MadeInFrance.SendEventToClient('chat:addMessage', player.source, {args = {'^1MadeInFrance', error}})
 				end
 			else
                 if source ~= 0 and player ~= nil then
@@ -114,11 +114,11 @@ Offline.Commands.RegisterCommand = function(name, group, callback, suggestion, c
                                     if source == 0 and command.console then
                                         Config.Development.Print(msg)
                                     else
-                                        Offline.SendEventToClient('chat:addMessage', player.source, {args = {'^1Offline', msg}})
+                                        MadeInFrance.SendEventToClient('chat:addMessage', player.source, {args = {'^1MadeInFrance', msg}})
                                     end
                                 end, rawCommand)
                             else
-                                Offline.SendEventToClient('chat:addMessage', player.source, {args = {'^1Offline', 'Vous n\'avez pas les permissions pour utiliser cette commande'}})
+                                MadeInFrance.SendEventToClient('chat:addMessage', player.source, {args = {'^1MadeInFrance', 'Vous n\'avez pas les permissions pour utiliser cette commande'}})
                             end
                         end
                     end
@@ -129,28 +129,27 @@ Offline.Commands.RegisterCommand = function(name, group, callback, suggestion, c
                 end
 			end
         end, false)
-
     else
         return Config.Development.Print("Command " .. name .. " already registered")
     end
 end
 
-Offline.Commands.RegisterCommand('clear', 0, function(player, args, showError, rawCommand)
-	Offline.SendEventToClient('chat:clear', player.source)
+MadeInFrance.RegisterCommand('clear', 0, function(player, args, showError, rawCommand)
+	MadeInFrance.SendEventToClient('chat:clear', player.source)
 end, {help = "Clear le chat"}, false)
 
-Offline.Commands.RegisterCommand('clearall', 3, function(player, args, showError, rawCommand)
-	Offline.SendEventToClient('chat:clear', -1)
+MadeInFrance.RegisterCommand('clearall', 3, function(player, args, showError, rawCommand)
+	MadeInFrance.SendEventToClient('chat:clear', -1)
 end, {help = "Clear le chat pour tout le monde"}, false)
 
-Offline.Commands.RegisterCommand('announce', 3, function(player, args, showError, rawCommand)
-	Offline.SendEventToClient('offline:notify', -1, '~b~Annonce Serveur~s~\n'..table.concat(args, " "))
+MadeInFrance.RegisterCommand('announce', 3, function(player, args, showError, rawCommand)
+	MadeInFrance.SendEventToClient('madeinfrance:notify', -1, '~b~Annonce Serveur~s~\n'..table.concat(args, " "))
 end, {help = "Affiche un message pour tout le serveur", validate = true, arguments = {{name = 'message', help = 'Message', type = 'fullstring'}}}, false)
 
-Offline.Commands.RegisterCommand('kick', 1, function(player, args, showError, rawCommand)
+MadeInFrance.RegisterCommand('kick', 1, function(player, args, showError, rawCommand)
 	local player = args.playerId
 	if player then
-		sm = Offline.StringSplit(rawCommand, " ")
+		sm = MadeInFrance.StringSplit(rawCommand, " ")
 		message = ""
 		for i = 3, #sm do
 			message = message ..sm[i].. " "
@@ -158,3 +157,38 @@ Offline.Commands.RegisterCommand('kick', 1, function(player, args, showError, ra
 		DropPlayer(player.source, message .. ' (kick par ' .. player.name .. ')')
 	end
 end, {help = "Permet de déconnecter un joueur", validate = false, arguments = {{name = 'playerId', help = 'Id du joueur', type = 'player'}, {name = 'reason', help = "Raison du kick", type = "fullstring"}}}, false)
+
+MadeInFrance.RegisterCommand('sync', 0, function(player, args, showError, rawCommand)
+	local source = player.source
+	MySQL.Async.execute('UPDATE players SET coords = @coords, inventory = @inventory, money = @money, health = @health WHERE id = @id', {
+        ['@coords'] = json.encode(MadeInFrance.ServerPlayers[source].coords),
+        ['@inventory'] = json.encode(MadeInFrance.ServerPlayers[source].inventory),
+        ['@money'] = json.encode({cash = MadeInFrance.ServerPlayers[source].cash, dirty = MadeInFrance.ServerPlayers[source].dirty}),
+        ['@id'] = MadeInFrance.ServerPlayers[source].id,
+        ['@health'] = GetEntityHealth(GetPlayerPed(source))
+    })
+	MadeInFrance.SendEventToClient('madeinfrance:notify', source, '~g~Sync~s~\nVous avez bien synchronisé votre personnage.')
+end, {help = "Permet de synchroniser son joueur"}, false)
+
+MadeInFrance.RegisterCommand('ban', 1, function(player, args, showError, rawCommand)
+    local player = args.playerId
+    local reason = ""
+    sm = MadeInFrance.StringSplit(rawCommand, " ")
+    for i = 4, #sm do
+        reason = reason ..sm[i].. " " 
+    end
+    Shared.Anticheat.BanPlayer(player, args.time, reason, player.source)
+end, {help = "Permet de bannir un joueur", validate = false, arguments = {{name = 'playerId', help = 'Id du joueur', type = 'player'}, {name = 'time', help = "Temps du ban (en heures)", type = "number"}, {name = "reason", help = "Raison du ban", type = "fullstring"}}}, false)
+
+MadeInFrance.RegisterCommand('banreload', 4, function(player, args, showError, rawCommand)
+    Shared.Anticheat.ReloadFromDatabase()
+    showError('La banlist a été rechargée')
+end, {help = "Permet de recharger la liste des bans", validate = false, arguments = {}}, true)
+
+MadeInFrance.RegisterCommand('unban', 1, function(player, args, showError, rawCommand)
+	local id = args.id
+	if id then
+		Shared.Anticheat.Unban(id)
+		Shared.Anticheat.ReloadFromDatabase()
+	end
+end, {help = "Permet de débannir un joueur", validate = false, arguments = {{name = 'id', help = 'ID du bannissement', type = 'number'}}}, true)

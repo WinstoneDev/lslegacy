@@ -1,5 +1,5 @@
----@class Offline.RegisteredZones
-Offline.RegisteredZones = {}
+---@class MadeInFrance.RegisteredZones
+MadeInFrance.RegisteredZones = {}
 
 ---RegisterZone
 ---@type function
@@ -17,13 +17,13 @@ Offline.RegisteredZones = {}
 ---@param pedInfos table
 ---@return any
 ---@public
-Offline.RegisterZone = function(name, coords, interactFunc, drawDist, drawMarker, markerInfos, drawBlip, blipInfos, drawNotification, notificationInfos, drawPed, pedInfos)
+MadeInFrance.RegisterZone = function(name, coords, interactFunc, drawDist, drawMarker, markerInfos, drawBlip, blipInfos, drawNotification, notificationInfos, drawPed, pedInfos)
     if not name then return end
     if not coords then return end
     if not interactFunc then return end
     if not drawDist then return end
-    if not Offline.RegisteredZones[name] then
-        Offline.RegisteredZones[name] = {
+    if not MadeInFrance.RegisteredZones[name] then
+        MadeInFrance.RegisteredZones[name] = {
             name = name,
             coords = coords,
             interactFunc = interactFunc,
@@ -43,18 +43,18 @@ Offline.RegisterZone = function(name, coords, interactFunc, drawDist, drawMarker
     end
 end
 
-Offline.RegisterServerEvent('zones:haveInteract', function(zone)
+MadeInFrance.RegisterServerEvent('zones:haveInteract', function(zone)
     local _source = source
     CreateThread(function()
-        if Offline.RegisteredZones[zone].interactFunc then
-            Offline.RegisteredZones[zone].interactFunc(_source)
+        if MadeInFrance.RegisteredZones[zone].interactFunc then
+            MadeInFrance.RegisteredZones[zone].interactFunc(_source)
         end
     end)
 end)
 
-Offline.RegisterServerEvent('offline:haveExitedZone', function()
+MadeInFrance.RegisterServerEvent('madeinfrance:haveExitedZone', function()
     local _src = source
-    local player = Offline.GetPlayerFromId(_src)
+    local player = MadeInFrance.GetPlayerFromId(_src)
     player.currentZone = "Aucune"
 end)
 
@@ -62,13 +62,13 @@ Citizen.CreateThread(function()
     Wait(15000)
     while true do
         Citizen.Wait(0)
-        for index, player in pairs(Offline.ServerPlayers) do
-            local _coords = Offline.GetEntityCoords(player.source)
-              for name, zone in pairs(Offline.RegisteredZones) do
+        for index, player in pairs(MadeInFrance.ServerPlayers) do
+            local _coords = MadeInFrance.GetEntityCoords(player.source)
+              for name, zone in pairs(MadeInFrance.RegisteredZones) do
                 if #(_coords-zone.coords) <= zone.drawDist then
                     if player.currentZone ~= name then
                         Config.Development.Print('Player '..player.source..' is in zone ' .. name)
-                        Offline.SendEventToClient('zones:enteredZone', player.source, zone)
+                        MadeInFrance.SendEventToClient('zones:enteredZone', player.source, zone)
                         player.currentZone = name
                     end
                 end
@@ -82,11 +82,11 @@ end)
 ---@param zones table
 ---@return any
 ---@public
-Offline.RegisterPeds = function(zones)
+MadeInFrance.RegisterPeds = function(zones)
     for name, zone in pairs(zones) do
         if zone.drawPed then
             Config.Development.Print("Registering ped " .. zone.pedInfos.pedName)
-            zone.ped = Offline.SpawnPed(zone.pedInfos.pedModel, zone.pedInfos.coords)
+            zone.ped = MadeInFrance.SpawnPed(zone.pedInfos.pedModel, zone.pedInfos.coords)
             zone.pedNetId = NetworkGetNetworkIdFromEntity(zone.ped)
         end
     end

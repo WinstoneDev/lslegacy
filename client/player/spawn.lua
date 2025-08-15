@@ -95,13 +95,13 @@ function spawnPlayer(spawnIdx, cb)
 end
 
 AddEventHandler('skinchanger:modelLoaded', function()
-    SetEntityHealth(PlayerPedId(), Offline.PlayerData.health)
+    SetEntityHealth(PlayerPedId(), MadeInFrance.PlayerData.health)
 end)
 
 CreateThread(function()
     TriggerServerEvent('registerPlayer')
-    while Offline.PlayerData.coords == nil do Wait(5) end
-    spawnPlayer({x = Offline.PlayerData.coords.x, y = Offline.PlayerData.coords.y, z = Offline.PlayerData.coords.z, model = GetHashKey("mp_m_freemode_01"), heading = 215.0}, function()
+    while MadeInFrance.PlayerData.coords == nil do Wait(5) end
+    spawnPlayer({x = MadeInFrance.PlayerData.coords.x, y = MadeInFrance.PlayerData.coords.y, z = MadeInFrance.PlayerData.coords.z, model = GetHashKey("mp_m_freemode_01"), heading = 215.0}, function()
         NetworkSetFriendlyFireOption(true)
         SetCanAttackFriendly(PlayerPedId(), true, true)
         SwitchTrainTrack(0, false)
@@ -112,14 +112,14 @@ CreateThread(function()
         DisplayRadar(true)
         SetPlayerWantedLevel(PlayerId(), 0, false)
         SetPlayerHealthRechargeMultiplier(PlayerPedId(), 0.0)
-        AddTextEntry('FE_THDR_GTAO', '~b~Offline~s~ - ID '..GetPlayerServerId(PlayerId()))
+        AddTextEntry('FE_THDR_GTAO', '~b~MadeInFrance~s~ - ID '..GetPlayerServerId(PlayerId()))
         AddTextEntry('PM_PANE_LEAVE', 'Retourner à l\'acceuil')
         AddTextEntry('PM_PANE_QUIT', 'Quitter FiveM')
-        AddTextEntry('PM_PANE_CFX', 'Offline')
-        if Offline.PlayerData.skin == nil then
-            Offline.TriggerLocalEvent('CreatePerso')
-        elseif json.encode(Offline.PlayerData.skin) ~= "[]" then
-            TriggerEvent('skinchanger:loadSkin', Offline.PlayerData.skin)
+        AddTextEntry('PM_PANE_CFX', 'MadeInFrance')
+        if MadeInFrance.PlayerData.skin == nil then
+            MadeInFrance.TriggerLocalEvent('CreatePerso')
+        elseif json.encode(MadeInFrance.PlayerData.skin) ~= "[]" then
+            TriggerEvent('skinchanger:loadSkin', MadeInFrance.PlayerData.skin)
         end
     end)
 end)

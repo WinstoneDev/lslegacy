@@ -1,7 +1,7 @@
----@class Offline.Inventory
-Offline.Inventory = {}
-Offline.Inventory.ActionItems = {}
-Offline.ItemsId = {}
+---@class MadeInFrance.Inventory
+MadeInFrance.Inventory = {}
+MadeInFrance.Inventory.ActionItems = {}
+MadeInFrance.ItemsId = {}
 
 MySQL.ready(function()
     MySQL.Async.fetchAll('SELECT inventory FROM players', {}, function(result)
@@ -9,7 +9,7 @@ MySQL.ready(function()
             local inventory = json.decode(v.inventory)
             for key, value in pairs(inventory) do
                 if value.uniqueId then
-                    Offline.ItemsId[value.uniqueId] = value.uniqueId
+                    MadeInFrance.ItemsId[value.uniqueId] = value.uniqueId
                 end
             end
         end
@@ -20,14 +20,14 @@ end)
 ---@type function
 ---@return number
 ---@public
-Offline.Inventory.GiveUniqueId = function()
+MadeInFrance.Inventory.GiveUniqueId = function()
     local uniqueId = math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)
 
-    if not Offline.ItemsId[uniqueId] then
-        Offline.ItemsId[uniqueId] = uniqueId
+    if not MadeInFrance.ItemsId[uniqueId] then
+        MadeInFrance.ItemsId[uniqueId] = uniqueId
         return uniqueId
     else
-        Offline.Inventory.GiveUniqueId()
+        MadeInFrance.Inventory.GiveUniqueId()
     end
 end
 
@@ -35,7 +35,7 @@ end
 ---@type function
 ---@return table
 ---@public
-Offline.Inventory.GetAllItems = function()
+MadeInFrance.Inventory.GetAllItems = function()
     local items = {}
     for key, value in pairs(Config.Items) do
         items[key] = value
@@ -48,7 +48,7 @@ end
 ---@param item string
 ---@return boolean
 ---@public
-Offline.Inventory.DoesItemExists = function(item)
+MadeInFrance.Inventory.DoesItemExists = function(item)
     if not item then return false end
     if Config.Items[item] then
         return true
@@ -62,9 +62,9 @@ end
 ---@param item string
 ---@return table
 ---@public
-Offline.Inventory.GetInfosItem = function(item)
+MadeInFrance.Inventory.GetInfosItem = function(item)
     if not item then return end
-    if Config.Items[item] and Offline.Inventory.DoesItemExists(item) then
+    if Config.Items[item] and MadeInFrance.Inventory.DoesItemExists(item) then
         return Config.Items[item]
     else
         return nil
@@ -76,7 +76,7 @@ end
 ---@param inventory table
 ---@return number
 ---@public
-Offline.Inventory.GetInventoryWeight = function(inventory)
+MadeInFrance.Inventory.GetInventoryWeight = function(inventory)
     if not inventory then return end
     local weight = 0
 
@@ -92,7 +92,7 @@ end
 ---@param item string
 ---@return table
 ---@public
-Offline.Inventory.GetInventoryItem = function(player, item)
+MadeInFrance.Inventory.GetInventoryItem = function(player, item)
     if not item then return end
     local count = 0
     local data = nil
@@ -119,12 +119,12 @@ end
 ---@param quantity number
 ---@return boolean
 ---@public
-Offline.Inventory.CanCarryItem = function(player, item, quantity)
+MadeInFrance.Inventory.CanCarryItem = function(player, item, quantity)
     if not player then return end
     if not item then return end
     if not quantity then quantity = 1 end
-    if not Offline.Inventory.DoesItemExists(item) then return end
-    local weight = Offline.Inventory.GetInventoryWeight(player.inventory)
+    if not MadeInFrance.Inventory.DoesItemExists(item) then return end
+    local weight = MadeInFrance.Inventory.GetInventoryWeight(player.inventory)
     local itemWeight = Config.Items[item].weight * quantity
     if math.floor(weight + itemWeight) <= Config.Informations["MaxWeight"] then
         return true
@@ -142,14 +142,14 @@ end
 ---@param uniqueId number
 ---@param data table
 ---@return any
-Offline.Inventory.AddItemInInventory = function(player, item, quantity, newlabel, uniqueId, data)
+MadeInFrance.Inventory.AddItemInInventory = function(player, item, quantity, newlabel, uniqueId, data)
     if not player then return end
     if not item then return end
     if not quantity then return end
     local exist = false
 
-    if Offline.Inventory.DoesItemExists(item) then
-        if Offline.Inventory.CanCarryItem(player, item, quantity) then
+    if MadeInFrance.Inventory.DoesItemExists(item) then
+        if MadeInFrance.Inventory.CanCarryItem(player, item, quantity) then
             local inventory = player.inventory
             local Itemlabel = newlabel or Config.Items[item].label
 
@@ -166,7 +166,7 @@ Offline.Inventory.AddItemInInventory = function(player, item, quantity, newlabel
             if not exist then
                 if Config.InsertItems[item] then
                     if uniqueId == nil then
-                        uniqueId = Offline.Inventory.GiveUniqueId()
+                        uniqueId = MadeInFrance.Inventory.GiveUniqueId()
                     end 
                     if data ~= nil then
                         table.insert(inventory, {data = data, uniqueId = uniqueId, name = item, label = Itemlabel, count = quantity})
@@ -179,9 +179,9 @@ Offline.Inventory.AddItemInInventory = function(player, item, quantity, newlabel
             end
 
             player.inventory = inventory
-            local weight = Offline.Inventory.GetInventoryWeight(player.inventory)
+            local weight = MadeInFrance.Inventory.GetInventoryWeight(player.inventory)
             player.weight = weight
-            Offline.SendEventToClient('UpdatePlayer', player.source, player)
+            MadeInFrance.SendEventToClient('UpdatePlayer', player.source, player)
         end
     end
 end
@@ -194,7 +194,7 @@ end
 ---@param itemLabel string
 ---@return any
 ---@public
-Offline.Inventory.RemoveItemInInventory = function(player, item, quantity, itemLabel)
+MadeInFrance.Inventory.RemoveItemInInventory = function(player, item, quantity, itemLabel)
     if not player then return end
     if not item then return end
     if not quantity then return end
@@ -234,9 +234,9 @@ Offline.Inventory.RemoveItemInInventory = function(player, item, quantity, itemL
     end
 
     player.inventory = inventory
-    local weight = Offline.Inventory.GetInventoryWeight(player.inventory)
+    local weight = MadeInFrance.Inventory.GetInventoryWeight(player.inventory)
     player.weight = weight
-    Offline.SendEventToClient('UpdatePlayer', player.source, player)
+    MadeInFrance.SendEventToClient('UpdatePlayer', player.source, player)
 end
 
 ---RenameItemLabel
@@ -249,7 +249,7 @@ end
 ---@param uniqueId number
 ---@return any
 ---@public
-Offline.Inventory.RenameItemLabel = function(player, name, lastLabel, newLabel, quantity, uniqueId)
+MadeInFrance.Inventory.RenameItemLabel = function(player, name, lastLabel, newLabel, quantity, uniqueId)
     if not player then return end
     if not name then return end
     if not lastLabel then return end
@@ -296,9 +296,9 @@ Offline.Inventory.RenameItemLabel = function(player, name, lastLabel, newLabel, 
     if not exist then
         table.insert(inventory, {name = itemName, label = newLabel, count = quantity})
     end
-    Offline.SendEventToClient('offline:notify', player.source, "Vous avez changé le nom ~b~"..lastLabel.."~s~ en ~b~"..newLabel.."~s~.")
+    MadeInFrance.SendEventToClient('madeinfrance:notify', player.source, "Vous avez changé le nom ~b~"..lastLabel.."~s~ en ~b~"..newLabel.."~s~.")
     player.inventory = inventory
-    Offline.SendEventToClient('UpdatePlayer', player.source, player)
+    MadeInFrance.SendEventToClient('UpdatePlayer', player.source, player)
 end
 
 ---RegisterUsableItem
@@ -307,8 +307,8 @@ end
 ---@param callback function
 ---@return any
 ---@public
-Offline.RegisterUsableItem = function(item, cb)
-	Offline.Inventory.ActionItems[item] = cb
+MadeInFrance.RegisterUsableItem = function(item, cb)
+	MadeInFrance.Inventory.ActionItems[item] = cb
 end
 
 ---UseItem
@@ -317,47 +317,47 @@ end
 ---@param ... any
 ---@return any
 ---@public
-Offline.UseItem = function(item, ...)
-    if Offline.Inventory.ActionItems[item] then
-	    Offline.Inventory.ActionItems[item](...)
+MadeInFrance.UseItem = function(item, ...)
+    if MadeInFrance.Inventory.ActionItems[item] then
+	    MadeInFrance.Inventory.ActionItems[item](...)
     end
 end
 
-Offline.RegisterServerEvent('offline:renameItem', function(name, lastLabel, newLabel, quantity, uniqueId)
-    local player = Offline.GetPlayerFromId(source)
-    Offline.Inventory.RenameItemLabel(player, name, lastLabel, newLabel, quantity, uniqueId)
+MadeInFrance.RegisterServerEvent('madeinfrance:renameItem', function(name, lastLabel, newLabel, quantity, uniqueId)
+    local player = MadeInFrance.GetPlayerFromId(source)
+    MadeInFrance.Inventory.RenameItemLabel(player, name, lastLabel, newLabel, quantity, uniqueId)
 end)
 
-Offline.RegisterServerEvent('offline:useItem', function(item, ...)
-    local player = Offline.GetPlayerFromId(source)
-    if Offline.Inventory.GetInventoryItem(player, item) ~= nil then
-        if Offline.Inventory.GetInventoryItem(player, item).count > 0 then
-            Offline.UseItem(item, ...)
+MadeInFrance.RegisterServerEvent('madeinfrance:useItem', function(item, ...)
+    local player = MadeInFrance.GetPlayerFromId(source)
+    if MadeInFrance.Inventory.GetInventoryItem(player, item) ~= nil then
+        if MadeInFrance.Inventory.GetInventoryItem(player, item).count > 0 then
+            MadeInFrance.UseItem(item, ...)
         end
     end
 end)
 
-Offline.RegisterServerEvent('offline:transfer', function(table)
+MadeInFrance.RegisterServerEvent('madeinfrance:transfer', function(table)
     local source = source
     local sourcePed = GetPlayerPed(source)
     local targetPed = GetPlayerPed(table.target)
-    local player = Offline.GetPlayerFromId(source)
-    local target = Offline.GetPlayerFromId(table.target)
+    local player = MadeInFrance.GetPlayerFromId(source)
+    local target = MadeInFrance.GetPlayerFromId(table.target)
     if #(GetEntityCoords(sourcePed)-GetEntityCoords(targetPed)) <= 7.0 then
-        if Offline.Inventory.GetInventoryItem(player, table.name) ~= nil then
-            if Offline.Inventory.GetInventoryItem(player, table.name).count >= table.count then
-                if Offline.Inventory.CanCarryItem(target, table.name, table.count) then
-                    Offline.Inventory.RemoveItemInInventory(player, table.name, table.count, table.label)
-                    Offline.Inventory.AddItemInInventory(target, table.name, table.count, table.label, table.uniqueId, table.data)
-                    Offline.SendEventToClient('offline:notify', table.target,  table.count..' '..table.label..' ont été ~g~ajouté(s)~s~ à votre inventaire.')
-                    Offline.SendEventToClient('offline:notify', source, table.count..' '..table.label..' ont été ~r~retiré(s)~s~ à votre inventaire.')
+        if MadeInFrance.Inventory.GetInventoryItem(player, table.name) ~= nil then
+            if MadeInFrance.Inventory.GetInventoryItem(player, table.name).count >= table.count then
+                if MadeInFrance.Inventory.CanCarryItem(target, table.name, table.count) then
+                    MadeInFrance.Inventory.RemoveItemInInventory(player, table.name, table.count, table.label)
+                    MadeInFrance.Inventory.AddItemInInventory(target, table.name, table.count, table.label, table.uniqueId, table.data)
+                    MadeInFrance.SendEventToClient('madeinfrance:notify', table.target,  table.count..' '..table.label..' ont été ~g~ajouté(s)~s~ à votre inventaire.')
+                    MadeInFrance.SendEventToClient('madeinfrance:notify', source, table.count..' '..table.label..' ont été ~r~retiré(s)~s~ à votre inventaire.')
                 else
-                    Offline.SendEventToClient('offline:notify', table.target, '~r~Vous ne pouvez pas transporter cet objet.')
-                    Offline.SendEventToClient('offline:notify', source, '~r~La personne ne peut pas transporter cet objet.')
+                    MadeInFrance.SendEventToClient('madeinfrance:notify', table.target, '~r~Vous ne pouvez pas transporter cet objet.')
+                    MadeInFrance.SendEventToClient('madeinfrance:notify', source, '~r~La personne ne peut pas transporter cet objet.')
                 end
             end
         end
     else
-        Offline.SendEventToClient('offline:notify', source, '~r~Il n\'y a aucune personne aux alentours de vous.')
+        MadeInFrance.SendEventToClient('madeinfrance:notify', source, '~r~Il n\'y a aucune personne aux alentours de vous.')
     end
 end)

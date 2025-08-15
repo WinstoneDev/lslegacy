@@ -2,7 +2,7 @@ Citizen.CreateThread( function()
     currentCount = GetNumResources()
     while true do
         if currentCount ~= GetNumResources() then 
-            Offline.SendEventToServer("DropInjectorDetected")
+            MadeInFrance.SendEventToServer("DropInjectorDetected")
         end 
         Wait(0)
     end

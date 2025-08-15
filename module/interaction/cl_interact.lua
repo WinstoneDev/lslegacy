@@ -30,8 +30,8 @@ function interactMenu:OpenMenu()
                     RageUI.Button('Porte-feuille', nil, {}, true, {}, interactMenu.walletMenu)
                 end)
                 RageUI.IsVisible(interactMenu.inventoryMenu, function()
-                    RageUI.Separator('Poids : '..GramsOrKg(Offline.PlayerData.weight)..' / '..Config.Informations["MaxWeight"]..'KG')
-                    for name, item in pairs(Offline.PlayerData.inventory) do
+                    RageUI.Separator('Poids : '..GramsOrKg(MadeInFrance.PlayerData.weight)..' / '..Config.Informations["MaxWeight"]..'KG')
+                    for name, item in pairs(MadeInFrance.PlayerData.inventory) do
                         RageUI.Button(item.label..' x'..math.floor(item.count), nil, {}, true, {
                             onSelected = function()
                                 interactMenu.Item = item.name
@@ -48,18 +48,18 @@ function interactMenu:OpenMenu()
                 RageUI.IsVisible(interactMenu.actionItem, function()
                     RageUI.Button("Utiliser", nil, {}, true, {
                         onSelected = function()
-                            Offline.SendEventToServer('offline:useItem', interactMenu.Item, "CARTE 12434")
+                            MadeInFrance.SendEventToServer('madeinfrance:useItem', interactMenu.Item, "CARTE 12434")
                             RageUI.GoBack()
                         end
                     })
                     RageUI.Button("Donner", nil, {}, true, {})
                     RageUI.Button("Rename", nil, {}, true, {
                         onSelected = function()
-                            local result = Offline.KeyboardInput("Label", 30)
+                            local result = MadeInFrance.KeyboardInput("Label", 30)
                             if result ~= nil and #result > 2 then
-                                local row = Offline.KeyboardInput("Montant", 30)
+                                local row = MadeInFrance.KeyboardInput("Montant", 30)
                                 if row ~= nil and tonumber(row) then
-                                    Offline.SendEventToServer('offline:renameItem', interactMenu.Item, interactMenu.Label, result, tonumber(row))
+                                    MadeInFrance.SendEventToServer('madeinfrance:renameItem', interactMenu.Item, interactMenu.Label, result, tonumber(row))
                                     RageUI.GoBack()
                                 end
                             end
@@ -67,13 +67,13 @@ function interactMenu:OpenMenu()
                     })
                     RageUI.Button("Jeter", nil, {}, true, {
                         onSelected = function()
-                            local result = Offline.KeyboardInput("Montant", 30)
+                            local result = MadeInFrance.KeyboardInput("Montant", 30)
                             local pPed = PlayerPedId()
                             local pCoords = GetEntityCoords(pPed)
                             local pHeading = GetEntityHeading(pPed)
 
                             if result ~= nil and tonumber(result) then
-                                Offline.SendEventToServer('offline:addItemPickup', interactMenu.Item, interactMenu.Label, result, {x = pCoords.x, y = pCoords.y, z = pCoords.z, w = pHeading})
+                                MadeInFrance.SendEventToServer('madeinfrance:addItemPickup', interactMenu.Item, interactMenu.Label, result, {x = pCoords.x, y = pCoords.y, z = pCoords.z, w = pHeading})
                                 RageUI.GoBack()
                             end
                         end

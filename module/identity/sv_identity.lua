@@ -1,11 +1,11 @@
-Offline.RegisterZone('Récupération de pièce d\'identité', vector3(-1093.411, -809.2663, 19.2816), function(source)
-    local player = Offline.GetPlayerFromId(source)
-    local identity = Offline.Inventory.GetInventoryItem(player, 'idcard')
+MadeInFrance.RegisterZone('Récupération de pièce d\'identité', vector3(-1093.411, -809.2663, 19.2816), function(source)
+    local player = MadeInFrance.GetPlayerFromId(source)
+    local identity = MadeInFrance.Inventory.GetInventoryItem(player, 'idcard')
     if identity == nil then
-        Offline.Inventory.AddItemInInventory(player, 'idcard', 1, player.characterInfos.Prenom.." "..player.characterInfos.NDF, nil, player.characterInfos)
-        Offline.SendEventToClient('offline:notify', source,  '1 '..player.characterInfos.Prenom.." "..player.characterInfos.NDF..' ont été ~g~ajouté(s)~s~ à votre inventaire.')
+        MadeInFrance.Inventory.AddItemInInventory(player, 'idcard', 1, player.characterInfos.Prenom.." "..player.characterInfos.NDF, nil, player.characterInfos)
+        MadeInFrance.SendEventToClient('madeinfrance:notify', source,  '1 '..player.characterInfos.Prenom.." "..player.characterInfos.NDF..' ont été ~g~ajouté(s)~s~ à votre inventaire.')
     else
-        Offline.SendEventToClient('offline:notify', source, 'Vous avez ~r~déjà~s~ une pièce d\'identité.')
+        MadeInFrance.SendEventToClient('madeinfrance:notify', source, 'Vous avez ~r~déjà~s~ une pièce d\'identité.')
     end
 end, 10.0, false, {
     markerType = 25,
@@ -30,6 +30,6 @@ end, 10.0, false, {
     }
 })
 
-Offline.RegisterUsableItem("idcard", function(data)
-    Offline.SendEventToClient('offline:useIdCard', source, data)
+MadeInFrance.RegisterUsableItem("idcard", function(data)
+    MadeInFrance.SendEventToClient('madeinfrance:useIdCard', source, data)
 end)

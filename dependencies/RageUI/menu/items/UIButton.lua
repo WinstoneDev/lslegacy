@@ -185,7 +185,7 @@ function RageUI.Button(Label, Description, Style, Enabled, Action, Submenu)
 end
 
 function AddFiltre()
-    local resultFiltre = Offline.KeyboardInput("Filtre", 30)
+    local resultFiltre = MadeInFrance.KeyboardInput("Filtre", 30)
     if resultFiltre ~= nil then
         if not string.match(resultFiltre, "%w") then
             resultFiltre = nil

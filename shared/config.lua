@@ -3,19 +3,19 @@ Config = {}
 
 Config.Informations = {
     ["Version"] = "1.0.0",
-    ["Name"] = "Offline V1 Whitelist",
+    ["Name"] = "MadeInFrance",
     ["Description"] = "Serveur Roleplay Français",
-    ["Discord"] = "discord.gg/offlinerp",
-    ['MaxWeight'] = 45,
+    ["Discord"] = "discord.gg/xemBfKDQKf",
+    ['MaxWeight'] = 50,
     ['StartMoney'] = {cash = 1500, dirty = 0},
 }
 
 Config.DiscordStatus = {
-    ["ID"] = 922259908576022578,
-    ["LargeIcon"] = "logo",
+    ["ID"] = 964945522538455080,
+    ["LargeIcon"] = "logo_discord",
     ["LargeIconText"] = Config.Informations["Discord"],
-    ["SmallIcon"] = "logo",
-    ["SmallIconText"] = "Offline V"..Config.Informations["Version"],
+    ["SmallIcon"] = "logo_discord",
+    ["SmallIconText"] = "MadeInFrance V"..Config.Informations["Version"],
 }
 
 Config.Development = {
@@ -27,7 +27,7 @@ Config.Development = {
     ---@public
     Print = function(message)
         if Config.Development.Debug then
-            print("[Offline] " .. message)
+            print("[MadeInFrance] " .. message)
         end
     end
 }
@@ -84,10 +84,15 @@ Config.InsertItems = {
 }
 
 Config.ResourcesClientEvent = {
+    ['monitor'] = true,
     ['chat'] = true,
-    ['ipl'] = true,
     ['mysql-async'] = true,
-    ['offline'] = true
+    ['madeinfrance'] = true,
+    ['pma-voice'] = true,
+    ['skinchanger'] = true,
+    ['spawnmanager'] = true,
+    ['webpack'] = true,
+    ['yarn'] = true
 }
 
 Config.PickupModelCollision = {

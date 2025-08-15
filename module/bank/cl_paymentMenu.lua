@@ -6,7 +6,7 @@ paymentMenu = {
     actions = {}
 }
 
-paymentMenu.mainMenu = RageUI.CreateMenu(" ", "Offline~g~Pay~s~™", nil, 100, "root_cause", "shopui_title_mazebank")
+paymentMenu.mainMenu = RageUI.CreateMenu(" ", "MadeInFrance~g~Pay~s~™", nil, 100, "root_cause", "shopui_title_mazebank")
 paymentMenu.mainMenu:DisplayGlare(false)
 paymentMenu.mainMenu.Closed = function()
     paymentMenu.opened = false
@@ -18,7 +18,7 @@ paymentMenu.cardsMenu:AcceptFilter(true)
 paymentMenu.resumeTransactionMenu = RageUI.CreateSubMenu(paymentMenu.mainMenu, " ", "Résumé de la transaction")
 paymentMenu.resumeTransactionMenu:DisplayGlare(false)
 
-Offline.RegisterClientEvent('offline:openPaymentMenu', function(transactionMessage, price, inventory)
+MadeInFrance.RegisterClientEvent('madeinfrance:openPaymentMenu', function(transactionMessage, price, inventory)
     paymentMenu.openPaymentMenu(transactionMessage, price, inventory)
 end)
 
@@ -39,7 +39,7 @@ paymentMenu.openPaymentMenu = function(transactionMessage, price, inventory)
                 if paymentMenu.paymentType ~= nil then
                     paymentMenu.paymentType = nil
                 end
-                RageUI.Separator('↓ Bienvenue sur Offline~g~Pay~s~™ ↓')
+                RageUI.Separator('↓ Bienvenue sur MadeInFrance~g~Pay~s~™ ↓')
                 RageUI.Separator('↓ Choississez votre moyen de paiement ↓')
                 RageUI.Button('En espèces', nil , {}, true, {
                     onSelected = function()
@@ -61,7 +61,7 @@ paymentMenu.openPaymentMenu = function(transactionMessage, price, inventory)
                     if value.name == "carte" then
                         RageUI.Button(value.label, nil, {RightLabel = "→"}, true, {
                             onSelected = function()
-                                local codePin = Offline.KeyboardInput('Code PIN', 4)
+                                local codePin = MadeInFrance.KeyboardInput('Code PIN', 4)
                                 if tonumber(codePin) then
                                     if codePin == value.data.card_pin then
                                         RageUI.Visible(paymentMenu.cardsMenu, false)
@@ -69,10 +69,10 @@ paymentMenu.openPaymentMenu = function(transactionMessage, price, inventory)
                                         paymentMenu.cardInfos = value
                                         paymentMenu.codePinProvided = codePin
                                     else
-                                        Offline.ShowNotification("~r~Code PIN incorrect")
+                                        MadeInFrance.ShowNotification("~r~Code PIN incorrect")
                                     end
                                 else
-                                    Offline.ShowNotification("~r~Veuillez mettre seulement des chiffres")
+                                    MadeInFrance.ShowNotification("~r~Veuillez mettre seulement des chiffres")
                                 end
                             end
                         })
@@ -86,9 +86,9 @@ paymentMenu.openPaymentMenu = function(transactionMessage, price, inventory)
                 RageUI.Button('Valider', nil, {}, true, {
                     onSelected = function()
                         if paymentMenu.paymentType == "money" then
-                            Offline.SendEventToServer('offline:pay', nil, price, paymentMenu.paymentType, nil, transactionMessage)
+                            MadeInFrance.SendEventToServer('madeinfrance:pay', nil, price, paymentMenu.paymentType, nil, transactionMessage)
                         elseif paymentMenu.paymentType == "bank" then
-                            Offline.SendEventToServer('offline:pay', paymentMenu.codePinProvided, price, paymentMenu.paymentType, paymentMenu.cardInfos, transactionMessage)
+                            MadeInFrance.SendEventToServer('madeinfrance:pay', paymentMenu.codePinProvided, price, paymentMenu.paymentType, paymentMenu.cardInfos, transactionMessage)
                         end
                         paymentMenu.opened = false
                         paymentMenu.paymentType = nil
@@ -102,7 +102,7 @@ paymentMenu.openPaymentMenu = function(transactionMessage, price, inventory)
     end)
 end
 
-Offline.RegisterClientEvent('offline:doActionsPayment', function(sucess)
+MadeInFrance.RegisterClientEvent('madeinfrance:doActionsPayment', function(sucess)
     if sucess then
         if (paymentMenu.actions.onSucess ~= nil) then
             Citizen.CreateThread(function()

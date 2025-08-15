@@ -6,7 +6,6 @@ files {
     'inventory/html/js/*.js',
     'inventory/html/css/*.css',
     'inventory/html/locales/*.js',
-    'inventory/html/img/hud/*.png',
     'inventory/html/img/*.png',
     'inventory/html/img/items/*.png'
 }
@@ -63,6 +62,7 @@ server_scripts {
     'module/bank/sv_bank.lua',
     'module/bank/sv_paymentMenu.lua',
     'module/clothshop/sv_clothshop.lua',
+    'server/deferallsCards.lua',
     'server/anticheat.lua'
 }
 

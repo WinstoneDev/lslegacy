@@ -1,17 +1,17 @@
-Offline = {}
-Offline.RegisteredClientEvents = {}
-Offline.Token = {}
-Offline.Math = {}
+MadeInFrance = {}
+MadeInFrance.RegisteredClientEvents = {}
+MadeInFrance.Token = {}
+MadeInFrance.Math = {}
 
-Offline.TriggerLocalEvent = function(name, ...)
+MadeInFrance.TriggerLocalEvent = function(name, ...)
     if not name then return end
     TriggerEvent(name, ...)
     Config.Development.Print("Successfully triggered event " .. name)
 end
 
-Offline.RegisterClientEvent = function(name, execute)
+MadeInFrance.RegisterClientEvent = function(name, execute)
     if not name then return end
-    if not Offline.RegisteredClientEvents[name] then
+    if not MadeInFrance.RegisteredClientEvents[name] then
         RegisterNetEvent(name)
         AddEventHandler(name, function(...)
            local getResource = GetInvokingResource()
@@ -21,21 +21,21 @@ Offline.RegisterClientEvent = function(name, execute)
            elseif getResource == nil then
                 execute(...)
             else
-               Offline.SendEventToServer("DropInjectorDetected")
+               MadeInFrance.SendEventToServer("DropInjectorDetected")
             end
         end)
         Config.Development.Print("Successfully registered event " .. name)
-        Offline.RegisteredClientEvents[name] = execute
+        MadeInFrance.RegisteredClientEvents[name] = execute
     else
-        return Offline.Development.Print("Event " .. name .. " already registered")
+        return MadeInFrance.Development.Print("Event " .. name .. " already registered")
     end
 end
 
-Offline.RegisterClientEvent("offline:addTokenEvent", function(data)
-    Offline.Token = data
+MadeInFrance.RegisterClientEvent("madeinfrance:addTokenEvent", function(data)
+    MadeInFrance.Token = data
 end)
 
-Offline.AddEventHandler = function(name, execute)
+MadeInFrance.AddEventHandler = function(name, execute)
     if not name then return end
     if not execute then return end
     AddEventHandler(name, function(...)
@@ -44,18 +44,18 @@ Offline.AddEventHandler = function(name, execute)
     Config.Development.Print("Successfully added event " .. name)
 end
 
-Offline.SendEventToServer = function(eventName, ...)
+MadeInFrance.SendEventToServer = function(eventName, ...)
     local resourceName = GetCurrentResourceName()
 
-    if Offline.Token[resourceName] then
-        tokenEvent = Offline.Token[resourceName]
-        TriggerServerEvent('offline:useEvent', eventName, tokenEvent, ...)
+    if MadeInFrance.Token[resourceName] then
+        tokenEvent = MadeInFrance.Token[resourceName]
+        TriggerServerEvent('madeinfrance:useEvent', eventName, tokenEvent, ...)
     else
         Config.Development.Print("Injector detected " .. eventName)
     end
 end
 
-Offline.KeyboardInput = function(textEntry, maxLength)
+MadeInFrance.KeyboardInput = function(textEntry, maxLength)
     AddTextEntry("Message", textEntry)
     DisplayOnscreenKeyboard(1, "Message", '', '', '', '', '', maxLength)
     blockinput = true
@@ -76,7 +76,7 @@ Offline.KeyboardInput = function(textEntry, maxLength)
     end
 end
 
-Offline.DrawText3D = function(x, y, z, text, distance, v3)
+MadeInFrance.DrawText3D = function(x, y, z, text, distance, v3)
     local dist = distance or 7
     local aze, zea, aez = table.unpack(GetGameplayCamCoords())
     local plyCoords = GetEntityCoords(PlayerPedId())
@@ -100,7 +100,7 @@ Offline.DrawText3D = function(x, y, z, text, distance, v3)
     ClearDrawOrigin()
 end
 
-Offline.AddBlip = function(blipName, blipSprite, blipColor, blipScale, coords)
+MadeInFrance.AddBlip = function(blipName, blipSprite, blipColor, blipScale, coords)
     if not blipName then return end
     if not blipSprite then return end
     if not blipColor then return end
@@ -115,7 +115,7 @@ Offline.AddBlip = function(blipName, blipSprite, blipColor, blipScale, coords)
     EndTextCommandSetBlipName(blip)
 end
 
-Offline.DrawMarker = function(markerType, coords, r, g, b, a)
+MadeInFrance.DrawMarker = function(markerType, coords, r, g, b, a)
     if not markerType then return end
     if not coords then return end
     if not r then return end
@@ -125,19 +125,19 @@ Offline.DrawMarker = function(markerType, coords, r, g, b, a)
     DrawMarker(markerType, coords.x, coords.y, coords.z, 0.0, 0.0, 0.0, 0, 0.0, 0.0, 0.7, 0.7, 0.7, r, g, b, a, false, false, false, false)
 end
 
-Offline.SetCoords = function(coords)
+MadeInFrance.SetCoords = function(coords)
     if not coords then return end
     SetEntityCoords(PlayerPedId(), coords.x, coords.y, coords.z)
 end
 
-Offline.ShowNotification = function(message)
+MadeInFrance.ShowNotification = function(message)
     if not message then return end
     SetNotificationTextEntry("STRING")
     AddTextComponentString(message)
     DrawNotification(false, false)
 end
 
-Offline.GetClosestPlayer = function(player, distance)
+MadeInFrance.GetClosestPlayer = function(player, distance)
     if not player then return end
     if not distance then return end
     local playerPed = PlayerPedId()
@@ -157,7 +157,7 @@ Offline.GetClosestPlayer = function(player, distance)
     return closestPlayer
 end
 
-Offline.RequestAnimDict = function(animDict, cb)
+MadeInFrance.RequestAnimDict = function(animDict, cb)
 	if not HasAnimDictLoaded(animDict) then
 		RequestAnimDict(animDict)
 		while not HasAnimDictLoaded(animDict) do
@@ -170,11 +170,11 @@ Offline.RequestAnimDict = function(animDict, cb)
 	end
 end
 
-Offline.RegisterClientEvent('offline:notify', function(message)
-    Offline.ShowNotification(message)
+MadeInFrance.RegisterClientEvent('madeinfrance:notify', function(message)
+    MadeInFrance.ShowNotification(message)
 end)
 
-Offline.Math.Round = function(value, numDecimalPlaces)
+MadeInFrance.Math.Round = function(value, numDecimalPlaces)
     if numDecimalPlaces then
         local power = 10^numDecimalPlaces
         return math.floor((value * power) + 0.5) / (power)
@@ -183,13 +183,13 @@ Offline.Math.Round = function(value, numDecimalPlaces)
     end
 end
 
-Offline.DisplayInteract = function(text, init)
+MadeInFrance.DisplayInteract = function(text, init)
     SetTextComponentFormat("jamyfafi")
     AddTextComponentString(text)
     DisplayHelpTextFromStringLabel(0, 0, init, -1)
 end
 
-Offline.SpawnPed = function(hash, coords, anim)
+MadeInFrance.SpawnPed = function(hash, coords, anim)
     RequestModel(hash)
     while not HasModelLoaded(hash) do
         Wait(5)
@@ -211,7 +211,7 @@ Offline.SpawnPed = function(hash, coords, anim)
     return ped
 end
 
-Offline.ConverToBoolean = function(number)
+MadeInFrance.ConverToBoolean = function(number)
     if number == 0 then
         return false
     elseif number == 1 then
@@ -219,7 +219,7 @@ Offline.ConverToBoolean = function(number)
     end
 end
 
-Offline.ConverToNumber = function(boolean)
+MadeInFrance.ConverToNumber = function(boolean)
     if boolean == false then
         return 0
     elseif boolean == true then
@@ -227,7 +227,7 @@ Offline.ConverToNumber = function(boolean)
     end
 end
 
-Offline.RegroupNumbers = function(number)
+MadeInFrance.RegroupNumbers = function(number)
     local number = tostring(number)
     local length = string.len(number)
     local result = ""

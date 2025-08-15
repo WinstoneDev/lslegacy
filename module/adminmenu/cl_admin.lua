@@ -2,7 +2,7 @@ local AdminMenu = {
     AllPlayers = nil
 }
 
-Offline.RegisterClientEvent('AdminServerPlayers', function(table)
+MadeInFrance.RegisterClientEvent('AdminServerPlayers', function(table)
     AdminMenu.AllPlayers = table
 end)
 
@@ -29,7 +29,7 @@ function AdminMenu:OpenMenu()
     else
         AdminMenu.opened = true
         RageUI.Visible(AdminMenu.mainMenu, true)
-        Offline.SendEventToServer('AdminServerPlayers')
+        MadeInFrance.SendEventToServer('AdminServerPlayers')
         Wait(250)
         while AdminMenu.AllPlayers == nil do Wait(5) end
         CreateThread(function()
@@ -57,20 +57,20 @@ function AdminMenu:OpenMenu()
                     end
                     RageUI.Button("Envoyer un message privé", nil, {}, true, {
                         onSelected = function()
-                            local msg = Offline.KeyboardInput('Message', 120)
+                            local msg = MadeInFrance.KeyboardInput('Message', 120)
                             if msg ~= nil then
-                                Offline.SendEventToServer('MessageAdmin', IdSelected, "~r~Modération~s~\n"..msg)
+                                MadeInFrance.SendEventToServer('MessageAdmin', IdSelected, "~r~Modération~s~\n"..msg)
                             end
                         end
                     })
                     RageUI.Button("Se téléporter sur le joueur", nil, {}, true, {
                         onSelected = function()
-                            Offline.SendEventToServer('TeleportPlayers', 'tp', IdSelected)
+                            MadeInFrance.SendEventToServer('TeleportPlayers', 'tp', IdSelected)
                         end
                     })
                     RageUI.Button("Téléporter le joueur sur vous", nil, {}, true, {
                         onSelected = function()
-                            Offline.SendEventToServer('TeleportPlayers', 'bring', IdSelected)
+                            MadeInFrance.SendEventToServer('TeleportPlayers', 'bring', IdSelected)
                         end
                     })
                     RageUI.Button("Réanimer", nil, {RightBadge = RageUI.BadgeStyle.Heart}, true, {})

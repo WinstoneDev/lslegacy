@@ -1,5 +1,5 @@
----@class Offline.ServerPlayers
-Offline.ServerPlayers = {}
+---@class MadeInFrance.ServerPlayers
+MadeInFrance.ServerPlayers = {}
 
 local function GetPlayerDiscord(source)
     local _source = source
@@ -33,13 +33,13 @@ RegisterNetEvent("registerPlayer")
 AddEventHandler("registerPlayer", function()
     local source = source
 
-    if not Offline.ServerPlayers[source] then
-        Offline.GeneratorTokenConnecting(source)
+    if not MadeInFrance.ServerPlayers[source] then
+        MadeInFrance.GeneratorTokenConnecting(source)
         MySQL.Async.fetchAll('SELECT * FROM players WHERE identifier = @identifier', {
             ['@identifier'] = GetPlayerIndentifier(source)
         }, function(result)
             if not result[1] then
-                Offline.ServerPlayers[source] = {
+                MadeInFrance.ServerPlayers[source] = {
                     name = GetPlayerName(source),
                     identifier = GetPlayerIndentifier(source),
                     ip = GetPlayerEP(source),
@@ -50,49 +50,48 @@ AddEventHandler("registerPlayer", function()
                     inventory = {},
                     currentZone = "Aucune",
                     coords = vector3(0, 0, 0),
-                    weight = Offline.Inventory.GetInventoryWeight({}) or 0,
-                    healt = 200,
+                    weight = MadeInFrance.Inventory.GetInventoryWeight({}) or 0,
+                    health = 200,
                     skin = nil,
                     cash = Config.Informations["StartMoney"].cash,
                     dirty = Config.Informations["StartMoney"].dirty,
                     group = Config.StaffGroups[0]
                 }
                 MySQL.Async.insert('INSERT INTO players (identifier, discordId, token, characterInfos, coords) VALUES(@identifier, @discordId, @token, @characterInfos, @coords)', {
-                    ['@identifier'] = Offline.ServerPlayers[source].identifier,
-                    ['@discordId'] = Offline.ServerPlayers[source].discordId,
-                    ['@token'] = Offline.ServerPlayers[source].token,
-                    ['@characterInfos'] = json.encode(Offline.ServerPlayers[source].characterInfos),
-                    ['@coords'] = json.encode(Offline.ServerPlayers[source].coords)
+                    ['@identifier'] = MadeInFrance.ServerPlayers[source].identifier,
+                    ['@discordId'] = MadeInFrance.ServerPlayers[source].discordId,
+                    ['@token'] = MadeInFrance.ServerPlayers[source].token,
+                    ['@characterInfos'] = json.encode(MadeInFrance.ServerPlayers[source].characterInfos),
+                    ['@coords'] = json.encode(MadeInFrance.ServerPlayers[source].coords)
                 }, function()
                 end)
                 Wait(500)
                 MySQL.Async.fetchAll('SELECT * FROM players WHERE identifier = @identifier', {
-                    ['@identifier'] = Offline.ServerPlayers[source].identifier
+                    ['@identifier'] = MadeInFrance.ServerPlayers[source].identifier
                 }, function(result)
                     if result[1] then
-                        Offline.ServerPlayers[source].id = result[1].id
+                        MadeInFrance.ServerPlayers[source].id = result[1].id
                     end
                 end)
-                Offline.SendEventToClient('InitPlayer', source, Offline.ServerPlayers[source])
+                MadeInFrance.SendEventToClient('InitPlayer', source, MadeInFrance.ServerPlayers[source])
                 Wait(15000)
                 for k,v in pairs(GetAllPeds()) do
                     if DoesEntityExist(v) then
                         DeleteEntity(v)
                     end
                 end
-                for k, v in pairs(Offline.Commands) do
+                for k, v in pairs(MadeInFrance.Commands) do
                     if v.suggestion then
                         if not v.suggestion.arguments then v.suggestion.arguments = {} end
                         if not v.suggestion.help then v.suggestion.help = '' end
-                
                         TriggerClientEvent('chat:addSuggestion', source, ('/%s'):format(k), v.suggestion.help, v.suggestion.arguments)
                     end
                 end
-                Offline.RegisterPeds(Offline.RegisteredZones)
+                MadeInFrance.RegisterPeds(MadeInFrance.RegisteredZones)
                 Config.Development.Print("Successfully registered player " .. GetPlayerName(source))
-                Offline.SendEventToClient('zones:registerBlips', source, Offline.RegisteredZones)
+                MadeInFrance.SendEventToClient('zones:registerBlips', source, MadeInFrance.RegisteredZones)
             else
-                Offline.ServerPlayers[source] = {
+                MadeInFrance.ServerPlayers[source] = {
                     id = result[1].id,
                     name = GetPlayerName(source),
                     identifier = result[1].identifier,
@@ -112,22 +111,22 @@ AddEventHandler("registerPlayer", function()
                     group = result[1].group
                 }
                 MySQL.Async.execute('UPDATE players SET token = @token, discordId = @discordId WHERE identifier = @identifier', {
-                    ['@token'] = Offline.ServerPlayers[source].token,
-                    ['@discordId'] = Offline.ServerPlayers[source].discordId,
-                    ['@identifier'] = Offline.ServerPlayers[source].identifier
+                    ['@token'] = MadeInFrance.ServerPlayers[source].token,
+                    ['@discordId'] = MadeInFrance.ServerPlayers[source].discordId,
+                    ['@identifier'] = MadeInFrance.ServerPlayers[source].identifier
                 })
                 Wait(250)
-                local weight = Offline.Inventory.GetInventoryWeight(Offline.ServerPlayers[source].inventory)
-                Offline.ServerPlayers[source].weight = weight or 0
+                local weight = MadeInFrance.Inventory.GetInventoryWeight(MadeInFrance.ServerPlayers[source].inventory)
+                MadeInFrance.ServerPlayers[source].weight = weight or 0
                 Wait(250)
-                Offline.SendEventToClient('InitPlayer', source, Offline.ServerPlayers[source])
+                MadeInFrance.SendEventToClient('InitPlayer', source, MadeInFrance.ServerPlayers[source])
                 Wait(10000)
                 for k, v in pairs(GetAllPeds()) do
                     if DoesEntityExist(v) then
                         DeleteEntity(v)
                     end
                 end
-                for k, v in pairs(Offline.Commands) do
+                for k, v in pairs(MadeInFrance.Commands) do
                     if v.suggestion then
                         if not v.suggestion.arguments then v.suggestion.arguments = {} end
                         if not v.suggestion.help then v.suggestion.help = '' end
@@ -135,9 +134,9 @@ AddEventHandler("registerPlayer", function()
                         TriggerClientEvent('chat:addSuggestion', source, ('/%s'):format(k), v.suggestion.help, v.suggestion.arguments)
                     end
                 end
-                Offline.RegisterPeds(Offline.RegisteredZones)
+                MadeInFrance.RegisterPeds(MadeInFrance.RegisteredZones)
                 Config.Development.Print("Successfully registered player " .. GetPlayerName(source))
-                Offline.SendEventToClient('zones:registerBlips', source, Offline.RegisteredZones)
+                MadeInFrance.SendEventToClient('zones:registerBlips', source, MadeInFrance.RegisteredZones)
             end
         end)
     else
@@ -148,59 +147,42 @@ end)
 
 CreateThread(function()
     while true do
-        for k, player in pairs(Offline.ServerPlayers) do
-            local coords = Offline.GetEntityCoords(player.source)
+        for k, player in pairs(MadeInFrance.ServerPlayers) do
+            local coords = MadeInFrance.GetEntityCoords(player.source)
             if player.coords ~= coords then
                 player.coords = coords
-                Offline.SendEventToClient('UpdatePlayer', player.source, Offline.ServerPlayers[player.source])
+                MadeInFrance.SendEventToClient('UpdatePlayer', player.source, MadeInFrance.ServerPlayers[player.source])
             end
         end
         Wait(5000)
     end
 end)
 
-Offline.AddEventHandler('playerDropped', function()
-    local _source = source
-    if Offline.ServerPlayers[_source] then
-        MySQL.Async.execute('UPDATE players SET coords = @coords, inventory = @inventory, money = @money, health = @health WHERE id = @id', {
-            ['@coords'] = json.encode(Offline.ServerPlayers[_source].coords),
-            ['@inventory'] = json.encode(Offline.ServerPlayers[_source].inventory),
-            ['@money'] = json.encode({cash = Offline.ServerPlayers[_source].cash, dirty = Offline.ServerPlayers[_source].dirty}),
-            ['@id'] = Offline.ServerPlayers[_source].id,
-            ['@health'] = GetEntityHealth(GetPlayerPed(source))
-        })
-        Offline.ServerPlayers[_source] = nil
-        Config.Development.Print("Player " .. _source .. " disconnected")
+CreateThread(function()
+    while true do
+        for k, player in pairs(MadeInFrance.ServerPlayers) do
+            local _source = player.source
+            local coords = MadeInFrance.GetEntityCoords(_source)
+            MySQL.Async.execute('UPDATE players SET coords = @coords WHERE id = @id', {
+                ['@coords'] = json.encode(MadeInFrance.ServerPlayers[_source].coords),
+                ['@id'] = MadeInFrance.ServerPlayers[_source].id,
+            })  
+        end
+        Wait(10000)
     end
 end)
 
-RegisterCommand('sync', function(source)
-    MySQL.Async.execute('UPDATE players SET coords = @coords, inventory = @inventory, money = @money, health = @health WHERE id = @id', {
-        ['@coords'] = json.encode(Offline.ServerPlayers[source].coords),
-        ['@inventory'] = json.encode(Offline.ServerPlayers[source].inventory),
-        ['@money'] = json.encode({cash = Offline.ServerPlayers[source].cash, dirty = Offline.ServerPlayers[source].dirty}),
-        ['@id'] = Offline.ServerPlayers[source].id,
-        ['@health'] = GetEntityHealth(GetPlayerPed(source))
-    })
-end, false)
-
--- --- Function that print elapsed months, days, hours since a date
--- function Offline.GetTimeElapsed(date)
---     local now = os.time()
---     local diff = now - date
---     local seconds = diff % 60
---     local minutes = math.floor(diff / 60) % 60
---     local hours = math.floor(diff / 3600) % 24
---     local days = math.floor(diff / 86400) % 30
---     local months = math.floor(diff / 2592000) % 12
---     local years = math.floor(diff / 31536000)
---     return months .. " mois, "..days.." jours, " .. hours .. " heures, " .. minutes .. " minutes et " .. seconds .. " secondes"
--- end
-
-
--- CreateThread(function()
---     while true do
---         print(Offline.GetTimeElapsed(os.time{year=2022, month=3, day=6, hour=21, min = 0, sec = 0}))
---         Wait(1000)
---     end
--- end)
+MadeInFrance.AddEventHandler('playerDropped', function()
+    local _source = source
+    if MadeInFrance.ServerPlayers[_source] then
+        MySQL.Async.execute('UPDATE players SET coords = @coords, inventory = @inventory, money = @money, health = @health WHERE id = @id', {
+            ['@coords'] = json.encode(MadeInFrance.ServerPlayers[_source].coords),
+            ['@inventory'] = json.encode(MadeInFrance.ServerPlayers[_source].inventory),
+            ['@money'] = json.encode({cash = MadeInFrance.ServerPlayers[_source].cash, dirty = MadeInFrance.ServerPlayers[_source].dirty}),
+            ['@id'] = MadeInFrance.ServerPlayers[_source].id,
+            ['@health'] = GetEntityHealth(GetPlayerPed(source))
+        })
+        MadeInFrance.ServerPlayers[_source] = nil
+        Config.Development.Print("Player " .. _source .. " disconnected")
+    end
+end)

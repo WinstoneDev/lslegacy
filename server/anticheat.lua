@@ -33,7 +33,7 @@ end)
 ---@return void
 ---@public
 Shared.Anticheat.BanPlayer = function(player, time, reason, source)
-    local moderator = Offline.GetPlayerFromId(source)
+    local moderator = MadeInFrance.GetPlayerFromId(source)
     if tonumber(time) then
         if player then
             local CountHour = time
@@ -102,7 +102,7 @@ Shared.Anticheat.BanPlayer = function(player, time, reason, source)
                         hourban    = 999000,
                         permanent  = 1
                     })
-                    DropPlayer(player.source, "Vous êtes ban de Offline\nRaison : "..reason.."\nID Bannissement : "..result[1].idban)
+                    DropPlayer(player.source, "Vous êtes ban de MadeInFrance\nRaison : "..reason.."\nID Bannissement : "..result[1].idban)
                 end)
             else
                 MySQL.Async.execute('INSERT INTO banlist (token, license, identifier, liveid, xbox, discord, ip, moderator, reason, expiration, hourban) VALUES (@token, @license, @identifier, @liveid, @xbox, @discord, @ip, @moderator, @reason, @expiration, @hourban)', {
@@ -137,7 +137,7 @@ Shared.Anticheat.BanPlayer = function(player, time, reason, source)
                         hourban    = CountHour,
                         permanent  = 0
                     })
-                    DropPlayer(player.source, "Vous êtes ban de Offline\nRaison : "..reason.."\nID Bannissement : "..result[1].idban)
+                    DropPlayer(player.source, "Vous êtes ban de MadeInFrance\nRaison : "..reason.."\nID Bannissement : "..result[1].idban)
                 end)
             end
         end
@@ -161,7 +161,7 @@ Shared.Anticheat.ExtractIdentifiersBan = function(src)
         xbl = nil,
         live = nil,
     }
-
+    
     for k, v in pairs(GetPlayerIdentifiers(src)) do 
         if string.sub(v, 1, string.len("steam:")) == "steam:" then
             identifiers.steam = v
@@ -222,94 +222,74 @@ end
 ---@return table
 ---@public
 Shared.Anticheat.AfficheBan = function(raison, idban, dateunban)
-    card = {
-        type = "AdaptiveCard",
+    card = DeferralCards.Card:Create({
         body = {
-            {
-                type = "Container",
+            DeferralCards.Container:Create({
                 items = {
-                    {
-                        type = "TextBlock",
-                        spacing = "None",
+                    DeferralCards.CardElement:Image({
+                        url = 'https://i.postimg.cc/pd29WJ1M/MIF-ASE.png',
+                        size = 'large',
+                        horizontalAlignment = 'center'
+                    }),
+                    DeferralCards.CardElement:TextBlock({
                         text = "Vous êtes banni du serveur.",
-                        wrap = true
-                    },
-                    {
-                        type = "TextBlock",
-                        spacing = "None",
+                        weight = 'Light',
+                        size = 'large',
+                        horizontalAlignment = 'left'
+                    }),
+                    DeferralCards.CardElement:TextBlock({
                         text = "Raison : "..raison,
-                        wrap = true
-                    },
-                    {
-                        type = "TextBlock",
-                        spacing = "None",
-                        text = "ID Bannissement : "..idban,
-                        wrap = true
-                    },
-                    {
-                        type = "TextBlock",
-                        spacing = "None",
+                        weight = 'Light',
+                        size = 'large',
+                        horizontalAlignment = 'left'
+                    }),
+                    DeferralCards.CardElement:TextBlock({
+                        text = "ID Banissement : "..idban,
+                        weight = 'Light',
+                        size = 'large',
+                        horizontalAlignment = 'left'
+                    }),
+                    DeferralCards.CardElement:TextBlock({
                         text = "Date unban : "..dateunban,
-                        wrap = true
-                    }
-                }
-            },
-            {
-                type = "Container",
-                items = {
-                    {
-                        type = "TextBlock",
-                        weight = "Bolder",
-                        text = "  ",
-                        wrap  = true
-                    }
-                }
-            },
-            {
-                type = "ColumnSet",
-                columns = {
-                    {
-                        type = "Column",
-                        items = {
-                            {
-                                type = "Image",
-                                url = "https://cdn.discordapp.com/attachments/943272694173016144/981703909737390080/Simpleicons_Interface_power-symbol-1.svg.png",
-                                size = "Small"
-                            },
-
-                        },
-                        width = "auto"
-                    },
-                    {
-                        type = "Column",
-                        items = {
-                            {
-                                type = "TextBlock",
-                                weight = "Bolder",
-                                text = "Offline",
-                                wrap  = true
-                            },
-                            {
-                                type = "TextBlock",
-                                spacing = "None",
-                                text = "discord.gg/offlinerp",
-                                isSubtle = true,
-                                wrap = true
-                            }
-                        },
-                        width = "stretch"
-                    },
-                }
-            },
-        }, ["$schema"] = "http://adaptivecards.io/schemas/adaptive-card.json", version = "1.5"
-    }
-
+                        weight = 'Light',
+                        size = 'large',
+                        horizontalAlignment = 'left'
+                    }),
+                    DeferralCards.CardElement:TextBlock({
+                        text = "discord.gg/xemBfKDQKf",
+                        weight = 'Light',
+                        size = 'large',
+                        horizontalAlignment = 'left'
+                    })
+                },
+                isVisible = true
+            })
+        }
+    })
     return card
 end
 
-Offline.AddEventHandler("playerConnecting", function(name, setKickReason, deferrals)
+Shared.Anticheat.Unban = function(id)
+    MySQL.Async.execute("DELETE FROM `banlist` WHERE `idban` = @idban", {
+        ["@idban"] = id,
+    }, function(affectedRows)
+        if affectedRows > 0 then
+            for k, v in pairs(Shared.Anticheat.BanList) do
+                if v.idban == id then
+                    table.remove(Shared.Anticheat.BanList, k)
+                    Config.Development.Print("Suppression du ban numéro : " .. id)
+                    break
+                end
+            end
+        else
+            Config.Development.Print("Aucun ban trouvé avec l'ID : " .. id)
+        end
+    end)
+end
+
+MadeInFrance.AddEventHandler("playerConnecting", function(name, setKickReason, deferrals)
     local _src = source
-    local playerBanned = false
+    playerBanned = false
     local ids = Shared.Anticheat.ExtractIdentifiersBan(_src)
     local ping = GetPlayerPing(_src)
     local token = GetPlayerToken(_src)
@@ -319,75 +299,71 @@ Offline.AddEventHandler("playerConnecting", function(name, setKickReason, deferr
     local license = ids.license
     local xbl = ids.xbl
     local live = ids.live
+    print("Une connexion est en cours")
 
     deferrals.defer()
 
-    if not license or license == '' then
-        deferrals.done("Votre license rockstar est introuvable. Veuillez revenir plus tard ou signaler ce problème à l'équipe d'administration du serveur.")
-        CancelEvent()
-        return
+    if not license or license == '' or license == nil then
+        return deferrals.done("Votre license rockstar est introuvable. Veuillez revenir plus tard ou signaler ce problème à l'équipe d'administration du serveur.")
     end
 
-    if not discord or discord == '' then
-        deferrals.done("Votre discord est introuvable. Veuillez revenir plus tard ou signaler ce problème à l'équipe d'administration du serveur.")
-        CancelEvent()
-        return
+    if not discord or discord == '' or discord == nil then
+        return deferrals.done("Votre discord est introuvable. Veuillez revenir plus tard ou signaler ce problème à l'équipe d'administration du serveur.")
     end
 
-    if Offline.GetPlayerFromIdentifier(license) then
-        deferrals.done("Une erreur s'est produite lors du chargement de votre personnage !\nCette erreur est causée par un joueur sur le serveur qui a la même steam que vous.")
-        CancelEvent()
-        return
+    if not steam or steam == '' or steam == nil then
+        return deferrals.done("Votre steam est introuvable. Veuillez revenir plus tard ou signaler ce problème à l'équipe d'administration du serveur.")
     end
-        if json.encode(Shared.Anticheat.BanList) ~= "[]" then
-            for k, v in pairs(Shared.Anticheat.BanList) do
-                if tostring(v.token) == token or tostring(v.steam) == tostring(steam) or tostring(v.ip) == tostring(ip) or tostring(v.discord) == tostring(discord) or tostring(v.license) == tostring(license) or tostring(v.xbl) == tostring(xbl) or tostring(v.live) == tostring(live) then
-                    reason = v.reason
-                    moderator = v.moderator
-                    idban = v.idban
-                    expiration = json.decode(v.expiration)
-                    hourban = v.hourban
-                    permanent = v.permanent
-    
-                    if permanent == 1 then
-                        playerBanned = true
-                        return deferrals.presentCard(Shared.Anticheat.AfficheBan(reason, idban, "Permanent"))
-                    elseif permanent == 0 then
-                        local difftime = os.difftime(os.time(), os.time{year = expiration.year, month = expiration.month, day = expiration.day, hour = expiration.hour, min = expiration.min, sec = expiration.sec}) / 3600
-    
-                        if (hourban-math.floor(difftime)) <= 0 then
-                            deferrals.done()
-    
-                            table.remove(Shared.Anticheat.BanList, k)
-                            MySQL.Async.execute("DELETE FROM `banlist` WHERE `idban` = @idban", {
-                                ["@idban"] = idban,
-                            })
-                        else
-                            local endtime = os.time({year = expiration.year, month = expiration.month, day = expiration.day, hour = expiration.hour + hourban, min = expiration.min, sec = expiration.sec})
-                            playerBanned = true
-                            return deferrals.presentCard(Shared.Anticheat.AfficheBan(reason, idban, os.date("%d", endtime).."-"..os.date("%m", endtime).."-"..os.date("%Y", endtime).." "..os.date("%H", endtime)..":"..os.date("%M", endtime)))
+
+    if MadeInFrance.GetPlayerFromIdentifier(license) then
+        return deferrals.done("Une erreur s'est produite lors du chargement de votre personnage !\nCette erreur est causée par un joueur sur le serveur qui a la même steam que vous.")
+    end
+
+    if json.encode(Shared.Anticheat.BanList) ~= "[]" then
+        for k, v in pairs(Shared.Anticheat.BanList) do
+            if tostring(v.token) == token or tostring(v.steam) == tostring(steam) or tostring(v.ip) == tostring(ip) or tostring(v.discord) == tostring(discord) or tostring(v.license) == tostring(license) or tostring(v.xbl) == tostring(xbl) or tostring(v.live) == tostring(live) then
+                reason = v.reason
+                moderator = v.moderator
+                idban = v.idban
+                expiration = json.decode(v.expiration)
+                hourban = v.hourban
+                permanent = v.permanent
+
+                if permanent == 1 then
+                    playerBanned = true
+                    CreateThread(function()
+                        while true do
+                            local card = Shared.Anticheat.AfficheBan(reason, idban, "Permanent")
+                            deferrals.presentCard(card)
+                            Wait(1000)
                         end
+                    end)
+                else 
+                    local difftime = os.difftime(os.time(), os.time{year = expiration.year, month = expiration.month, day = expiration.day, hour = expiration.hour, min = expiration.min, sec = expiration.sec}) / 3600
+
+                    if (hourban-math.floor(difftime)) <= 0 then
+                        deferrals.done()
+
+                        table.remove(Shared.Anticheat.BanList, k)
+                        MySQL.Async.execute("DELETE FROM `banlist` WHERE `idban` = @idban", {
+                            ["@idban"] = idban,
+                        })
+                    else
+                        local endtime = os.time({year = expiration.year, month = expiration.month, day = expiration.day, hour = expiration.hour + hourban, min = expiration.min, sec = expiration.sec})
+                        playerBanned = true
+                        CreateThread(function()
+                            while true do
+                                local card = Shared.Anticheat.AfficheBan(reason, idban, os.date("%d", endtime).."-"..os.date("%m", endtime).."-"..os.date("%Y", endtime).." "..os.date("%H", endtime)..":"..os.date("%M", endtime))
+                                deferrals.presentCard(card)
+                                Wait(1000)
+                            end
+                        end)
                     end
                 end
             end
-
-            if not playerBanned then
-                deferrals.done()
-            end
         end
-end)
-
-Offline.Commands.RegisterCommand('ban', 1, function(player, args, showError, rawCommand)
-    local player = args.playerId
-    local reason = ""
-    sm = Offline.StringSplit(rawCommand, " ")
-    for i = 4, #sm do
-        reason = reason ..sm[i].. " "
     end
-    Shared.Anticheat.BanPlayer(player, args.time, reason, player.source)
-end, {help = "Permet de bannir un joueur", validate = false, arguments = {{name = 'playerId', help = 'Id du joueur', type = 'player'}, {name = 'time', help = "Temps du ban (en heures)", type = "number"}, {name = "reason", help = "Raison du ban", type = "fullstring"}}}, false)
-
-Offline.Commands.RegisterCommand('banreload', 4, function(player, args, showError, rawCommand)
-    Shared.Anticheat.ReloadFromDatabase()
-    showError('La banlist a été rechargée')
-end, {help = "Permet de recharger la liste des bans", validate = false, arguments = {}}, true)
+    if not playerBanned then
+        deferrals.done()
+    end
+end)

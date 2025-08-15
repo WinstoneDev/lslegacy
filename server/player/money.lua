@@ -1,12 +1,12 @@
----@class Offline.Money
-Offline.Money = {}
+---@class MadeInFrance.Money
+MadeInFrance.Money = {}
 
 ---GetPlayerMoney
 ---@type function
 ---@param player table
 ---@return number
 ---@public
-Offline.Money.GetPlayerMoney = function(player)
+MadeInFrance.Money.GetPlayerMoney = function(player)
     if player ~= nil then
         return player.cash
     end
@@ -17,7 +17,7 @@ end
 ---@param player table
 ---@return number
 ---@public
-Offline.Money.GetPlayerDirtyMoney = function(player)
+MadeInFrance.Money.GetPlayerDirtyMoney = function(player)
     if player ~= nil then
         return player.dirty
     end
@@ -29,10 +29,10 @@ end
 ---@param amount number
 ---@return any
 ---@public
-Offline.Money.SetPlayerMoney = function(player, amount)
+MadeInFrance.Money.SetPlayerMoney = function(player, amount)
     if player ~= nil then
         player.cash = amount
-        Offline.SendEventToClient('UpdatePlayer', player.source, player)
+        MadeInFrance.SendEventToClient('UpdatePlayer', player.source, player)
     end
 end
 
@@ -42,10 +42,10 @@ end
 ---@param amount number
 ---@return any
 ---@public
-Offline.Money.AddPlayerMoney = function(player, amount)
+MadeInFrance.Money.AddPlayerMoney = function(player, amount)
     if player ~= nil then
         player.cash = player.cash + amount
-        Offline.SendEventToClient('UpdatePlayer', player.source, player)
+        MadeInFrance.SendEventToClient('UpdatePlayer', player.source, player)
     end
 end
 
@@ -55,11 +55,11 @@ end
 ---@param amount number
 ---@return any
 ---@public
-Offline.Money.RemovePlayerMoney = function(player, amount)
+MadeInFrance.Money.RemovePlayerMoney = function(player, amount)
     if player ~= nil then
         if player.cash >= tonumber(amount) then
             player.cash = player.cash - amount
-            Offline.SendEventToClient('UpdatePlayer', player.source, player)
+            MadeInFrance.SendEventToClient('UpdatePlayer', player.source, player)
         end
     end
 end
@@ -70,10 +70,10 @@ end
 ---@param amount number
 ---@return any
 ---@public
-Offline.Money.SetPlayerDirtyMoney = function(player, amount)
+MadeInFrance.Money.SetPlayerDirtyMoney = function(player, amount)
     if player ~= nil then
         player.dirty = amount
-        Offline.SendEventToClient('UpdatePlayer', player.source, player)
+        MadeInFrance.SendEventToClient('UpdatePlayer', player.source, player)
     end
 end
 
@@ -83,10 +83,10 @@ end
 ---@param amount number
 ---@return any
 ---@public
-Offline.Money.AddPlayerDirtyMoney = function(player, amount)
+MadeInFrance.Money.AddPlayerDirtyMoney = function(player, amount)
     if player ~= nil then
         player.dirty = player.dirty + amount
-        Offline.SendEventToClient('UpdatePlayer', player.source, player)
+        MadeInFrance.SendEventToClient('UpdatePlayer', player.source, player)
     end
 end
 
@@ -96,11 +96,11 @@ end
 ---@param amount number
 ---@return any
 ---@public
-Offline.Money.RemovePlayerDirtyMoney = function(player, amount)
+MadeInFrance.Money.RemovePlayerDirtyMoney = function(player, amount)
     if player ~= nil then
         if player.dirty >= tonumber(amount) then
             player.dirty = player.dirty - amount
-            Offline.SendEventToClient('UpdatePlayer', player.source, player)
+            MadeInFrance.SendEventToClient('UpdatePlayer', player.source, player)
         end
     end
 end

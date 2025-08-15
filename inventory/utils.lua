@@ -33,7 +33,7 @@ function GetNearbyPlayer(distance)
     local pSelected = GetNearbyPlayers(distance)
 
     if #pSelected == 0 then
-        Offline.ShowNotification("~r~Il n'y a aucune personne aux alentours de vous.")
+        MadeInFrance.ShowNotification("~r~Il n'y a aucune personne aux alentours de vous.")
         return false
     end
 
@@ -41,7 +41,7 @@ function GetNearbyPlayer(distance)
         return pSelected[1]
     end
 
-    Offline.ShowNotification("Appuyer sur ~g~E~s~ pour valider~n~Appuyer sur ~b~A~s~ pour changer de cible~n~Appuyer sur ~r~X~s~ pour annuler")
+    MadeInFrance.ShowNotification("Appuyer sur ~g~E~s~ pour valider~n~Appuyer sur ~b~A~s~ pour changer de cible~n~Appuyer sur ~r~X~s~ pour annuler")
     Citizen.Wait(100)
     local pSelect = 1
     while GetGameTimer() <= Timer do
@@ -52,7 +52,7 @@ function GetNearbyPlayer(distance)
         if IsDisabledControlJustPressed(0, 38) then
             return pSelected[pSelect]
         elseif IsDisabledControlJustPressed(0, 73) then
-            Offline.ShowNotification("Vous avez ~r~annulé~s~ cette ~r~action~s~")
+            MadeInFrance.ShowNotification("Vous avez ~r~annulé~s~ cette ~r~action~s~")
             break
         elseif IsDisabledControlJustPressed(0, 44) then
             pSelect = (pSelect == #pSelected) and 1 or (pSelect + 1)

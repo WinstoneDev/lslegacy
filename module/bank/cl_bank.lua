@@ -47,7 +47,7 @@ end
 bankMenu.GetPersonnalAccounts = function(accounts)
     local result = {}
     for key, value in pairs(accounts) do
-        if value.owner == Offline.PlayerData.identifier then
+        if value.owner == MadeInFrance.PlayerData.identifier then
             table.insert(result, value)
         end
     end
@@ -71,29 +71,29 @@ atmMenu.OpenMenu = function(data)
                     RageUI.Separator("↓ Argent sur votre compte : "..bankMenu.GetAccount(data.card_account).amountMoney..'~g~$~s~ ↓')
                     RageUI.Button('Ajouter de l\'argent', nil, {}, true, {
                         onSelected = function()
-                            local amount = Offline.KeyboardInput('Somme', 10)
+                            local amount = MadeInFrance.KeyboardInput('Somme', 10)
                             if tonumber(amount) then
                                 if tonumber(amount) > 0 then
-                                    Offline.SendEventToServer('offline:BankAddMoney', amount, data.card_account)
+                                    MadeInFrance.SendEventToServer('madeinfrance:BankAddMoney', amount, data.card_account)
                                 else
-                                    Offline.ShowNotification('Vous devez entrer un montant positif.')
+                                    MadeInFrance.ShowNotification('Vous devez entrer un montant positif.')
                                 end
                             else
-                                Offline.ShowNotification('Vous devez entrer un montant valide.')
+                                MadeInFrance.ShowNotification('Vous devez entrer un montant valide.')
                             end
                         end
                     })
                     RageUI.Button('Retirer de l\'argent', nil, {}, true, {
                         onSelected = function()
-                            local amount = Offline.KeyboardInput('Somme', 10)
+                            local amount = MadeInFrance.KeyboardInput('Somme', 10)
                             if tonumber(amount) then
                                 if tonumber(amount) > 0 then
-                                    Offline.SendEventToServer('offline:BankwithdrawMoney', amount, data.card_account)
+                                    MadeInFrance.SendEventToServer('madeinfrance:BankwithdrawMoney', amount, data.card_account)
                                 else
-                                    Offline.ShowNotification('Vous devez entrer un montant positif.')
+                                    MadeInFrance.ShowNotification('Vous devez entrer un montant positif.')
                                 end
                             else
-                                Offline.ShowNotification('Vous devez entrer un montant valide.')
+                                MadeInFrance.ShowNotification('Vous devez entrer un montant valide.')
                             end
                         end
                     })
@@ -120,7 +120,7 @@ bankMenu.OpenMenu = function()
                     RageUI.Button('Mes comptes banquaires', nil, {RightLabel = '→'}, true, {}, bankMenu.accountsMenu)
                     RageUI.Button('Créer un compte', nil, {RightLabel = '→'}, true, {
                         onSelected = function()
-                            Offline.SendEventToServer('offline:BankCreateAccount')
+                            MadeInFrance.SendEventToServer('madeinfrance:BankCreateAccount')
                         end
                     })
                 end)
@@ -171,7 +171,7 @@ bankMenu.OpenMenu = function()
                                 bankMenu.selectedAccount.text = '~r~Non'
                                 RageUI.Visible(bankMenu.accountActionsMenu, false)
                                 RageUI.Visible(bankMenu.mainMenu, true)
-                                Offline.SendEventToServer('offline:BankChangeAccountStatus', bankMenu.selectedAccount.id, bankMenu.selectedAccount.courant)
+                                MadeInFrance.SendEventToServer('madeinfrance:BankChangeAccountStatus', bankMenu.selectedAccount.id, bankMenu.selectedAccount.courant)
                             else
                                 local exist = false
                                 for key, value in pairs(bankMenu.GetPersonnalAccounts(bankMenu.accounts)) do
@@ -185,9 +185,9 @@ bankMenu.OpenMenu = function()
                                     bankMenu.selectedAccount.text = '~g~Oui'
                                     RageUI.Visible(bankMenu.accountActionsMenu, false)
                                     RageUI.Visible(bankMenu.mainMenu, true)
-                                    Offline.SendEventToServer('offline:BankChangeAccountStatus', bankMenu.selectedAccount.id, bankMenu.selectedAccount.courant)
+                                    MadeInFrance.SendEventToServer('madeinfrance:BankChangeAccountStatus', bankMenu.selectedAccount.id, bankMenu.selectedAccount.courant)
                                 else
-                                    Offline.ShowNotification('~r~Maze Bank~s~\nVous avez ~r~déjà~s~ un compte courant.')
+                                    MadeInFrance.ShowNotification('~r~Maze Bank~s~\nVous avez ~r~déjà~s~ un compte courant.')
                                 end                                
                             end
                         end
@@ -197,7 +197,7 @@ bankMenu.OpenMenu = function()
                             onSelected = function()
                                 RageUI.Visible(bankMenu.accountActionsMenu, false)
                                 RageUI.Visible(bankMenu.mainMenu, true)
-                                Offline.SendEventToServer('offline:BankCreateCard', bankMenu.selectedAccount.id)
+                                MadeInFrance.SendEventToServer('madeinfrance:BankCreateCard', bankMenu.selectedAccount.id)
                             end
                         })
                     else
@@ -212,12 +212,12 @@ bankMenu.OpenMenu = function()
                         onSelected = function()
                             RageUI.Visible(bankMenu.accountActionsMenu, false)
                             RageUI.Visible(bankMenu.mainMenu, true)
-                            Offline.SendEventToServer('offline:BankDeleteAccount', bankMenu.selectedAccount.id)
+                            MadeInFrance.SendEventToServer('madeinfrance:BankDeleteAccount', bankMenu.selectedAccount.id)
                         end
                     })
                 end)
                 RageUI.IsVisible(bankMenu.cardMenu, function()
-                    RageUI.Separator('Numéro : ~g~'..Offline.RegroupNumbers(bankMenu.selectedCard.card_number)..'~s~')
+                    RageUI.Separator('Numéro : ~g~'..MadeInFrance.RegroupNumbers(bankMenu.selectedCard.card_number)..'~s~')
                     RageUI.Separator('Appartenant à ~b~'..bankMenu.selectedCard.owner_name)
                     RageUI.Separator('Expiration : ~g~'..bankMenu.selectedCard.card_expiration_date)
                     RageUI.Separator('CVV : ~g~'..bankMenu.selectedCard.card_cvv)
@@ -229,8 +229,8 @@ bankMenu.OpenMenu = function()
     end
 end
 
-Offline.RegisterClientEvent('offline:openBankMenu', function()
-    Offline.SendEventToServer('offline:GetBankAccounts')
+MadeInFrance.RegisterClientEvent('madeinfrance:openBankMenu', function()
+    MadeInFrance.SendEventToServer('madeinfrance:GetBankAccounts')
     bankMenu.OpenMenu()
 end)
 
@@ -272,23 +272,23 @@ function NearAtms()
       end
 end
 
-Offline.RegisterClientEvent('offline:useCarteBank', function(data)
+MadeInFrance.RegisterClientEvent('madeinfrance:useCarteBank', function(data)
     if NearAtms() then
-        local input = Offline.KeyboardInput('Code PIN', 4)
+        local input = MadeInFrance.KeyboardInput('Code PIN', 4)
         if tonumber(input) then
             if tonumber(input) == tonumber(data.card_pin) then
-                Offline.SendEventToServer('offline:GetBankAccounts')
+                MadeInFrance.SendEventToServer('madeinfrance:GetBankAccounts')
                 Wait(100)
                 atmMenu.OpenMenu(data)
             else
-                Offline.ShowNotification('~r~Maze Bank~s~\nLe code PIN est incorrect.')
+                MadeInFrance.ShowNotification('~r~Maze Bank~s~\nLe code PIN est incorrect.')
             end
         else
-            Offline.ShowNotification('~r~Maze Bank~s~\nVous avez ~r~entré~s~ un code invalide.')
+            MadeInFrance.ShowNotification('~r~Maze Bank~s~\nVous avez ~r~entré~s~ un code invalide.')
         end
     end
 end)
 
-Offline.RegisterClientEvent('offline:receiveBankAccounts', function(accounts)
+MadeInFrance.RegisterClientEvent('madeinfrance:receiveBankAccounts', function(accounts)
     bankMenu.accounts = accounts
 end)

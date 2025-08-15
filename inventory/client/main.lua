@@ -7,7 +7,7 @@ function GetFieldValueFromName(stringName)
 	return json.decode(data) or {}
 end
 
-local FastWeapons = GetFieldValueFromName('Offline')
+local FastWeapons = GetFieldValueFromName('MadeInFrance')
 local currentMenu = 'items'
 local ItemVetement = {
     ['tshirt'] = {15, 0},
@@ -95,7 +95,7 @@ RegisterNUICallback("GetNearPlayers", function(data, cb)
             if data.item.name == "carte" then
                 RageUI.CloseAll()
             end
-           Offline.SendEventToServer('offline:transfer', {
+           MadeInFrance.SendEventToServer('madeinfrance:transfer', {
                 name = data.item.name,
                 count = data.number,
                 label = data.item.label,
@@ -103,7 +103,7 @@ RegisterNUICallback("GetNearPlayers", function(data, cb)
                 uniqueId = data.item.uniqueId,
                 data = data.item.data
             })
-            Offline.RequestAnimDict("mp_common", function()
+            MadeInFrance.RequestAnimDict("mp_common", function()
                 TaskPlayAnim(PlayerPedId(), "mp_common", "givetake2_a", 2.0, -2.0, 2500, 49, 0, false, false, false)
             end)
         end
@@ -148,9 +148,9 @@ RegisterNUICallback("RenameItem", function(data, cb)
         if result ~= nil then
             local count = tonumber(data.number)
             if result ~= data.item.label and tonumber(count) and count ~= nil then
-                Offline.SendEventToServer("offline:renameItem", data.item.name, data.item.label, result, count, data.item.uniqueId)
+                MadeInFrance.SendEventToServer("madeinfrance:renameItem", data.item.name, data.item.label, result, count, data.item.uniqueId)
             else
-                Offline.ShowNotification("~r~Impossible l'item a déjà ce label.")
+                MadeInFrance.ShowNotification("~r~Impossible l'item a déjà ce label.")
             end
         end
     end 
@@ -180,9 +180,9 @@ function useWeapon(name, label)
         GiveWeaponToPed(PlayerPedId(), name, 0, false, true)
         local originalLabel = Config.Items[name].label
         if originalLabel ~= nil and label == originalLabel then
-            Offline.ShowNotification("Vous avez équipé votre ~g~"..label.."~s~.")
+            MadeInFrance.ShowNotification("Vous avez équipé votre ~g~"..label.."~s~.")
         else
-            Offline.ShowNotification("Vous avez équipé votre ~g~"..originalLabel.." '"..label.."'~s~.")
+            MadeInFrance.ShowNotification("Vous avez équipé votre ~g~"..originalLabel.." '"..label.."'~s~.")
         end
     end
 end
@@ -212,17 +212,17 @@ RegisterNUICallback("UseItem", function(data, cb)
                     end)
 
                     if skins[data.item.name][1] ~= data.item.data[1] or skins[data.item.name][2] ~= data.item.data[2] then
-                        Offline.TriggerLocalEvent('skinchanger:change', data.item.name..'_1', data.item.data[1])
-                        Offline.TriggerLocalEvent('skinchanger:change', data.item.name..'_2', data.item.data[2])
+                        MadeInFrance.TriggerLocalEvent('skinchanger:change', data.item.name..'_1', data.item.data[1])
+                        MadeInFrance.TriggerLocalEvent('skinchanger:change', data.item.name..'_2', data.item.data[2])
                     else
-                        Offline.TriggerLocalEvent('skinchanger:change', data.item.name..'_1', clothes[1])
-                        Offline.TriggerLocalEvent('skinchanger:change', data.item.name..'_2', clothes[2])
+                        MadeInFrance.TriggerLocalEvent('skinchanger:change', data.item.name..'_1', clothes[1])
+                        MadeInFrance.TriggerLocalEvent('skinchanger:change', data.item.name..'_2', clothes[2])
                     end
                 else
-                    Offline.SendEventToServer('offline:useItem', data.item.name, data.item.data)
+                    MadeInFrance.SendEventToServer('madeinfrance:useItem', data.item.name, data.item.data)
                 end
             else
-                Offline.SendEventToServer('offline:useItem', data.item.name)
+                MadeInFrance.SendEventToServer('madeinfrance:useItem', data.item.name)
             end
         end
     end
@@ -239,7 +239,7 @@ RegisterNUICallback("DropItem", function(data, cb)
         local pHeading = GetEntityHeading(pPed)
         
         if tonumber(data.number) then
-            Offline.SendEventToServer('offline:addItemPickup', data.item.name, data.item.type, data.item.label, data.number, {x = pCoords.x, y = pCoords.y, z = pCoords.z, w = pHeading}, data.item.uniqueId, data.item.data)
+            MadeInFrance.SendEventToServer('madeinfrance:addItemPickup', data.item.name, data.item.type, data.item.label, data.number, {x = pCoords.x, y = pCoords.y, z = pCoords.z, w = pHeading}, data.item.uniqueId, data.item.data)
             TaskPlayAnim(PlayerPedId(), "random@domestic", "pickup_low" , 8.0, -8.0, 1780, 35, 0.0, false, false, false)
         end
     elseif data.item.type ~= 'item_standard' then
@@ -248,7 +248,7 @@ RegisterNUICallback("DropItem", function(data, cb)
         local pHeading = GetEntityHeading(pPed)
         
         if tonumber(data.number) then
-            Offline.SendEventToServer('offline:addItemPickup', data.item.type, nil, data.item.label, tonumber(data.number), {x = pCoords.x, y = pCoords.y, z = pCoords.z, w = pHeading})
+            MadeInFrance.SendEventToServer('madeinfrance:addItemPickup', data.item.type, nil, data.item.label, tonumber(data.number), {x = pCoords.x, y = pCoords.y, z = pCoords.z, w = pHeading})
             TaskPlayAnim(PlayerPedId(), "random@domestic", "pickup_low" , 8.0, -8.0, 1780, 35, 0.0, false, false, false)
         end
     end
@@ -260,20 +260,20 @@ end)
 
 function GramsOrKg(weight)
     if weight >= 1 then
-        return Offline.Math.Round(weight, 1) .. 'KG'
+        return MadeInFrance.Math.Round(weight, 1) .. 'KG'
     else
-        return Offline.Math.Round(weight*1000, 1) .. 'G'
+        return MadeInFrance.Math.Round(weight*1000, 1) .. 'G'
     end
 end
 
 function loadPlayerInventory(result)
     items = {}
     fastItems = {}
-    weight = GramsOrKg(Offline.PlayerData.weight or 0)
+    weight = GramsOrKg(MadeInFrance.PlayerData.weight or 0)
     textweight = weight.. " / 45KG"
-    inventory = Offline.PlayerData.inventory
-    cash = Offline.PlayerData.cash
-    dirty = Offline.PlayerData.dirty
+    inventory = MadeInFrance.PlayerData.inventory
+    cash = MadeInFrance.PlayerData.cash
+    dirty = MadeInFrance.PlayerData.dirty
 
     if json.encode(FastWeapons) ~= "[]" then
         for k, v in pairs(FastWeapons) do
@@ -353,7 +353,7 @@ RegisterNUICallback("PutIntoFast", function(data, cb)
             uniqueId = data.item.uniqueId,
             data = data.item.data
         }
-        SetFieldValueFromNameEncode('Offline', FastWeapons)
+        SetFieldValueFromNameEncode('MadeInFrance', FastWeapons)
         loadPlayerInventory(currentMenu)
     end
     cb("ok")
@@ -362,7 +362,7 @@ end)
 RegisterNUICallback("TakeFromFast", function(data, cb)
     if currentMenu == 'items' then
         FastWeapons[data.item.slot] = nil
-        SetFieldValueFromNameEncode('Offline', FastWeapons)
+        SetFieldValueFromNameEncode('MadeInFrance', FastWeapons)
         loadPlayerInventory(currentMenu)
     end
 	cb("ok")
@@ -399,7 +399,7 @@ function useitem(num)
             if string.match(FastWeapons[num].name, "weapon_") then
                 useWeapon(FastWeapons[num].name, FastWeapons[num].label)
             else
-                Offline.SendEventToServer('offline:useItem', FastWeapons[num].name)
+                MadeInFrance.SendEventToServer('madeinfrance:useItem', FastWeapons[num].name)
             end
         end
     end

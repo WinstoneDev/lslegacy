@@ -12,8 +12,8 @@ local GridType = RageUI.Enum {
 
 local GridSprite = {
     [GridType.Default] = { Dictionary = "pause_menu_pages_char_mom_dad", Texture = "nose_grid", },
-    [GridType.Horizontal] = { Dictionary = "offline", Texture = "horizontal_grid", },
-    [GridType.Vertical] = { Dictionary = "offline", Texture = "vertical_grid", },
+    [GridType.Horizontal] = { Dictionary = "madeinfrance", Texture = "horizontal_grid", },
+    [GridType.Vertical] = { Dictionary = "madeinfrance", Texture = "vertical_grid", },
 }
 
 local Grid = {
