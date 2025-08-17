@@ -32,3 +32,75 @@ end
 MadeInFrance.Status.GetStamina = function(player)
     return MadeInFrance.Status.GetStatuses(player).stamina
 end
+
+---SetHunger
+---@type function
+---@param player MadeInFrance.Player
+---@param value number
+MadeInFrance.Status.SetHunger = function(player, value)
+    MadeInFrance.Status.GetStatuses(player).hunger = value
+end
+
+---SetThirst
+---@type function
+---@param player MadeInFrance.Player
+---@param value number
+MadeInFrance.Status.SetThirst = function(player, value)
+    MadeInFrance.Status.GetStatuses(player).thirst = value
+end
+
+---SetStamina
+---@type function
+---@param player MadeInFrance.Player
+---@param value number
+MadeInFrance.Status.SetStamina = function(player, value)
+    MadeInFrance.Status.GetStatuses(player).stamina = value
+end
+
+---AddHunger
+---@type function
+---@param player MadeInFrance.Player
+---@param value number
+MadeInFrance.Status.AddHunger = function(player, value)
+    MadeInFrance.Status.GetStatuses(player).hunger = MadeInFrance.Status.GetHunger(player) + value
+end
+
+---AddThirst
+---@type function
+---@param player MadeInFrance.Player
+---@param value number
+MadeInFrance.Status.AddThirst = function(player, value)
+    MadeInFrance.Status.GetStatuses(player).thirst = MadeInFrance.Status.GetThirst(player) + value
+end
+
+---AddStamina
+---@type function
+---@param player MadeInFrance.Player
+---@param value number
+MadeInFrance.Status.AddStamina = function(player, value)
+    MadeInFrance.Status.GetStatuses(player).stamina = MadeInFrance.Status.GetStamina(player) + value
+end
+
+---RemoveHunger
+---@type function
+---@param player MadeInFrance.Player
+---@param value number
+MadeInFrance.Status.RemoveHunger = function(player, value)
+    MadeInFrance.Status.GetStatuses(player).hunger = MadeInFrance.Status.GetHunger(player) - value
+end
+
+---RemoveThirst
+---@type function
+---@param player MadeInFrance.Player
+---@param value number
+MadeInFrance.Status.RemoveThirst = function(player, value)
+    MadeInFrance.Status.GetStatuses(player).thirst = MadeInFrance.Status.GetThirst(player) - value
+end
+
+---RemoveStamina
+---@type function
+---@param player MadeInFrance.Player
+---@param value number
+MadeInFrance.Status.RemoveStamina = function(player, value)
+    MadeInFrance.Status.GetStatuses(player).stamina = MadeInFrance.Status.GetStamina(player) - value
+end
