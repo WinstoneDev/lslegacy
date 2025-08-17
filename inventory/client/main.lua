@@ -34,11 +34,9 @@ Citizen.CreateThread(function()
                 DisableControlAction(1, 142, true)
             end
 
-            local inventory = GetPlayerInventoryItems()
-            for k, v in pairs(inventory) do
+            for k, v in pairs(MadeInFrance.PlayerData.inventory) do
                 if v.name == currentWeapon then
                     v.data.ammo = GetAmmoInPedWeapon(playerPed, GetHashKey(currentWeapon))
-                    print(v.data.ammo)
                 end
             end
 
@@ -335,6 +333,7 @@ function loadPlayerInventory(result, vehicle)
                             count = v.count,
                             uniqueId = v.uniqueId,
                             data = v.data,
+                            ammo = v.data and v.data.ammo or nil,
                             type = "item_standard",
                             usable = false
                         })
@@ -390,6 +389,7 @@ function loadPlayerInventory(result, vehicle)
                             uniqueId = v.uniqueId,
                             data = v.data,
                             type = "item_standard",
+                            ammo = v.data and v.data.ammo or nil,
                             usable = false
                         })
                     end
@@ -449,6 +449,7 @@ function loadPlayerInventory(result, vehicle)
                             uniqueId = v.uniqueId,
                             data = v.data,
                             type = "item_standard",
+                            ammo = v.data and v.data.ammo or nil,
                             usable = false
                         })
                     end
@@ -504,6 +505,7 @@ function loadPlayerInventory(result, vehicle)
                             uniqueId = v.uniqueId,
                             data = v.data,
                             type = "item_standard",
+                            ammo = v.data and v.data.ammo or nil,
                             usable = false
                         })
                     end
@@ -583,6 +585,7 @@ function loadPlayerInventory(result, vehicle)
                             uniqueId = v.uniqueId,
                             data = v.data,
                             type = "item_standard",
+                            ammo = v.data and v.data.ammo or nil,
                             usable = false
                         })
                     end
@@ -636,6 +639,7 @@ function loadPlayerInventory(result, vehicle)
                             uniqueId = v.uniqueId,
                             data = v.data,
                             type = "item_standard",
+                            ammo = v.data and v.data.ammo or nil,
                             usable = false
                         })
                     end
@@ -695,6 +699,7 @@ function loadPlayerInventory(result, vehicle)
                             uniqueId = v.uniqueId,
                             data = v.data,
                             type = "item_standard",
+                            ammo = v.data and v.data.ammo or nil,
                             usable = false
                         })
                     end
@@ -748,6 +753,7 @@ function loadPlayerInventory(result, vehicle)
                             uniqueId = v.uniqueId,
                             data = v.data,
                             type = "item_standard",
+                            ammo = v.data and v.data.ammo or nil,
                             usable = false
                         })
                     end
@@ -798,7 +804,7 @@ function loadPlayerInventory(result, vehicle)
                     data = v.data,
                     type = "item_standard",
                     usable = true,
-                    ammo = v.data.ammo
+                    ammo = v.data and v.data.ammo or nil
                 })
             end
         end
@@ -826,6 +832,7 @@ function loadPlayerInventory(result, vehicle)
                             uniqueId = v.uniqueId,
                             data = v.data,
                             type = "item_standard",
+                            ammo = v.data and v.data.ammo or nil,
                             usable = false
                         })
                     end
@@ -879,6 +886,7 @@ function loadPlayerInventory(result, vehicle)
                             uniqueId = v.uniqueId,
                             data = v.data,
                             type = "item_standard",
+                            ammo = v.data and v.data.ammo or nil,
                             usable = false
                         })
                     end
@@ -938,6 +946,7 @@ function loadPlayerInventory(result, vehicle)
                             uniqueId = v.uniqueId,
                             data = v.data,
                             type = "item_standard",
+                            ammo = v.data and v.data.ammo or nil,
                             usable = false
                         })
                     end
@@ -991,6 +1000,7 @@ function loadPlayerInventory(result, vehicle)
                             uniqueId = v.uniqueId,
                             data = v.data,
                             type = "item_standard",
+                            ammo = v.data and v.data.ammo or nil,
                             usable = false
                         })
                     end
@@ -1168,6 +1178,17 @@ RegisterNUICallback("UnloadWeapon", function(data, cb)
         if data.item.ammo > 0 then
             closeInventory()
             unloadWeapon(data.item.name, data.item.ammo)
+            if currentWeapon ~= nil then
+                GiveWeaponToPed(PlayerPedId(), "weapon_unarmed", 0, false, true)
+                currentWeapon = nil
+            end
+            Wait(500)
+            for i, v in pairs(MadeInFrance.PlayerData.inventory) do
+                if v.name == data.item.name then
+                    v.data.ammo = 0
+                    break
+                end
+            end
             cb('ok')
         end
     end
