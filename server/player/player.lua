@@ -57,10 +57,16 @@ AddEventHandler("registerPlayer", function()
                     coords = vector3(0, 0, 0),
                     weight = MadeInFrance.Inventory.GetInventoryWeight({}) or 0,
                     health = 200,
+                    armor = 0
                     skin = nil,
                     cash = Config.Informations["StartMoney"].cash,
                     dirty = Config.Informations["StartMoney"].dirty,
-                    group = Config.StaffGroups[0]
+                    group = Config.StaffGroups[0],
+                    status = {
+                        hunger = 100,
+                        thirst = 100
+                        stamina = 100
+                    }
                 }
                 MySQL.Async.insert('INSERT INTO players (identifier, discordId, token, characterInfos, coords) VALUES(@identifier, @discordId, @token, @characterInfos, @coords)', {
                     ['@identifier'] = MadeInFrance.ServerPlayers[source].identifier,
@@ -114,7 +120,8 @@ AddEventHandler("registerPlayer", function()
                     skin = json.decode(result[1].skin),
                     cash = json.decode(result[1].money).cash,
                     dirty = json.decode(result[1].money).dirty,
-                    group = result[1].group
+                    group = result[1].group,
+                    status = json.decode(result[1].status)
                 }
                 MySQL.Async.execute('UPDATE players SET token = @token, discordId = @discordId WHERE identifier = @identifier', {
                     ['@token'] = MadeInFrance.ServerPlayers[source].token,

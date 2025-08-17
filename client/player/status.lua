@@ -1,0 +1,3 @@
+MadeInFrance.Status = {}
+MadeInFrance.Statuses = {}
+
