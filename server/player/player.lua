@@ -57,14 +57,14 @@ AddEventHandler("registerPlayer", function()
                     coords = vector3(0, 0, 0),
                     weight = MadeInFrance.Inventory.GetInventoryWeight({}) or 0,
                     health = 200,
-                    armor = 0
+                    armor = 0,
                     skin = nil,
                     cash = Config.Informations["StartMoney"].cash,
                     dirty = Config.Informations["StartMoney"].dirty,
                     group = Config.StaffGroups[0],
                     status = {
                         hunger = 100,
-                        thirst = 100
+                        thirst = 100,
                         stamina = 100
                     }
                 }
