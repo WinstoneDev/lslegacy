@@ -64,7 +64,7 @@ atmMenu.OpenMenu = function(data)
     else
         atmMenu.opened = true
         RageUI.Visible(atmMenu.mainMenu, true)
-        CreateThread(function()
+        Citizen.CreateThread(function()
             while atmMenu.opened do
                 Wait(0)
                 RageUI.IsVisible(atmMenu.mainMenu, function()
@@ -115,7 +115,7 @@ bankMenu.OpenMenu = function()
     else
         bankMenu.opened = true
         RageUI.Visible(bankMenu.mainMenu, true)
-        CreateThread(function()
+        Citizen.CreateThread(function()
             while bankMenu.opened do
                 Wait(0)
                 RageUI.IsVisible(bankMenu.mainMenu, function()

@@ -31,7 +31,7 @@ function VisiblePed(id, freeze)
 end
 
 function spawnPlayer(spawnIdx, cb)
-    CreateThread(function()
+    Citizen.CreateThread(function()
         local spawn = {}
 
         if type(spawnIdx) == 'table' then
@@ -98,7 +98,7 @@ AddEventHandler('skinchanger:modelLoaded', function()
     SetEntityHealth(PlayerPedId(), MadeInFrance.PlayerData.health)
 end)
 
-CreateThread(function()
+Citizen.CreateThread(function()
     TriggerServerEvent('registerPlayer')
     while MadeInFrance.PlayerData.coords == nil do Wait(5) end
     spawnPlayer({x = MadeInFrance.PlayerData.coords.x, y = MadeInFrance.PlayerData.coords.y, z = MadeInFrance.PlayerData.coords.z, model = GetHashKey("mp_m_freemode_01"), heading = 215.0}, function()

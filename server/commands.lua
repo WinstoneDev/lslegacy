@@ -166,17 +166,17 @@ end, {help = "Permet de déconnecter un joueur", validate = false, arguments = {
 MadeInFrance.RegisterCommand('sync', 0, function(player, args, showError, rawCommand)
 	local source = player.source
 	MySQL.Async.execute('UPDATE players SET coords = @coords, inventory = @inventory, money = @money, health = @health, skin = @skin WHERE id = @id', {
-        ['@coords'] = json.encode(MadeInFrance.ServerPlayers[source].coords),
+        ['@coords'] = json.encode(MadeInFrance.GetEntityCoords(source)),
         ['@inventory'] = json.encode(MadeInFrance.ServerPlayers[source].inventory),
         ['@money'] = json.encode({cash = MadeInFrance.ServerPlayers[source].cash, dirty = MadeInFrance.ServerPlayers[source].dirty}),
         ['@id'] = MadeInFrance.ServerPlayers[source].id,
         ['@health'] = GetEntityHealth(GetPlayerPed(source)),
 		['@skin'] = json.encode(MadeInFrance.ServerPlayers[source].skin)
     })
-	MadeInFrance.SendEventToClient('UpdatePlayer', source, MadeInFrance.ServerPlayers[source])
+	MadeInFrance.SendEventToClient('UpdateServerPlayer', source)
 	MadeInFrance.SendEventToClient('UpdateDatastore', source, MadeInFrance.DataStore)
 	Wait(500)
-	MadeInFrance.SendEventToClient('UpdateServerPlayer', source)
+	MadeInFrance.SendEventToClient('UpdatePlayer', source, MadeInFrance.ServerPlayers[source])
 	MadeInFrance.SendEventToClient('notify', source, 'Sync', 'Vous avez bien synchronisé votre personnage.', 'success')
 end, {help = "Permet de synchroniser son joueur"}, false)
 
@@ -215,8 +215,28 @@ MadeInFrance.RegisterCommand('giveitem', 1, function(player, args, showError, ra
 	local targetPlayer = args.playerId
 
 	if item and targetPlayer then
-    	MadeInFrance.Inventory.AddItemInInventory(targetPlayer, item, quantity)
-		MadeInFrance.SendEventToClient('notify', targetPlayer.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. 'x ' .. MadeInFrance.Inventory.GetInfosItem(item).label, 'success')
+		if item == 'money' or item == 'dirty' then
+			if item == 'money' then
+				MadeInFrance.Money.AddPlayerMoney(targetPlayer, quantity)
+				MadeInFrance.SendEventToClient('notify', targetPlayer.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. '$', 'success')
+			elseif item == 'dirty' then
+				MadeInFrance.Money.AddPlayerDirtyMoney(targetPlayer, quantity)
+				MadeInFrance.SendEventToClient('notify', targetPlayer.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. '$', 'success')
+			end
+			return
+		end
+		if not string.match(item, 'weapon_') then
+			MadeInFrance.Inventory.AddItemInInventory(targetPlayer, item, quantity)
+			MadeInFrance.SendEventToClient('notify', targetPlayer.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. 'x ' .. MadeInFrance.Inventory.GetInfosItem(item).label, 'success')
+		else
+			data = {
+				ammo = 0,
+				components = {},
+				serialNumber = MadeInFrance.GenerateNumeroDeSerie()
+			}
+			MadeInFrance.Inventory.AddItemInInventory(targetPlayer, item, quantity, nil, nil, data)
+			MadeInFrance.SendEventToClient('notify', targetPlayer.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. 'x ' .. MadeInFrance.Inventory.GetInfosItem(item).label, 'success')
+		end
 	else
 		showError('Veuillez spécifier un item et un joueur cible.')
 	end

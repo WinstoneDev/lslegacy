@@ -3,7 +3,7 @@ MadeInFrance.RegisterClientEvent('CreatePerso', function()
     local interior = GetInteriorAtCoordsWithType(vector3(399.9, -998.7, -100.0), "v_mugshot")
     LoadInterior(interior)
     while not IsInteriorReady(interior) do
-        Citizen.Wait(0)
+        Wait(0)
     end
     MadeInFrance.SendEventToServer("SetBucket", math.random(1, 25000))
     MadeInFrance.TriggerLocalEvent('skinchanger:change', 'sex', 0)
@@ -41,7 +41,7 @@ MadeInFrance.RegisterClientEvent('CreatePerso', function()
     DisplayRadar(false)
     CreatorLoadContent()
     AnimationIntro()
-    Citizen.Wait(1000)
+    Wait(1000)
     FreezeEntityPosition(player, true)
     ClearPlayerWantedLevel(PlayerId())
     MenuCreaPerso()
@@ -810,7 +810,7 @@ function MenuCreaPerso()
         Wait(1000)
         CreaPerso.openedMenu = true
         RageUI.Visible(CreaPerso.menu, true)
-        CreateThread(function()
+        Citizen.CreateThread(function()
             while CreaPerso.openedMenu do
                 if not inIdentity then
                     local ToucheGauche, ToucheDroite = IsDisabledControlPressed(1, 44), IsDisabledControlPressed(1, 51)
@@ -824,7 +824,7 @@ function MenuCreaPerso()
                     if not CreaPerso.Board then
                         CreateBoard()
                         RequestAnimDict("mp_character_creation@customise@male_a")
-                        Citizen.Wait(100)
+                        Wait(100)
                         TaskPlayAnim(GetPlayerPed(-1), "mp_character_creation@customise@male_a", "loop", 2.5, -1.0,-1, 2, 0, 0, 0,0)
                         CreaPerso.Board = true
                     end

@@ -7,9 +7,9 @@ function AnimationIntro()
     while not HasAnimDictLoaded('mp_character_creation@customise@male_a') do
         Wait(10)
     end
-    Citizen.Wait(100)
+    Wait(100)
     TaskPlayAnim(PlayerPedId(), "mp_character_creation@customise@male_a", "intro", 8.0, -8.0, -1, 0, 0.0, false, false, false)
-    Citizen.Wait(4685)
+    Wait(4685)
     TaskPlayAnim(GetPlayerPed(-1), "mp_character_creation@customise@male_a", "loop", 1.0, -1.0,-1, 2, 0, 0, 0, 0)
 end
 
@@ -20,7 +20,7 @@ function LoadScaleform(scaleform)
 	local handle = RequestScaleformMovie(scaleform)
 	if handle ~= 0 then
 		while not HasScaleformMovieLoaded(handle) do
-			Citizen.Wait(0)
+			Wait(0)
 		end
 	end
 	return handle

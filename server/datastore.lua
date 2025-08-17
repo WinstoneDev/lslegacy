@@ -2,12 +2,59 @@
 MadeInFrance.DataStore = {}
 MadeInFrance.DataStores = {}
 
-MySQL.ready(function()
+Citizen.CreateThread(function()
     MySQL.Async.fetchAll('SELECT * FROM datastore', {}, function(result)
         for k, v in pairs(result) do
-            MadeInFrance.DataStore[v.name] = v
+            MadeInFrance.DataStores[v.name] = v
         end
     end)
+    for k, v in pairs(MadeInFrance.DataStores) do
+        if type(v.inventory) ~= "table" then
+            v.inventory = json.decode(v.inventory)
+        end
+    end
+end)
+
+Citizen.CreateThread(function()
+    Wait(5000)
+    while true do
+        for name, datastore in pairs(MadeInFrance.DataStores) do
+            if datastore then
+                if type(datastore.inventory) ~= "table" then
+                    datastore.inventory = json.decode(datastore.inventory)
+                end
+                MySQL.Async.fetchScalar(
+                    'SELECT id FROM datastore WHERE name = @name AND type = @type LIMIT 1',
+                    { ['@name'] = name, ['@type'] = datastore.type },
+                    function(id)
+                        if id then
+                            MySQL.Async.execute(
+                                'UPDATE datastore SET inventory = @inventory, money = @money, dirty = @dirty WHERE id = @id',
+                                {
+                                    ['@id'] = id,
+                                    ['@inventory'] = json.encode(datastore.inventory),
+                                    ['@money'] = datastore.money or 0,
+                                    ['@dirty'] = datastore.dirty or 0
+                                }
+                            )
+                        else
+                            MySQL.Async.execute(
+                                'INSERT INTO datastore (type, name, inventory, money, dirty) VALUES (@type, @name, @inventory, @money, @dirty)',
+                                {
+                                    ['@name'] = name,
+                                    ['@type'] = datastore.type,
+                                    ['@inventory'] = json.encode(datastore.inventory),
+                                    ['@money'] = datastore.money or 0,
+                                    ['@dirty'] = datastore.dirty or 0
+                                }
+                            )
+                        end
+                    end
+                )
+            end
+        end
+        Wait(15000)
+    end
 end)
 
 ---GetDataStore
@@ -58,6 +105,84 @@ MadeInFrance.DataStore.CanStoreItem = function(datastore, item, quantity)
     else
         return false
     end
+end
+
+---AddMoney
+---@type function
+---@param datastore table
+---@param amount number
+---@return any
+---@public
+MadeInFrance.DataStore.AddMoney = function(datastore, amount)
+    if not datastore or not amount then return end
+    if not datastore.money then datastore.money = 0 end
+    datastore.money = datastore.money + amount
+    MadeInFrance.SendEventToClient('UpdateDatastore', source, MadeInFrance.DataStores)
+end
+
+---AddDirtyMoney
+---@type function
+---@param datastore table
+---@param amount number
+---@return any
+---@public
+MadeInFrance.DataStore.AddDirtyMoney = function(datastore, amount)
+    if not datastore or not amount then return end
+    if not datastore.dirty then datastore.dirty = 0 end
+    datastore.dirty = datastore.dirty + amount
+    MadeInFrance.SendEventToClient('UpdateDatastore', source, MadeInFrance.DataStores)
+end
+
+---RemoveMoney
+---@type function
+---@param datastore table
+---@param amount number
+---@return any
+---@public
+MadeInFrance.DataStore.RemoveMoney = function(datastore, amount)
+    if not datastore or not amount then return false end
+    if not datastore.money then datastore.money = 0 end
+    if datastore.money >= amount then
+        datastore.money = datastore.money - amount
+        MadeInFrance.SendEventToClient('UpdateDatastore', source, MadeInFrance.DataStores)
+    end
+end
+
+---RemoveDirtyMoney
+---@type function
+---@param datastore table
+---@param amount number
+---@return any
+---@public
+MadeInFrance.DataStore.RemoveDirtyMoney = function(datastore, amount)
+    if not datastore or not amount then return false end
+    if not datastore.dirty then datastore.dirty = 0 end
+    if datastore.dirty >= amount then
+        datastore.dirty = datastore.dirty - amount
+        MadeInFrance.SendEventToClient('UpdateDatastore', source, MadeInFrance.DataStores)
+    end
+end
+
+---GetMoney
+---@type function
+---@param datastore table
+---@return number
+---@public
+MadeInFrance.DataStore.GetMoney = function(datastore)
+    if not datastore then return 0 end
+    if not datastore.money then datastore.money = 0 end
+    return datastore.money
+end
+
+---GetDirtyMoney
+---@type function
+---@param datastore table
+---@return number
+---@public
+MadeInFrance.DataStore.GetDirtyMoney = function(datastore)
+    if not datastore then return 0 end
+    if not datastore.dirty then datastore.dirty = 0 end
+    return datastore.dirty
 end
 
 ---GetInventoryItem
@@ -203,31 +328,4 @@ end
 MadeInFrance.RegisterServerEvent('RegisterDataStore', function(name, data)
     if not name or not data then return end
     MadeInFrance.DataStore.RegisterDataStore(name, data)
-end)
-
-Citizen.CreateThread(function()
-    while true do
-        Citizen.Wait(30000)
-        for name, datastore in pairs(MadeInFrance.DataStores) do
-            if datastore then
-                MySQL.Async.fetchScalar(
-                    'SELECT id FROM datastore WHERE name = @name AND type = @type LIMIT 1',
-                    { ['@name'] = name, ['@type'] = datastore.type },
-                    function(id)
-                        if id then
-                            MySQL.Async.execute(
-                                'UPDATE datastore SET inventory = @inventory WHERE id = @id',
-                                { ['@id'] = id, ['@inventory'] = json.encode(datastore.inventory) }
-                            )
-                        else
-                            MySQL.Async.execute(
-                                'INSERT INTO datastore (type, name, inventory) VALUES (@type, @name, @inventory)',
-                                { ['@name'] = name, ['@type'] = datastore.type, ['@inventory'] = json.encode(datastore.inventory) }
-                            )
-                        end
-                    end
-                )
-            end
-        end
-    end
 end)

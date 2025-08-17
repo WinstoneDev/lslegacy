@@ -93,7 +93,7 @@ function Administration:TeleportCoords(vector, peds)
 		if GetGameTimer() - TimerToGetGround > 3500 then
 			break
 		end
-		Citizen.Wait(0)
+		Wait(0)
 	end
 
 	SetEntityCoordsNoOffset(peds, x, y, z)
@@ -103,7 +103,7 @@ function Administration:TeleportCoords(vector, peds)
 		if GetGameTimer() - TimerToGetGround > 3500 then
 			break
 		end
-		Citizen.Wait(0)
+		Wait(0)
 	end
 
 	local retval, GroundPosZ = GetGroundZCoordWithOffsets(x, y, z)
@@ -149,7 +149,7 @@ function CreateScaleform(name, data)
 	local scaleform = RequestScaleformMovie(name)
 
 	while not HasScaleformMovieLoaded(scaleform) do
-		Citizen.Wait(0)
+		Wait(0)
 	end
 
 	SetScaleformParams(scaleform, data)
@@ -217,7 +217,7 @@ function Administration:ControlInCam()
     if IsControlJustPressed(0, Administration.DetailsScalform.speed.control) then
         DisplayOnscreenKeyboard(false, "FMMC_KEY_TIP8", "", Administration.SpeedNoclip, "", "", "", 5)
         while UpdateOnscreenKeyboard() == 0 do
-            Citizen.Wait(10)
+            Wait(10)
             if UpdateOnscreenKeyboard() == 1 and GetOnscreenKeyboardResult() and string.len(GetOnscreenKeyboardResult()) >= 1 then
                 Administration.SpeedNoclip = tonumber(GetOnscreenKeyboardResult()) or 1.0
                 break
@@ -376,7 +376,7 @@ function Administration:Spectate(pPos)
         SetEntityCollision(pPed, false, false)
         FreezeEntityPosition(pPed, true)
         SetCamCoord(Administration.Cam, GetEntityCoords(player))
-        CreateThread(function()
+        Citizen.CreateThread(function()
             while Administration.InSpec do
                 Wait(0)
                 Administration:RenderCam()

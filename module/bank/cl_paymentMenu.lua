@@ -33,7 +33,7 @@ paymentMenu.openPaymentMenu = function(transactionMessage, price, inventory)
         paymentMenu.opened = true
         RageUI.Visible(paymentMenu.mainMenu, true)
     end
-    CreateThread(function()
+    Citizen.CreateThread(function()
         while paymentMenu.opened do
             RageUI.IsVisible(paymentMenu.mainMenu, function()
                 if paymentMenu.paymentType ~= nil then

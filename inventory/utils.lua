@@ -42,10 +42,10 @@ function GetNearbyPlayer(distance)
     end
 
     MadeInFrance.ShowNotification(nil, "Appuyer sur E pour valider~n~Appuyer sur A pour changer de cible~n~Appuyer sur X pour annuler", 'info')
-    Citizen.Wait(100)
+    Wait(100)
     local pSelect = 1
     while GetGameTimer() <= Timer do
-        Citizen.Wait(0)
+        Wait(0)
         DisableControlAction(0, 38, true)
         DisableControlAction(0, 73, true)
         DisableControlAction(0, 44, true)

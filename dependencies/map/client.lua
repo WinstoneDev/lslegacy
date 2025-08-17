@@ -63,7 +63,7 @@
 --             color1 = opts.color1 or -1
 --             color2 = opts.color2 or -1
 
---             CreateThread(function()
+--             Citizen.CreateThread(function()
 --                 local hash = GetHashKey(name)
 --                 RequestModel(hash)
 

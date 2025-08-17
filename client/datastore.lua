@@ -17,7 +17,22 @@ MadeInFrance.DataStore.RegisterTrunk = function(vehicle)
     local data = {
         inventory = {},
         name = 'trunk_' .. plate,
-        type = 'trunk'
+        type = 'trunk',
+        money = 0,
+        dirty = 0
+    }
+    MadeInFrance.SendEventToServer('RegisterDataStore', data.name, data)
+end
+
+MadeInFrance.DataStore.RegisterBAG = function(vehicle)
+    if not vehicle then return end
+    local plate = GetVehicleNumberPlateText(vehicle)
+    local data = {
+        inventory = {},
+        name = 'bag_' .. plate,
+        type = 'trunk',
+        money = 0,
+        dirty = 0
     }
     MadeInFrance.SendEventToServer('RegisterDataStore', data.name, data)
 end
@@ -25,7 +40,7 @@ end
 MadeInFrance.DataStore.GetInventoryWeight = function(inventory)
     if not inventory then return end
     local weight = 0
-
+    Wait(100)
     for key, value in pairs(inventory) do
         weight = weight + Config.Items[value.name].weight * value.count
     end
@@ -42,6 +57,12 @@ MadeInFrance.DataStore.GetTrunk = function(plate)
     end
 end
 
-RegisterCommand('test', function()
-    MadeInFrance.DataStore.RegisterTrunk(GetVehiclePedIsIn(PlayerPedId(), false))
-end)
+MadeInFrance.DataStore.GetBAG = function(plate)
+    if not plate then return end
+    local name = 'bag_' .. plate
+    if MadeInFrance.DataStores[name] then
+        return MadeInFrance.DataStores[name]
+    else
+        return nil
+    end
+end

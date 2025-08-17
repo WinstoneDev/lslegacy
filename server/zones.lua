@@ -45,7 +45,7 @@ end
 
 MadeInFrance.RegisterServerEvent('zones:haveInteract', function(zone)
     local _source = source
-    CreateThread(function()
+    Citizen.CreateThread(function()
         if MadeInFrance.RegisteredZones[zone].interactFunc then
             MadeInFrance.RegisteredZones[zone].interactFunc(_source)
         end
@@ -61,7 +61,6 @@ end)
 Citizen.CreateThread(function()
     Wait(15000)
     while true do
-        Citizen.Wait(0)
         for index, player in pairs(MadeInFrance.ServerPlayers) do
             local _coords = MadeInFrance.GetEntityCoords(player.source)
               for name, zone in pairs(MadeInFrance.RegisteredZones) do
@@ -74,6 +73,7 @@ Citizen.CreateThread(function()
                 end
             end
         end
+        Wait(0)
     end
 end)
 

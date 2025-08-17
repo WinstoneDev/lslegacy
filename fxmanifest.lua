@@ -53,6 +53,7 @@ server_scripts {
     'server/function.lua',
     'server/commands.lua',
     'server/zones.lua',
+    'server/datastore.lua',
     'server/player/*.lua',
     'inventory/server/main.lua',
     'module/adminmenu/sv_admin.lua',
@@ -62,8 +63,7 @@ server_scripts {
     'module/bank/sv_paymentMenu.lua',
     'module/clothshop/sv_clothshop.lua',
     'server/deferallsCards.lua',
-    'server/anticheat.lua',
-    'server/datastore.lua',
+    'server/anticheat.lua'
 }
 
 exports {

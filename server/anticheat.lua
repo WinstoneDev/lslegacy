@@ -331,7 +331,7 @@ MadeInFrance.AddEventHandler("playerConnecting", function(name, setKickReason, d
 
                 if permanent == 1 then
                     playerBanned = true
-                    CreateThread(function()
+                    Citizen.CreateThread(function()
                         while true do
                             local card = Shared.Anticheat.AfficheBan(reason, idban, "Permanent")
                             deferrals.presentCard(card)
@@ -351,7 +351,7 @@ MadeInFrance.AddEventHandler("playerConnecting", function(name, setKickReason, d
                     else
                         local endtime = os.time({year = expiration.year, month = expiration.month, day = expiration.day, hour = expiration.hour + hourban, min = expiration.min, sec = expiration.sec})
                         playerBanned = true
-                        CreateThread(function()
+                        Citizen.CreateThread(function()
                             while true do
                                 local card = Shared.Anticheat.AfficheBan(reason, idban, os.date("%d", endtime).."-"..os.date("%m", endtime).."-"..os.date("%Y", endtime).." "..os.date("%H", endtime)..":"..os.date("%M", endtime))
                                 deferrals.presentCard(card)

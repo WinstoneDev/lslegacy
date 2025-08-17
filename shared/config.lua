@@ -51,6 +51,7 @@ Config.Items = {
     ['weapon_combatpistol'] = {label = "Glock-17", weight = 1, props = "w_pi_combatpistol"},
     ['idcard'] = {label = "Carte d'identité", weight = 0.005, props = "ch_prop_swipe_card_01c"},
     ['carte'] = {label = "Carte banquaire", weight = 0.005, props = "ch_prop_swipe_card_01c"},
+    ['9mm_ammo'] = {label = "9mm", weight = 0.001, props = "prop_ld_ammo_pack_01"},
 
     ['tshirt'] = {label = "Haut", weight = 0.005, props = "prop_ld_tshirt_01"},
     ['pants'] = {label = "Pantalon", weight = 0.005, props = "prop_cs_box_clothes"},
@@ -62,6 +63,11 @@ Config.Items = {
     ['helmet'] = {label = "Chapeau", weight = 0.005, props = "prop_cs_box_clothes"},
     ['glasses'] = {label = "Lunettes", weight = 0.005, props = "prop_cs_box_clothes"},
     ['ears'] = {label = "Oreillette", weight = 0.005, props = "prop_cs_box_clothes"}
+}
+
+Config.AmmoForWeapon = {
+    ['weapon_pistol'] = '9mm_ammo',
+    ['weapon_combatpistol'] = '9mm_ammo'
 }
 
 Config.InsertItems = {

@@ -52,7 +52,7 @@ local description = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, se
 
 Citizen.CreateThread(function()
     while (true) do
-        Citizen.Wait(1.0)
+        Wait(1.0)
 
         RageUI.IsVisible(mainMenu, function()
 

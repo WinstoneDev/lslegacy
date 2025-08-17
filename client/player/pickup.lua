@@ -51,7 +51,7 @@ Citizen.CreateThread(function()
                         MadeInFrance.IsRetrieving = true
                         RequestAnimDict('random@domestic')
                         while not HasAnimDictLoaded('random@domestic') do
-                            Citizen.Wait(100)
+                            Wait(100)
                         end
                         TaskPlayAnim(pPed, 'random@domestic', 'pickup_low', 8.0, 8.0, -1, 0, 1, 0, 0, 0)
                         Wait(150)

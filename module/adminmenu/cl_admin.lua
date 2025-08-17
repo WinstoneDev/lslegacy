@@ -32,7 +32,7 @@ function AdminMenu:OpenMenu()
         MadeInFrance.SendEventToServer('AdminServerPlayers')
         Wait(250)
         while AdminMenu.AllPlayers == nil do Wait(5) end
-        CreateThread(function()
+        Citizen.CreateThread(function()
             while AdminMenu.opened do
                 RageUI.IsVisible(AdminMenu.mainMenu, function()
                     RageUI.Button('Liste des joueurs', nil, {}, true, {}, AdminMenu.subMenu)

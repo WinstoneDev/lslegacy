@@ -152,37 +152,37 @@ AddEventHandler("registerPlayer", function()
     end
 end)
 
-CreateThread(function()
-    while true do
-        for k, player in pairs(MadeInFrance.ServerPlayers) do
-            local coords = MadeInFrance.GetEntityCoords(player.source)
-            if player.coords ~= coords then
-                player.coords = coords
-                MadeInFrance.SendEventToClient('UpdatePlayer', player.source, MadeInFrance.ServerPlayers[player.source])
-                MadeInFrance.SendEventToClient('UpdateDatastore', player.source, MadeInFrance.DataStores)
-                Wait(500)
-                MadeInFrance.SendEventToClient('UpdateServerPlayer', player.source)
-            end
-        end
-        Wait(30000)
-    end
-end)
-
-CreateThread(function()
+Citizen.CreateThread(function()
+    Wait(10000)
     while true do
         for k, player in pairs(MadeInFrance.ServerPlayers) do
             local _source = player.source
             local coords = MadeInFrance.GetEntityCoords(_source)
+            player.coords = coords
             MySQL.Async.execute('UPDATE players SET coords = @coords, skin = @skin, inventory = @inventory, money = @money WHERE id = @id', {
-                ['@coords'] = json.encode(MadeInFrance.ServerPlayers[_source].coords),
+                ['@coords'] = json.encode(coords),
                 ['@id'] = MadeInFrance.ServerPlayers[_source].id,
                 ["@skin"] = json.encode(MadeInFrance.ServerPlayers[_source].skin),
                 ['@inventory'] = json.encode(MadeInFrance.ServerPlayers[_source].inventory),
                 ['@money'] = json.encode({cash = MadeInFrance.ServerPlayers[_source].cash, dirty = MadeInFrance.ServerPlayers[_source].dirty}),
                 ['@health'] = GetEntityHealth(GetPlayerPed(_source))
-            })  
+            }) 
+            MadeInFrance.SendEventToClient('UpdateServerPlayer', _source)
+            MadeInFrance.SendEventToClient('UpdateDatastore', _source, MadeInFrance.DataStores)
+            Wait(500)
+            MadeInFrance.SendEventToClient('UpdatePlayer', _source, MadeInFrance.ServerPlayers[_source])
+           
         end
-        Wait(30000)
+        Wait(60000)
+    end
+end)
+
+
+Citizen.CreateThread(function()
+    Wait(10000)
+    while true do
+        MadeInFrance.SendEventToClient('notify', -1, 'Synchronisation automatique', 'Vous avez bien synchronisé votre personnage.', 'success')
+        Wait(5*60000)
     end
 end)
 

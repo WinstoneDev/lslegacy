@@ -56,6 +56,6 @@ MadeInFrance.RegisterClientEvent('zones:enteredZone', function(zone)
             RageUI.CloseAll()
             break
         end
-        Wait(10)
+        Wait(0)
     end
 end)

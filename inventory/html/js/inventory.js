@@ -77,14 +77,6 @@ window.addEventListener("message", function(event) {
                     $("#give").addClass("disabled");
                     $("#rename").addClass("disabled");
                     $("#use").addClass("disabled");
-                } else {
-                    if (itemData !== undefined && itemData.name !== undefined) {
-                        $(this).css('background-image', 'url(\'img/items/' + itemData.name + '.png\'');
-                        $("#drop").removeClass("disabled");
-                        $("#use").removeClass("disabled");
-                        $("#rename").removeClass("disabled");
-                        $("#give").removeClass("disabled");
-                    }
                 }
             },
             stop: function() {
@@ -140,6 +132,13 @@ function inventorySetup(items, fastItems, crMenu, image) {
         $('#item-' + index).data('item', item);
         $('#item-' + index).data('inventory', "main");
     });
+
+    if (crMenu === "weapons") {
+        $("#unload").show();
+    } else {
+        $("#unload").hide();
+    }
+
 
     $("#playerInventoryFastItems").html("");
     var i;
@@ -212,7 +211,6 @@ function secondInventorySetup(items, fastItems) {
         $('#itemOther-' + index).data('item', item);
         $('#itemOther-' + index).data('inventory', "second");
     });
-
     $("#playerInventoryFastItems").html("");
     var i;
     for (i = 1; i < 4; i++) {
@@ -232,7 +230,6 @@ function secondInventorySetup(items, fastItems) {
 function shopInventorySetup(items) {
     $("#otherInventory").html("");
     $.each(items, function(index, item) {
-        //count = setCount(item)
         cost = setCost(item);
         $("#otherInventory").append('<div class="slot"><div id="itemOther-' + index + '" class="item" style = "background-image: url(\'img/items/' + item.name + '.png\')">' +
             '<div class="item-count">' + cost + '</div> <div class="item-name">' + item.label + '</div> </div ><div class="item-name-bg"></div></div>');
@@ -258,6 +255,14 @@ $(function() {
             type: 'clothes'
         }));
     })
+
+    $(".raccours3").click(function() {
+        $(".ui").fadeIn();
+
+        $.post("https://madeinfrance/OngletInventory", JSON.stringify({
+            type: 'weapons'
+        }));
+    })
 })
 
 function disableInventory(ms) {
@@ -275,15 +280,15 @@ function setCount(item) {
         count = item.count
     }
 
-    if (item.type === "item_weapon") {
+    if (item.name.startsWith("weapon_")) {
         if (count == 0) {
             count = "";
         } else {
-            count = '<img src="img/bullet.png" class="ammoIcon"> ' + item.count;
+            count = '<img src="img/bullet.png" class="ammoIcon"> ' + item.ammo;
         }
     }
-
-    if (item.type === "item_account" || item.type === "item_money") {
+    
+    if (item.type === "item_dirty" || item.type === "item_cash") {
         count = formatMoney(item.count);
     }
 
@@ -335,19 +340,35 @@ $(document).ready(function() {
         }
     });
 
-    $('#use').droppable({
-    hoverClass: 'hoverControl',
-    drop: function(event, ui) {
-        let itemData = ui.draggable.data("item");
-        let inventoryType = ui.draggable.data("inventory");
+    $("#unload").html(invLocale.unloadItem);
 
-        if (itemData.usable && inventoryType === "main") {
-            $.post("http://madeinfrance/UseItem", JSON.stringify({
-                item: itemData
-            }));
+    $('#unload').droppable({
+        hoverClass: 'hoverControl',
+        drop: function(event, ui) {
+            let itemData = ui.draggable.data("item");
+            let inventoryType = ui.draggable.data("inventory");
+
+            if (inventoryType === "main" && itemData.name.startsWith("weapon_")) {
+                $.post("http://madeinfrance/UnloadWeapon", JSON.stringify({
+                    item: itemData
+                }));
+            }
         }
-    }
-});
+    });
+
+    $('#use').droppable({
+        hoverClass: 'hoverControl',
+        drop: function(event, ui) {
+            let itemData = ui.draggable.data("item");
+            let inventoryType = ui.draggable.data("inventory");
+
+            if (itemData.usable && inventoryType === "main") {
+                $.post("http://madeinfrance/UseItem", JSON.stringify({
+                    item: itemData
+                }));
+            }
+        }
+    });
 
     $('#give').droppable({
         hoverClass: 'hoverControl',

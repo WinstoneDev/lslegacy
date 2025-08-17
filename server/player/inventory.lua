@@ -343,21 +343,66 @@ MadeInFrance.RegisterServerEvent('transfer', function(table)
     local targetPed = GetPlayerPed(table.target)
     local player = MadeInFrance.GetPlayerFromId(source)
     local target = MadeInFrance.GetPlayerFromId(table.target)
+    
     if #(GetEntityCoords(sourcePed)-GetEntityCoords(targetPed)) <= 7.0 then
-        if MadeInFrance.Inventory.GetInventoryItem(player, table.name) ~= nil then
-            if MadeInFrance.Inventory.GetInventoryItem(player, table.name).count >= table.count then
-                if MadeInFrance.Inventory.CanCarryItem(target, table.name, table.count) then
-                    MadeInFrance.Inventory.RemoveItemInInventory(player, table.name, table.count, table.label)
-                    MadeInFrance.Inventory.AddItemInInventory(target, table.name, table.count, table.label, table.uniqueId, table.data)
-                    MadeInFrance.SendEventToClient('notify', table.target, nil, table.count..' '..table.label..' ont été ajouté(s) à votre inventaire.', 'success')
-                    MadeInFrance.SendEventToClient('notify', source, nil, table.count..' '..table.label..' ont été retiré(s) de votre inventaire.', 'success')
-                else
-                    MadeInFrance.SendEventToClient('notify', table.target, nil, 'Vous ne pouvez pas transporter cet objet.', 'error')
-                    MadeInFrance.SendEventToClient('notify', source, nil, 'La personne ne peut pas transporter cet objet.', 'error')
+        if table.type == 'item_standard' then
+            if MadeInFrance.Inventory.GetInventoryItem(player, table.name) ~= nil then
+                if MadeInFrance.Inventory.GetInventoryItem(player, table.name).count >= table.count then
+                    if MadeInFrance.Inventory.CanCarryItem(target, table.name, table.count) then
+                        MadeInFrance.Inventory.RemoveItemInInventory(player, table.name, table.count, table.label)
+                        MadeInFrance.Inventory.AddItemInInventory(target, table.name, table.count, table.label, table.uniqueId, table.data)
+                        MadeInFrance.SendEventToClient('notify', table.target, nil, table.count..' '..table.label..' ont été ajouté(s) à votre inventaire.', 'success')
+                        MadeInFrance.SendEventToClient('notify', source, nil, table.count..' '..table.label..' ont été retiré(s) de votre inventaire.', 'success')
+                    else
+                        MadeInFrance.SendEventToClient('notify', table.target, nil, 'Vous ne pouvez pas transporter cet objet.', 'error')
+                        MadeInFrance.SendEventToClient('notify', source, nil, 'La personne ne peut pas transporter cet objet.', 'error')
+                    end
                 end
+            end
+        elseif table.type == 'item_cash' then
+            if MadeInFrance.Money.GetPlayerMoney(player) >= table.count then
+                MadeInFrance.Money.RemovePlayerMoney(player, table.count)
+                MadeInFrance.Money.AddPlayerMoney(target, table.count)
+                MadeInFrance.SendEventToClient('notify', table.target, nil, 'Vous avez reçu '..table.count..' $.', 'success')
+                MadeInFrance.SendEventToClient('notify', source, nil, 'Vous avez donné '..table.count..' $ à la personne.', 'success')
+            else
+                MadeInFrance.SendEventToClient('notify', source, nil, 'Vous n\'avez pas assez d\'argent.', 'error')
+            end
+        elseif table.type == 'item_dirty' then
+            if MadeInFrance.Money.GetPlayerDirtyMoney(player) >= table.count then
+                MadeInFrance.Money.RemovePlayerDirtyMoney(player, table.count)
+                MadeInFrance.Money.AddPlayerDirtyMoney(target, table.count)
+                MadeInFrance.SendEventToClient('notify', table.target, nil, 'Vous avez reçu '..table.count..' $.', 'success')
+                MadeInFrance.SendEventToClient('notify', source, nil, 'Vous avez donné '..table.count..' $ à la personne.', 'success')
+            else
+                MadeInFrance.SendEventToClient('notify', source, nil, 'Vous n\'avez pas assez d\'argent sale.', 'error')
             end
         end
     else
         MadeInFrance.SendEventToClient('notify', source, nil, 'Il n\'y a aucune personne aux alentours de vous.', 'error')
+    end
+end)
+
+MadeInFrance.RegisterServerEvent('giveItem', function(item, quantity)
+    local _source = source
+    local player = MadeInFrance.GetPlayerFromId(_source)
+    if player then
+        if MadeInFrance.Inventory.CanCarryItem(player, item, quantity) then
+            MadeInFrance.Inventory.AddItemInInventory(player, item, quantity)
+            MadeInFrance.SendEventToClient('notify', _source, nil, "Vous avez reçu "..quantity.." "..Config.Items[item].label, 'success')
+        end
+    end
+end)
+
+MadeInFrance.RegisterServerEvent('removeItem', function(item, quantity)
+    local _source = source
+    local player = MadeInFrance.GetPlayerFromId(_source)
+    if player then
+        if MadeInFrance.Inventory.GetInventoryItem(player, item) then
+            if MadeInFrance.Inventory.GetInventoryItem(player, item).count >= quantity then
+                MadeInFrance.Inventory.RemoveItemInInventory(player, item, quantity)
+                MadeInFrance.SendEventToClient('notify', _source, nil, "Vous avez perdu "..quantity.." "..Config.Items[item].label, 'success')
+            end
+        end
     end
 end)

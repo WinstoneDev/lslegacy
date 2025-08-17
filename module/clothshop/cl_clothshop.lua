@@ -119,7 +119,7 @@ function Clothes:OpenMenu(header)
             end
         end)
         Wait(550)
-        CreateThread(function()
+        Citizen.CreateThread(function()
             while Clothes.opened do
                 RageUI.IsVisible(Clothes.mainMenu, function()
                     RageUI.Button('Hauts', nil, {}, true, {}, Clothes.subMenu)

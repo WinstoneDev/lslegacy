@@ -59,16 +59,16 @@ MadeInFrance.KeyboardInput = function(textEntry, maxLength)
     blockinput = true
 
     while UpdateOnscreenKeyboard() ~= 1 and UpdateOnscreenKeyboard() ~= 2 do
-        Citizen.Wait(0)
+        Wait(0)
     end
 
     if UpdateOnscreenKeyboard() ~= 2 then
         local result = GetOnscreenKeyboardResult()
-        Citizen.Wait(500)
+        Wait(500)
         blockinput = false
         return result
     else
-        Citizen.Wait(500)
+        Wait(500)
         blockinput = false
         return nil
     end

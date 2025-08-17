@@ -29,21 +29,20 @@ function GetOriginalLabel(item)
     end
 end
 
-CreateThread( function()
+Citizen.CreateThread( function()
     while true do
         TriggerEvent('skinchanger:getSkin', function(skin)
             MadeInFrance.PlayerData.skin = skin
         end)
-       Wait(10000)
+       Wait(60000)
     end
 end)
 
-CreateThread( function()
+Citizen.CreateThread( function()
     for a = 1, 15 do
         EnableDispatchService(a, false)
     end
     while true do
-        Wait(100)
         playerPed = PlayerPedId()
         playerLocalisation = GetEntityCoords(playerPed)
         ClearAreaOfCops(playerLocalisation.x, playerLocalisation.y, playerLocalisation.z, 400.0)
@@ -58,9 +57,6 @@ CreateThread( function()
         SetRelationshipBetweenGroups(1, GetHashKey("AMBIENT_GANG_CULT"), GetHashKey("PLAYER"))
         SetRelationshipBetweenGroups(1, GetHashKey("COP"), GetHashKey("PLAYER"))
         SetRelationshipBetweenGroups(1, GetHashKey("SECURITY_GUARD"), GetHashKey("PLAYER"))
-        SetPedCanBeTargettedByPlayer(PlayerPedId(), false)
-        RestorePlayerStamina(PlayerId(), 1.0)
-        SetEntityProofs(PlayerPedId(), false, true, true, true, false, false, false, false)
         DisablePlayerVehicleRewards(PlayerId()) 
         DisableControlAction(0, 199, true) 
         SetPedSuffersCriticalHits(PlayerPedId(), false) 
@@ -79,6 +75,14 @@ CreateThread( function()
                 end
             end
         end
+        Wait(100)
+    end
+end)
+
+Citizen.CreateThread(function()
+    while true do
+        HideHudComponentThisFrame(14)
+        Wait(0)
     end
 end)
 

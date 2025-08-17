@@ -64,6 +64,19 @@ RegisterCommand("car", function(source, args, rawCommand)
     TaskWarpPedIntoVehicle(pPed, veh, -1)
 end, false)
 
+RegisterCommand("setplate", function(source, args, rawCommand)
+    local pPed = PlayerPedId()
+    local vehicle = GetVehiclePedIsIn(pPed, false)
+    if vehicle and vehicle ~= 0 then
+        local plate = args[1] or "DEFAULT"
+        SetVehicleNumberPlateText(vehicle, plate)
+        MadeInFrance.ShowNotification(nil, 'La plaque du véhicule a été changée en : ' .. plate, 'success')
+    else
+        MadeInFrance.ShowNotification(nil, 'Vous n\'êtes pas dans un véhicule.', 'error')
+    end
+end, false)
+
+
 RegisterCommand("revive", function(source, args, rawCommand)
     local pPed = PlayerPedId()
     ReviveInjuredPed(pPed)
@@ -126,7 +139,7 @@ end)
 
 --     -- 3) garder le HUD visible un moment si tu veux
 --     local untilTime = GetGameTimer() + (showMs or 5000)
---     CreateThread(function()
+--     Citizen.CreateThread(function()
 --         while GetGameTimer() < untilTime do
 --             Wait(0)
 --             DisplayCash(true)               -- autorise le rendu du cash

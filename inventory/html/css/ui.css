@@ -41,11 +41,19 @@ body {
     display: table-cell;
 }
 
+.raccours3 {
+    display: table-cell;
+}
+
 .raccours1:hover {
     opacity: 0.7
 }
 
 .raccours2:hover {
+    opacity: 0.7
+}
+
+.raccours3:hover {
     opacity: 0.7
 }
 

@@ -6,39 +6,42 @@ MadeInFrance.Token = {}
 MadeInFrance.addTokenClient = {}
 MadeInFrance.PlayersLimit = {}
 MadeInFrance.RateLimit = {
-    ['AdminServerPlayers'] = 35,
-    ['MessageAdmin'] = 25,
-    ['TeleportPlayers'] = 35,
-    ['SetBucket'] = 30,
-    ['saveskin'] = 70,
-    ['SetIdentity'] = 30,
-    ['zones:haveInteract'] = 50,
-    ['renameItem'] = 25,
-    ['useItem'] = 40,
-    ['transfer'] = 40,
-    ['addItemPickup'] = 30,
-    ['removeItemPickup'] = 40,
-    ['haveExitedZone'] = 40,
-    ['GetBankAccounts'] = 40,
-    ['BankCreateAccount'] = 25,
-    ['AddClothesInInventory'] = 30,
-    ['BankChangeAccountStatus'] = 30,
-    ['BankDeleteAccount'] = 30,
-    ['BankCreateCard'] = 30,
-    ['BankwithdrawMoney'] = 30,
-    ['BankAddMoney'] = 30,
-    ['attemptToPayMenu'] = 30,
-    ['pay'] = 30,
-    ['ReceiveUpdateServerPlayer'] = 30,
-    ['RegisterDataStore'] = 30,
-    ['PutIntoTrunk'] = 30,
-    ['TakeFromTrunk'] = 30,
+    ['AdminServerPlayers'] = 25,
+    ['MessageAdmin'] = 15,
+    ['TeleportPlayers'] = 25,
+    ['SetBucket'] = 20,
+    ['saveskin'] = 20,
+    ['SetIdentity'] = 20,
+    ['zones:haveInteract'] = 40,
+    ['renameItem'] = 15,
+    ['useItem'] = 30,
+    ['transfer'] = 30,
+    ['addItemPickup'] = 20,
+    ['removeItemPickup'] = 30,
+    ['haveExitedZone'] = 30,
+    ['GetBankAccounts'] = 30,
+    ['BankCreateAccount'] = 15,
+    ['AddClothesInInventory'] = 20,
+    ['BankChangeAccountStatus'] = 20,
+    ['BankDeleteAccount'] = 20,
+    ['BankCreateCard'] = 20,
+    ['BankwithdrawMoney'] = 20,
+    ['BankAddMoney'] = 20,
+    ['attemptToPayMenu'] = 20,
+    ['pay'] = 20,
+    ['ReceiveUpdateServerPlayer'] = 20,
+    ['RegisterDataStore'] = 20,
+    ['PutIntoTrunk'] = 20,
+    ['TakeFromTrunk'] = 20,
+    ['giveItem'] = 20,
+    ['removeItem'] = 20,
+    ['removeAmmo'] = 20
 }
 
 Citizen.CreateThread(function()
     while true do 
-        Wait(15000)
         MadeInFrance.PlayersLimit = {}
+        Wait(15000)
     end
 end)
 
@@ -326,4 +329,18 @@ MadeInFrance.CreateDuplicationOfATableWithoutFunctions = function(table)
         end
     end
     return newTable
+end
+
+---GenerateNumeroDeSerie
+---@return string
+---@public
+MadeInFrance.GenerateNumeroDeSerie = function()
+    local chars = {}
+    for i = 1, 3 do
+        chars[i] = string.char(math.random(65, 90))
+    end
+    for i = 4, 10 do
+        chars[i] = string.char(math.random(48, 57))
+    end
+    return table.concat(chars)
 end
