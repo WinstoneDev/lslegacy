@@ -287,6 +287,8 @@ Shared.Anticheat.Unban = function(id)
     end)
 end
 
+local ServerPassword = "mif"
+
 MadeInFrance.AddEventHandler("playerConnecting", function(name, setKickReason, deferrals)
     local _src = source
     playerBanned = false
@@ -303,27 +305,26 @@ MadeInFrance.AddEventHandler("playerConnecting", function(name, setKickReason, d
 
     deferrals.defer()
 
-    if not license or license == '' or license == nil then
-        return deferrals.done("Votre license rockstar est introuvable. Veuillez revenir plus tard ou signaler ce problème à l'équipe d'administration du serveur.")
+    if not license or license == '' then
+        return deferrals.done("Votre license rockstar est introuvable.")
     end
 
-    if not discord or discord == '' or discord == nil then
-        return deferrals.done("Votre discord est introuvable. Veuillez revenir plus tard ou signaler ce problème à l'équipe d'administration du serveur.")
+    if not discord or discord == '' then
+        return deferrals.done("Votre discord est introuvable.")
     end
 
-    if not steam or steam == '' or steam == nil then
-        return deferrals.done("Votre steam est introuvable. Veuillez revenir plus tard ou signaler ce problème à l'équipe d'administration du serveur.")
+    if not steam or steam == '' then
+        return deferrals.done("Votre steam est introuvable.")
     end
 
     if MadeInFrance.GetPlayerFromIdentifier(license) then
-        return deferrals.done("Une erreur s'est produite lors du chargement de votre personnage !\nCette erreur est causée par un joueur sur le serveur qui a la même steam que vous.")
+        return deferrals.done("Erreur : un joueur utilise déjà cette license.")
     end
 
     if json.encode(Shared.Anticheat.BanList) ~= "[]" then
         for k, v in pairs(Shared.Anticheat.BanList) do
             if tostring(v.token) == token or tostring(v.steam) == tostring(steam) or tostring(v.ip) == tostring(ip) or tostring(v.discord) == tostring(discord) or tostring(v.license) == tostring(license) or tostring(v.xbl) == tostring(xbl) or tostring(v.live) == tostring(live) then
                 reason = v.reason
-                moderator = v.moderator
                 idban = v.idban
                 expiration = json.decode(v.expiration)
                 hourban = v.hourban
@@ -340,20 +341,16 @@ MadeInFrance.AddEventHandler("playerConnecting", function(name, setKickReason, d
                     end)
                 else 
                     local difftime = os.difftime(os.time(), os.time{year = expiration.year, month = expiration.month, day = expiration.day, hour = expiration.hour, min = expiration.min, sec = expiration.sec}) / 3600
-
-                    if (hourban-math.floor(difftime)) <= 0 then
+                    if (hourban - math.floor(difftime)) <= 0 then
                         deferrals.done()
-
                         table.remove(Shared.Anticheat.BanList, k)
-                        MySQL.Async.execute("DELETE FROM `banlist` WHERE `idban` = @idban", {
-                            ["@idban"] = idban,
-                        })
+                        MySQL.Async.execute("DELETE FROM `banlist` WHERE `idban` = @idban", {["@idban"] = idban})
                     else
                         local endtime = os.time({year = expiration.year, month = expiration.month, day = expiration.day, hour = expiration.hour + hourban, min = expiration.min, sec = expiration.sec})
                         playerBanned = true
                         Citizen.CreateThread(function()
                             while true do
-                                local card = Shared.Anticheat.AfficheBan(reason, idban, os.date("%d", endtime).."-"..os.date("%m", endtime).."-"..os.date("%Y", endtime).." "..os.date("%H", endtime)..":"..os.date("%M", endtime))
+                                local card = Shared.Anticheat.AfficheBan(reason, idban, os.date("%d-%m-%Y %H:%M", endtime))
                                 deferrals.presentCard(card)
                                 Wait(1000)
                             end
@@ -363,7 +360,52 @@ MadeInFrance.AddEventHandler("playerConnecting", function(name, setKickReason, d
             end
         end
     end
+
     if not playerBanned then
-        deferrals.done()
+        Citizen.CreateThread(function()
+            local validated = false
+
+            while not validated do
+                local card = DeferralCards.Card:Create({
+                    body = {
+                        DeferralCards.Container:Create({
+                            items = {
+                                DeferralCards.CardElement:TextBlock({
+                                    text = "Mot de passe requis pour rejoindre le serveur.",
+                                    weight = 'Bolder',
+                                    size = 'Large',
+                                    horizontalAlignment = 'center'
+                                }),
+                                DeferralCards.Input:Text({
+                                    id = "password",
+                                    placeholder = "Entrez le mot de passe..."
+                                }),
+                                DeferralCards.Container:ActionSet({
+                                    actions = {
+                                        DeferralCards.Action:Submit({
+                                            title = "Valider",
+                                            data = { action = "check_password" }
+                                        })
+                                    }
+                                })
+                            }
+                        })
+                    }
+                })
+
+                deferrals.presentCard(card, function(data, rawData)
+                    if data.action == "check_password" then
+                        if data.password and data.password == ServerPassword then
+                            validated = true
+                            deferrals.done()
+                        else
+                            deferrals.done("Mot de passe incorrect. Merci de réessayer.")
+                        end
+                    end
+                end)
+
+                Wait(1000)
+            end
+        end)
     end
 end)

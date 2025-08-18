@@ -64,7 +64,7 @@ server_scripts {
     'module/bank/sv_bank.lua',
     'module/bank/sv_paymentMenu.lua',
     'module/clothshop/sv_clothshop.lua',
-    'module/needs/sv_needs.lua'
+    'module/needs/sv_needs.lua',
     'server/deferallsCards.lua',
     'server/anticheat.lua'
 }
