@@ -16,9 +16,9 @@ MadeInFrance.RegisterClientEvent = function(name, execute)
         AddEventHandler(name, function(...)
            local getResource = GetInvokingResource()
 
-           if Config.ResourcesClientEvent[getResource] then
+            if Config.ResourcesClientEvent[getResource] then
                 execute(...)
-           elseif getResource == nil then
+            elseif getResource == nil then
                 execute(...)
             else
                MadeInFrance.SendEventToServer("DropInjectorDetected")
@@ -27,7 +27,7 @@ MadeInFrance.RegisterClientEvent = function(name, execute)
         Config.Development.Print("Successfully registered event " .. name)
         MadeInFrance.RegisteredClientEvents[name] = execute
     else
-        return MadeInFrance.Development.Print("Event " .. name .. " already registered")
+        return Config.Development.Print("Event " .. name .. " already registered")
     end
 end
 

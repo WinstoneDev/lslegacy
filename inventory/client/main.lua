@@ -84,12 +84,26 @@ end)
 Keys.Register('K', 'K', 'Ouvrir le coffre du véhicule', function()
     if isInInventory then return end
     local ped = PlayerPedId()
-    vehicle = MadeInFrance.GetClosestVehicle(GetEntityCoords(ped), 3.0)
-    if vehicle ~= 0 then
+    local vehicle = 0
+
+    if IsPedInAnyVehicle(ped, false) then
+        vehicle = GetVehiclePedIsIn(ped, false)
         CurrentVehicle = vehicle
         openTrunkInventory(vehicle)
     else
-        MadeInFrance.ShowNotification(nil, "Aucun véhicule à proximité.", 'error')
+        vehicle = MadeInFrance.GetClosestVehicle(GetEntityCoords(ped), 3.0)
+        if vehicle ~= 0 then
+            if IsPlayerFacingTrunk(ped, vehicle) then
+                CurrentVehicle = vehicle
+                SetVehicleDoorOpen(vehicle, 5, false, false)
+                PlayTrunkAnim(ped, "open")
+                openTrunkInventory(vehicle)
+            else
+                MadeInFrance.ShowNotification(nil, "Vous devez être derrière le coffre.", 'error')
+            end
+        else
+            MadeInFrance.ShowNotification(nil, "Aucun véhicule à proximité.", 'error')
+        end
     end
 end)
 
@@ -175,10 +189,18 @@ function DisableControlInventory()
             DisableControlAction(0, 157, true)
             DisableControlAction(0, 158, true)
             DisableControlAction(0, 160, true)
+
+            if CurrentVehicle ~= nil then
+                DisableControlAction(0, 1, true)
+                DisableControlAction(0, 2, true) 
+                DisableControlAction(0, 59, true) 
+                DisableControlAction(0, 60, true)
+            end
+
             Wait(0)
         end
     end)
-end 
+end
 
 function openInventory()
     isInInventory = true
@@ -191,6 +213,7 @@ function openInventory()
     SetKeepInputMode(true)
     DisableControlInventory()
     DisplayRadar(false)
+    MadeInFrance.Status.Displayed = false
 end
 
 function closeInventory()
@@ -200,7 +223,15 @@ function closeInventory()
     SetNuiFocus(false, false)
     SetKeepInputMode(false)
     DisplayRadar(true)
-    CurrentVehicle = nil
+    MadeInFrance.Status.Displayed = true
+
+    if CurrentVehicle ~= nil then
+        if not IsPedInAnyVehicle(PlayerPedId(), false) then
+            SetVehicleDoorShut(CurrentVehicle, 5, false) -- ferme coffre visuellement
+            PlayTrunkAnim(PlayerPedId(), "close") -- anim seulement si à pied
+        end
+        CurrentVehicle = nil
+    end
 end
 
 function unloadWeapon(name, count)
@@ -229,7 +260,7 @@ function useWeapon(name, label, ammo)
         currentWeapon = name
         GiveWeaponToPed(PlayerPedId(), name, 0, false, true)
         SetPedAmmo(PlayerPedId(), name, ammo)
-        local originalLabel = Config.Items[name].label
+        local originalLabel = GetOriginalLabel(name).label
         if originalLabel ~= nil and label == originalLabel then
             MadeInFrance.ShowNotification(nil, "Vous avez équipé votre "..label..".", 'info')
         else
@@ -251,6 +282,115 @@ function BagOrTrunk(vehicle)
         return 'bag'
     else
         return 'trunk'
+    end
+end
+
+
+function useitem(num)
+    if not isInInventory then
+        if FastWeapons[num] ~= nil then
+            if string.match(FastWeapons[num].name, "weapon_") then
+                useWeapon(FastWeapons[num].name, FastWeapons[num].label, FastWeapons[num].ammo)
+            else
+                if FastWeapons[num].data == nil then
+                    MadeInFrance.SendEventToServer('useItem', FastWeapons[num].name)
+                else
+                    MadeInFrance.SendEventToServer('useItem', FastWeapons[num].name, FastWeapons[num].data)
+                end
+            end
+        end
+    end
+end
+
+function SetKeepInputMode(bool)
+    local threadCreated = false
+    local controlDisabled = {1, 2, 3, 4, 5, 6, 18, 24, 25, 37, 69, 70, 111, 117, 118, 182, 199, 200, 257}
+
+    if SetNuiFocusKeepInput then
+        SetNuiFocusKeepInput(bool)
+    end
+
+    value = bool
+
+    if not threadCreated and bool then
+        threadCreated = true
+
+        Citizen.CreateThread(function()
+            while value do
+                Wait(0)
+
+                for _,v in pairs(controlDisabled) do
+                    DisableControlAction(0, v, true)
+                end
+            end
+
+            threadCreated = false
+        end)
+    end
+end
+
+function IsPlayerFacingTrunk(ped, vehicle)
+    local playerCoords = GetEntityCoords(ped)
+    local trunkCoords = GetWorldPositionOfEntityBone(vehicle, GetEntityBoneIndexByName(vehicle, "boot"))
+    local dist = #(playerCoords - trunkCoords)
+
+    if dist < 2.0 then
+        local vehicleHeading = GetEntityHeading(vehicle)
+        local pedHeading = GetHeadingFromVector_2d((trunkCoords.x - playerCoords.x), (trunkCoords.y - playerCoords.y))
+        local angle = math.abs(vehicleHeading - pedHeading)
+        if angle > 180 then angle = 360 - angle end
+        return angle < 60.0
+    end
+    return false
+end
+
+function PlayTrunkAnim(ped, anim)
+    RequestAnimDict("anim@heists@keycard@") 
+    while not HasAnimDictLoaded("anim@heists@keycard@") do
+        Wait(10)
+    end
+    RequestAnimDict("anim@gangops@morgue@table@") 
+    while not HasAnimDictLoaded("anim@gangops@morgue@table@") do
+        Wait(10)
+    end
+    if anim == "open" then
+        TaskPlayAnim(ped, "anim@gangops@morgue@table@", "player_search", 3.0, -1, -1, 49, 0, false, false, false)
+    elseif anim == "close" then
+        TaskPlayAnim(ped, "anim@heists@keycard@", "exit", 3.0, -1, 2000, 49, 0, false, false, false)
+    end
+end
+
+function openTrunkInventory(vehicle)
+    isInInventory = true
+    currentMenu = 'items'
+    SendNUIMessage({action = "display", type = "trunk"})
+    SendNUIMessage({action = "setWeightText", text = ""})
+    loadPlayerInventory(currentMenu, vehicle)
+    SetNuiFocus(true, true)
+    SetKeepInputMode(true)
+    DisableControlInventory()
+    DisplayRadar(false)
+    MadeInFrance.Status.Displayed = false
+end
+
+function KeyboardInput(textEntry, maxLength)
+    AddTextEntry("Message", textEntry)
+    DisplayOnscreenKeyboard(1, "Message", '', '', '', '', '', maxLength)
+    blockinput = true
+
+    while UpdateOnscreenKeyboard() ~= 1 and UpdateOnscreenKeyboard() ~= 2 do
+        Wait(0)
+    end
+
+    if UpdateOnscreenKeyboard() ~= 2 then
+        local result = GetOnscreenKeyboardResult()
+        Wait(500)
+        blockinput = false
+        return result
+    else
+        Wait(500)
+        blockinput = false
+        return nil
     end
 end
 
@@ -1040,82 +1180,6 @@ function loadPlayerInventory(result, vehicle)
                 end
             end
         end
-    end
-end
-
-function useitem(num)
-    if not isInInventory then
-        if FastWeapons[num] ~= nil then
-            if string.match(FastWeapons[num].name, "weapon_") then
-                useWeapon(FastWeapons[num].name, FastWeapons[num].label, FastWeapons[num].ammo)
-            else
-                if FastWeapons[num].data == nil then
-                    MadeInFrance.SendEventToServer('useItem', FastWeapons[num].name)
-                else
-                    MadeInFrance.SendEventToServer('useItem', FastWeapons[num].name, FastWeapons[num].data)
-                end
-            end
-        end
-    end
-end
-
-function SetKeepInputMode(bool)
-    local threadCreated = false
-    local controlDisabled = {1, 2, 3, 4, 5, 6, 18, 24, 25, 37, 69, 70, 111, 117, 118, 182, 199, 200, 257}
-
-    if SetNuiFocusKeepInput then
-        SetNuiFocusKeepInput(bool)
-    end
-
-    value = bool
-
-    if not threadCreated and bool then
-        threadCreated = true
-
-        Citizen.CreateThread(function()
-            while value do
-                Wait(0)
-
-                for _,v in pairs(controlDisabled) do
-                    DisableControlAction(0, v, true)
-                end
-            end
-
-            threadCreated = false
-        end)
-    end
-end
-
-function openTrunkInventory(vehicle)
-    isInInventory = true
-    currentMenu = 'items'
-    SendNUIMessage({action = "display", type = "trunk"})
-    SendNUIMessage({action = "setWeightText", text = ""})
-    loadPlayerInventory(currentMenu, vehicle)
-    SetNuiFocus(true, true)
-    SetKeepInputMode(true)
-    DisableControlInventory()
-    DisplayRadar(false)
-end
-
-function KeyboardInput(textEntry, maxLength)
-    AddTextEntry("Message", textEntry)
-    DisplayOnscreenKeyboard(1, "Message", '', '', '', '', '', maxLength)
-    blockinput = true
-
-    while UpdateOnscreenKeyboard() ~= 1 and UpdateOnscreenKeyboard() ~= 2 do
-        Wait(0)
-    end
-
-    if UpdateOnscreenKeyboard() ~= 2 then
-        local result = GetOnscreenKeyboardResult()
-        Wait(500)
-        blockinput = false
-        return result
-    else
-        Wait(500)
-        blockinput = false
-        return nil
     end
 end
 

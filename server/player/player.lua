@@ -68,12 +68,13 @@ AddEventHandler("registerPlayer", function()
                         stamina = 100
                     }
                 }
-                MySQL.Async.insert('INSERT INTO players (identifier, discordId, token, characterInfos, coords) VALUES(@identifier, @discordId, @token, @characterInfos, @coords)', {
+                MySQL.Async.insert('INSERT INTO players (identifier, discordId, token, characterInfos, coords, status) VALUES(@identifier, @discordId, @token, @characterInfos, @coords, @status)', {
                     ['@identifier'] = MadeInFrance.ServerPlayers[source].identifier,
                     ['@discordId'] = MadeInFrance.ServerPlayers[source].discordId,
                     ['@token'] = MadeInFrance.ServerPlayers[source].token,
                     ['@characterInfos'] = json.encode(MadeInFrance.ServerPlayers[source].characterInfos),
-                    ['@coords'] = json.encode(MadeInFrance.ServerPlayers[source].coords)
+                    ['@coords'] = json.encode(MadeInFrance.ServerPlayers[source].coords),
+                    ['@status'] = json.encode(MadeInFrance.ServerPlayers[source].status)
                 }, function()
                 end)
                 Wait(500)
@@ -166,13 +167,14 @@ Citizen.CreateThread(function()
             local _source = player.source
             local coords = MadeInFrance.GetEntityCoords(_source)
             player.coords = coords
-            MySQL.Async.execute('UPDATE players SET coords = @coords, skin = @skin, inventory = @inventory, money = @money WHERE id = @id', {
+            MySQL.Async.execute('UPDATE players SET coords = @coords, skin = @skin, inventory = @inventory, money = @money, status = @status WHERE id = @id', {
                 ['@coords'] = json.encode(coords),
                 ['@id'] = MadeInFrance.ServerPlayers[_source].id,
                 ["@skin"] = json.encode(MadeInFrance.ServerPlayers[_source].skin),
                 ['@inventory'] = json.encode(MadeInFrance.ServerPlayers[_source].inventory),
                 ['@money'] = json.encode({cash = MadeInFrance.ServerPlayers[_source].cash, dirty = MadeInFrance.ServerPlayers[_source].dirty}),
-                ['@health'] = GetEntityHealth(GetPlayerPed(_source))
+                ['@health'] = GetEntityHealth(GetPlayerPed(_source)),
+                ['@status'] = json.encode(MadeInFrance.ServerPlayers[_source].status)
             }) 
             MadeInFrance.SendEventToClient('UpdateServerPlayer', _source)
             MadeInFrance.SendEventToClient('UpdateDatastore', _source, MadeInFrance.DataStores)
@@ -196,13 +198,14 @@ end)
 MadeInFrance.AddEventHandler('playerDropped', function()
     local _source = source
     if MadeInFrance.ServerPlayers[_source] then
-        MySQL.Async.execute('UPDATE players SET coords = @coords, inventory = @inventory, money = @money, health = @health, skin = @skin WHERE id = @id', {
+        MySQL.Async.execute('UPDATE players SET coords = @coords, inventory = @inventory, money = @money, health = @health, skin = @skin, status = @status WHERE id = @id', {
             ['@coords'] = json.encode(MadeInFrance.ServerPlayers[_source].coords),
             ['@inventory'] = json.encode(MadeInFrance.ServerPlayers[_source].inventory),
             ['@money'] = json.encode({cash = MadeInFrance.ServerPlayers[_source].cash, dirty = MadeInFrance.ServerPlayers[_source].dirty}),
             ['@id'] = MadeInFrance.ServerPlayers[_source].id,
             ['@health'] = GetEntityHealth(GetPlayerPed(source)),
-            ['@skin'] = json.encode(MadeInFrance.ServerPlayers[_source].skin)
+            ['@skin'] = json.encode(MadeInFrance.ServerPlayers[_source].skin),
+            ['@status'] = json.encode(MadeInFrance.ServerPlayers[_source].status)
         })
         MadeInFrance.ServerPlayers[_source] = nil
         Config.Development.Print("Player " .. _source .. " disconnected")

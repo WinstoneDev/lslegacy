@@ -383,25 +383,65 @@ MadeInFrance.RegisterServerEvent('transfer', function(table)
     end
 end)
 
-MadeInFrance.RegisterServerEvent('giveItem', function(item, quantity)
+MadeInFrance.RegisterServerEvent('giveItem', function(item, quantity, newlabel, uniqueId, data)
     local _source = source
     local player = MadeInFrance.GetPlayerFromId(_source)
     if player then
-        if MadeInFrance.Inventory.CanCarryItem(player, item, quantity) then
-            MadeInFrance.Inventory.AddItemInInventory(player, item, quantity)
-            MadeInFrance.SendEventToClient('notify', _source, nil, "Vous avez reçu "..quantity.." "..Config.Items[item].label, 'success')
+        if item == 'money' or item == 'dirty' then
+			if item == 'money' then
+				MadeInFrance.Money.AddPlayerMoney(player, quantity)
+				MadeInFrance.SendEventToClient('notify', player.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. '$', 'success')
+			elseif item == 'dirty' then
+				MadeInFrance.Money.AddPlayerDirtyMoney(player, quantity)
+				MadeInFrance.SendEventToClient('notify', player.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. '$', 'success')
+			end
+			return
+		end
+
+        if string.match(item, 'food_') then
+            if MadeInFrance.Inventory.CanCarryItem(player, item, quantity) then
+                dataFood = {
+                    durability = 100
+                }
+                MadeInFrance.Inventory.AddItemInInventory(player, item, quantity, newlabel, uniqueId, dataFood)
+                MadeInFrance.SendEventToClient('notify', player.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. 'x ' .. newlabel or MadeInFrance.Inventory.GetInfosItem(item).label, 'success')
+            else
+                MadeInFrance.SendEventToClient('notify', player.source, 'Inventaire', 'Vous ne pouvez pas porter + de cet item.', 'error')
+            end
+            return
         end
+
+		if not string.match(item, 'weapon_') then
+            if MadeInFrance.Inventory.CanCarryItem(player, item, quantity) then
+                MadeInFrance.Inventory.AddItemInInventory(player, item, quantity, newlabel, uniqueId, data)
+                MadeInFrance.SendEventToClient('notify', player.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. 'x ' .. newlabel or MadeInFrance.Inventory.GetInfosItem(item).label, 'success')
+            else
+                MadeInFrance.SendEventToClient('notify', player.source, 'Inventaire', 'Vous ne pouvez pas porter + de cet item.', 'error')
+            end
+		else
+            if MadeInFrance.Inventory.CanCarryItem(player, item, quantity) then
+                dataWeapon = {
+                    ammo = 0,
+                    components = {},
+                    serialNumber = MadeInFrance.GenerateNumeroDeSerie()
+                }
+                MadeInFrance.Inventory.AddItemInInventory(player, item, quantity, nil, nil, dataWeapon)
+                MadeInFrance.SendEventToClient('notify', player.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. 'x ' .. MadeInFrance.Inventory.GetInfosItem(item).label, 'success')
+            else
+                MadeInFrance.SendEventToClient('notify', player.source, 'Inventaire', 'Vous ne pouvez pas porter + de cet item.', 'error')
+            end
+		end
     end
 end)
 
-MadeInFrance.RegisterServerEvent('removeItem', function(item, quantity)
+MadeInFrance.RegisterServerEvent('removeItem', function(item, quantity, label)
     local _source = source
     local player = MadeInFrance.GetPlayerFromId(_source)
     if player then
         if MadeInFrance.Inventory.GetInventoryItem(player, item) then
             if MadeInFrance.Inventory.GetInventoryItem(player, item).count >= quantity then
-                MadeInFrance.Inventory.RemoveItemInInventory(player, item, quantity)
-                MadeInFrance.SendEventToClient('notify', _source, nil, "Vous avez perdu "..quantity.." "..Config.Items[item].label, 'success')
+                MadeInFrance.Inventory.RemoveItemInInventory(player, item, quantity, label)
+                MadeInFrance.SendEventToClient('notify', _source, nil, "Vous avez perdu "..quantity.." "..label or MadeInFrance.Inventory.GetInfosItem(item).label, 'success')
             end
         end
     end

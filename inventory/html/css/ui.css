@@ -22,6 +22,18 @@ body {
     z-index: 0
 }
 
+.durability-bar {
+    position: absolute;
+    bottom: 2px;
+    left: 50%;
+    transform: translateX(-50%);
+    height: 3px;
+    border-radius: 2px;
+    width: 80%; 
+    max-width: 80%; 
+    background-color: green;
+}
+
 .raccours {
     position: relative;
     top: 19.45%;

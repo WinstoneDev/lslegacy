@@ -130,6 +130,26 @@ function inventorySetup(items, fastItems, crMenu, image) {
         $("#playerInventory").append('<div class="slot"><div id="item-' + index + '" class="item" style = "background-image: url(\'img/items/' + item.name + '.png\')">' + '<div class="item-count">' + count + '</div> <div class="item-name">' + item.label + '</div> </div ><div class="item-name-bg"></div></div>');
 
         $('#item-' + index).data('item', item);
+        if (item.data !== undefined) {
+            if (item.data.durability !== undefined) {
+                let durPercent = Number(item.data.durability);
+                let color;
+
+                if (durPercent > 30 && durPercent <= 100) {
+                    color = "green";
+                } else if (durPercent > 20 && durPercent <= 30) {
+                    color = "orange";
+                } else { 
+                    color = "red";
+                }
+
+                let bar = $('<div class="durability-bar"></div>').css({
+                    width: durPercent + '%',
+                    backgroundColor: color
+                });
+                $('#item-' + index).append(bar);
+            }
+        }
         $('#item-' + index).data('inventory', "main");
     });
 
@@ -209,6 +229,26 @@ function secondInventorySetup(items, fastItems) {
         $("#otherInventory").append('<div class="slot"><div id="itemOther-' + index + '" class="item" style = "background-image: url(\'img/items/' + item.name + '.png\')">' +
             '<div class="item-count">' + count + '</div> <div class="item-name">' + item.label + '</div> </div ><div class="item-name-bg"></div></div>');
         $('#itemOther-' + index).data('item', item);
+        if (item.data !== undefined) {
+            if (item.data.durability !== undefined) {
+                let durPercent = Number(item.data.durability);
+                let color;
+
+                if (durPercent > 30 && durPercent <= 100) {
+                    color = "green";
+                } else if (durPercent > 20 && durPercent <= 30) {
+                    color = "orange";
+                } else {
+                    color = "red";
+                }
+
+                let bar = $('<div class="durability-bar"></div>').css({
+                    width: durPercent + '%',
+                    backgroundColor: color
+                });
+                $('#item-' + index).append(bar);
+            }
+        }
         $('#itemOther-' + index).data('inventory', "second");
     });
     $("#playerInventoryFastItems").html("");

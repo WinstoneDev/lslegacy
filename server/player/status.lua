@@ -104,3 +104,17 @@ end
 MadeInFrance.Status.RemoveStamina = function(player, value)
     MadeInFrance.Status.GetStatuses(player).stamina = MadeInFrance.Status.GetStamina(player) - value
 end
+
+CreateThread(function()
+    while true do
+        Wait(Config.Status.UpdateInterval * 1000)
+
+        for _, player in pairs(MadeInFrance.ServerPlayers) do
+            if player and player.status then
+                MadeInFrance.Status.RemoveHunger(player, Config.Status.Hunger.Loss)
+                MadeInFrance.Status.RemoveThirst(player, Config.Status.Thirst.Loss)
+                MadeInFrance.Status.RemoveStamina(player, Config.Status.Stamina.Loss)
+            end
+        end
+    end
+end)

@@ -35,7 +35,8 @@ MadeInFrance.RateLimit = {
     ['TakeFromTrunk'] = 20,
     ['giveItem'] = 20,
     ['removeItem'] = 20,
-    ['removeAmmo'] = 20
+    ['removeAmmo'] = 20,
+    ['updateNumberPlayer'] = 20
 }
 
 Citizen.CreateThread(function()
@@ -142,7 +143,7 @@ end
 ---@public
 MadeInFrance.UseServerEvent = function(eventName, src, ...)
     if MadeInFrance.Event[eventName] then
-        if eventName ~= "updateNumberPlayer" and eventName ~= "DropInjectorDetected" then
+        if eventName ~= "DropInjectorDetected" then
             if not MadeInFrance.PlayersLimit[eventName] then
                 MadeInFrance.PlayersLimit[eventName] = {}
             end
@@ -169,10 +170,8 @@ AddEventHandler("useEvent", function(eventName, token, ...)
         MadeInFrance.UseServerEvent(eventName, _src, ...)
         Config.Development.Print("Successfully triggered server event " .. eventName)
     else
-        if eventName ~= "updateNumberPlayer" and eventName ~= "DropInjectorDetected" and eventName ~= "ReceiveUpdateServerPlayer" and eventName ~= "useItem" then
-            DropPlayer(_src, 'Injector detected ╭∩╮（︶_︶）╭∩╮')
-            Config.Development.Print("Injector detected ╭∩╮（︶_︶）╭∩╮ " .. eventName)
-        end
+        MadeInFrance.GeneratorNewToken(_src)
+        Config.Development.Print("Injector detected ╭∩╮（︶_︶）╭∩╮ " .. eventName.." by ".._src)
     end
 end)
 

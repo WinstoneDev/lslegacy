@@ -49,14 +49,6 @@ Citizen.CreateThread( function()
         SetMaxWantedLevel(0)
         ClearPlayerWantedLevel(PlayerId())
         SetPoliceIgnorePlayer(PlayerId(), true)
-        SetRelationshipBetweenGroups(1, GetHashKey("AMBIENT_GANG_LOST"), GetHashKey("PLAYER"))
-        SetRelationshipBetweenGroups(1, GetHashKey("AMBIENT_GANG_MEXICAN"), GetHashKey("PLAYER"))
-        SetRelationshipBetweenGroups(1, GetHashKey("AMBIENT_GANG_FAMILY"), GetHashKey("PLAYER"))
-        SetRelationshipBetweenGroups(1, GetHashKey("AMBIENT_GANG_BALLAS"), GetHashKey("PLAYER"))
-        SetRelationshipBetweenGroups(1, GetHashKey("AMBIENT_GANG_MARABUNTE"), GetHashKey("PLAYER"))
-        SetRelationshipBetweenGroups(1, GetHashKey("AMBIENT_GANG_CULT"), GetHashKey("PLAYER"))
-        SetRelationshipBetweenGroups(1, GetHashKey("COP"), GetHashKey("PLAYER"))
-        SetRelationshipBetweenGroups(1, GetHashKey("SECURITY_GUARD"), GetHashKey("PLAYER"))
         DisablePlayerVehicleRewards(PlayerId()) 
         DisableControlAction(0, 199, true) 
         SetPedSuffersCriticalHits(PlayerPedId(), false) 
@@ -76,6 +68,25 @@ Citizen.CreateThread( function()
             end
         end
         Wait(100)
+    end
+end)
+
+CreateThread(function()
+    local groups = {
+        "AMBIENT_GANG_LOST",
+        "AMBIENT_GANG_MEXICAN",
+        "AMBIENT_GANG_FAMILY",
+        "AMBIENT_GANG_BALLAS",
+        "AMBIENT_GANG_MARABUNTE",
+        "AMBIENT_GANG_CULT",
+        "COP",
+        "SECURITY_GUARD",
+        "AGGRESSIVE_ANIMAL",
+        "WILD_ANIMAL"
+    }
+
+    for _, group in ipairs(groups) do
+        SetRelationshipBetweenGroups(1, GetHashKey(group), GetHashKey("PLAYER"))
     end
 end)
 

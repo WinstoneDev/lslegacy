@@ -99,7 +99,7 @@ MadeInFrance.RegisterServerEvent('removeAmmo', function(item, quantity)
 
             if ammoToGive > 0 then
                 MadeInFrance.Inventory.RemoveItemInInventory(player, item, ammoToGive)
-                MadeInFrance.SendEventToClient('notify', _source, nil, "Vous avez rechargé "..ammoToGive.." "..Config.Items[item].label, 'success')
+                MadeInFrance.SendEventToClient('notify', _source, nil, "Vous avez rechargé "..ammoToGive.." "..MadeInFrance.Inventory.GetInfosItem(item).label, 'success')
                 MadeInFrance.SendEventToClient('setAmmo', _source, item, ammoToGive)
             end
         end

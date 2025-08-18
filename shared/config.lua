@@ -41,28 +41,27 @@ Config.StaffGroups = {
 }
 
 Config.Items = {
-    ['bread'] = {label = "Pain", weight = 0.01, props = "prop_sandwich_01"},
-    ['burger'] = {label = "Hamburger", weight = 0.02, props = "prop_sandwich_01"},
-    ['water'] = {label = "Bouteille d'eau", weight = 0.01, props = "prop_ld_flow_bottle"},
-    ['sprunk'] = {label = "Sprunk", weight = 0.01, props = "prop_ld_can_01"},
-    ['radio'] = {label = "Radio", weight = 0.05, props = "prop_cs_hand_radio"},
-    ['phone'] = {label = "Téléphone", weight = 0.01, props = "prop_phone_ing"},
+    ['food_bread'] = {label = "Pain", weight = 0.1, props = "prop_sandwich_01"},
+    ['food_burger'] = {label = "Hamburger", weight = 0.250, props = "prop_sandwich_01"},
+    ['food_water'] = {label = "Bouteille d'eau", weight = 0.3, props = "prop_ld_flow_bottle"},
+    ['food_sprunk'] = {label = "Sprunk", weight = 0.3, props = "prop_ld_can_01"},
+    ['radio'] = {label = "Radio", weight = 0.5, props = "prop_cs_hand_radio"},
+    ['phone'] = {label = "Téléphone", weight = 0.250, props = "prop_phone_ing"},
     ['weapon_pistol'] = {label = "Beretta", weight = 1, props = "w_pi_pistol"},
     ['weapon_combatpistol'] = {label = "Glock-17", weight = 1, props = "w_pi_combatpistol"},
     ['idcard'] = {label = "Carte d'identité", weight = 0.005, props = "ch_prop_swipe_card_01c"},
     ['carte'] = {label = "Carte banquaire", weight = 0.005, props = "ch_prop_swipe_card_01c"},
     ['9mm_ammo'] = {label = "9mm", weight = 0.001, props = "prop_ld_ammo_pack_01"},
 
-    ['tshirt'] = {label = "Haut", weight = 0.005, props = "prop_ld_tshirt_01"},
-    ['pants'] = {label = "Pantalon", weight = 0.005, props = "prop_cs_box_clothes"},
-    ['shoes'] = {label = "Chaussure", weight = 0.005, props = "prop_ld_shoe_01"},
-    ['helmet'] = {label = "Chapeau", weight = 0.005, props = "prop_cs_box_clothes"},
-    ['glasses'] = {label = "Lunette", weight = 0.005, props = "prop_cs_sol_glasses"},
-    ['chain'] = {label = "Chaine", weight = 0.005, props = "prop_cs_box_clothes"},
-    ['bags'] = {label = "Sacs", weight = 0.005, props = "prop_cs_box_clothes"},
-    ['helmet'] = {label = "Chapeau", weight = 0.005, props = "prop_cs_box_clothes"},
-    ['glasses'] = {label = "Lunettes", weight = 0.005, props = "prop_cs_box_clothes"},
-    ['ears'] = {label = "Oreillette", weight = 0.005, props = "prop_cs_box_clothes"}
+    ['tshirt'] = {label = "Haut", weight = 0.2, props = "prop_ld_tshirt_01"},
+    ['pants'] = {label = "Pantalon", weight = 0.3, props = "prop_cs_box_clothes"},
+    ['shoes'] = {label = "Chaussure", weight = 0.8, props = "prop_ld_shoe_01"},
+    ['helmet'] = {label = "Chapeau", weight = 0.1, props = "prop_cs_box_clothes"},
+    ['glasses'] = {label = "Lunettes", weight = 0.1, props = "prop_cs_sol_glasses"},
+    ['chain'] = {label = "Chaine", weight = 0.2, props = "prop_cs_box_clothes"},
+    ['bags'] = {label = "Sacs", weight = 0.5, props = "prop_cs_box_clothes"},
+    ['helmet'] = {label = "Chapeau", weight = 0.1, props = "prop_cs_box_clothes"},
+    ['ears'] = {label = "Oreillette", weight = 0.1, props = "prop_cs_box_clothes"}
 }
 
 Config.AmmoForWeapon = {
@@ -76,7 +75,11 @@ Config.InsertItems = {
     ['phone'] = true,
     ['weapon_pistol'] = true,
     ['weapon_combatpistol'] = true,
-    
+    ['food_bread'] = true,
+    ['food_burger'] = true,
+    ['food_water'] = true,
+    ['food_sprunk'] = true,
+
     ['tshirt'] = true,
     ['pants'] = true,
     ['shoes'] = true,
@@ -99,7 +102,8 @@ Config.ResourcesClientEvent = {
     ['spawnmanager'] = true,
     ['webpack'] = true,
     ['yarn'] = true,
-    ['brutal_notify'] = true
+    ['brutal_notify'] = true,
+    ['speedometer'] = true
 }
 
 Config.PickupModelCollision = {
@@ -151,5 +155,21 @@ Config.zoneClothShop = {
         BlipColor = 5,
         BlipScale = 0.7,
         Type = "Mask"
+    }
+}
+
+Config.Status = {
+    UpdateInterval = 60,
+
+    Hunger = {
+        Loss = 0.83 
+    },
+
+    Thirst = {
+        Loss = 1.11 
+    },
+
+    Stamina = {
+        Loss = 0.83
     }
 }

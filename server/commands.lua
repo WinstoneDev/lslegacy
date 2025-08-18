@@ -165,13 +165,14 @@ end, {help = "Permet de déconnecter un joueur", validate = false, arguments = {
 
 MadeInFrance.RegisterCommand('sync', 0, function(player, args, showError, rawCommand)
 	local source = player.source
-	MySQL.Async.execute('UPDATE players SET coords = @coords, inventory = @inventory, money = @money, health = @health, skin = @skin WHERE id = @id', {
+	MySQL.Async.execute('UPDATE players SET coords = @coords, inventory = @inventory, money = @money, health = @health, skin = @skin, status = @status WHERE id = @id', {
         ['@coords'] = json.encode(MadeInFrance.GetEntityCoords(source)),
         ['@inventory'] = json.encode(MadeInFrance.ServerPlayers[source].inventory),
         ['@money'] = json.encode({cash = MadeInFrance.ServerPlayers[source].cash, dirty = MadeInFrance.ServerPlayers[source].dirty}),
         ['@id'] = MadeInFrance.ServerPlayers[source].id,
         ['@health'] = GetEntityHealth(GetPlayerPed(source)),
-		['@skin'] = json.encode(MadeInFrance.ServerPlayers[source].skin)
+		['@skin'] = json.encode(MadeInFrance.ServerPlayers[source].skin),
+		['@status'] = json.encode(MadeInFrance.ServerPlayers[source].status)
     })
 	MadeInFrance.SendEventToClient('UpdateServerPlayer', source)
 	MadeInFrance.SendEventToClient('UpdateDatastore', source, MadeInFrance.DataStore)
@@ -225,17 +226,40 @@ MadeInFrance.RegisterCommand('giveitem', 1, function(player, args, showError, ra
 			end
 			return
 		end
+
+		if string.match(item, 'food_') then
+			if MadeInFrance.Inventory.CanCarryItem(targetPlayer, item, quantity) then
+				dataFood = {
+					durability = 100
+				}
+				MadeInFrance.Inventory.AddItemInInventory(targetPlayer, item, quantity, nil, nil, dataFood)
+				MadeInFrance.SendEventToClient('notify', targetPlayer.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. 'x ' .. MadeInFrance.Inventory.GetInfosItem(item).label, 'success')
+			else
+				showError('Vous ne pouvez pas porter + de cet item.')
+			end
+			return
+        end
+
+
 		if not string.match(item, 'weapon_') then
-			MadeInFrance.Inventory.AddItemInInventory(targetPlayer, item, quantity)
-			MadeInFrance.SendEventToClient('notify', targetPlayer.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. 'x ' .. MadeInFrance.Inventory.GetInfosItem(item).label, 'success')
+			if MadeInFrance.Inventory.CanCarryItem(targetPlayer, item, quantity) then
+				MadeInFrance.Inventory.AddItemInInventory(targetPlayer, item, quantity)
+				MadeInFrance.SendEventToClient('notify', targetPlayer.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. 'x ' .. MadeInFrance.Inventory.GetInfosItem(item).label, 'success')
+			else
+				showError('Vous ne pouvez pas porter + de cet item.')
+			end
 		else
-			data = {
-				ammo = 0,
-				components = {},
-				serialNumber = MadeInFrance.GenerateNumeroDeSerie()
-			}
-			MadeInFrance.Inventory.AddItemInInventory(targetPlayer, item, quantity, nil, nil, data)
-			MadeInFrance.SendEventToClient('notify', targetPlayer.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. 'x ' .. MadeInFrance.Inventory.GetInfosItem(item).label, 'success')
+			if MadeInFrance.Inventory.CanCarryItem(targetPlayer, item, quantity) then
+				data = {
+					ammo = 0,
+					components = {},
+					serialNumber = MadeInFrance.GenerateNumeroDeSerie()
+				}
+				MadeInFrance.Inventory.AddItemInInventory(targetPlayer, item, quantity, nil, nil, data)
+				MadeInFrance.SendEventToClient('notify', targetPlayer.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. 'x ' .. MadeInFrance.Inventory.GetInfosItem(item).label, 'success')
+			else
+				showError('Vous ne pouvez pas porter + de cet item.')
+			end
 		end
 	else
 		showError('Veuillez spécifier un item et un joueur cible.')
