@@ -69,6 +69,13 @@ Config.AmmoForWeapon = {
     ['weapon_combatpistol'] = '9mm_ammo'
 }
 
+Config.NeedsItems = {
+    ['food_bread'] = { hunger = 40, thirst = 0, stamina = 0, anim = 'eating', portion = 8 },
+    ['food_burger'] = { hunger = 70, thirst = 0, stamina = 0, anim = 'eating', portion = 25 },
+    ['food_water']  = { hunger = 0, thirst = 100, stamina = 0, anim = 'drinking', portion = 10 },
+    ['food_sprunk'] = { hunger = 0, thirst = 80, stamina = 10, anim = 'drinking', portion = 10 },
+}
+
 Config.InsertItems = {
     ['idcard'] = true,
     ['carte'] = true,

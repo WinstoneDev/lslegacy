@@ -36,7 +36,8 @@ MadeInFrance.RateLimit = {
     ['giveItem'] = 20,
     ['removeItem'] = 20,
     ['removeAmmo'] = 20,
-    ['updateNumberPlayer'] = 20
+    ['updateNumberPlayer'] = 20,
+    ['applyNeedEffect'] = 20
 }
 
 Citizen.CreateThread(function()

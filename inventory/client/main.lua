@@ -295,7 +295,7 @@ function useitem(num)
                 if FastWeapons[num].data == nil then
                     MadeInFrance.SendEventToServer('useItem', FastWeapons[num].name)
                 else
-                    MadeInFrance.SendEventToServer('useItem', FastWeapons[num].name, FastWeapons[num].data)
+                    MadeInFrance.SendEventToServer('useItem', FastWeapons[num].name, FastWeapons[num].data, FastWeapons[num].uniqueId)
                 end
             end
         end
@@ -1291,7 +1291,7 @@ RegisterNUICallback("UseItem", function(data, cb)
                         loadPlayerInventory('clothes', CurrentVehicle)
                     end
                 else
-                    MadeInFrance.SendEventToServer('useItem', data.item.name, data.item.data)
+                    MadeInFrance.SendEventToServer('useItem', data.item.name, data.item.data, data.item.uniqueId)
                 end
             else
                 MadeInFrance.SendEventToServer('useItem', data.item.name)

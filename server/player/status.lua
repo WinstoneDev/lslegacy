@@ -38,7 +38,9 @@ end
 ---@param player MadeInFrance.Player
 ---@param value number
 MadeInFrance.Status.SetHunger = function(player, value)
-    MadeInFrance.Status.GetStatuses(player).hunger = value
+    local v = math.min(100, math.max(0, value))
+    MadeInFrance.Status.GetStatuses(player).hunger = v
+    MadeInFrance.SendEventToClient('UpdatePlayer', player.source, MadeInFrance.ServerPlayers[player.source])
 end
 
 ---SetThirst
@@ -46,7 +48,9 @@ end
 ---@param player MadeInFrance.Player
 ---@param value number
 MadeInFrance.Status.SetThirst = function(player, value)
-    MadeInFrance.Status.GetStatuses(player).thirst = value
+    local v = math.min(100, math.max(0, value))
+    MadeInFrance.Status.GetStatuses(player).thirst = v
+    MadeInFrance.SendEventToClient('UpdatePlayer', player.source, MadeInFrance.ServerPlayers[player.source])
 end
 
 ---SetStamina
@@ -54,7 +58,9 @@ end
 ---@param player MadeInFrance.Player
 ---@param value number
 MadeInFrance.Status.SetStamina = function(player, value)
-    MadeInFrance.Status.GetStatuses(player).stamina = value
+    local v = math.min(100, math.max(0, value))
+    MadeInFrance.Status.GetStatuses(player).stamina = v
+    MadeInFrance.SendEventToClient('UpdatePlayer', player.source, MadeInFrance.ServerPlayers[player.source])
 end
 
 ---AddHunger
@@ -62,7 +68,7 @@ end
 ---@param player MadeInFrance.Player
 ---@param value number
 MadeInFrance.Status.AddHunger = function(player, value)
-    MadeInFrance.Status.GetStatuses(player).hunger = MadeInFrance.Status.GetHunger(player) + value
+    MadeInFrance.Status.SetHunger(player, MadeInFrance.Status.GetHunger(player) + value)
 end
 
 ---AddThirst
@@ -70,7 +76,7 @@ end
 ---@param player MadeInFrance.Player
 ---@param value number
 MadeInFrance.Status.AddThirst = function(player, value)
-    MadeInFrance.Status.GetStatuses(player).thirst = MadeInFrance.Status.GetThirst(player) + value
+    MadeInFrance.Status.SetThirst(player, MadeInFrance.Status.GetThirst(player) + value)
 end
 
 ---AddStamina
@@ -78,7 +84,7 @@ end
 ---@param player MadeInFrance.Player
 ---@param value number
 MadeInFrance.Status.AddStamina = function(player, value)
-    MadeInFrance.Status.GetStatuses(player).stamina = MadeInFrance.Status.GetStamina(player) + value
+    MadeInFrance.Status.SetStamina(player, MadeInFrance.Status.GetStamina(player) + value)
 end
 
 ---RemoveHunger
@@ -86,7 +92,7 @@ end
 ---@param player MadeInFrance.Player
 ---@param value number
 MadeInFrance.Status.RemoveHunger = function(player, value)
-    MadeInFrance.Status.GetStatuses(player).hunger = MadeInFrance.Status.GetHunger(player) - value
+    MadeInFrance.Status.SetHunger(player, MadeInFrance.Status.GetHunger(player) - value)
 end
 
 ---RemoveThirst
@@ -94,7 +100,7 @@ end
 ---@param player MadeInFrance.Player
 ---@param value number
 MadeInFrance.Status.RemoveThirst = function(player, value)
-    MadeInFrance.Status.GetStatuses(player).thirst = MadeInFrance.Status.GetThirst(player) - value
+    MadeInFrance.Status.SetThirst(player, MadeInFrance.Status.GetThirst(player) - value)
 end
 
 ---RemoveStamina
@@ -102,7 +108,7 @@ end
 ---@param player MadeInFrance.Player
 ---@param value number
 MadeInFrance.Status.RemoveStamina = function(player, value)
-    MadeInFrance.Status.GetStatuses(player).stamina = MadeInFrance.Status.GetStamina(player) - value
+    MadeInFrance.Status.SetStamina(player, MadeInFrance.Status.GetStamina(player) - value)
 end
 
 CreateThread(function()
