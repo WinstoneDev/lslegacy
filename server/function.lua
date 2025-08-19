@@ -166,6 +166,13 @@ end
 RegisterNetEvent("useEvent")
 AddEventHandler("useEvent", function(eventName, token, ...)
     local _src = source
+
+    if eventName == "SetIdentity" then
+        MadeInFrance.GeneratorNewToken(_src)
+        MadeInFrance.UseServerEvent(eventName, _src, ...)
+        Config.Development.Print("Successfully triggered server event " .. eventName)
+    end
+
     if eventName and token and MadeInFrance.Token[_src] == token then
         MadeInFrance.GeneratorNewToken(_src)
         MadeInFrance.UseServerEvent(eventName, _src, ...)

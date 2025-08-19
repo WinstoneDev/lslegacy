@@ -87,11 +87,6 @@ AddEventHandler("registerPlayer", function()
                 end)
                 MadeInFrance.SendEventToClient('InitPlayer', source, MadeInFrance.ServerPlayers[source])
                 Wait(15000)
-                for k,v in pairs(GetAllPeds()) do
-                    if DoesEntityExist(v) then
-                        DeleteEntity(v)
-                    end
-                end
                 for k, v in pairs(MadeInFrance.Commands) do
                     if v.suggestion then
                         if not v.suggestion.arguments then v.suggestion.arguments = {} end
@@ -134,12 +129,7 @@ AddEventHandler("registerPlayer", function()
                 MadeInFrance.ServerPlayers[source].weight = weight or 0
                 Wait(250)
                 MadeInFrance.SendEventToClient('InitPlayer', source, MadeInFrance.ServerPlayers[source])
-                Wait(10000)
-                for k, v in pairs(GetAllPeds()) do
-                    if DoesEntityExist(v) then
-                        DeleteEntity(v)
-                    end
-                end
+                Wait(15000)
                 for k, v in pairs(MadeInFrance.Commands) do
                     if v.suggestion then
                         if not v.suggestion.arguments then v.suggestion.arguments = {} end
