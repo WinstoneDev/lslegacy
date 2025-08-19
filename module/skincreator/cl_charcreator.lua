@@ -14,8 +14,6 @@ MadeInFrance.RegisterClientEvent('CreatePerso', function()
         tshirt_2 = 0,
         arms     = 15,
         arms_2   = 0,
-        face_ped = 0,
-        face_ped2 = 0,
         torso_1  = 15,
         torso_2  = 0,
         pants_1  = 14,
@@ -116,9 +114,7 @@ CreaPerso = {
         EyeBrows = { 1, 1 }
     },
 
-    Tenue = 1,
-
-    ListePersonage = {
+    --[[ ListePersonage = {
         'g_m_importexport_01',
         'g_m_m_armboss_01',
         'g_m_m_armgoon_01',
@@ -634,7 +630,7 @@ CreaPerso = {
         'a_m_y_vinewood_04',
         'a_m_y_yoga_01',
         'cs_jimmydisanto',
-    },
+    }, ]]
     Board = true,
     NDF = nil,
     Prenom = nil,
@@ -704,21 +700,21 @@ CreaPerso.Personnage = RageUI.CreateSubMenu(CreaPerso.menu, "Personnage", "Perso
 CreaPerso.CharHeritageMenu = RageUI.CreateSubMenu(CreaPerso.menu, "Héritage", "Héritage")
 CreaPerso.Appearance = RageUI.CreateSubMenu(CreaPerso.menu, "Apparence", "Apparence")
 CreaPerso.TraitVisage = RageUI.CreateSubMenu(CreaPerso.menu, "Visage", "Visage")
-CreaPerso.TraitVisage2 = RageUI.CreateSubMenu(CreaPerso.menu, "Visage", "Visage")
-CreaPerso.VetementPed = RageUI.CreateSubMenu(CreaPerso.menu, "Vêtement", "Vêtement")
+-- CreaPerso.TraitVisage2 = RageUI.CreateSubMenu(CreaPerso.menu, "Visage", "Visage")
+-- CreaPerso.VetementPed = RageUI.CreateSubMenu(CreaPerso.menu, "Vêtement", "Vêtement")
 CreaPerso.Makeup = RageUI.CreateSubMenu(CreaPerso.menu, "Makeup", "Makeup")
 CreaPerso.Identity = RageUI.CreateSubMenu(CreaPerso.menu, "Identité", "Identité")
 CreaPerso.ChooseSpawn = RageUI.CreateSubMenu(CreaPerso.menu, "Choix de spawn",  "Choix de spawn")
 CreaPerso.CharHeritageMenu.Closed = function()
     CreatorZoomOut(GetCreatorCam())
 end
-CreaPerso.TraitVisage2.Closed = function()
-    CreatorZoomOut(GetCreatorCam())
-end
+-- CreaPerso.TraitVisage2.Closed = function()
+--     CreatorZoomOut(GetCreatorCam())
+-- end
 
 CreaPerso.TraitVisage.EnableMouse = true
-CreaPerso.TraitVisage2.EnableMouse = true
-CreaPerso.VetementPed.EnableMouse = true
+-- CreaPerso.TraitVisage2.EnableMouse = true
+-- CreaPerso.VetementPed.EnableMouse = true
 
 CreaPerso.menu.Closable = false
 
@@ -848,13 +844,13 @@ function MenuCreaPerso()
                                 CreatorZoomIn(GetCreatorCam())
                             end
                         }, CreaPerso.TraitVisage)
-                    else
-                        RageUI.Button("Traits du visage", false, {}, true, {
-                            onSelected = function()
-                                CreatorZoomIn(GetCreatorCam())
-                            end
-                        }, CreaPerso.TraitVisage2)
-                        RageUI.Button("Vêtement", false, {}, true, {}, CreaPerso.VetementPed)
+                    -- else
+                    --     RageUI.Button("Traits du visage", false, {}, true, {
+                    --         onSelected = function()
+                    --             CreatorZoomIn(GetCreatorCam())
+                    --         end
+                    --     }, CreaPerso.TraitVisage2)
+                    --     RageUI.Button("Vêtement", false, {}, true, {}, CreaPerso.VetementPed)
                     end
                     RageUI.Button("Identité", false, {}, true, {
                         onSelected = function()
@@ -919,18 +915,6 @@ function MenuCreaPerso()
                                 ClearPedTasksImmediately(PlayerPedId())
                                 DeleteBoard()
                                 MadeInFrance.SendEventToServer("SetBucket", 0)
-                                -- local nombre = math.random(1,5)
-                                -- if nombre == 1 then
-                                --     ESX.Game.Teleport(PlayerPedId(), vector3(-1245.411, -742.6087, 20.366))
-                                -- elseif nombre == 2 then
-                                --     ESX.Game.Teleport(PlayerPedId(), vector3(-569.8499, -451.2148, 34.253))
-                                -- elseif nombre == 3 then
-                                --     ESX.Game.Teleport(PlayerPedId(), vector3(-1037.45, -2737.51, 20.16))
-                                -- elseif nombre == 4 then
-                                --     ESX.Game.Teleport(PlayerPedId(), vector3(917.56, 50.56, 80.89))
-                                -- elseif nombre == 5 then
-                                --     ESX.Game.Teleport(PlayerPedId(), vector3(-134.91, -254.29, 43.59))
-                                -- end
                                 MadeInFrance.SetCoords(vector3(-780.1779, -1048.915, 12.980))
                                 SetEntityHeading(GetPlayerPed(-1), 125.39)
                                 Wait(2500)
@@ -941,85 +925,85 @@ function MenuCreaPerso()
                     })
                 end)
 
-                RageUI.IsVisible(CreaPerso.TraitVisage2, function()
-                    RageUI.List('Visage', {"1", "2", "3", "4", "5"}, CreaPerso.VisagePed, nil, {}, true, {
-                        onListChange = function(Index)
-                            CreaPerso.VisagePed = Index
-                            MadeInFrance.TriggerLocalEvent('skinchanger:change', 'face_ped', CreaPerso.VisagePed-1)
-                        end,
-                        onActive = function()
-                            itemButton = false
-                        end
-                    })
-                    RageUI.SliderPanel(CreaPerso.VariationsFace.ind, CreaPerso.VariationsFace.min, "Variations", CreaPerso.VariationsFace.max, {
-                        onSliderChange = function(Index)
-                            CreaPerso.VariationsFace.ind = Index
-                            MadeInFrance.TriggerLocalEvent('skinchanger:change', 'face_ped2', CreaPerso.VariationsFace.ind)
-                        end
-                    }, 1)
-                end)
-                RageUI.IsVisible(CreaPerso.VetementPed, function()
-                    RageUI.List('Haut', {"1", "2", "3", "4", "5"}, CreaPerso.HautPed, nil, {}, true, {
-                        onListChange = function(Index)
-                            CreaPerso.HautPed = Index
-                            MadeInFrance.TriggerLocalEvent('skinchanger:change', 'arms', CreaPerso.HautPed-1)
-                        end,
-                        onActive = function()
-                            itemButton = false
-                        end
-                    })
-                    RageUI.List('Bas', {"1", "2", "3", "4", "5"}, CreaPerso.BasPed, nil, {}, true, {
-                        onListChange = function(Index)
-                            CreaPerso.BasPed = Index
-                            MadeInFrance.TriggerLocalEvent('skinchanger:change', 'pants_1', CreaPerso.BasPed-1)
-                        end,
-                        onActive = function()
-                            itemButton = false
-                        end
-                    })
-                    RageUI.List('Chapeau', {"1", "2", "3", "4", "5"}, CreaPerso.CasquePed, nil, {}, true, {
-                        onListChange = function(Index)
-                            CreaPerso.CasquePed = Index
-                            MadeInFrance.TriggerLocalEvent('skinchanger:change', 'helmet_1', CreaPerso.CasquePed-2)
-                        end,
-                        onActive = function()
-                            itemButton = false
-                        end
-                    })
-                    RageUI.List('Masque', {"1", "2", "3", "4", "5"}, CreaPerso.MasquePed, nil, {}, true, {
-                        onListChange = function(Index)
-                            CreaPerso.MasquePed = Index
-                            MadeInFrance.TriggerLocalEvent('skinchanger:change', 'tshirt_1', CreaPerso.MasquePed-2)
-                        end,
-                        onActive = function()
-                            itemButton = false
-                        end
-                    })
-                    RageUI.SliderPanel(CreaPerso.VariationsHaut.ind, CreaPerso.VariationsHaut.min, "Variations", CreaPerso.VariationsHaut.max, {
-                        onSliderChange = function(Index)
-                            CreaPerso.VariationsHaut.ind = Index
-                            MadeInFrance.TriggerLocalEvent('skinchanger:change', 'arms_2', CreaPerso.VariationsHaut.ind)
-                        end
-                    }, 1)
-                    RageUI.SliderPanel(CreaPerso.VariationsBas.ind, CreaPerso.VariationsBas.min, "Variations", CreaPerso.VariationsBas.max, {
-                        onSliderChange = function(Index)
-                            CreaPerso.VariationsBas.ind = Index
-                            MadeInFrance.TriggerLocalEvent('skinchanger:change', 'pants_2', CreaPerso.VariationsBas.ind)
-                        end
-                    }, 2)
-                    RageUI.SliderPanel(CreaPerso.VariationsChapeau.ind, CreaPerso.VariationsChapeau.min, "Variations", CreaPerso.VariationsChapeau.max, {
-                        onSliderChange = function(Index)
-                            CreaPerso.VariationsChapeau.ind = Index
-                            MadeInFrance.TriggerLocalEvent('skinchanger:change', 'helmet_2', CreaPerso.VariationsChapeau.ind)
-                        end
-                    }, 3)
-                    RageUI.SliderPanel(CreaPerso.VariationsMasque.ind, CreaPerso.VariationsMasque.min, "Variations", CreaPerso.VariationsMasque.max, {
-                        onSliderChange = function(Index)
-                            CreaPerso.VariationsMasque.ind = Index
-                            MadeInFrance.TriggerLocalEvent('skinchanger:change', 'tshirt_2', CreaPerso.VariationsMasque.ind)
-                        end
-                    }, 4)
-                end)
+                -- RageUI.IsVisible(CreaPerso.TraitVisage2, function()
+                --     RageUI.List('Visage', {"1", "2", "3", "4", "5"}, CreaPerso.VisagePed, nil, {}, true, {
+                --         onListChange = function(Index)
+                --             CreaPerso.VisagePed = Index
+                --             MadeInFrance.TriggerLocalEvent('skinchanger:change', 'face_ped', CreaPerso.VisagePed-1)
+                --         end,
+                --         onActive = function()
+                --             itemButton = false
+                --         end
+                --     })
+                --     RageUI.SliderPanel(CreaPerso.VariationsFace.ind, CreaPerso.VariationsFace.min, "Variations", CreaPerso.VariationsFace.max, {
+                --         onSliderChange = function(Index)
+                --             CreaPerso.VariationsFace.ind = Index
+                --             MadeInFrance.TriggerLocalEvent('skinchanger:change', 'face_ped2', CreaPerso.VariationsFace.ind)
+                --         end
+                --     }, 1)
+                -- end)
+                -- RageUI.IsVisible(CreaPerso.VetementPed, function()
+                --     RageUI.List('Haut', {"1", "2", "3", "4", "5"}, CreaPerso.HautPed, nil, {}, true, {
+                --         onListChange = function(Index)
+                --             CreaPerso.HautPed = Index
+                --             MadeInFrance.TriggerLocalEvent('skinchanger:change', 'arms', CreaPerso.HautPed-1)
+                --         end,
+                --         onActive = function()
+                --             itemButton = false
+                --         end
+                --     })
+                --     RageUI.List('Bas', {"1", "2", "3", "4", "5"}, CreaPerso.BasPed, nil, {}, true, {
+                --         onListChange = function(Index)
+                --             CreaPerso.BasPed = Index
+                --             MadeInFrance.TriggerLocalEvent('skinchanger:change', 'pants_1', CreaPerso.BasPed-1)
+                --         end,
+                --         onActive = function()
+                --             itemButton = false
+                --         end
+                --     })
+                --     RageUI.List('Chapeau', {"1", "2", "3", "4", "5"}, CreaPerso.CasquePed, nil, {}, true, {
+                --         onListChange = function(Index)
+                --             CreaPerso.CasquePed = Index
+                --             MadeInFrance.TriggerLocalEvent('skinchanger:change', 'helmet_1', CreaPerso.CasquePed-2)
+                --         end,
+                --         onActive = function()
+                --             itemButton = false
+                --         end
+                --     })
+                --     RageUI.List('Masque', {"1", "2", "3", "4", "5"}, CreaPerso.MasquePed, nil, {}, true, {
+                --         onListChange = function(Index)
+                --             CreaPerso.MasquePed = Index
+                --             MadeInFrance.TriggerLocalEvent('skinchanger:change', 'tshirt_1', CreaPerso.MasquePed-2)
+                --         end,
+                --         onActive = function()
+                --             itemButton = false
+                --         end
+                --     })
+                --     RageUI.SliderPanel(CreaPerso.VariationsHaut.ind, CreaPerso.VariationsHaut.min, "Variations", CreaPerso.VariationsHaut.max, {
+                --         onSliderChange = function(Index)
+                --             CreaPerso.VariationsHaut.ind = Index
+                --             MadeInFrance.TriggerLocalEvent('skinchanger:change', 'arms_2', CreaPerso.VariationsHaut.ind)
+                --         end
+                --     }, 1)
+                --     RageUI.SliderPanel(CreaPerso.VariationsBas.ind, CreaPerso.VariationsBas.min, "Variations", CreaPerso.VariationsBas.max, {
+                --         onSliderChange = function(Index)
+                --             CreaPerso.VariationsBas.ind = Index
+                --             MadeInFrance.TriggerLocalEvent('skinchanger:change', 'pants_2', CreaPerso.VariationsBas.ind)
+                --         end
+                --     }, 2)
+                --     RageUI.SliderPanel(CreaPerso.VariationsChapeau.ind, CreaPerso.VariationsChapeau.min, "Variations", CreaPerso.VariationsChapeau.max, {
+                --         onSliderChange = function(Index)
+                --             CreaPerso.VariationsChapeau.ind = Index
+                --             MadeInFrance.TriggerLocalEvent('skinchanger:change', 'helmet_2', CreaPerso.VariationsChapeau.ind)
+                --         end
+                --     }, 3)
+                --     RageUI.SliderPanel(CreaPerso.VariationsMasque.ind, CreaPerso.VariationsMasque.min, "Variations", CreaPerso.VariationsMasque.max, {
+                --         onSliderChange = function(Index)
+                --             CreaPerso.VariationsMasque.ind = Index
+                --             MadeInFrance.TriggerLocalEvent('skinchanger:change', 'tshirt_2', CreaPerso.VariationsMasque.ind)
+                --         end
+                --     }, 4)
+                -- end)
 
                 RageUI.IsVisible(CreaPerso.Personnage, function()
                     SetPlayerCanUseCover(PlayerId(), false)
@@ -1046,8 +1030,6 @@ function MenuCreaPerso()
                                     tshirt_2 = 0,
                                     arms     = 15,
                                     arms_2   = 0,
-                                    face_ped = 0,
-                                    face_ped2 = 0,
                                     torso_1  = 15,
                                     torso_2  = 0,
                                     pants_1  = 13,
@@ -1083,8 +1065,6 @@ function MenuCreaPerso()
                                     tshirt_2 = 0,
                                     arms     = 15,
                                     arms_2   = 0,
-                                    face_ped = 0,
-                                    face_ped2 = 0,
                                     torso_1  = 15,
                                     torso_2  = 0,
                                     pants_1  = 14,
@@ -1105,7 +1085,7 @@ function MenuCreaPerso()
                             end
                         end
                     })
-                    for k,v in pairs(CreaPerso.ListePersonage) do
+--[[                     for k,v in pairs(CreaPerso.ListePersonage) do
                         if CreaPerso.Diamond then
                             RageUI.Button(v, false, {}, true, {
                                 onActive = function()
@@ -1123,7 +1103,7 @@ function MenuCreaPerso()
                         else
                             RageUI.Button(v.name, false, {}, false, {})
                         end
-                    end
+                    end ]]
                 end)
 
                 RageUI.IsVisible(CreaPerso.Identity, function()
@@ -1135,7 +1115,7 @@ function MenuCreaPerso()
                             local Input = MadeInFrance.KeyboardInput("Prénom", 15) 
                             if Input ~= nil then
                                 if string.match(Input ,"%d+") then
-                                    MadeInFrance.Notification("~r~Veuillez ne pas indiquer des nombres")
+                                    MadeInFrance.ShowNotification(nil, "Veuillez ne pas indiquer des nombres", 'error')
                                 else
                                     CreaPerso.Prenom = tostring(Input)
                                 end
@@ -1147,7 +1127,7 @@ function MenuCreaPerso()
                             local Input = MadeInFrance.KeyboardInput("Nom de famille", 15) 
                             if Input ~= nil then
                                 if string.match(Input ,"%d+") then
-                                    MadeInFrance.Notification("~r~Veuillez ne pas indiquer des nombres")
+                                    MadeInFrance.ShowNotification(nil, "Veuillez ne pas indiquer des nombres", 'error')
                                 else
                                     CreaPerso.NDF = tostring(Input)
                                 end
@@ -1159,7 +1139,7 @@ function MenuCreaPerso()
                             local Input = MadeInFrance.KeyboardInput("Date de naissance", 15) 
                             if Input ~= nil then
                                 if not IsDateGood(Input) then
-                                    MadeInFrance.Notification("~r~Veuillez indiquer une bonne date")
+                                    MadeInFrance.ShowNotification(nil, "Veuillez indiquer une date valide (jj/mm/aaaa)", 'error')
                                 else
                                     CreaPerso.DDN = tostring(Input)
                                 end
@@ -1171,7 +1151,7 @@ function MenuCreaPerso()
                             local Input = MadeInFrance.KeyboardInput("Sexe", 0) 
                             if Input ~= nil then
                                 if string.match(Input ,"%d+") then
-                                    MadeInFrance.Notification("~r~Veuillez ne pas indiquer des nombres")
+                                    MadeInFrance.ShowNotification(nil, "Veuillez ne pas indiquer des nombres", 'error')
                                 else
                                     CreaPerso.Sexe = tostring(firstToUpper(Input))
                                 end
@@ -1183,7 +1163,7 @@ function MenuCreaPerso()
                             local Input = MadeInFrance.KeyboardInput("Taille", 3) 
                             if Input ~= nil then
                                 if not string.match(Input ,"%d+") then
-                                    MadeInFrance.Notification("~r~Veuillez indiquer des nombres")
+                                    MadeInFrance.ShowNotification(nil, "Veuillez indiquer des nombres", 'error')
                                 else
                                     CreaPerso.Taille = tonumber(Input)
                                 end
@@ -1195,7 +1175,7 @@ function MenuCreaPerso()
                             local Input = MadeInFrance.KeyboardInput("Lieu de naissance", 15) 
                             if Input ~= nil then
                                 if string.match(Input ,"%d+") then
-                                    MadeInFrance.Notification("~r~Veuillez ne pas indiquer des nombres")
+                                    MadeInFrance.ShowNotification(nil, "Veuillez ne pas indiquer des nombres", 'error')
                                 else
                                     CreaPerso.LDN = tostring(Input)
                                 end
@@ -1298,16 +1278,16 @@ function MenuCreaPerso()
                             MadeInFrance.TriggerLocalEvent('skinchanger:change', 'cheeks_3', Percentage*10)
                         end
                     }, 11)
-                    RageUI.PercentagePanel(CreaPerso.Traits.EOIndex, 'Ouverts (Gauche) - Fermés (Droite)', '0', '10', {
+                    RageUI.PercentagePanel(CreaPerso.Traits.EOIndex, 'Fermés (Gauche) - Ouverts (Droite)', '0', '10', {
                         onProgressChange = function(Percentage)
                             CreaPerso.Traits.EOIndex = Percentage
-                            MadeInFrance.TriggerLocalEvent('skinchanger:change', 'eye_open', Percentage*10)
+                            MadeInFrance.TriggerLocalEvent('skinchanger:change', 'eye_squint', (10-(Percentage*10)))
                         end
                     }, 12)
                     RageUI.PercentagePanel(CreaPerso.Traits.ELIndex, 'Epaisses (Gauche) - Fines (Droite)', '0', '10', {
                         onProgressChange = function(Percentage)
                             CreaPerso.Traits.ELIndex = Percentage
-                            MadeInFrance.TriggerLocalEvent('skinchanger:change', 'lips_thick', Percentage*10)
+                            MadeInFrance.TriggerLocalEvent('skinchanger:change', 'lip_thickness', Percentage*10)
                         end
                     }, 13)
                     RageUI.PercentagePanel(CreaPerso.Traits.LMIndex, 'Fine (Gauche) - Large (Droite)', '0', '10', {
@@ -1325,31 +1305,31 @@ function MenuCreaPerso()
                     RageUI.PercentagePanel(CreaPerso.Traits.AMIndex, 'Haut (Gauche) - Bas (Droite)', '0', '10', {
                         onProgressChange = function(Percentage)
                             CreaPerso.Traits.AMIndex = Percentage
-                            MadeInFrance.TriggerLocalEvent('skinchanger:change', 'chin_height', Percentage*10)
+                            MadeInFrance.TriggerLocalEvent('skinchanger:change', 'chin_1', Percentage*10)
                         end
                     }, 16)
                     RageUI.PercentagePanel(CreaPerso.Traits.LMOIndex, 'Court (Gauche) - Long (Droite)', '0', '10', {
                         onProgressChange = function(Percentage)
                             CreaPerso.Traits.LMOIndex = Percentage
-                            MadeInFrance.TriggerLocalEvent('skinchanger:change', 'chin_lenght', Percentage*10)
+                            MadeInFrance.TriggerLocalEvent('skinchanger:change', 'chin_2', Percentage*10)
                         end
                     }, 17)
                     RageUI.PercentagePanel(CreaPerso.Traits.LAMIndex, 'Fin (Gauche) - Large (Droite)', '0', '10', {
                         onProgressChange = function(Percentage)
                             CreaPerso.Traits.LAMIndex = Percentage
-                            MadeInFrance.TriggerLocalEvent('skinchanger:change', 'chin_width', Percentage*10)
+                            MadeInFrance.TriggerLocalEvent('skinchanger:change', 'chin_3', Percentage*10)
                         end
                     }, 18)
                     RageUI.PercentagePanel(CreaPerso.Traits.TMIndex, 'Exterieur (Gauche) - Interieur (Droite)', '0', '10', {
                         onProgressChange = function(Percentage)
                             CreaPerso.Traits.TMIndex = Percentage
-                            MadeInFrance.TriggerLocalEvent('skinchanger:change', 'chin_hole', Percentage*10)
+                            MadeInFrance.TriggerLocalEvent('skinchanger:change', 'chin_4', Percentage*10)
                         end
                     }, 19)
                     RageUI.PercentagePanel(CreaPerso.Traits.ECIndex, 'Fin (Gauche) - Large (Droite)', '0', '10', {
                         onProgressChange = function(Percentage)
                             CreaPerso.Traits.ECIndex = Percentage
-                            MadeInFrance.TriggerLocalEvent('skinchanger:change', 'neck_thick', Percentage*10)
+                            MadeInFrance.TriggerLocalEvent('skinchanger:change', 'neck_thickness', Percentage*10)
                         end
                     }, 20)
                 end)
@@ -1373,15 +1353,15 @@ function MenuCreaPerso()
                     RageUI.UISliderHeritage('Ressemblance', CreaPerso.actionRessemblance, nil, {
                         onSliderChange = function(Float, Index)
                             CreaPerso.actionRessemblance = Index;
-                            ressemblance = Float
-                            MadeInFrance.TriggerLocalEvent('skinchanger:change', 'face', ressemblance)
+                            CreaPerso.ressemblance = Float
+                            MadeInFrance.TriggerLocalEvent('skinchanger:change', 'face_md_weight', 100-CreaPerso.ressemblance*100)
                         end,
                     })
                     RageUI.UISliderHeritage('Teint de peau', CreaPerso.actionPeau, nil, {
                         onSliderChange = function(Float, Index)
                             CreaPerso.actionPeau = Index;
                             CreaPerso.CouleurPeau = Float
-                            MadeInFrance.TriggerLocalEvent('skinchanger:change', 'skin', CreaPerso.CouleurPeau*2)
+                            MadeInFrance.TriggerLocalEvent('skinchanger:change', 'skin_md_weight', 100-CreaPerso.CouleurPeau*100)
                         end,
                     })
                 end)
@@ -1465,7 +1445,11 @@ function MenuCreaPerso()
                     RageUI.List('Taches cutanées', CreaPerso.FrecklesValue, CreaPerso.FrecklesListingIndex, nil, {}, true, {
                         onListChange = function(Index)
                             CreaPerso.FrecklesListingIndex = Index
-                            MadeInFrance.TriggerLocalEvent('skinchanger:change', 'moles_1', CreaPerso.FrecklesListingIndex)
+                            MadeInFrance.TriggerLocalEvent('skinchanger:change', 'moles_1', CreaPerso.FrecklesListingIndex-1)
+                            if not CreaPerso.FrecklesListingIndex2 or CreaPerso.FrecklesListingIndex2 == 0 then
+                                CreaPerso.FrecklesListingIndex2 = 0.5
+                                MadeInFrance.TriggerLocalEvent('skinchanger:change', 'moles_2', 5)
+                            end
                         end,
                         onActive = function()
                             itemButton = true

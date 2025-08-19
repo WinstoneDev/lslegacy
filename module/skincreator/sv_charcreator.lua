@@ -30,10 +30,10 @@ MadeInFrance.RegisterServerEvent("SetIdentity", function(NDF, Prenom, DDN, Sexe,
 
     player.characterInfos = infos
 
-    if MadeInFrance.Inventory.CanCarryItem(player, 'burger', 5) then
-        MadeInFrance.Inventory.AddItemInInventory(player, "burger", 5, 'BurgerShot MaxiBeef')
+    if MadeInFrance.Inventory.CanCarryItem(player, 'food_burger', 5) then
+        MadeInFrance.Inventory.AddItemInInventory(player, "food_burger", 5, 'BurgerShot MaxiBeef')
     end
-    if MadeInFrance.Inventory.CanCarryItem(player, 'sprunk', 5) then
-        MadeInFrance.Inventory.AddItemInInventory(player, "sprunk", 5, 'Sprunk 33cl')
+    if MadeInFrance.Inventory.CanCarryItem(player, 'food_sprunk', 5) then
+        MadeInFrance.Inventory.AddItemInInventory(player, "food_sprunk", 5, 'Sprunk 33cl')
     end
 end)

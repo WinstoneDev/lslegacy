@@ -31,8 +31,8 @@ end
 
 local function PlayEatDrinkAnim(isDrink)
     local playerPed = PlayerPedId()
-    local dict = isDrink and "amb@world_human_drinking@coffee@male@idle_a" or "amb@code_human_wander_eating_donut@female@idle_a"
-    local anim = "idle_a"
+    local dict = isDrink and "amb@world_human_drinking@coffee@male@idle_a" or "mp_player_inteat@burger"
+    local anim = isDrink and "idle_a" or "mp_player_int_eat_burger"
 
     RequestAnimDict(dict)
     while not HasAnimDictLoaded(dict) do
@@ -40,9 +40,7 @@ local function PlayEatDrinkAnim(isDrink)
     end
 
     DetachFood()
-    TaskPlayAnim(playerPed, dict, anim, 3.0, 3.0, 5000, 49, 0, false, false, false)
-    Wait(5000)
-    AttachPropToHand(Config.Items[activeFood].props)
+    TaskPlayAnim(playerPed, dict, anim, 3.0, 3.0, 3000, 49, 0, false, false, false)
 end
 
 local function SetupFoodScaleform(durability, itemWeightKg, isDrink)
@@ -109,7 +107,7 @@ CreateThread(function()
             if IsControlJustPressed(0, 38) then
                 local itemCfg = Config.NeedsItems[activeFood]
                 PlayEatDrinkAnim(itemCfg.anim == 'drinking')
-                Wait(1500)
+                Wait(3000)
                 AttachPropToHand(Config.Items[activeFood].props)
                 MadeInFrance.SendEventToServer('applyNeedEffect', activeFood, activeData, activeUniqueId)
             end
