@@ -86,7 +86,7 @@ AddEventHandler("registerPlayer", function()
                     end
                 end)
                 MadeInFrance.SendEventToClient('InitPlayer', source, MadeInFrance.ServerPlayers[source])
-                Wait(15000)
+                MadeInFrance.RegisterPeds(MadeInFrance.RegisteredZones, source)
                 for k, v in pairs(MadeInFrance.Commands) do
                     if v.suggestion then
                         if not v.suggestion.arguments then v.suggestion.arguments = {} end
@@ -94,10 +94,11 @@ AddEventHandler("registerPlayer", function()
                         TriggerClientEvent('chat:addSuggestion', source, ('/%s'):format(k), v.suggestion.help, v.suggestion.arguments)
                     end
                 end
-                MadeInFrance.RegisterPeds(MadeInFrance.RegisteredZones)
                 Config.Development.Print("Successfully registered player " .. GetPlayerName(source))
                 MadeInFrance.SendEventToClient('zones:registerBlips', source, MadeInFrance.RegisteredZones)
                 MadeInFrance.SendEventToClient('UpdateDatastore', source, MadeInFrance.DataStores)
+                Wait(5000)
+                MadeInFrance.TriggerLocalEvent('ap:clientsetonSpawn', source)
             else
                 MadeInFrance.ServerPlayers[source] = {
                     id = result[1].id,
@@ -129,7 +130,7 @@ AddEventHandler("registerPlayer", function()
                 MadeInFrance.ServerPlayers[source].weight = weight or 0
                 Wait(250)
                 MadeInFrance.SendEventToClient('InitPlayer', source, MadeInFrance.ServerPlayers[source])
-                Wait(15000)
+                MadeInFrance.RegisterPeds(MadeInFrance.RegisteredZones, source)
                 for k, v in pairs(MadeInFrance.Commands) do
                     if v.suggestion then
                         if not v.suggestion.arguments then v.suggestion.arguments = {} end
@@ -138,10 +139,11 @@ AddEventHandler("registerPlayer", function()
                         TriggerClientEvent('chat:addSuggestion', source, ('/%s'):format(k), v.suggestion.help, v.suggestion.arguments)
                     end
                 end
-                MadeInFrance.RegisterPeds(MadeInFrance.RegisteredZones)
                 Config.Development.Print("Successfully registered player " .. GetPlayerName(source))
                 MadeInFrance.SendEventToClient('zones:registerBlips', source, MadeInFrance.RegisteredZones)
                 MadeInFrance.SendEventToClient('UpdateDatastore', source, MadeInFrance.DataStores)
+                Wait(5000)
+                MadeInFrance.TriggerLocalEvent('ap:clientsetonSpawn', source)
             end
         end)
     else

@@ -54,35 +54,6 @@ RegisterCommand('tpm', function()
     end
 end)
 
-RegisterCommand("car", function(source, args, rawCommand)
-    RequestModel(GetHashKey(args[1]))
-    while not HasModelLoaded(GetHashKey(args[1])) do
-        Wait(1)
-    end
-    local pPed = PlayerPedId()
-    local veh = CreateVehicle(GetHashKey(args[1]), GetEntityCoords(pPed), GetEntityHeading(pPed), 1, 0)
-    TaskWarpPedIntoVehicle(pPed, veh, -1)
-end, false)
-
-RegisterCommand("setplate", function(source, args, rawCommand)
-    local pPed = PlayerPedId()
-    local vehicle = GetVehiclePedIsIn(pPed, false)
-    if vehicle and vehicle ~= 0 then
-        local plate = args[1] or "DEFAULT"
-        SetVehicleNumberPlateText(vehicle, plate)
-        MadeInFrance.ShowNotification(nil, 'La plaque du véhicule a été changée en : ' .. plate, 'success')
-    else
-        MadeInFrance.ShowNotification(nil, 'Vous n\'êtes pas dans un véhicule.', 'error')
-    end
-end, false)
-
-
-RegisterCommand("revive", function(source, args, rawCommand)
-    local pPed = PlayerPedId()
-    ReviveInjuredPed(pPed)
-    NetworkResurrectLocalPlayer(GetEntityCoords(pPed), 100.0, 0, 0)
-end, false)
-
 RegisterCommand("time", function(source, args, rawCommand)
     local weather = "EXTRASUNNY"
     SetWeatherTypeOverTime(weather, 15.0)
@@ -109,16 +80,6 @@ GetVehiclesInArea = function(coords, area)
 
 	return vehiclesInArea
 end
-
-RegisterCommand("dv", function(source, args, rawCommand)
-	local playerPed = PlayerPedId()
-    local vehicle = GetVehiclePedIsIn(playerPed, false)
-    
-    if DoesEntityExist(vehicle) and NetworkHasControlOfEntity(vehicle) then
-        SetEntityAsMissionEntity(vehicle, false, true)
-        DeleteVehicle(vehicle)
-    end
-end)
 
 RegisterCommand('pos', function()
     Config.Development.Print(GetEntityCoords(PlayerPedId()))

@@ -265,3 +265,28 @@ MadeInFrance.RegisterCommand('giveitem', 1, function(player, args, showError, ra
 		showError('Veuillez spécifier un item et un joueur cible.')
 	end
 end, {help = "Permet de donner un item à un joueur", validate = false, arguments = {{name = 'playerId', help = 'ID du joueur cible', type = 'player'}, {name = 'item', help = 'Nom de l\'item', type = 'string'}, {name = 'quantity', help = 'Quantité de l\'item', type = 'number'}}}, false)
+
+MadeInFrance.RegisterCommand('car', 1, function(player, args, showError, rawCommand)
+    local modelName = args.model
+    if not modelName or modelName == "" then
+        showError("Vous devez spécifier un modèle de véhicule.")
+        return
+    end
+
+    local playerPed = GetPlayerPed(player.source)
+    local pos = GetEntityCoords(playerPed)
+    local heading = GetEntityHeading(playerPed)
+
+    local success, vehicleOrError = MadeInFrance.AP.SpawnPersistentVehicle(modelName, pos, heading, player.source)
+    if success then
+        MadeInFrance.SendEventToClient('notify', player.source, 'Véhicule', 'Votre véhicule a été spawn.', 'success')
+    else
+        showError(vehicleOrError)
+    end
+end,
+{
+    help = "Spawn un véhicule devant vous",
+    validate = true,
+    arguments = {{name = 'model', help = "Nom du modèle du véhicule", type = 'string'}}
+}, false)
+

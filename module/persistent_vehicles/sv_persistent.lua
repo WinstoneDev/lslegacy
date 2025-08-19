@@ -1,0 +1,219 @@
+MadeInFrance = MadeInFrance or {}
+MadeInFrance.AP = { Active = {} }
+
+-- Vérifie si le véhicule est blacklisté
+local function isBlacklisted(entity)
+    local model = GetEntityModel(entity)
+    for _, m in ipairs(Config.AP.Blacklist.Models) do
+        if m == model then return true end
+    end
+    local plate = (GetVehicleNumberPlateText(entity) or ""):upper()
+    for _, p in ipairs(Config.AP.Blacklist.Plates) do
+        if plate:find(p, 1, true) then return true end
+    end
+    return false
+end
+
+-- Sauvegarde complète d'un véhicule
+local function saveVehicle(entity)
+    if not DoesEntityExist(entity) then return end
+    if isBlacklisted(entity) then return end
+
+    local plate = (GetVehicleNumberPlateText(entity) or ""):upper()
+    local pos = GetEntityCoords(entity)
+
+    local status = {
+        engine = GetVehicleEngineHealth(entity),
+        body = GetVehicleBodyHealth(entity),
+        tank = GetVehiclePetrolTankHealth(entity),
+        dirt = GetVehicleDirtLevel(entity),
+        fuel = MadeInFrance.AP.Active[plate].fuel or 100.0,
+        lock = GetVehicleDoorLockStatus(entity),
+        windows = {},
+        extras = {}
+    }
+
+    -- Windows
+    for i = 0, 7 do
+        status.windows[i] = not IsVehicleWindowIntact(entity, i)
+    end
+
+    -- Extras
+    for i = 0, 20 do
+        status.extras[i] = IsVehicleExtraTurnedOn(entity, i) or false
+    end
+
+    -- Tuning
+    local tuning = {}
+    tuning.colorPrimary, tuning.colorSecondary = GetVehicleColours(entity)
+    tuning.pearlColor, tuning.wheelColor = GetVehicleExtraColours(entity)
+    tuning.wheelType = GetVehicleWheelType(entity)
+    tuning.windowTint = GetVehicleWindowTint(entity)
+
+    local state_bags = {}
+
+    local snapshot = {
+        position = { x = pos.x, y = pos.y, z = pos.z, h = GetEntityHeading(entity) },
+        status = status,
+        tuning = MadeInFrance.AP.Active[plate].tuning or tuning,
+        state_bags = state_bags,
+        model = GetEntityModel(entity),
+        trailer = nil
+    }
+
+    MySQL.Async.execute([[
+        INSERT INTO persistent_vehicles (plate, model, position, status, tuning, trailer_plate, state_bags)
+        VALUES (@plate, @model, @position, @status, @tuning, @trailer, @bags)
+        ON DUPLICATE KEY UPDATE
+        model=@model, position=@position, status=@status, tuning=@tuning, trailer_plate=@trailer, state_bags=@bags, last_seen_at = CURRENT_TIMESTAMP
+    ]], {
+        ['@plate'] = plate,
+        ['@model'] = snapshot.model,
+        ['@position'] = json.encode(snapshot.position),
+        ['@status'] = json.encode(snapshot.status),
+        ['@tuning'] = json.encode(snapshot.tuning),
+        ['@trailer'] = snapshot.trailer,
+        ['@bags'] = json.encode(snapshot.state_bags)
+    })
+end
+
+
+-- Spawn d'un véhicule avec restauration complète
+local function spawnVehicle(row, targetPlayer)
+    local pos = json.decode(row.position)
+    local status = json.decode(row.status)
+    local entity = CreateVehicle(row.model, pos.x, pos.y, pos.z, pos.h or 0.0, true, true)
+    Wait(500)
+    local netId = NetworkGetNetworkIdFromEntity(entity)
+
+    SetVehicleNumberPlateText(entity, row.plate)
+    
+    -- Restaurer état complet
+    SetVehicleBodyHealth(entity, status.body or 1000.0)
+    SetVehicleDirtLevel(entity, status.dirt or 0.0)
+    SetVehicleDoorsLocked(entity, status.lock or 1)
+
+    if status.windows then for i=0,7 do if status.windows[i] then SmashVehicleWindow(entity,i) end end end
+    if status.extras then for i=0,20 do if status.extras[i] ~= nil then SetVehicleExtra(entity,i, status.extras[i] and 0 or 1) end end end
+
+    MadeInFrance.AP.Active[row.plate] = { netId = netId, entity = entity, model = row.model }
+
+    -- Notifie le client ciblé
+    if targetPlayer then
+        local extras = {}
+        if status.extras then
+            for i=0,20 do
+                extras[i] = status.extras[i] or false
+            end
+        end
+        MadeInFrance.SendEventToClient("ap:vehicleSpawned", targetPlayer, { 
+            netId = netId, 
+            plate = row.plate, 
+            extras = extras,
+            tankHealth = status.tank or 1000.0,
+            engineHealth = status.engine or 1000.0,
+            tuning = row.tuning or {}
+        })
+    end
+
+    return entity
+end
+
+-- Fonction pour spawn un véhicule persistant correctement
+function MadeInFrance.AP.SpawnPersistentVehicle(model, pos, heading, targetPlayer)
+    local modelHash = tonumber(model) or GetHashKey(model)
+    local vehicle = CreateVehicle(modelHash, pos.x, pos.y, pos.z, heading or 0.0, true, false)
+    Wait(250)
+    plate = GetVehicleNumberPlateText(vehicle)
+    SetVehicleNumberPlateText(vehicle, plate)
+
+    local netId = NetworkGetNetworkIdFromEntity(vehicle)
+    MadeInFrance.AP.Active[plate] = { netId = netId, entity = vehicle, model = modelHash }
+    Wait(500)
+    if targetPlayer then
+        local ped = GetPlayerPed(targetPlayer)
+        if DoesEntityExist(ped) then
+            TaskWarpPedIntoVehicle(ped, vehicle, -1)
+        end
+        MadeInFrance.SendEventToClient("ap:vehicleSpawned", targetPlayer, { netId = netId, plate = plate })
+    end
+
+    return true, vehicle
+end
+
+MadeInFrance.RegisterServerEvent("ap:updateVehicleStatus", function(source, plate, status)
+    if not plate or not status then return end
+
+    if MadeInFrance.AP.Active[plate] then
+        MadeInFrance.AP.Active[plate].fuel  = status.fuel
+
+        MadeInFrance.AP.Active[plate].tuning = status.tuning or {}
+    end
+end)
+
+
+-- Enregistrement des events serveur
+MadeInFrance.RegisterServerEvent("ap:touchVehicle", function(source, netId)
+    local entity = NetworkGetEntityFromNetworkId(netId)
+    if DoesEntityExist(entity) then
+        MadeInFrance.AP.Active[(GetVehicleNumberPlateText(entity) or ""):upper()] = { netId = netId, entity = entity, model = GetEntityModel(entity) }
+    end
+end)
+
+MadeInFrance.RegisterServerEvent("ap:updateVehicle", function(source, netId)
+    local entity = NetworkGetEntityFromNetworkId(netId)
+    if DoesEntityExist(entity) then saveVehicle(entity) end
+end)
+
+MadeInFrance.AddEventHandler('ap:clientsetonSpawn', function(source)
+    MySQL.Async.fetchAll('SELECT * FROM persistent_vehicles', {}, function(rows)
+        for _, row in ipairs(rows) do
+            local status = json.decode(row.status)
+            local pos = json.decode(row.position)
+    
+            MadeInFrance.SendEventToClient("ap:vehicleSpawned", source, {
+                netId = MadeInFrance.AP.Active[row.plate].netId, 
+                plate = row.plate,
+                extras = status.extras or {},
+                engineHealth = status.engine or 1000.0,
+                tankHealth = status.tank or 1000.0,
+            })
+        end
+    end)
+end)
+
+-- Thread principal : update / spawn / cleanup
+CreateThread(function()
+    while true do
+        Wait(Config.AP.UpdateIntervalMs)
+        if not Config.AP.Enable then goto continue end
+        local players = MadeInFrance.ServerPlayers
+
+        -- sauvegarde des véhicules actifs
+        for plate, v in pairs(MadeInFrance.AP.Active) do
+            if DoesEntityExist(v.entity) then
+                saveVehicle(v.entity)
+            end
+        end
+
+
+        MySQL.Async.fetchAll([[SELECT * FROM persistent_vehicles]], {}, function(rows)
+            for _, row in ipairs(rows) do
+                if not MadeInFrance.AP.Active[row.plate] and json.encode(players) ~= "[]" then
+                    spawnVehicle(row)
+                end
+            end
+        end)
+
+
+        -- cleanup
+        if Config.AP.Cleanup then
+            MySQL.Async.execute([[
+                DELETE FROM persistent_vehicles
+                WHERE last_seen_at < (NOW() - INTERVAL @days DAY)
+            ]], { ['@days'] = Config.AP.CleanupDays })
+        end
+
+        ::continue::
+    end
+end)

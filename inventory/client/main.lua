@@ -260,7 +260,7 @@ function useWeapon(name, label, ammo)
         currentWeapon = name
         GiveWeaponToPed(PlayerPedId(), name, 0, false, true)
         SetPedAmmo(PlayerPedId(), name, ammo)
-        local originalLabel = GetOriginalLabel(name).label
+        local originalLabel = Config.Items[name].label
         if originalLabel ~= nil and label == originalLabel then
             MadeInFrance.ShowNotification(nil, "Vous avez équipé votre "..label..".", 'info')
         else

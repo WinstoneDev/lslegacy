@@ -18,6 +18,19 @@ Config.DiscordStatus = {
     ["SmallIconText"] = "MadeInFrance V"..Config.Informations["Version"],
 }
 
+Config.AP = {}
+
+Config.AP.Enable = true
+Config.AP.UpdateIntervalMs = 30000
+Config.AP.Cleanup = false
+Config.AP.CleanupDays = 31 
+Config.AP.SendCleanupToGarage = true
+Config.AP.OnlyOwnedVehicles = false
+Config.AP.Blacklist = {
+    Models = { `cargoplane` },
+    Plates = { "ADMIN", "TEST" }
+}
+
 Config.Development = {
     Debug = true,
     ---Print

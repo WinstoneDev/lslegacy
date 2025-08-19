@@ -45,8 +45,8 @@ MadeInFrance.AddEventHandler = function(name, execute)
 end
 
 MadeInFrance.SendEventToServer = function(eventName, ...)
-    if MadeInFrance.Token then
-        token = MadeInFrance.Token
+    if MadeInFrance.Token[eventName] then
+        token = MadeInFrance.Token[eventName]
         TriggerServerEvent('useEvent', eventName, token, ...)
     else
         Config.Development.Print("Injector detected " .. eventName)

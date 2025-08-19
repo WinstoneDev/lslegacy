@@ -42,7 +42,8 @@ client_scripts {
     'module/bank/cl_bank.lua',
     'module/bank/cl_paymentMenu.lua',
     'module/clothshop/cl_clothshop.lua',
-    'module/needs/cl_needs.lua'
+    'module/needs/cl_needs.lua',
+    'module/persistent_vehicles/cl_persistent.lua'
 }
 
 shared_scripts {
@@ -65,6 +66,7 @@ server_scripts {
     'module/bank/sv_paymentMenu.lua',
     'module/clothshop/sv_clothshop.lua',
     'module/needs/sv_needs.lua',
+    'module/persistent_vehicles/sv_persistent.lua',
     'server/deferallsCards.lua',
     'server/anticheat.lua'
 }

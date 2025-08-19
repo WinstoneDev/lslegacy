@@ -7,11 +7,28 @@ MadeInFrance.RegisterClientEvent('zones:registerBlips', function(zones)
     end
 end)
 
-local pedEntity = nil
+MadeInFrance.PedsZones = {}
+
+MadeInFrance.RegisterClientEvent('SpawnPedZone', function(hash, coords, zone)
+    if not hash or not coords or not zone then return end
+    if not MadeInFrance.PedsZones[zone] then
+        MadeInFrance.PedsZones[zone] = {}
+    end
+    local pedHash = GetHashKey(hash)
+    RequestModel(pedHash)
+    while not HasModelLoaded(pedHash) do
+        Wait(0)
+    end
+    local ped = CreatePed(4, pedHash, coords.x, coords.y, coords.z, coords.w or 0.0, false, true)
+    SetEntityInvincible(ped, true)
+    SetBlockingOfNonTemporaryEvents(ped, true)
+    FreezeEntityPosition(ped, true)
+    MadeInFrance.PedsZones[zone].ped = ped
+end)
 
 MadeInFrance.RegisterClientEvent('zones:enteredZone', function(zone)
     if zone.drawPed then
-        pedEntity = NetworkGetEntityFromNetworkId(zone.pedNetId)
+        pedEntity = MadeInFrance.PedsZones[zone.name].ped
         if DoesEntityExist(pedEntity) then
             SetPedHearingRange(pedEntity, 0.0)
             SetPedSeeingRange(pedEntity, 0.0)

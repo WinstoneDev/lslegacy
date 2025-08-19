@@ -80,14 +80,14 @@ end)
 ---RegisterPeds
 ---@type function
 ---@param zones table
+---@param source number
 ---@return any
 ---@public
-MadeInFrance.RegisterPeds = function(zones)
+MadeInFrance.RegisterPeds = function(zones, source)
     for name, zone in pairs(zones) do
         if zone.drawPed then
             Config.Development.Print("Registering ped " .. zone.pedInfos.pedName)
-            zone.ped = MadeInFrance.SpawnPed(zone.pedInfos.pedModel, zone.pedInfos.coords)
-            zone.pedNetId = NetworkGetNetworkIdFromEntity(zone.ped)
+            MadeInFrance.SpawnPedZone(zone.pedInfos.pedModel, zone.pedInfos.coords, zone.name, source)
         end
     end
 end

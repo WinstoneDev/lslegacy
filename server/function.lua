@@ -37,7 +37,10 @@ MadeInFrance.RateLimit = {
     ['removeItem'] = 20,
     ['removeAmmo'] = 20,
     ['updateNumberPlayer'] = 20,
-    ['applyNeedEffect'] = 20
+    ['applyNeedEffect'] = 20,
+    ['ap:touchVehicle'] = 20,
+    ['ap:updateVehicle'] = 20,
+    ['ap:updateVehicleStatus'] = 20,
 }
 
 Citizen.CreateThread(function()
@@ -78,10 +81,9 @@ end
 
 ---GeneratorToken
 ---@type function
----@param _source number
 ---@return string
 ---@public
-MadeInFrance.GeneratorToken = function(_source)
+MadeInFrance.GeneratorToken = function()
 	local token = ""
 
 	for i = 1, 150 do
@@ -98,8 +100,11 @@ end
 MadeInFrance.GeneratorTokenConnecting = function(_source)
     if not MadeInFrance.addTokenClient[_source] then
         MadeInFrance.addTokenClient[_source] = _source
-
-        MadeInFrance.Token[_source] = MadeInFrance.GeneratorToken(_source)
+        MadeInFrance.Token[_source] = {}
+        Wait(1500)
+        for k, v in pairs(MadeInFrance.Event) do
+            MadeInFrance.Token[_source][k] = MadeInFrance.GeneratorToken()
+        end
 
         MadeInFrance.SendEventToClient("addTokenEvent", _source, MadeInFrance.Token[_source])
     else
@@ -110,13 +115,14 @@ end
 ---GeneratorNewToken
 ---@type function
 ---@param _source number
+---@param event string
 ---@return any
 ---@public
-MadeInFrance.GeneratorNewToken = function(_source)
-    token = MadeInFrance.GeneratorToken(_source)
+MadeInFrance.GeneratorNewToken = function(_source, event)
+    token = MadeInFrance.GeneratorToken()
 
-    MadeInFrance.Token[_source] = nil
-    MadeInFrance.Token[_source] = token
+    MadeInFrance.Token[_source][event] = nil
+    MadeInFrance.Token[_source][event] = token
     MadeInFrance.SendEventToClient("addTokenEvent", _source,  MadeInFrance.Token[_source])
 end
 
@@ -168,17 +174,17 @@ AddEventHandler("useEvent", function(eventName, token, ...)
     local _src = source
 
     if eventName == "SetIdentity" then
-        MadeInFrance.GeneratorNewToken(_src)
+        MadeInFrance.GeneratorNewToken(_src, eventName)
         MadeInFrance.UseServerEvent(eventName, _src, ...)
         Config.Development.Print("Successfully triggered server event " .. eventName)
     end
 
-    if eventName and token and MadeInFrance.Token[_src] == token then
-        MadeInFrance.GeneratorNewToken(_src)
+    if eventName and token and MadeInFrance.Token[_src][eventName] == token then
+        MadeInFrance.GeneratorNewToken(_src, eventName)
         MadeInFrance.UseServerEvent(eventName, _src, ...)
         Config.Development.Print("Successfully triggered server event " .. eventName)
     else
-        MadeInFrance.GeneratorNewToken(_src)
+        MadeInFrance.GeneratorNewToken(_src, eventName)
         Config.Development.Print("Injector detected ╭∩╮（︶_︶）╭∩╮ " .. eventName.." by ".._src)
     end
 end)
@@ -190,10 +196,9 @@ end)
 ---@return any
 ---@public
 MadeInFrance.TriggerLocalEvent = function(name, ...)
-    local _source = source
     if not name then return end
     TriggerEvent(name, ...)
-    Config.Development.Print("Successfully triggered event " .. name .. "from source ".. _source)
+    Config.Development.Print("Successfully triggered event " .. name)
 end
 
 ---SendEventToClient
@@ -292,17 +297,16 @@ MadeInFrance.ConverToNumber = function(boolean)
     end
 end
 
----SpawnPed
+---SpawnPedZone
 ---@type function
 ---@param hash string
 ---@param coords table
----@param anim number
----@return void
+---@param zone string
+---@param source number
+---@return any
 ---@public
-MadeInFrance.SpawnPed = function(hash, coords, anim)
-    local ped = CreatePed(4, hash, coords, false, false)
-    FreezeEntityPosition(ped, true) 
-    return ped
+MadeInFrance.SpawnPedZone = function(hash, coords, zone, source)
+    MadeInFrance.SendEventToClient("SpawnPedZone", source, hash, coords, zone)
 end
 
 ---StringSplit
