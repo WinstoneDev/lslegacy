@@ -6,7 +6,7 @@ function GetFieldValueFromName(stringName)
 	local data = GetResourceKvpString(stringName)
 	return json.decode(data) or {}
 end
-local FastWeapons = GetFieldValueFromName('MadeInFrance')
+local FastWeapons = GetFieldValueFromName('LSLegacy')
 local currentMenu = 'items'
 local ItemVetement = {
     ['tshirt'] = {15, 0},
@@ -34,7 +34,7 @@ Citizen.CreateThread(function()
                 DisableControlAction(1, 142, true)
             end
 
-            for k, v in pairs(MadeInFrance.PlayerData.inventory) do
+            for k, v in pairs(LSLegacy.PlayerData.inventory) do
                 if v.name == currentWeapon then
                     v.data.ammo = GetAmmoInPedWeapon(playerPed, GetHashKey(currentWeapon))
                 end
@@ -51,7 +51,7 @@ Citizen.CreateThread(function()
 
                 if ammoNeeded > 0 then
                     if Config.AmmoForWeapon[currentWeapon] then
-                        MadeInFrance.SendEventToServer('removeAmmo', Config.AmmoForWeapon[currentWeapon], ammoNeeded)
+                        LSLegacy.SendEventToServer('removeAmmo', Config.AmmoForWeapon[currentWeapon], ammoNeeded)
                     end
                 end
             end
@@ -69,7 +69,7 @@ function ReverseSearchConfigAmmo(ammo)
     return nil
 end
 
-MadeInFrance.RegisterClientEvent('setAmmo', function(name, count)
+LSLegacy.RegisterClientEvent('setAmmo', function(name, count)
     AddAmmoToPed(PlayerPedId(), GetHashKey(ReverseSearchConfigAmmo(name)), count)
 end)
 
@@ -91,7 +91,7 @@ Keys.Register('K', 'K', 'Ouvrir le coffre du véhicule', function()
         CurrentVehicle = vehicle
         openTrunkInventory(vehicle)
     else
-        vehicle = MadeInFrance.GetClosestVehicle(GetEntityCoords(ped), 3.0)
+        vehicle = LSLegacy.GetClosestVehicle(GetEntityCoords(ped), 3.0)
         if vehicle ~= 0 then
             if IsPlayerFacingTrunk(ped, vehicle) then
                 CurrentVehicle = vehicle
@@ -99,10 +99,10 @@ Keys.Register('K', 'K', 'Ouvrir le coffre du véhicule', function()
                 PlayTrunkAnim(ped, "open")
                 openTrunkInventory(vehicle)
             else
-                MadeInFrance.ShowNotification(nil, "Vous devez être derrière le coffre.", 'error')
+                LSLegacy.ShowNotification(nil, "Vous devez être derrière le coffre.", 'error')
             end
         else
-            MadeInFrance.ShowNotification(nil, "Aucun véhicule à proximité.", 'error')
+            LSLegacy.ShowNotification(nil, "Aucun véhicule à proximité.", 'error')
         end
     end
 end)
@@ -213,7 +213,7 @@ function openInventory()
     SetKeepInputMode(true)
     DisableControlInventory()
     DisplayRadar(false)
-    MadeInFrance.Status.Displayed = false
+    LSLegacy.Status.Displayed = false
 end
 
 function closeInventory()
@@ -223,7 +223,7 @@ function closeInventory()
     SetNuiFocus(false, false)
     SetKeepInputMode(false)
     DisplayRadar(true)
-    MadeInFrance.Status.Displayed = true
+    LSLegacy.Status.Displayed = true
 
     if CurrentVehicle ~= nil then
         if not IsPedInAnyVehicle(PlayerPedId(), false) then
@@ -236,7 +236,7 @@ end
 
 function unloadWeapon(name, count)
     if Config.AmmoForWeapon[name] then
-        MadeInFrance.SendEventToServer('giveItem', Config.AmmoForWeapon[name], count)
+        LSLegacy.SendEventToServer('giveItem', Config.AmmoForWeapon[name], count)
     end
 end
 
@@ -262,18 +262,18 @@ function useWeapon(name, label, ammo)
         SetPedAmmo(PlayerPedId(), name, ammo)
         local originalLabel = Config.Items[name].label
         if originalLabel ~= nil and label == originalLabel then
-            MadeInFrance.ShowNotification(nil, "Vous avez équipé votre "..label..".", 'info')
+            LSLegacy.ShowNotification(nil, "Vous avez équipé votre "..label..".", 'info')
         else
-            MadeInFrance.ShowNotification(nil, "Vous avez équipé votre "..originalLabel.." '"..label.."'.", 'info')
+            LSLegacy.ShowNotification(nil, "Vous avez équipé votre "..originalLabel.." '"..label.."'.", 'info')
         end
     end
 end
 
 function GramsOrKg(weight)
     if weight >= 1 then
-        return MadeInFrance.Math.Round(weight, 1) .. 'KG'
+        return LSLegacy.Math.Round(weight, 1) .. 'KG'
     else
-        return MadeInFrance.Math.Round(weight*1000, 1) .. 'G'
+        return LSLegacy.Math.Round(weight*1000, 1) .. 'G'
     end
 end
 
@@ -293,9 +293,9 @@ function useitem(num)
                 useWeapon(FastWeapons[num].name, FastWeapons[num].label, FastWeapons[num].ammo)
             else
                 if FastWeapons[num].data == nil then
-                    MadeInFrance.SendEventToServer('useItem', FastWeapons[num].name)
+                    LSLegacy.SendEventToServer('useItem', FastWeapons[num].name)
                 else
-                    MadeInFrance.SendEventToServer('useItem', FastWeapons[num].name, FastWeapons[num].data, FastWeapons[num].uniqueId)
+                    LSLegacy.SendEventToServer('useItem', FastWeapons[num].name, FastWeapons[num].data, FastWeapons[num].uniqueId)
                 end
             end
         end
@@ -370,7 +370,7 @@ function openTrunkInventory(vehicle)
     SetKeepInputMode(true)
     DisableControlInventory()
     DisplayRadar(false)
-    MadeInFrance.Status.Displayed = false
+    LSLegacy.Status.Displayed = false
 end
 
 function KeyboardInput(textEntry, maxLength)
@@ -397,11 +397,11 @@ end
 function loadPlayerInventory(result, vehicle)
     items = {}
     fastItems = {}
-    weight = GramsOrKg(MadeInFrance.PlayerData.weight or 0)
+    weight = GramsOrKg(LSLegacy.PlayerData.weight or 0)
     textweight = weight.. " / "..Config.Informations["MaxWeight"]..'KG'
-    inventory = MadeInFrance.PlayerData.inventory
-    cash = MadeInFrance.PlayerData.cash
-    dirty = MadeInFrance.PlayerData.dirty
+    inventory = LSLegacy.PlayerData.inventory
+    cash = LSLegacy.PlayerData.cash
+    dirty = LSLegacy.PlayerData.dirty
 
     if json.encode(FastWeapons) ~= "[]" then
         for k, v in pairs(FastWeapons) do
@@ -453,13 +453,13 @@ function loadPlayerInventory(result, vehicle)
         SendNUIMessage({ action = "setItems", itemList = items, fastItems = fastItems, text = textweight, crMenu = result})
         if vehicle then
             if BagOrTrunk(CurrentVehicle) == 'trunk' then
-                datastore = MadeInFrance.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
+                datastore = LSLegacy.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
                 Wait(250)
                 if datastore == nil then
-                    MadeInFrance.DataStore.RegisterTrunk(vehicle)
-                    datastore = MadeInFrance.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
+                    LSLegacy.DataStore.RegisterTrunk(vehicle)
+                    datastore = LSLegacy.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
                     while datastore == nil do
-                        datastore = MadeInFrance.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
+                        datastore = LSLegacy.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
                         Wait(100)
                     end
                     cash = datastore.money or 0
@@ -478,7 +478,7 @@ function loadPlayerInventory(result, vehicle)
                             usable = false
                         })
                     end
-                    trunkWeight = GramsOrKg(MadeInFrance.DataStore.GetInventoryWeight(items) or 0)
+                    trunkWeight = GramsOrKg(LSLegacy.DataStore.GetInventoryWeight(items) or 0)
                     trunkMaxWeight = 50
                     weightText = trunkWeight.. " / "..trunkMaxWeight..'KG'
                     if cash > 0 then
@@ -512,9 +512,9 @@ function loadPlayerInventory(result, vehicle)
                     })
                     
                 else
-                    datastore = MadeInFrance.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
+                    datastore = LSLegacy.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
                     while datastore == nil do
-                        datastore = MadeInFrance.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
+                        datastore = LSLegacy.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
                         Wait(100)
                     end
                     cash = datastore.money or 0
@@ -533,7 +533,7 @@ function loadPlayerInventory(result, vehicle)
                             usable = false
                         })
                     end
-                    trunkWeight = GramsOrKg(MadeInFrance.DataStore.GetInventoryWeight(items) or 0)
+                    trunkWeight = GramsOrKg(LSLegacy.DataStore.GetInventoryWeight(items) or 0)
                     trunkMaxWeight = 50
                     weightText = trunkWeight.. " / "..trunkMaxWeight..'KG'
                     if cash > 0 then
@@ -568,13 +568,13 @@ function loadPlayerInventory(result, vehicle)
                     })
                 end
             elseif BagOrTrunk(CurrentVehicle) == 'bag' then
-                datastore = MadeInFrance.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
+                datastore = LSLegacy.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
                 Wait(250)
                 if datastore == nil then
-                    MadeInFrance.DataStore.RegisterBAG(vehicle)
-                    datastore = MadeInFrance.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
+                    LSLegacy.DataStore.RegisterBAG(vehicle)
+                    datastore = LSLegacy.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
                     while datastore == nil do
-                        datastore = MadeInFrance.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
+                        datastore = LSLegacy.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
                         Wait(100)
                     end
                     cash = datastore.money or 0
@@ -593,7 +593,7 @@ function loadPlayerInventory(result, vehicle)
                             usable = false
                         })
                     end
-                    trunkWeight = GramsOrKg(MadeInFrance.DataStore.GetInventoryWeight(items) or 0)
+                    trunkWeight = GramsOrKg(LSLegacy.DataStore.GetInventoryWeight(items) or 0)
                     trunkMaxWeight = 50
                     weightText = trunkWeight.. " / "..trunkMaxWeight..'KG'
                     if cash > 0 then
@@ -628,9 +628,9 @@ function loadPlayerInventory(result, vehicle)
                     
                     
                 else
-                    datastore = MadeInFrance.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
+                    datastore = LSLegacy.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
                     while datastore == nil do
-                        datastore = MadeInFrance.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
+                        datastore = LSLegacy.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
                         Wait(100)
                     end
                     cash = datastore.money or 0
@@ -649,7 +649,7 @@ function loadPlayerInventory(result, vehicle)
                             usable = false
                         })
                     end
-                    trunkWeight = GramsOrKg(MadeInFrance.DataStore.GetInventoryWeight(items) or 0)
+                    trunkWeight = GramsOrKg(LSLegacy.DataStore.GetInventoryWeight(items) or 0)
                     trunkMaxWeight = 50
                     weightText = trunkWeight.. " / "..trunkMaxWeight..'KG'
                     if cash > 0 then
@@ -704,13 +704,13 @@ function loadPlayerInventory(result, vehicle)
         SendNUIMessage({ action = "setItems", itemList = items, fastItems = fastItems, text = textweight, crMenu = result})
         if vehicle then
             if BagOrTrunk(CurrentVehicle) == 'trunk' then
-                datastore = MadeInFrance.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
+                datastore = LSLegacy.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
                 Wait(250)
                 if datastore == nil then
-                    MadeInFrance.DataStore.RegisterTrunk(vehicle)
-                    datastore = MadeInFrance.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
+                    LSLegacy.DataStore.RegisterTrunk(vehicle)
+                    datastore = LSLegacy.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
                     while datastore == nil do
-                        datastore = MadeInFrance.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
+                        datastore = LSLegacy.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
                         Wait(100)
                     end
                     cash = datastore.money or 0
@@ -729,7 +729,7 @@ function loadPlayerInventory(result, vehicle)
                             usable = false
                         })
                     end
-                    trunkWeight = GramsOrKg(MadeInFrance.DataStore.GetInventoryWeight(items) or 0)
+                    trunkWeight = GramsOrKg(LSLegacy.DataStore.GetInventoryWeight(items) or 0)
                     trunkMaxWeight = 50
                     weightText = trunkWeight.. " / "..trunkMaxWeight..'KG'
                     if cash > 0 then
@@ -762,9 +762,9 @@ function loadPlayerInventory(result, vehicle)
                         text = "Poids coffre : " .. weightText .. " Plaque : " .. plate
                     })
                 else
-                    datastore = MadeInFrance.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
+                    datastore = LSLegacy.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
                     while datastore == nil do
-                        datastore = MadeInFrance.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
+                        datastore = LSLegacy.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
                         Wait(100)
                     end
                     cash = datastore.money or 0
@@ -783,7 +783,7 @@ function loadPlayerInventory(result, vehicle)
                             usable = false
                         })
                     end
-                    trunkWeight = GramsOrKg(MadeInFrance.DataStore.GetInventoryWeight(items) or 0)
+                    trunkWeight = GramsOrKg(LSLegacy.DataStore.GetInventoryWeight(items) or 0)
                     trunkMaxWeight = 50
                     weightText = trunkWeight.. " / "..trunkMaxWeight..'KG'
                     if cash > 0 then
@@ -818,13 +818,13 @@ function loadPlayerInventory(result, vehicle)
                     })
                 end
             elseif BagOrTrunk(CurrentVehicle) == 'bag' then
-                datastore = MadeInFrance.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
+                datastore = LSLegacy.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
                 Wait(250)
                 if datastore == nil then
-                    MadeInFrance.DataStore.RegisterBAG(vehicle)
-                    datastore = MadeInFrance.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
+                    LSLegacy.DataStore.RegisterBAG(vehicle)
+                    datastore = LSLegacy.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
                     while datastore == nil do
-                        datastore = MadeInFrance.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
+                        datastore = LSLegacy.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
                         Wait(100)
                     end
                     cash = datastore.money or 0
@@ -843,7 +843,7 @@ function loadPlayerInventory(result, vehicle)
                             usable = false
                         })
                     end
-                    trunkWeight = GramsOrKg(MadeInFrance.DataStore.GetInventoryWeight(items) or 0)
+                    trunkWeight = GramsOrKg(LSLegacy.DataStore.GetInventoryWeight(items) or 0)
                     trunkMaxWeight = 50
                     weightText = trunkWeight.. " / "..trunkMaxWeight..'KG'
                     if cash > 0 then
@@ -876,9 +876,9 @@ function loadPlayerInventory(result, vehicle)
                         text = "Poids coffre : " .. weightText .. " Plaque : " .. plate
                     })
                 else
-                    datastore = MadeInFrance.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
+                    datastore = LSLegacy.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
                     while datastore == nil do
-                        datastore = MadeInFrance.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
+                        datastore = LSLegacy.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
                         Wait(100)
                     end
                     cash = datastore.money or 0
@@ -897,7 +897,7 @@ function loadPlayerInventory(result, vehicle)
                             usable = false
                         })
                     end
-                    trunkWeight = GramsOrKg(MadeInFrance.DataStore.GetInventoryWeight(items) or 0)
+                    trunkWeight = GramsOrKg(LSLegacy.DataStore.GetInventoryWeight(items) or 0)
                     trunkMaxWeight = 50
                     weightText = trunkWeight.. " / "..trunkMaxWeight..'KG'
                     if cash > 0 then
@@ -951,13 +951,13 @@ function loadPlayerInventory(result, vehicle)
         SendNUIMessage({ action = "setItems", itemList = items, fastItems = fastItems, text = textweight, crMenu = result})
         if vehicle then
             if BagOrTrunk(CurrentVehicle) == 'trunk' then
-                datastore = MadeInFrance.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
+                datastore = LSLegacy.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
                 Wait(250)
                 if datastore == nil then
-                    MadeInFrance.DataStore.RegisterTrunk(vehicle)
-                    datastore = MadeInFrance.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
+                    LSLegacy.DataStore.RegisterTrunk(vehicle)
+                    datastore = LSLegacy.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
                     while datastore == nil do
-                        datastore = MadeInFrance.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
+                        datastore = LSLegacy.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
                         Wait(100)
                     end
                     cash = datastore.money or 0
@@ -976,7 +976,7 @@ function loadPlayerInventory(result, vehicle)
                             usable = false
                         })
                     end
-                    trunkWeight = GramsOrKg(MadeInFrance.DataStore.GetInventoryWeight(items) or 0)
+                    trunkWeight = GramsOrKg(LSLegacy.DataStore.GetInventoryWeight(items) or 0)
                     trunkMaxWeight = 50
                     weightText = trunkWeight.. " / "..trunkMaxWeight..'KG'
                     if cash > 0 then
@@ -1009,9 +1009,9 @@ function loadPlayerInventory(result, vehicle)
                         text = "Poids coffre : " .. weightText .. " Plaque : " .. plate
                     }) 
                 else
-                    datastore = MadeInFrance.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
+                    datastore = LSLegacy.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
                     while datastore == nil do
-                        datastore = MadeInFrance.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
+                        datastore = LSLegacy.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
                         Wait(100)
                     end
                     cash = datastore.money or 0
@@ -1030,7 +1030,7 @@ function loadPlayerInventory(result, vehicle)
                             usable = false
                         })
                     end
-                    trunkWeight = GramsOrKg(MadeInFrance.DataStore.GetInventoryWeight(items) or 0)
+                    trunkWeight = GramsOrKg(LSLegacy.DataStore.GetInventoryWeight(items) or 0)
                     trunkMaxWeight = 50
                     weightText = trunkWeight.. " / "..trunkMaxWeight..'KG'
                     if cash > 0 then
@@ -1065,13 +1065,13 @@ function loadPlayerInventory(result, vehicle)
                     })
                 end
             elseif BagOrTrunk(CurrentVehicle) == 'bag' then
-                datastore = MadeInFrance.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
+                datastore = LSLegacy.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
                 Wait(250)
                 if datastore == nil then
-                    MadeInFrance.DataStore.RegisterBAG(vehicle)
-                    datastore = MadeInFrance.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
+                    LSLegacy.DataStore.RegisterBAG(vehicle)
+                    datastore = LSLegacy.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
                     while datastore == nil do
-                        datastore = MadeInFrance.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
+                        datastore = LSLegacy.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
                         Wait(100)
                     end
                     cash = datastore.money or 0
@@ -1090,7 +1090,7 @@ function loadPlayerInventory(result, vehicle)
                             usable = false
                         })
                     end
-                    trunkWeight = GramsOrKg(MadeInFrance.DataStore.GetInventoryWeight(items) or 0)
+                    trunkWeight = GramsOrKg(LSLegacy.DataStore.GetInventoryWeight(items) or 0)
                     trunkMaxWeight = 50
                     weightText = trunkWeight.. " / "..trunkMaxWeight..'KG'
                     if cash > 0 then
@@ -1123,9 +1123,9 @@ function loadPlayerInventory(result, vehicle)
                         text = "Poids coffre : " .. weightText .. " Plaque : " .. plate
                     })
                 else
-                    datastore = MadeInFrance.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
+                    datastore = LSLegacy.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
                     while datastore == nil do
-                        datastore = MadeInFrance.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
+                        datastore = LSLegacy.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
                         Wait(100)
                     end
                     cash = datastore.money or 0
@@ -1144,7 +1144,7 @@ function loadPlayerInventory(result, vehicle)
                             usable = false
                         })
                     end
-                    trunkWeight = GramsOrKg(MadeInFrance.DataStore.GetInventoryWeight(items) or 0)
+                    trunkWeight = GramsOrKg(LSLegacy.DataStore.GetInventoryWeight(items) or 0)
                     trunkMaxWeight = 50
                     weightText = trunkWeight.. " / "..trunkMaxWeight..'KG'
                     if cash > 0 then
@@ -1197,7 +1197,7 @@ RegisterNUICallback("GetNearPlayers", function(data, cb)
     local target = GetNearbyPlayer(3.0)
     if target then
         closeInventory()
-        MadeInFrance.SendEventToServer('transfer', {
+        LSLegacy.SendEventToServer('transfer', {
             name = data.item.name,
             count = data.number,
             label = data.item.label,
@@ -1206,7 +1206,7 @@ RegisterNUICallback("GetNearPlayers", function(data, cb)
             data = data.item.data,
             type = data.item.type
         })
-        MadeInFrance.RequestAnimDict("mp_common", function()
+        LSLegacy.RequestAnimDict("mp_common", function()
             TaskPlayAnim(PlayerPedId(), "mp_common", "givetake2_a", 2.0, -2.0, 2500, 49, 0, false, false, false)
         end)
         Wait(250)
@@ -1229,9 +1229,9 @@ RegisterNUICallback("RenameItem", function(data, cb)
         if result ~= nil then
             local count = tonumber(data.number)
             if result ~= data.item.label and tonumber(count) and count ~= nil then
-                MadeInFrance.SendEventToServer("renameItem", data.item.name, data.item.label, result, count, data.item.uniqueId)
+                LSLegacy.SendEventToServer("renameItem", data.item.name, data.item.label, result, count, data.item.uniqueId)
             else
-                MadeInFrance.ShowNotification(nil, "Impossible l'item a déjà ce label.", 'error')
+                LSLegacy.ShowNotification(nil, "Impossible l'item a déjà ce label.", 'error')
             end
         end
     end 
@@ -1247,7 +1247,7 @@ RegisterNUICallback("UnloadWeapon", function(data, cb)
                 currentWeapon = nil
             end
             Wait(500)
-            for i, v in pairs(MadeInFrance.PlayerData.inventory) do
+            for i, v in pairs(LSLegacy.PlayerData.inventory) do
                 if v.name == data.item.name then
                     v.data.ammo = 0
                     break
@@ -1280,21 +1280,21 @@ RegisterNUICallback("UseItem", function(data, cb)
                     end)
 
                     if skins[data.item.name][1] ~= data.item.data[1] or skins[data.item.name][2] ~= data.item.data[2] then
-                        MadeInFrance.TriggerLocalEvent('skinchanger:change', data.item.name..'_1', data.item.data[1])
-                        MadeInFrance.TriggerLocalEvent('skinchanger:change', data.item.name..'_2', data.item.data[2])
+                        LSLegacy.TriggerLocalEvent('skinchanger:change', data.item.name..'_1', data.item.data[1])
+                        LSLegacy.TriggerLocalEvent('skinchanger:change', data.item.name..'_2', data.item.data[2])
                         ExecuteCommand('p3')
                         loadPlayerInventory('clothes', CurrentVehicle)
                     else
-                        MadeInFrance.TriggerLocalEvent('skinchanger:change', data.item.name..'_1', clothes[1])
-                        MadeInFrance.TriggerLocalEvent('skinchanger:change', data.item.name..'_2', clothes[2])
+                        LSLegacy.TriggerLocalEvent('skinchanger:change', data.item.name..'_1', clothes[1])
+                        LSLegacy.TriggerLocalEvent('skinchanger:change', data.item.name..'_2', clothes[2])
                         ExecuteCommand('p3')
                         loadPlayerInventory('clothes', CurrentVehicle)
                     end
                 else
-                    MadeInFrance.SendEventToServer('useItem', data.item.name, data.item.data, data.item.uniqueId)
+                    LSLegacy.SendEventToServer('useItem', data.item.name, data.item.data, data.item.uniqueId)
                 end
             else
-                MadeInFrance.SendEventToServer('useItem', data.item.name)
+                LSLegacy.SendEventToServer('useItem', data.item.name)
             end
         end
     end
@@ -1306,7 +1306,7 @@ end)
 
 RegisterNUICallback("DropItem", function(data, cb)
     if IsPedInAnyVehicle(PlayerPedId(), false) then
-        MadeInFrance.ShowNotification(nil, "Vous ne pouvez pas jeter d'objets dans un véhicule.", 'error')
+        LSLegacy.ShowNotification(nil, "Vous ne pouvez pas jeter d'objets dans un véhicule.", 'error')
         return cb("ok")
     end
     if data.item.type == "item_standard" then
@@ -1315,7 +1315,7 @@ RegisterNUICallback("DropItem", function(data, cb)
         local pHeading = GetEntityHeading(pPed)
         
         if tonumber(data.number) then
-            MadeInFrance.SendEventToServer('addItemPickup', data.item.name, data.item.type, data.item.label, data.number, {x = pCoords.x, y = pCoords.y, z = pCoords.z, w = pHeading}, data.item.uniqueId, data.item.data)
+            LSLegacy.SendEventToServer('addItemPickup', data.item.name, data.item.type, data.item.label, data.number, {x = pCoords.x, y = pCoords.y, z = pCoords.z, w = pHeading}, data.item.uniqueId, data.item.data)
             TaskPlayAnim(PlayerPedId(), "random@domestic", "pickup_low" , 8.0, -8.0, 1780, 35, 0.0, false, false, false)
         end
     elseif data.item.type ~= 'item_standard' then
@@ -1324,7 +1324,7 @@ RegisterNUICallback("DropItem", function(data, cb)
         local pHeading = GetEntityHeading(pPed)
         
         if tonumber(data.number) then
-            MadeInFrance.SendEventToServer('addItemPickup', data.item.type, nil, data.item.label, tonumber(data.number), {x = pCoords.x, y = pCoords.y, z = pCoords.z, w = pHeading})
+            LSLegacy.SendEventToServer('addItemPickup', data.item.type, nil, data.item.label, tonumber(data.number), {x = pCoords.x, y = pCoords.y, z = pCoords.z, w = pHeading})
             TaskPlayAnim(PlayerPedId(), "random@domestic", "pickup_low" , 8.0, -8.0, 1780, 35, 0.0, false, false, false)
         end
     end
@@ -1349,7 +1349,7 @@ RegisterNUICallback("PutIntoFast", function(data, cb)
             data = data.item.data,
             ammo = data.item.data.ammo --- a changer pour eviter d'avoir full balles
         }
-        SetFieldValueFromNameEncode('MadeInFrance', FastWeapons)
+        SetFieldValueFromNameEncode('LSLegacy', FastWeapons)
         loadPlayerInventory(currentMenu, CurrentVehicle)
     end
     cb("ok")
@@ -1358,7 +1358,7 @@ end)
 RegisterNUICallback("TakeFromFast", function(data, cb)
     if currentMenu == 'items' or currentMenu == 'weapons' then
         FastWeapons[data.item.slot] = nil
-        SetFieldValueFromNameEncode('MadeInFrance', FastWeapons)
+        SetFieldValueFromNameEncode('LSLegacy', FastWeapons)
         loadPlayerInventory(currentMenu, CurrentVehicle)
     end
 	cb("ok")
@@ -1366,9 +1366,9 @@ end)
 
 RegisterNUICallback("PutIntoTrunk", function(data, cb)
     if BagOrTrunk(CurrentVehicle) == 'trunk' then
-        datastore = MadeInFrance.DataStore.GetTrunk(GetVehicleNumberPlateText(CurrentVehicle))
+        datastore = LSLegacy.DataStore.GetTrunk(GetVehicleNumberPlateText(CurrentVehicle))
         Wait(250)
-        MadeInFrance.SendEventToServer('PutIntoTrunk', {
+        LSLegacy.SendEventToServer('PutIntoTrunk', {
             name = data.item.name,
             count = data.number,
             label = data.item.label,
@@ -1379,9 +1379,9 @@ RegisterNUICallback("PutIntoTrunk", function(data, cb)
         Wait(100)
         loadPlayerInventory(currentMenu, CurrentVehicle)
     elseif BagOrTrunk(CurrentVehicle) == 'bag' then
-        datastore = MadeInFrance.DataStore.GetBAG(GetVehicleNumberPlateText(CurrentVehicle))
+        datastore = LSLegacy.DataStore.GetBAG(GetVehicleNumberPlateText(CurrentVehicle))
         Wait(250)
-        MadeInFrance.SendEventToServer('PutIntoTrunk', {
+        LSLegacy.SendEventToServer('PutIntoTrunk', {
             name = data.item.name,
             count = data.number,
             label = data.item.label,
@@ -1397,9 +1397,9 @@ end)
 
 RegisterNUICallback("TakeFromTrunk", function(data, cb)
     if BagOrTrunk(CurrentVehicle) == 'trunk' then
-        datastore = MadeInFrance.DataStore.GetTrunk(GetVehicleNumberPlateText(CurrentVehicle))
+        datastore = LSLegacy.DataStore.GetTrunk(GetVehicleNumberPlateText(CurrentVehicle))
         Wait(250)
-        MadeInFrance.SendEventToServer('TakeFromTrunk', {
+        LSLegacy.SendEventToServer('TakeFromTrunk', {
             name = data.item.name,
             count = data.number,
             label = data.item.label,
@@ -1410,9 +1410,9 @@ RegisterNUICallback("TakeFromTrunk", function(data, cb)
         Wait(100)
         loadPlayerInventory(currentMenu, CurrentVehicle)
     elseif BagOrTrunk(CurrentVehicle) == 'bag' then
-        datastore = MadeInFrance.DataStore.GetBAG(GetVehicleNumberPlateText(CurrentVehicle))
+        datastore = LSLegacy.DataStore.GetBAG(GetVehicleNumberPlateText(CurrentVehicle))
         Wait(250)
-        MadeInFrance.SendEventToServer('TakeFromTrunk', {
+        LSLegacy.SendEventToServer('TakeFromTrunk', {
             name = data.item.name,
             count = data.number,
             label = data.item.label,

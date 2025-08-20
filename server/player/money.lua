@@ -1,12 +1,12 @@
----@class MadeInFrance.Money
-MadeInFrance.Money = {}
+---@class LSLegacy.Money
+LSLegacy.Money = {}
 
 ---GetPlayerMoney
 ---@type function
 ---@param player table
 ---@return number
 ---@public
-MadeInFrance.Money.GetPlayerMoney = function(player)
+LSLegacy.Money.GetPlayerMoney = function(player)
     if player ~= nil then
         return player.cash
     end
@@ -17,7 +17,7 @@ end
 ---@param player table
 ---@return number
 ---@public
-MadeInFrance.Money.GetPlayerDirtyMoney = function(player)
+LSLegacy.Money.GetPlayerDirtyMoney = function(player)
     if player ~= nil then
         return player.dirty
     end
@@ -29,10 +29,10 @@ end
 ---@param amount number
 ---@return any
 ---@public
-MadeInFrance.Money.SetPlayerMoney = function(player, amount)
+LSLegacy.Money.SetPlayerMoney = function(player, amount)
     if player ~= nil then
         player.cash = amount
-        MadeInFrance.SendEventToClient('UpdatePlayer', player.source, player)
+        LSLegacy.SendEventToClient('UpdatePlayer', player.source, player)
     end
 end
 
@@ -42,10 +42,10 @@ end
 ---@param amount number
 ---@return any
 ---@public
-MadeInFrance.Money.AddPlayerMoney = function(player, amount)
+LSLegacy.Money.AddPlayerMoney = function(player, amount)
     if player ~= nil then
         player.cash = player.cash + amount
-        MadeInFrance.SendEventToClient('UpdatePlayer', player.source, player)
+        LSLegacy.SendEventToClient('UpdatePlayer', player.source, player)
     end
 end
 
@@ -55,11 +55,11 @@ end
 ---@param amount number
 ---@return any
 ---@public
-MadeInFrance.Money.RemovePlayerMoney = function(player, amount)
+LSLegacy.Money.RemovePlayerMoney = function(player, amount)
     if player ~= nil then
         if player.cash >= tonumber(amount) then
             player.cash = player.cash - amount
-            MadeInFrance.SendEventToClient('UpdatePlayer', player.source, player)
+            LSLegacy.SendEventToClient('UpdatePlayer', player.source, player)
         end
     end
 end
@@ -70,10 +70,10 @@ end
 ---@param amount number
 ---@return any
 ---@public
-MadeInFrance.Money.SetPlayerDirtyMoney = function(player, amount)
+LSLegacy.Money.SetPlayerDirtyMoney = function(player, amount)
     if player ~= nil then
         player.dirty = amount
-        MadeInFrance.SendEventToClient('UpdatePlayer', player.source, player)
+        LSLegacy.SendEventToClient('UpdatePlayer', player.source, player)
     end
 end
 
@@ -83,10 +83,10 @@ end
 ---@param amount number
 ---@return any
 ---@public
-MadeInFrance.Money.AddPlayerDirtyMoney = function(player, amount)
+LSLegacy.Money.AddPlayerDirtyMoney = function(player, amount)
     if player ~= nil then
         player.dirty = player.dirty + amount
-        MadeInFrance.SendEventToClient('UpdatePlayer', player.source, player)
+        LSLegacy.SendEventToClient('UpdatePlayer', player.source, player)
     end
 end
 
@@ -96,11 +96,11 @@ end
 ---@param amount number
 ---@return any
 ---@public
-MadeInFrance.Money.RemovePlayerDirtyMoney = function(player, amount)
+LSLegacy.Money.RemovePlayerDirtyMoney = function(player, amount)
     if player ~= nil then
         if player.dirty >= tonumber(amount) then
             player.dirty = player.dirty - amount
-            MadeInFrance.SendEventToClient('UpdatePlayer', player.source, player)
+            LSLegacy.SendEventToClient('UpdatePlayer', player.source, player)
         end
     end
 end

@@ -1,17 +1,17 @@
-MadeInFrance = {}
-MadeInFrance.RegisteredClientEvents = {}
-MadeInFrance.Token = nil
-MadeInFrance.Math = {}
+LSLegacy = {}
+LSLegacy.RegisteredClientEvents = {}
+LSLegacy.Token = nil
+LSLegacy.Math = {}
 
-MadeInFrance.TriggerLocalEvent = function(name, ...)
+LSLegacy.TriggerLocalEvent = function(name, ...)
     if not name then return end
     TriggerEvent(name, ...)
     Config.Development.Print("Successfully triggered event " .. name)
 end
 
-MadeInFrance.RegisterClientEvent = function(name, execute)
+LSLegacy.RegisterClientEvent = function(name, execute)
     if not name then return end
-    if not MadeInFrance.RegisteredClientEvents[name] then
+    if not LSLegacy.RegisteredClientEvents[name] then
         RegisterNetEvent(name)
         AddEventHandler(name, function(...)
            local getResource = GetInvokingResource()
@@ -21,21 +21,21 @@ MadeInFrance.RegisterClientEvent = function(name, execute)
             elseif getResource == nil then
                 execute(...)
             else
-               MadeInFrance.SendEventToServer("DropInjectorDetected")
+               LSLegacy.SendEventToServer("DropInjectorDetected")
             end
         end)
         Config.Development.Print("Successfully registered event " .. name)
-        MadeInFrance.RegisteredClientEvents[name] = execute
+        LSLegacy.RegisteredClientEvents[name] = execute
     else
         return Config.Development.Print("Event " .. name .. " already registered")
     end
 end
 
-MadeInFrance.RegisterClientEvent("addTokenEvent", function(data)
-    MadeInFrance.Token = data
+LSLegacy.RegisterClientEvent("addTokenEvent", function(data)
+    LSLegacy.Token = data
 end)
 
-MadeInFrance.AddEventHandler = function(name, execute)
+LSLegacy.AddEventHandler = function(name, execute)
     if not name then return end
     if not execute then return end
     AddEventHandler(name, function(...)
@@ -44,16 +44,16 @@ MadeInFrance.AddEventHandler = function(name, execute)
     Config.Development.Print("Successfully added event " .. name)
 end
 
-MadeInFrance.SendEventToServer = function(eventName, ...)
-    if MadeInFrance.Token[eventName] then
-        token = MadeInFrance.Token[eventName]
+LSLegacy.SendEventToServer = function(eventName, ...)
+    if LSLegacy.Token[eventName] then
+        token = LSLegacy.Token[eventName]
         TriggerServerEvent('useEvent', eventName, token, ...)
     else
         Config.Development.Print("Injector detected " .. eventName)
     end
 end
 
-MadeInFrance.KeyboardInput = function(textEntry, maxLength)
+LSLegacy.KeyboardInput = function(textEntry, maxLength)
     AddTextEntry("Message", textEntry)
     DisplayOnscreenKeyboard(1, "Message", '', '', '', '', '', maxLength)
     blockinput = true
@@ -74,7 +74,7 @@ MadeInFrance.KeyboardInput = function(textEntry, maxLength)
     end
 end
 
-MadeInFrance.DrawText3D = function(x, y, z, text, distance, v3)
+LSLegacy.DrawText3D = function(x, y, z, text, distance, v3)
     local dist = distance or 7
     local aze, zea, aez = table.unpack(GetGameplayCamCoords())
     local plyCoords = GetEntityCoords(PlayerPedId())
@@ -98,7 +98,7 @@ MadeInFrance.DrawText3D = function(x, y, z, text, distance, v3)
     ClearDrawOrigin()
 end
 
-MadeInFrance.AddBlip = function(blipName, blipSprite, blipColor, blipScale, coords)
+LSLegacy.AddBlip = function(blipName, blipSprite, blipColor, blipScale, coords)
     if not blipName then return end
     if not blipSprite then return end
     if not blipColor then return end
@@ -113,7 +113,7 @@ MadeInFrance.AddBlip = function(blipName, blipSprite, blipColor, blipScale, coor
     EndTextCommandSetBlipName(blip)
 end
 
-MadeInFrance.DrawMarker = function(markerType, coords, r, g, b, a)
+LSLegacy.DrawMarker = function(markerType, coords, r, g, b, a)
     if not markerType then return end
     if not coords then return end
     if not r then return end
@@ -123,17 +123,17 @@ MadeInFrance.DrawMarker = function(markerType, coords, r, g, b, a)
     DrawMarker(markerType, coords.x, coords.y, coords.z, 0.0, 0.0, 0.0, 0, 0.0, 0.0, 0.7, 0.7, 0.7, r, g, b, a, false, false, false, false)
 end
 
-MadeInFrance.SetCoords = function(coords)
+LSLegacy.SetCoords = function(coords)
     if not coords then return end
     SetEntityCoords(PlayerPedId(), coords.x, coords.y, coords.z)
 end
 
-MadeInFrance.ShowNotification = function(title, message, icon, time)
+LSLegacy.ShowNotification = function(title, message, icon, time)
     time = time or 5000
     TriggerEvent('brutal_notify:SendAlert', title, message, time, icon)
 end
 
-MadeInFrance.GetClosestPlayer = function(player, distance)
+LSLegacy.GetClosestPlayer = function(player, distance)
     if not player then return end
     if not distance then return end
     local playerPed = PlayerPedId()
@@ -153,7 +153,7 @@ MadeInFrance.GetClosestPlayer = function(player, distance)
     return closestPlayer
 end
 
-MadeInFrance.GetClosestVehicle = function(coords, distance)
+LSLegacy.GetClosestVehicle = function(coords, distance)
     if not coords then return end
     if not distance then return end
     local closestVehicle, closestDistance = nil, distance or -1
@@ -168,7 +168,7 @@ MadeInFrance.GetClosestVehicle = function(coords, distance)
     return closestVehicle
 end
 
-MadeInFrance.RequestAnimDict = function(animDict, cb)
+LSLegacy.RequestAnimDict = function(animDict, cb)
 	if not HasAnimDictLoaded(animDict) then
 		RequestAnimDict(animDict)
 		while not HasAnimDictLoaded(animDict) do
@@ -181,12 +181,12 @@ MadeInFrance.RequestAnimDict = function(animDict, cb)
 	end
 end
 
-MadeInFrance.RegisterClientEvent('notify', function(title, message, icon, time)
+LSLegacy.RegisterClientEvent('notify', function(title, message, icon, time)
     time = time or 5000
     TriggerEvent('brutal_notify:SendAlert', title, message, time, icon)
 end)
 
-MadeInFrance.Math.Round = function(value, numDecimalPlaces)
+LSLegacy.Math.Round = function(value, numDecimalPlaces)
     if numDecimalPlaces then
         local power = 10^numDecimalPlaces
         return math.floor((value * power) + 0.5) / (power)
@@ -195,13 +195,13 @@ MadeInFrance.Math.Round = function(value, numDecimalPlaces)
     end
 end
 
-MadeInFrance.DisplayInteract = function(text, init)
+LSLegacy.DisplayInteract = function(text, init)
     SetTextComponentFormat("jamyfafi")
     AddTextComponentString(text)
     DisplayHelpTextFromStringLabel(0, 0, init, -1)
 end
 
-MadeInFrance.SpawnPed = function(hash, coords, anim)
+LSLegacy.SpawnPed = function(hash, coords, anim)
     RequestModel(hash)
     while not HasModelLoaded(hash) do
         Wait(5)
@@ -223,7 +223,7 @@ MadeInFrance.SpawnPed = function(hash, coords, anim)
     return ped
 end
 
-MadeInFrance.ConverToBoolean = function(number)
+LSLegacy.ConverToBoolean = function(number)
     if number == 0 then
         return false
     elseif number == 1 then
@@ -231,7 +231,7 @@ MadeInFrance.ConverToBoolean = function(number)
     end
 end
 
-MadeInFrance.ConverToNumber = function(boolean)
+LSLegacy.ConverToNumber = function(boolean)
     if boolean == false then
         return 0
     elseif boolean == true then
@@ -239,7 +239,7 @@ MadeInFrance.ConverToNumber = function(boolean)
     end
 end
 
-MadeInFrance.RegroupNumbers = function(number)
+LSLegacy.RegroupNumbers = function(number)
     local number = tostring(number)
     local length = string.len(number)
     local result = ""

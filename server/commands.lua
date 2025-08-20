@@ -1,4 +1,4 @@
-MadeInFrance.Commands = {}
+LSLegacy.Commands = {}
 
 ---RegisterCommand
 ---@type function
@@ -9,12 +9,12 @@ MadeInFrance.Commands = {}
 ---@param console boolean
 ---@return void
 ---@public
-MadeInFrance.RegisterCommand = function(name, group, callback, suggestion, console)
+LSLegacy.RegisterCommand = function(name, group, callback, suggestion, console)
     if not name or not callback then
         return 
     end
 
-    if not MadeInFrance.Commands[name] then
+    if not LSLegacy.Commands[name] then
         if suggestion then
             if not suggestion.arguments then suggestion.arguments = {} end
             if not suggestion.help then suggestion.help = '' end
@@ -22,7 +22,7 @@ MadeInFrance.RegisterCommand = function(name, group, callback, suggestion, conso
             TriggerClientEvent('chat:addSuggestion', -1, ('/%s'):format(name), suggestion.help, suggestion.arguments)
         end
         
-        MadeInFrance.Commands[name] = {
+        LSLegacy.Commands[name] = {
             group = group,
             callback = callback,
             console = console,
@@ -32,12 +32,12 @@ MadeInFrance.RegisterCommand = function(name, group, callback, suggestion, conso
         Config.Development.Print('Command ' .. name .. ' registered')
 
         RegisterCommand(name, function(source, args, rawCommand)
-            local command = MadeInFrance.Commands[name]
+            local command = LSLegacy.Commands[name]
             if source == 0 and not command.console then
                 return Config.Development.Print("Command " .. name .. " cannot be executed from console.")
             end
 
-            local player = MadeInFrance.GetPlayerFromId(source)
+            local player = LSLegacy.GetPlayerFromId(source)
 
 			local error = nil
 
@@ -69,7 +69,7 @@ MadeInFrance.RegisterCommand = function(name, group, callback, suggestion, conso
 								if args[k] == 'me' then targetPlayer = source end
 
 								if targetPlayer then
-									local xTargetPlayer = MadeInFrance.GetPlayerFromId(targetPlayer)
+									local xTargetPlayer = LSLegacy.GetPlayerFromId(targetPlayer)
 
 									if xTargetPlayer then
 										if v.type == 'player' then
@@ -103,7 +103,7 @@ MadeInFrance.RegisterCommand = function(name, group, callback, suggestion, conso
 				if source == 0 and command.console then
 					Config.Development.Print(error)
 				else
-                    MadeInFrance.SendEventToClient('chat:addMessage', player.source, {args = {'^1MadeInFrance', error}})
+                    LSLegacy.SendEventToClient('chat:addMessage', player.source, {args = {'^LSLegacy', error}})
 				end
 			else
                 if source ~= 0 and player ~= nil then
@@ -114,11 +114,11 @@ MadeInFrance.RegisterCommand = function(name, group, callback, suggestion, conso
                                     if source == 0 and command.console then
                                         Config.Development.Print(msg)
                                     else
-                                        MadeInFrance.SendEventToClient('chat:addMessage', player.source, {args = {'^1MadeInFrance', msg}})
+                                        LSLegacy.SendEventToClient('chat:addMessage', player.source, {args = {'^LSLegacy', msg}})
                                     end
                                 end, rawCommand)
                             else
-                                MadeInFrance.SendEventToClient('chat:addMessage', player.source, {args = {'^1MadeInFrance', 'Vous n\'avez pas les permissions pour utiliser cette commande'}})
+                                LSLegacy.SendEventToClient('chat:addMessage', player.source, {args = {'^LSLegacy', 'Vous n\'avez pas les permissions pour utiliser cette commande'}})
                             end
                         end
                     end
@@ -134,27 +134,27 @@ MadeInFrance.RegisterCommand = function(name, group, callback, suggestion, conso
     end
 end
 
-MadeInFrance.RegisterCommand('clear', 0, function(player, args, showError, rawCommand)
-	MadeInFrance.SendEventToClient('chat:clear', player.source)
+LSLegacy.RegisterCommand('clear', 0, function(player, args, showError, rawCommand)
+	LSLegacy.SendEventToClient('chat:clear', player.source)
 end, {help = "Clear le chat"}, false)
 
-MadeInFrance.RegisterCommand('clearall', 3, function(player, args, showError, rawCommand)
-	MadeInFrance.SendEventToClient('chat:clear', -1)
+LSLegacy.RegisterCommand('clearall', 3, function(player, args, showError, rawCommand)
+	LSLegacy.SendEventToClient('chat:clear', -1)
 end, {help = "Clear le chat pour tout le monde"}, false)
 
-MadeInFrance.RegisterCommand('announce', 3, function(player, args, showError, rawCommand)
+LSLegacy.RegisterCommand('announce', 3, function(player, args, showError, rawCommand)
 	local text = ""
-    sm = MadeInFrance.StringSplit(rawCommand, " ")
+    sm = LSLegacy.StringSplit(rawCommand, " ")
     for i = 2, #sm do
         text = text ..sm[i].. " " 
     end
-	MadeInFrance.SendEventToClient('notify', -1, 'Administration', text, 'warning')
+	LSLegacy.SendEventToClient('notify', -1, 'Administration', text, 'warning')
 end, {help = "Affiche un message pour tout le serveur", validate = false, arguments = {{name = 'message', help = 'Message', type = 'fullstring'}}}, false)
 
-MadeInFrance.RegisterCommand('kick', 1, function(player, args, showError, rawCommand)
+LSLegacy.RegisterCommand('kick', 1, function(player, args, showError, rawCommand)
 	local player = args.playerId
 	if player then
-		sm = MadeInFrance.StringSplit(rawCommand, " ")
+		sm = LSLegacy.StringSplit(rawCommand, " ")
 		message = ""
 		for i = 3, #sm do
 			message = message ..sm[i].. " "
@@ -163,46 +163,46 @@ MadeInFrance.RegisterCommand('kick', 1, function(player, args, showError, rawCom
 	end
 end, {help = "Permet de déconnecter un joueur", validate = false, arguments = {{name = 'playerId', help = 'Id du joueur', type = 'player'}, {name = 'reason', help = "Raison du kick", type = "fullstring"}}}, false)
 
-MadeInFrance.RegisterCommand('sync', 0, function(player, args, showError, rawCommand)
+LSLegacy.RegisterCommand('sync', 0, function(player, args, showError, rawCommand)
 	local source = player.source
 	MySQL.Async.execute('UPDATE players SET coords = @coords, inventory = @inventory, money = @money, health = @health, skin = @skin, status = @status WHERE id = @id', {
-        ['@coords'] = json.encode(MadeInFrance.GetEntityCoords(source)),
-        ['@inventory'] = json.encode(MadeInFrance.ServerPlayers[source].inventory),
-        ['@money'] = json.encode({cash = MadeInFrance.ServerPlayers[source].cash, dirty = MadeInFrance.ServerPlayers[source].dirty}),
-        ['@id'] = MadeInFrance.ServerPlayers[source].id,
+        ['@coords'] = json.encode(LSLegacy.GetEntityCoords(source)),
+        ['@inventory'] = json.encode(LSLegacy.ServerPlayers[source].inventory),
+        ['@money'] = json.encode({cash = LSLegacy.ServerPlayers[source].cash, dirty = LSLegacy.ServerPlayers[source].dirty}),
+        ['@id'] = LSLegacy.ServerPlayers[source].id,
         ['@health'] = GetEntityHealth(GetPlayerPed(source)),
-		['@skin'] = json.encode(MadeInFrance.ServerPlayers[source].skin),
-		['@status'] = json.encode(MadeInFrance.ServerPlayers[source].status)
+		['@skin'] = json.encode(LSLegacy.ServerPlayers[source].skin),
+		['@status'] = json.encode(LSLegacy.ServerPlayers[source].status)
     })
-	MadeInFrance.SendEventToClient('UpdateServerPlayer', source)
-	MadeInFrance.SendEventToClient('UpdateDatastore', source, MadeInFrance.DataStore)
+	LSLegacy.SendEventToClient('UpdateServerPlayer', source)
+	LSLegacy.SendEventToClient('UpdateDatastore', source, LSLegacy.DataStore)
 	Wait(500)
-	MadeInFrance.SendEventToClient('UpdatePlayer', source, MadeInFrance.ServerPlayers[source])
-	MadeInFrance.SendEventToClient('notify', source, 'Sync', 'Vous avez bien synchronisé votre personnage.', 'success')
+	LSLegacy.SendEventToClient('UpdatePlayer', source, LSLegacy.ServerPlayers[source])
+	LSLegacy.SendEventToClient('notify', source, 'Sync', 'Vous avez bien synchronisé votre personnage.', 'success')
 end, {help = "Permet de synchroniser son joueur"}, false)
 
-MadeInFrance.RegisterCommand('debug', 0, function(player, args, showError, rawCommand)
+LSLegacy.RegisterCommand('debug', 0, function(player, args, showError, rawCommand)
 	local source = player.source
-	MadeInFrance.SendEventToClient('debug', source)
-	MadeInFrance.SendEventToClient('notify', source, nil, 'Vous avez bien débug votre personnage.', 'success')
+	LSLegacy.SendEventToClient('debug', source)
+	LSLegacy.SendEventToClient('notify', source, nil, 'Vous avez bien débug votre personnage.', 'success')
 end, {help = "Permet de débug son joueur"}, false)
 
-MadeInFrance.RegisterCommand('ban', 1, function(player, args, showError, rawCommand)
+LSLegacy.RegisterCommand('ban', 1, function(player, args, showError, rawCommand)
     local player = args.playerId
     local reason = ""
-    sm = MadeInFrance.StringSplit(rawCommand, " ")
+    sm = LSLegacy.StringSplit(rawCommand, " ")
     for i = 4, #sm do
         reason = reason ..sm[i].. " " 
     end
     Shared.Anticheat.BanPlayer(player, args.time, reason, player.source)
 end, {help = "Permet de bannir un joueur", validate = false, arguments = {{name = 'playerId', help = 'Id du joueur', type = 'player'}, {name = 'time', help = "Temps du ban (en heures)", type = "number"}, {name = "reason", help = "Raison du ban", type = "fullstring"}}}, false)
 
-MadeInFrance.RegisterCommand('banreload', 4, function(player, args, showError, rawCommand)
+LSLegacy.RegisterCommand('banreload', 4, function(player, args, showError, rawCommand)
     Shared.Anticheat.ReloadFromDatabase()
     showError('La banlist a été rechargée')
 end, {help = "Permet de recharger la liste des bans", validate = false, arguments = {}}, true)
 
-MadeInFrance.RegisterCommand('unban', 1, function(player, args, showError, rawCommand)
+LSLegacy.RegisterCommand('unban', 1, function(player, args, showError, rawCommand)
 	local id = args.id
 	if id then
 		Shared.Anticheat.Unban(id)
@@ -210,7 +210,7 @@ MadeInFrance.RegisterCommand('unban', 1, function(player, args, showError, rawCo
 	end
 end, {help = "Permet de débannir un joueur", validate = false, arguments = {{name = 'id', help = 'ID du bannissement', type = 'number'}}}, true)
 
-MadeInFrance.RegisterCommand('giveitem', 1, function(player, args, showError, rawCommand)
+LSLegacy.RegisterCommand('giveitem', 1, function(player, args, showError, rawCommand)
 	local item = args.item
 	local quantity = args.quantity or 1
 	local targetPlayer = args.playerId
@@ -218,22 +218,22 @@ MadeInFrance.RegisterCommand('giveitem', 1, function(player, args, showError, ra
 	if item and targetPlayer then
 		if item == 'money' or item == 'dirty' then
 			if item == 'money' then
-				MadeInFrance.Money.AddPlayerMoney(targetPlayer, quantity)
-				MadeInFrance.SendEventToClient('notify', targetPlayer.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. '$', 'success')
+				LSLegacy.Money.AddPlayerMoney(targetPlayer, quantity)
+				LSLegacy.SendEventToClient('notify', targetPlayer.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. '$', 'success')
 			elseif item == 'dirty' then
-				MadeInFrance.Money.AddPlayerDirtyMoney(targetPlayer, quantity)
-				MadeInFrance.SendEventToClient('notify', targetPlayer.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. '$', 'success')
+				LSLegacy.Money.AddPlayerDirtyMoney(targetPlayer, quantity)
+				LSLegacy.SendEventToClient('notify', targetPlayer.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. '$', 'success')
 			end
 			return
 		end
 
 		if string.match(item, 'food_') then
-			if MadeInFrance.Inventory.CanCarryItem(targetPlayer, item, quantity) then
+			if LSLegacy.Inventory.CanCarryItem(targetPlayer, item, quantity) then
 				dataFood = {
 					durability = 100
 				}
-				MadeInFrance.Inventory.AddItemInInventory(targetPlayer, item, quantity, nil, nil, dataFood)
-				MadeInFrance.SendEventToClient('notify', targetPlayer.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. 'x ' .. MadeInFrance.Inventory.GetInfosItem(item).label, 'success')
+				LSLegacy.Inventory.AddItemInInventory(targetPlayer, item, quantity, nil, nil, dataFood)
+				LSLegacy.SendEventToClient('notify', targetPlayer.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. 'x ' .. LSLegacy.Inventory.GetInfosItem(item).label, 'success')
 			else
 				showError('Vous ne pouvez pas porter + de cet item.')
 			end
@@ -242,21 +242,21 @@ MadeInFrance.RegisterCommand('giveitem', 1, function(player, args, showError, ra
 
 
 		if not string.match(item, 'weapon_') then
-			if MadeInFrance.Inventory.CanCarryItem(targetPlayer, item, quantity) then
-				MadeInFrance.Inventory.AddItemInInventory(targetPlayer, item, quantity)
-				MadeInFrance.SendEventToClient('notify', targetPlayer.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. 'x ' .. MadeInFrance.Inventory.GetInfosItem(item).label, 'success')
+			if LSLegacy.Inventory.CanCarryItem(targetPlayer, item, quantity) then
+				LSLegacy.Inventory.AddItemInInventory(targetPlayer, item, quantity)
+				LSLegacy.SendEventToClient('notify', targetPlayer.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. 'x ' .. LSLegacy.Inventory.GetInfosItem(item).label, 'success')
 			else
 				showError('Vous ne pouvez pas porter + de cet item.')
 			end
 		else
-			if MadeInFrance.Inventory.CanCarryItem(targetPlayer, item, quantity) then
+			if LSLegacy.Inventory.CanCarryItem(targetPlayer, item, quantity) then
 				data = {
 					ammo = 0,
 					components = {},
-					serialNumber = MadeInFrance.GenerateNumeroDeSerie()
+					serialNumber = LSLegacy.GenerateNumeroDeSerie()
 				}
-				MadeInFrance.Inventory.AddItemInInventory(targetPlayer, item, quantity, nil, nil, data)
-				MadeInFrance.SendEventToClient('notify', targetPlayer.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. 'x ' .. MadeInFrance.Inventory.GetInfosItem(item).label, 'success')
+				LSLegacy.Inventory.AddItemInInventory(targetPlayer, item, quantity, nil, nil, data)
+				LSLegacy.SendEventToClient('notify', targetPlayer.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. 'x ' .. LSLegacy.Inventory.GetInfosItem(item).label, 'success')
 			else
 				showError('Vous ne pouvez pas porter + de cet item.')
 			end
@@ -266,7 +266,7 @@ MadeInFrance.RegisterCommand('giveitem', 1, function(player, args, showError, ra
 	end
 end, {help = "Permet de donner un item à un joueur", validate = false, arguments = {{name = 'playerId', help = 'ID du joueur cible', type = 'player'}, {name = 'item', help = 'Nom de l\'item', type = 'string'}, {name = 'quantity', help = 'Quantité de l\'item', type = 'number'}}}, false)
 
-MadeInFrance.RegisterCommand('car', 1, function(player, args, showError, rawCommand)
+LSLegacy.RegisterCommand('car', 1, function(player, args, showError, rawCommand)
     local modelName = args.model
     if not modelName or modelName == "" then
         showError("Vous devez spécifier un modèle de véhicule.")
@@ -277,9 +277,9 @@ MadeInFrance.RegisterCommand('car', 1, function(player, args, showError, rawComm
     local pos = GetEntityCoords(playerPed)
     local heading = GetEntityHeading(playerPed)
 
-    local success, vehicleOrError = MadeInFrance.AP.SpawnPersistentVehicle(modelName, pos, heading, player.source)
+    local success, vehicleOrError = LSLegacy.AP.SpawnPersistentVehicle(modelName, pos, heading, player.source)
     if success then
-        MadeInFrance.SendEventToClient('notify', player.source, 'Véhicule', 'Votre véhicule a été spawn.', 'success')
+        LSLegacy.SendEventToClient('notify', player.source, 'Véhicule', 'Votre véhicule a été spawn.', 'success')
     else
         showError(vehicleOrError)
     end

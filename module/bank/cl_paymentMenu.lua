@@ -6,7 +6,7 @@ paymentMenu = {
     actions = {}
 }
 
-paymentMenu.mainMenu = RageUI.CreateMenu(" ", "MadeInFrance~g~Pay~s~™", nil, 100, "root_cause", "shopui_title_mazebank")
+paymentMenu.mainMenu = RageUI.CreateMenu(" ", "LSL~g~Pay~s~™", nil, 100, "root_cause", "shopui_title_mazebank")
 paymentMenu.mainMenu:DisplayGlare(false)
 paymentMenu.mainMenu.Closed = function()
     paymentMenu.opened = false
@@ -18,7 +18,7 @@ paymentMenu.cardsMenu:AcceptFilter(true)
 paymentMenu.resumeTransactionMenu = RageUI.CreateSubMenu(paymentMenu.mainMenu, " ", "Résumé de la transaction")
 paymentMenu.resumeTransactionMenu:DisplayGlare(false)
 
-MadeInFrance.RegisterClientEvent('openPaymentMenu', function(transactionMessage, price, inventory)
+LSLegacy.RegisterClientEvent('openPaymentMenu', function(transactionMessage, price, inventory)
     paymentMenu.openPaymentMenu(transactionMessage, price, inventory)
 end)
 
@@ -39,7 +39,7 @@ paymentMenu.openPaymentMenu = function(transactionMessage, price, inventory)
                 if paymentMenu.paymentType ~= nil then
                     paymentMenu.paymentType = nil
                 end
-                RageUI.Separator('↓ Bienvenue sur MadeInFrance~g~Pay~s~™ ↓')
+                RageUI.Separator('↓ Bienvenue sur LSL~g~Pay~s~™ ↓')
                 RageUI.Separator('↓ Choississez votre moyen de paiement ↓')
                 RageUI.Button('En espèces', nil , {}, true, {
                     onSelected = function()
@@ -61,7 +61,7 @@ paymentMenu.openPaymentMenu = function(transactionMessage, price, inventory)
                     if value.name == "carte" then
                         RageUI.Button(value.label, nil, {RightLabel = "→"}, true, {
                             onSelected = function()
-                                local codePin = MadeInFrance.KeyboardInput('Code PIN', 4)
+                                local codePin = LSLegacy.KeyboardInput('Code PIN', 4)
                                 if tonumber(codePin) then
                                     if codePin == value.data.card_pin then
                                         RageUI.Visible(paymentMenu.cardsMenu, false)
@@ -69,10 +69,10 @@ paymentMenu.openPaymentMenu = function(transactionMessage, price, inventory)
                                         paymentMenu.cardInfos = value
                                         paymentMenu.codePinProvided = codePin
                                     else
-                                        MadeInFrance.ShowNotification("Maze Bank", "Code PIN incorrect", "error")
+                                        LSLegacy.ShowNotification("Maze Bank", "Code PIN incorrect", "error")
                                     end
                                 else
-                                    MadeInFrance.ShowNotification("Maze Bank", "Veuillez mettre seulement des chiffres", "error")
+                                    LSLegacy.ShowNotification("Maze Bank", "Veuillez mettre seulement des chiffres", "error")
                                 end
                             end
                         })
@@ -86,9 +86,9 @@ paymentMenu.openPaymentMenu = function(transactionMessage, price, inventory)
                 RageUI.Button('Valider', nil, {}, true, {
                     onSelected = function()
                         if paymentMenu.paymentType == "money" then
-                            MadeInFrance.SendEventToServer('pay', nil, price, paymentMenu.paymentType, nil, transactionMessage)
+                            LSLegacy.SendEventToServer('pay', nil, price, paymentMenu.paymentType, nil, transactionMessage)
                         elseif paymentMenu.paymentType == "bank" then
-                            MadeInFrance.SendEventToServer('pay', paymentMenu.codePinProvided, price, paymentMenu.paymentType, paymentMenu.cardInfos, transactionMessage)
+                            LSLegacy.SendEventToServer('pay', paymentMenu.codePinProvided, price, paymentMenu.paymentType, paymentMenu.cardInfos, transactionMessage)
                         end
                         paymentMenu.opened = false
                         paymentMenu.paymentType = nil
@@ -102,7 +102,7 @@ paymentMenu.openPaymentMenu = function(transactionMessage, price, inventory)
     end)
 end
 
-MadeInFrance.RegisterClientEvent('doActionsPayment', function(sucess)
+LSLegacy.RegisterClientEvent('doActionsPayment', function(sucess)
     if sucess then
         if (paymentMenu.actions.onSucess ~= nil) then
             Citizen.CreateThread(function()

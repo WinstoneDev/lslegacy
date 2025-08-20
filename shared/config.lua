@@ -3,9 +3,9 @@ Config = {}
 
 Config.Informations = {
     ["Version"] = "1.0.0",
-    ["Name"] = "MadeInFrance",
+    ["Name"] = "LSLegacy",
     ["Description"] = "Serveur Roleplay Français",
-    ["Discord"] = "discord.gg/xemBfKDQKf",
+    ["Discord"] = "discord.gg/yC5VD3HdUU",
     ['MaxWeight'] = 50,
     ['StartMoney'] = {cash = 1500, dirty = 0},
 }
@@ -15,7 +15,7 @@ Config.DiscordStatus = {
     ["LargeIcon"] = "logo_discord",
     ["LargeIconText"] = Config.Informations["Discord"],
     ["SmallIcon"] = "logo_discord",
-    ["SmallIconText"] = "MadeInFrance V"..Config.Informations["Version"],
+    ["SmallIconText"] = "LSLegacy RP V"..Config.Informations["Version"],
 }
 
 Config.AP = {}
@@ -40,7 +40,7 @@ Config.Development = {
     ---@public
     Print = function(message)
         if Config.Development.Debug then
-            print("[MadeInFrance] " .. message)
+            print("[LSLegacy] " .. message)
         end
     end
 }
@@ -116,7 +116,7 @@ Config.ResourcesClientEvent = {
     ['monitor'] = true,
     ['chat'] = true,
     ['mysql-async'] = true,
-    ['madeinfrance'] = true,
+    ['lslegacy'] = true,
     ['pma-voice'] = true,
     ['skinchanger'] = true,
     ['spawnmanager'] = true,

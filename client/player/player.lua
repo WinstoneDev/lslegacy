@@ -1,24 +1,24 @@
-MadeInFrance.PlayerData = {}
+LSLegacy.PlayerData = {}
 
-MadeInFrance.RegisterClientEvent('InitPlayer', function(data)
-    MadeInFrance.PlayerData = data
+LSLegacy.RegisterClientEvent('InitPlayer', function(data)
+    LSLegacy.PlayerData = data
 end)
 
-MadeInFrance.RegisterClientEvent('UpdatePlayer', function(data)
-    MadeInFrance.PlayerData = data
+LSLegacy.RegisterClientEvent('UpdatePlayer', function(data)
+    LSLegacy.PlayerData = data
 end)
 
-MadeInFrance.RegisterClientEvent('UpdateServerPlayer', function()
-    local data = MadeInFrance.PlayerData
-    MadeInFrance.SendEventToServer('ReceiveUpdateServerPlayer', data)
+LSLegacy.RegisterClientEvent('UpdateServerPlayer', function()
+    local data = LSLegacy.PlayerData
+    LSLegacy.SendEventToServer('ReceiveUpdateServerPlayer', data)
 end)
 
 function GetPlayerInventoryItems()
-    return MadeInFrance.PlayerData.inventory or {}
+    return LSLegacy.PlayerData.inventory or {}
 end
 
 function GetPlayerInventoryWeight()
-    return MadeInFrance.PlayerData.weight or 0
+    return LSLegacy.PlayerData.weight or 0
 end
 
 function GetOriginalLabel(item)
@@ -32,7 +32,7 @@ end
 Citizen.CreateThread( function()
     while true do
         TriggerEvent('skinchanger:getSkin', function(skin)
-            MadeInFrance.PlayerData.skin = skin
+            LSLegacy.PlayerData.skin = skin
         end)
        Wait(60000)
     end
@@ -97,7 +97,7 @@ Citizen.CreateThread(function()
     end
 end)
 
-MadeInFrance.RegisterClientEvent('debug', function()
+LSLegacy.RegisterClientEvent('debug', function()
    ExecuteCommand('p1')
    Wait(1000)
    ExecuteCommand('p2')

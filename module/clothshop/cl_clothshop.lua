@@ -80,10 +80,10 @@ function Clothes:OpenMenu(header)
         Clothes.subMenu13:SetSpriteBanner(header, header)
         Clothes.opened = true
         RageUI.Visible(Clothes.mainMenu, true)
-        MadeInFrance.TriggerLocalEvent('skinchanger:getSkin', function(skin)
+        LSLegacy.TriggerLocalEvent('skinchanger:getSkin', function(skin)
             Clothes.LastSkin = skin
         end)
-        MadeInFrance.TriggerLocalEvent('skinchanger:getData', function(components, max)
+        LSLegacy.TriggerLocalEvent('skinchanger:getData', function(components, max)
             maxVals = {}
             maxVals["tshirt_1"] = max.tshirt_1
             maxVals["torso_1"] = max.torso_1
@@ -146,15 +146,15 @@ function Clothes:OpenMenu(header)
                         RageUI.List("Pantalon #"..i, Clothes.Variations, Clothes.TablePantalon[i], nil, { RightLabel = "~g~30$"}, true, {
                             onListChange = function(Index)
                                 Clothes.TablePantalon[i] = Index
-                                MadeInFrance.TriggerLocalEvent('skinchanger:change', 'pants_2', Clothes.TablePantalon[i] - 1)
+                                LSLegacy.TriggerLocalEvent('skinchanger:change', 'pants_2', Clothes.TablePantalon[i] - 1)
                             end,
                             onSelected = function()
                                 local message = 'Achat d\'un pantalon '..i
-                                MadeInFrance.SendEventToServer('attemptToPayMenu', message, 30)
+                                LSLegacy.SendEventToServer('attemptToPayMenu', message, 30)
                                 paymentMenu.actions = {
                                     onSucess = function()
-                                        MadeInFrance.TriggerLocalEvent('skinchanger:getSkin', function(skin)
-                                            MadeInFrance.SendEventToServer('AddClothesInInventory', 'pants', 'Pantalon '..i, {skin.pants_1, skin.pants_2})
+                                        LSLegacy.TriggerLocalEvent('skinchanger:getSkin', function(skin)
+                                            LSLegacy.SendEventToServer('AddClothesInInventory', 'pants', 'Pantalon '..i, {skin.pants_1, skin.pants_2})
                                         end)
                                     end,
                                     onFailed = function()
@@ -165,9 +165,9 @@ function Clothes:OpenMenu(header)
                                 }
                             end,
                             onActive = function()
-                                MadeInFrance.TriggerLocalEvent('skinchanger:getSkin', function(skin)
+                                LSLegacy.TriggerLocalEvent('skinchanger:getSkin', function(skin)
                                     if tonumber(skin.pants_1) ~= tonumber(i) then
-                                        MadeInFrance.TriggerLocalEvent('skinchanger:change', 'pants_1', i)
+                                        LSLegacy.TriggerLocalEvent('skinchanger:change', 'pants_1', i)
                                     end
                                 end)
                             end,
@@ -179,15 +179,15 @@ function Clothes:OpenMenu(header)
                         RageUI.List("Chaussures #"..i, Clothes.Variations, Clothes.TableShoes[i], nil, {RightLabel = "~g~30$"}, true, {
                             onListChange = function(Index)
                                 Clothes.TableShoes[i] = Index
-                                MadeInFrance.TriggerLocalEvent('skinchanger:change', 'shoes_2', Clothes.TableShoes[i] - 1)
+                                LSLegacy.TriggerLocalEvent('skinchanger:change', 'shoes_2', Clothes.TableShoes[i] - 1)
                             end,
                             onSelected = function()
                                 local message = 'Achat d\'une paire de chaussures '..i
-                                MadeInFrance.SendEventToServer('attemptToPayMenu', message, 30)
+                                LSLegacy.SendEventToServer('attemptToPayMenu', message, 30)
                                 paymentMenu.actions = {
                                     onSucess = function()
-                                        MadeInFrance.TriggerLocalEvent('skinchanger:getSkin', function(skin)
-                                            MadeInFrance.SendEventToServer('AddClothesInInventory', 'shoes', 'Chaussure '..i, {skin.shoes_1, skin.shoes_2})
+                                        LSLegacy.TriggerLocalEvent('skinchanger:getSkin', function(skin)
+                                            LSLegacy.SendEventToServer('AddClothesInInventory', 'shoes', 'Chaussure '..i, {skin.shoes_1, skin.shoes_2})
                                         end)
                                     end,
                                     onFailed = function()
@@ -198,9 +198,9 @@ function Clothes:OpenMenu(header)
                                 }
                             end,
                             onActive = function()
-                                MadeInFrance.TriggerLocalEvent('skinchanger:getSkin', function(skin)
+                                LSLegacy.TriggerLocalEvent('skinchanger:getSkin', function(skin)
                                     if tonumber(skin.shoes_1) ~= tonumber(i) then
-                                        MadeInFrance.TriggerLocalEvent('skinchanger:change', 'shoes_1', i)
+                                        LSLegacy.TriggerLocalEvent('skinchanger:change', 'shoes_1', i)
                                     end
                                 end)
                             end,
@@ -212,15 +212,15 @@ function Clothes:OpenMenu(header)
                         RageUI.List("Sacs #"..i, Clothes.Variations, Clothes.TableSacs[i], nil, {RightLabel = "~g~30$"}, true, {
                             onListChange = function(Index)
                                 Clothes.TableSacs[i] = Index
-                                MadeInFrance.TriggerLocalEvent('skinchanger:change', 'bags_2', Clothes.TableSacs[i] - 1)
+                                LSLegacy.TriggerLocalEvent('skinchanger:change', 'bags_2', Clothes.TableSacs[i] - 1)
                             end,
                             onSelected = function()
                                 local message = 'Achat d\'un sac '..i
-                                MadeInFrance.SendEventToServer('attemptToPayMenu', message, 30)
+                                LSLegacy.SendEventToServer('attemptToPayMenu', message, 30)
                                 paymentMenu.actions = {
                                     onSucess = function()
-                                        MadeInFrance.TriggerLocalEvent('skinchanger:getSkin', function(skin)
-                                            MadeInFrance.SendEventToServer('AddClothesInInventory', 'bag', 'Sac '..i, {skin.bags_1, skin.bags_2})
+                                        LSLegacy.TriggerLocalEvent('skinchanger:getSkin', function(skin)
+                                            LSLegacy.SendEventToServer('AddClothesInInventory', 'bag', 'Sac '..i, {skin.bags_1, skin.bags_2})
                                         end)
                                     end,
                                     onFailed = function()
@@ -231,9 +231,9 @@ function Clothes:OpenMenu(header)
                                 }
                             end,
                             onActive = function()
-                                MadeInFrance.TriggerLocalEvent('skinchanger:getSkin', function(skin)
+                                LSLegacy.TriggerLocalEvent('skinchanger:getSkin', function(skin)
                                     if tonumber(skin.bags_1) ~= tonumber(i) then
-                                        MadeInFrance.TriggerLocalEvent('skinchanger:change', 'bags_1', i)
+                                        LSLegacy.TriggerLocalEvent('skinchanger:change', 'bags_1', i)
                                     end
                                 end)
                             end,
@@ -245,15 +245,15 @@ function Clothes:OpenMenu(header)
                         RageUI.List("Chapeau #"..i, Clothes.Variations, Clothes.TableChapeau[i], nil, {RightLabel = "~g~30$"}, true, {
                             onListChange = function(Index)
                                 Clothes.TableChapeau[i] = Index
-                                MadeInFrance.TriggerLocalEvent('skinchanger:change', 'helmet_2', Clothes.TableChapeau[i] - 1)
+                                LSLegacy.TriggerLocalEvent('skinchanger:change', 'helmet_2', Clothes.TableChapeau[i] - 1)
                             end,
                             onSelected = function()
                                 local message = 'Achat d\'un chapeau '..i
-                                MadeInFrance.SendEventToServer('attemptToPayMenu', message, 30)
+                                LSLegacy.SendEventToServer('attemptToPayMenu', message, 30)
                                 paymentMenu.actions = {
                                     onSucess = function()
-                                        MadeInFrance.TriggerLocalEvent('skinchanger:getSkin', function(skin)
-                                            MadeInFrance.SendEventToServer('AddClothesInInventory', 'helmet', 'Chapeau '..i, {skin.helmet_1, skin.helmet_2})
+                                        LSLegacy.TriggerLocalEvent('skinchanger:getSkin', function(skin)
+                                            LSLegacy.SendEventToServer('AddClothesInInventory', 'helmet', 'Chapeau '..i, {skin.helmet_1, skin.helmet_2})
                                         end)
                                     end,
                                     onFailed = function()
@@ -264,9 +264,9 @@ function Clothes:OpenMenu(header)
                                 }
                             end,
                             onActive = function()
-                                MadeInFrance.TriggerLocalEvent('skinchanger:getSkin', function(skin)
+                                LSLegacy.TriggerLocalEvent('skinchanger:getSkin', function(skin)
                                     if tonumber(skin.helmet_1) ~= tonumber(i) then
-                                        MadeInFrance.TriggerLocalEvent('skinchanger:change', 'helmet_1', i)
+                                        LSLegacy.TriggerLocalEvent('skinchanger:change', 'helmet_1', i)
                                     end
                                 end)
                             end,
@@ -278,15 +278,15 @@ function Clothes:OpenMenu(header)
                         RageUI.List("Lunettes #"..i, Clothes.Variations, Clothes.TableLunettes[i], nil, {RightLabel = "~g~30$"}, true, {
                             onListChange = function(Index)
                                 Clothes.TableLunettes[i] = Index
-                                MadeInFrance.TriggerLocalEvent('skinchanger:change', 'glasses_2', Clothes.TableLunettes[i] - 1)
+                                LSLegacy.TriggerLocalEvent('skinchanger:change', 'glasses_2', Clothes.TableLunettes[i] - 1)
                             end,
                             onSelected = function()
                                 local message = 'Achat d\'une paire de lunettes '..i
-                                MadeInFrance.SendEventToServer('attemptToPayMenu', message, 30)
+                                LSLegacy.SendEventToServer('attemptToPayMenu', message, 30)
                                 paymentMenu.actions = {
                                     onSucess = function()
-                                        MadeInFrance.TriggerLocalEvent('skinchanger:getSkin', function(skin)
-                                            MadeInFrance.SendEventToServer('AddClothesInInventory', 'glasses', 'Lunettes '..i, {skin.glasses_1, skin.glasses_2})
+                                        LSLegacy.TriggerLocalEvent('skinchanger:getSkin', function(skin)
+                                            LSLegacy.SendEventToServer('AddClothesInInventory', 'glasses', 'Lunettes '..i, {skin.glasses_1, skin.glasses_2})
                                         end)
                                     end,
                                     onFailed = function()
@@ -297,9 +297,9 @@ function Clothes:OpenMenu(header)
                                 }
                             end,
                             onActive = function()
-                                MadeInFrance.TriggerLocalEvent('skinchanger:getSkin', function(skin)
+                                LSLegacy.TriggerLocalEvent('skinchanger:getSkin', function(skin)
                                     if tonumber(skin.glasses_1) ~= tonumber(i) then
-                                        MadeInFrance.TriggerLocalEvent('skinchanger:change', 'glasses_1', i)
+                                        LSLegacy.TriggerLocalEvent('skinchanger:change', 'glasses_1', i)
                                     end
                                 end)
                             end,
@@ -311,15 +311,15 @@ function Clothes:OpenMenu(header)
                         RageUI.List("Oreillette #"..i, Clothes.Variations, Clothes.TableOreilles[i], nil, {RightLabel = "~g~30$"}, true, {
                             onListChange = function(Index)
                                 Clothes.TableOreilles[i] = Index
-                                MadeInFrance.TriggerLocalEvent('skinchanger:change', 'ears_2', Clothes.TableOreilles[i] - 1)
+                                LSLegacy.TriggerLocalEvent('skinchanger:change', 'ears_2', Clothes.TableOreilles[i] - 1)
                             end,
                             onSelected = function()
                                 local message = 'Achat d\'une Oreillette '..i
-                                MadeInFrance.SendEventToServer('attemptToPayMenu', message, 30)
+                                LSLegacy.SendEventToServer('attemptToPayMenu', message, 30)
                                 paymentMenu.actions = {
                                     onSucess = function()
-                                        MadeInFrance.TriggerLocalEvent('skinchanger:getSkin', function(skin)
-                                            MadeInFrance.SendEventToServer('AddClothesInInventory', 'ears', 'Oreillette '..i, {skin.ears_1, skin.ears_2})
+                                        LSLegacy.TriggerLocalEvent('skinchanger:getSkin', function(skin)
+                                            LSLegacy.SendEventToServer('AddClothesInInventory', 'ears', 'Oreillette '..i, {skin.ears_1, skin.ears_2})
                                         end)
                                     end,
                                     onFailed = function()
@@ -330,9 +330,9 @@ function Clothes:OpenMenu(header)
                                 }
                             end,
                             onActive = function()
-                                MadeInFrance.TriggerLocalEvent('skinchanger:getSkin', function(skin)
+                                LSLegacy.TriggerLocalEvent('skinchanger:getSkin', function(skin)
                                     if tonumber(skin.ears_1) ~= tonumber(i) then
-                                        MadeInFrance.TriggerLocalEvent('skinchanger:change', 'ears_1', i)
+                                        LSLegacy.TriggerLocalEvent('skinchanger:change', 'ears_1', i)
                                     end
                                 end)
                             end,
@@ -345,7 +345,7 @@ function Clothes:OpenMenu(header)
     end
 end
 
-MadeInFrance.RegisterClientEvent('openClothMenu', function(header, type)
+LSLegacy.RegisterClientEvent('openClothMenu', function(header, type)
     if type == "Cloth" then
         Clothes:OpenMenu(header)
     end

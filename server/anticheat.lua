@@ -33,7 +33,7 @@ end)
 ---@return void
 ---@public
 Shared.Anticheat.BanPlayer = function(player, time, reason, source)
-    local moderator = MadeInFrance.GetPlayerFromId(source)
+    local moderator = LSLegacy.GetPlayerFromId(source)
     if tonumber(time) then
         if player then
             local CountHour = time
@@ -102,7 +102,7 @@ Shared.Anticheat.BanPlayer = function(player, time, reason, source)
                         hourban    = 999000,
                         permanent  = 1
                     })
-                    DropPlayer(player.source, "Vous êtes ban de MadeInFrance\nRaison : "..reason.."\nID Bannissement : "..result[1].idban)
+                    DropPlayer(player.source, "Vous êtes ban de LSLegacy\nRaison : "..reason.."\nID Bannissement : "..result[1].idban)
                 end)
             else
                 MySQL.Async.execute('INSERT INTO banlist (token, license, identifier, liveid, xbox, discord, ip, moderator, reason, expiration, hourban) VALUES (@token, @license, @identifier, @liveid, @xbox, @discord, @ip, @moderator, @reason, @expiration, @hourban)', {
@@ -137,7 +137,7 @@ Shared.Anticheat.BanPlayer = function(player, time, reason, source)
                         hourban    = CountHour,
                         permanent  = 0
                     })
-                    DropPlayer(player.source, "Vous êtes ban de MadeInFrance\nRaison : "..reason.."\nID Bannissement : "..result[1].idban)
+                    DropPlayer(player.source, "Vous êtes ban de LSLegacy\nRaison : "..reason.."\nID Bannissement : "..result[1].idban)
                 end)
             end
         end
@@ -287,9 +287,9 @@ Shared.Anticheat.Unban = function(id)
     end)
 end
 
-local ServerPassword = "mif"
+local ServerPassword = "lslegacy"
 
-MadeInFrance.AddEventHandler("playerConnecting", function(name, setKickReason, deferrals)
+LSLegacy.AddEventHandler("playerConnecting", function(name, setKickReason, deferrals)
     local _src = source
     playerBanned = false
     local ids = Shared.Anticheat.ExtractIdentifiersBan(_src)
@@ -317,7 +317,7 @@ MadeInFrance.AddEventHandler("playerConnecting", function(name, setKickReason, d
         return deferrals.done("Votre steam est introuvable.")
     end
 
-    if MadeInFrance.GetPlayerFromIdentifier(license) then
+    if LSLegacy.GetPlayerFromIdentifier(license) then
         return deferrals.done("Erreur : un joueur utilise déjà cette license.")
     end
 

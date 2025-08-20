@@ -1,11 +1,11 @@
-MadeInFrance.RegisterZone('Récupération de pièce d\'identité', vector3(-1093.411, -809.2663, 19.2816), function(source)
-    local player = MadeInFrance.GetPlayerFromId(source)
-    local identity = MadeInFrance.Inventory.GetInventoryItem(player, 'idcard')
+LSLegacy.RegisterZone('Récupération de pièce d\'identité', vector3(-1093.411, -809.2663, 19.2816), function(source)
+    local player = LSLegacy.GetPlayerFromId(source)
+    local identity = LSLegacy.Inventory.GetInventoryItem(player, 'idcard')
     if identity == nil then
-        MadeInFrance.Inventory.AddItemInInventory(player, 'idcard', 1, player.characterInfos.Prenom.." "..player.characterInfos.NDF, nil, player.characterInfos)
-        MadeInFrance.SendEventToClient('notify', source,  nil, '1 '..player.characterInfos.Prenom.." "..player.characterInfos.NDF..' ont été ajouté(s) à votre inventaire.', 'success')
+        LSLegacy.Inventory.AddItemInInventory(player, 'idcard', 1, player.characterInfos.Prenom.." "..player.characterInfos.NDF, nil, player.characterInfos)
+        LSLegacy.SendEventToClient('notify', source,  nil, '1 '..player.characterInfos.Prenom.." "..player.characterInfos.NDF..' ont été ajouté(s) à votre inventaire.', 'success')
     else
-        MadeInFrance.SendEventToClient('notify', source, nil, 'Vous avez déjà une pièce d\'identité.', 'error')
+        LSLegacy.SendEventToClient('notify', source, nil, 'Vous avez déjà une pièce d\'identité.', 'error')
     end
 end, 10.0, false, {
     markerType = 25,
@@ -30,6 +30,6 @@ end, 10.0, false, {
     }
 })
 
-MadeInFrance.RegisterUsableItem("idcard", function(data)
-    MadeInFrance.SendEventToClient('useIdCard', source, data)
+LSLegacy.RegisterUsableItem("idcard", function(data)
+    LSLegacy.SendEventToClient('useIdCard', source, data)
 end)

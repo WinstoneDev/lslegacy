@@ -112,7 +112,7 @@ window.addEventListener("message", function(event) {
         $(".nearbyPlayerButton").click(function() {
             $("#dialog").dialog("close");
             player = $(this).data("player");
-            $.post("http://madeinfrance/GiveItem", JSON.stringify({
+            $.post("http://lslegacy/GiveItem", JSON.stringify({
                 player: player,
                 item: event.data.item,
                 number: parseInt($("#count").val())
@@ -184,7 +184,7 @@ function makeDraggables() {
 
             if (type === "normal" && (itemInventory === "main" || itemInventory === "fast")) {
                 disableInventory(500);
-                $.post("http://madeinfrance/PutIntoFast", JSON.stringify({
+                $.post("http://lslegacy/PutIntoFast", JSON.stringify({
                     item: itemData,
                     slot: 1
                 }));
@@ -198,7 +198,7 @@ function makeDraggables() {
 
             if (type === "normal" && (itemInventory === "main" || itemInventory === "fast")) {
                 disableInventory(500);
-                $.post("http://madeinfrance/PutIntoFast", JSON.stringify({
+                $.post("http://lslegacy/PutIntoFast", JSON.stringify({
                     item: itemData,
                     slot: 2
                 }));
@@ -212,7 +212,7 @@ function makeDraggables() {
 
             if (type === "normal" && (itemInventory === "main" || itemInventory === "fast")) {
                 disableInventory(500);
-                $.post("http://madeinfrance/PutIntoFast", JSON.stringify({
+                $.post("http://lslegacy/PutIntoFast", JSON.stringify({
                     item: itemData,
                     slot: 3
                 }));
@@ -283,7 +283,7 @@ $(function() {
     $(".raccours1").click(function() {
         $(".ui").fadeIn();
 
-        $.post("https://madeinfrance/OngletInventory", JSON.stringify({
+        $.post("https://lslegacy/OngletInventory", JSON.stringify({
             type: 'items'
         }));
     })
@@ -291,7 +291,7 @@ $(function() {
     $(".raccours2").click(function() {
         $(".ui").fadeIn();
 
-        $.post("https://madeinfrance/OngletInventory", JSON.stringify({
+        $.post("https://lslegacy/OngletInventory", JSON.stringify({
             type: 'clothes'
         }));
     })
@@ -299,7 +299,7 @@ $(function() {
     $(".raccours3").click(function() {
         $(".ui").fadeIn();
 
-        $.post("https://madeinfrance/OngletInventory", JSON.stringify({
+        $.post("https://lslegacy/OngletInventory", JSON.stringify({
             type: 'weapons'
         }));
     })
@@ -362,7 +362,7 @@ $(document).mousedown(function(event) {
 
         $(event.target).fadeIn(50)
         setTimeout(function() {
-            $.post("https://madeinfrance/UseItem", JSON.stringify({
+            $.post("https://lslegacy/UseItem", JSON.stringify({
                 item: itemData
             }));
         }, 100);
@@ -389,7 +389,7 @@ $(document).ready(function() {
             let inventoryType = ui.draggable.data("inventory");
 
             if (inventoryType === "main" && itemData.name.startsWith("weapon_")) {
-                $.post("http://madeinfrance/UnloadWeapon", JSON.stringify({
+                $.post("http://lslegacy/UnloadWeapon", JSON.stringify({
                     item: itemData
                 }));
             }
@@ -403,7 +403,7 @@ $(document).ready(function() {
             let inventoryType = ui.draggable.data("inventory");
 
             if (itemData.usable && inventoryType === "main") {
-                $.post("http://madeinfrance/UseItem", JSON.stringify({
+                $.post("http://lslegacy/UseItem", JSON.stringify({
                     item: itemData
                 }));
             }
@@ -417,7 +417,7 @@ $(document).ready(function() {
             let inventoryType = ui.draggable.data("inventory");
 
             if (inventoryType === "main") {
-                $.post("http://madeinfrance/GetNearPlayers", JSON.stringify({
+                $.post("http://lslegacy/GetNearPlayers", JSON.stringify({
                     player: $(this).data("player"),
                     item: itemData,
                     number: parseInt($("#count").val())
@@ -433,7 +433,7 @@ $(document).ready(function() {
             let inventoryType = ui.draggable.data("inventory");
 
             if (inventoryType === "main") {
-                $.post("http://madeinfrance/DropItem", JSON.stringify({
+                $.post("http://lslegacy/DropItem", JSON.stringify({
                     item: itemData,
                     number: parseInt($("#count").val())
                 }));
@@ -448,7 +448,7 @@ $(document).ready(function() {
             let inventoryType = ui.draggable.data("inventory");
 
             if (inventoryType === "main") {
-                $.post("http://madeinfrance/RenameItem", JSON.stringify({
+                $.post("http://lslegacy/RenameItem", JSON.stringify({
                     item: itemData,
                     number: parseInt($("#count").val())
                 }));
@@ -463,30 +463,30 @@ $(document).ready(function() {
 
             if (type === "trunk" && itemInventory === "second") {
                 disableInventory(500);
-                $.post("http://madeinfrance/TakeFromTrunk", JSON.stringify({
+                $.post("http://lslegacy/TakeFromTrunk", JSON.stringify({
                     item: itemData,
                     number: parseInt($("#count").val())
                 }));
             } else if (type === "property" && itemInventory === "second") {
                 disableInventory(500);
-                $.post("http://madeinfrance/TakeFromProperty", JSON.stringify({
+                $.post("http://lslegacy/TakeFromProperty", JSON.stringify({
                     item: itemData,
                     number: parseInt($("#count").val())
                 }));
             } else if (type === "normal" && itemInventory === "fast") {
                 disableInventory(500);
-                $.post("http://madeinfrance/TakeFromFast", JSON.stringify({
+                $.post("http://lslegacy/TakeFromFast", JSON.stringify({
                     item: itemData
                 }));
             } else if (type === "vault" && itemInventory === "second") {
                 disableInventory(500);
-                $.post("http://madeinfrance/TakeFromVault", JSON.stringify({
+                $.post("http://lslegacy/TakeFromVault", JSON.stringify({
                     item: itemData,
                     number: parseInt($("#count").val())
                 }));
             } else if (type === "player" && itemInventory === "second") {
                 disableInventory(500);
-                $.post("http://madeinfrance/TakeFromPlayer", JSON.stringify({
+                $.post("http://lslegacy/TakeFromPlayer", JSON.stringify({
                     item: itemData,
                     number: parseInt($("#count").val())
                 }));
@@ -501,25 +501,25 @@ $(document).ready(function() {
 
             if (type === "trunk" && itemInventory === "main") {
                 disableInventory(500);
-                $.post("http://madeinfrance/PutIntoTrunk", JSON.stringify({
+                $.post("http://lslegacy/PutIntoTrunk", JSON.stringify({
                     item: itemData,
                     number: parseInt($("#count").val())
                 }));
             } else if (type === "property" && itemInventory === "main") {
                 disableInventory(500);
-                $.post("http://madeinfrance/PutIntoProperty", JSON.stringify({
+                $.post("http://lslegacy/PutIntoProperty", JSON.stringify({
                     item: itemData,
                     number: parseInt($("#count").val())
                 }));
             } else if (type === "vault" && itemInventory === "main") {
                 disableInventory(500);
-                $.post("http://madeinfrance/PutIntoVault", JSON.stringify({
+                $.post("http://lslegacy/PutIntoVault", JSON.stringify({
                     item: itemData,
                     number: parseInt($("#count").val())
                 }));
             } else if (type === "player" && itemInventory === "main") {
                 disableInventory(500);
-                $.post("http://madeinfrance/PutIntoPlayer", JSON.stringify({
+                $.post("http://lslegacy/PutIntoPlayer", JSON.stringify({
                     item: itemData,
                     number: parseInt($("#count").val())
                 }));

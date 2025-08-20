@@ -1,125 +1,125 @@
----@class MadeInFrance.Status
-MadeInFrance.Status = {}
+---@class LSLegacy.Status
+LSLegacy.Status = {}
 
 ---GetStatuses
 ---@type function
----@param player MadeInFrance.Player
+---@param player LSLegacy.Player
 ---@return table
-MadeInFrance.Status.GetStatuses = function(player)
+LSLegacy.Status.GetStatuses = function(player)
     return player.status
 end
 
 ---GetHunger
 ---@type function
----@param player MadeInFrance.Player
+---@param player LSLegacy.Player
 ---@return number
-MadeInFrance.Status.GetHunger = function(player)
-    return MadeInFrance.Status.GetStatuses(player).hunger
+LSLegacy.Status.GetHunger = function(player)
+    return LSLegacy.Status.GetStatuses(player).hunger
 end
 
 ---GetThirst
 ---@type function
----@param player MadeInFrance.Player
+---@param player LSLegacy.Player
 ---@return number
-MadeInFrance.Status.GetThirst = function(player)
-    return MadeInFrance.Status.GetStatuses(player).thirst
+LSLegacy.Status.GetThirst = function(player)
+    return LSLegacy.Status.GetStatuses(player).thirst
 end
 
 ---GetStamina
 ---@type function
----@param player MadeInFrance.Player
+---@param player LSLegacy.Player
 ---@return number
-MadeInFrance.Status.GetStamina = function(player)
-    return MadeInFrance.Status.GetStatuses(player).stamina
+LSLegacy.Status.GetStamina = function(player)
+    return LSLegacy.Status.GetStatuses(player).stamina
 end
 
 ---SetHunger
 ---@type function
----@param player MadeInFrance.Player
+---@param player LSLegacy.Player
 ---@param value number
-MadeInFrance.Status.SetHunger = function(player, value)
+LSLegacy.Status.SetHunger = function(player, value)
     local v = math.min(100, math.max(0, value))
-    MadeInFrance.Status.GetStatuses(player).hunger = v
-    MadeInFrance.SendEventToClient('UpdatePlayer', player.source, MadeInFrance.ServerPlayers[player.source])
+    LSLegacy.Status.GetStatuses(player).hunger = v
+    LSLegacy.SendEventToClient('UpdatePlayer', player.source, LSLegacy.ServerPlayers[player.source])
 end
 
 ---SetThirst
 ---@type function
----@param player MadeInFrance.Player
+---@param player LSLegacy.Player
 ---@param value number
-MadeInFrance.Status.SetThirst = function(player, value)
+LSLegacy.Status.SetThirst = function(player, value)
     local v = math.min(100, math.max(0, value))
-    MadeInFrance.Status.GetStatuses(player).thirst = v
-    MadeInFrance.SendEventToClient('UpdatePlayer', player.source, MadeInFrance.ServerPlayers[player.source])
+    LSLegacy.Status.GetStatuses(player).thirst = v
+    LSLegacy.SendEventToClient('UpdatePlayer', player.source, LSLegacy.ServerPlayers[player.source])
 end
 
 ---SetStamina
 ---@type function
----@param player MadeInFrance.Player
+---@param player LSLegacy.Player
 ---@param value number
-MadeInFrance.Status.SetStamina = function(player, value)
+LSLegacy.Status.SetStamina = function(player, value)
     local v = math.min(100, math.max(0, value))
-    MadeInFrance.Status.GetStatuses(player).stamina = v
-    MadeInFrance.SendEventToClient('UpdatePlayer', player.source, MadeInFrance.ServerPlayers[player.source])
+    LSLegacy.Status.GetStatuses(player).stamina = v
+    LSLegacy.SendEventToClient('UpdatePlayer', player.source, LSLegacy.ServerPlayers[player.source])
 end
 
 ---AddHunger
 ---@type function
----@param player MadeInFrance.Player
+---@param player LSLegacy.Player
 ---@param value number
-MadeInFrance.Status.AddHunger = function(player, value)
-    MadeInFrance.Status.SetHunger(player, MadeInFrance.Status.GetHunger(player) + value)
+LSLegacy.Status.AddHunger = function(player, value)
+    LSLegacy.Status.SetHunger(player, LSLegacy.Status.GetHunger(player) + value)
 end
 
 ---AddThirst
 ---@type function
----@param player MadeInFrance.Player
+---@param player LSLegacy.Player
 ---@param value number
-MadeInFrance.Status.AddThirst = function(player, value)
-    MadeInFrance.Status.SetThirst(player, MadeInFrance.Status.GetThirst(player) + value)
+LSLegacy.Status.AddThirst = function(player, value)
+    LSLegacy.Status.SetThirst(player, LSLegacy.Status.GetThirst(player) + value)
 end
 
 ---AddStamina
 ---@type function
----@param player MadeInFrance.Player
+---@param player LSLegacy.Player
 ---@param value number
-MadeInFrance.Status.AddStamina = function(player, value)
-    MadeInFrance.Status.SetStamina(player, MadeInFrance.Status.GetStamina(player) + value)
+LSLegacy.Status.AddStamina = function(player, value)
+    LSLegacy.Status.SetStamina(player, LSLegacy.Status.GetStamina(player) + value)
 end
 
 ---RemoveHunger
 ---@type function
----@param player MadeInFrance.Player
+---@param player LSLegacy.Player
 ---@param value number
-MadeInFrance.Status.RemoveHunger = function(player, value)
-    MadeInFrance.Status.SetHunger(player, MadeInFrance.Status.GetHunger(player) - value)
+LSLegacy.Status.RemoveHunger = function(player, value)
+    LSLegacy.Status.SetHunger(player, LSLegacy.Status.GetHunger(player) - value)
 end
 
 ---RemoveThirst
 ---@type function
----@param player MadeInFrance.Player
+---@param player LSLegacy.Player
 ---@param value number
-MadeInFrance.Status.RemoveThirst = function(player, value)
-    MadeInFrance.Status.SetThirst(player, MadeInFrance.Status.GetThirst(player) - value)
+LSLegacy.Status.RemoveThirst = function(player, value)
+    LSLegacy.Status.SetThirst(player, LSLegacy.Status.GetThirst(player) - value)
 end
 
 ---RemoveStamina
 ---@type function
----@param player MadeInFrance.Player
+---@param player LSLegacy.Player
 ---@param value number
-MadeInFrance.Status.RemoveStamina = function(player, value)
-    MadeInFrance.Status.SetStamina(player, MadeInFrance.Status.GetStamina(player) - value)
+LSLegacy.Status.RemoveStamina = function(player, value)
+    LSLegacy.Status.SetStamina(player, LSLegacy.Status.GetStamina(player) - value)
 end
 
 CreateThread(function()
     while true do
         Wait(Config.Status.UpdateInterval * 1000)
 
-        for _, player in pairs(MadeInFrance.ServerPlayers) do
+        for _, player in pairs(LSLegacy.ServerPlayers) do
             if player and player.status then
-                MadeInFrance.Status.RemoveHunger(player, Config.Status.Hunger.Loss)
-                MadeInFrance.Status.RemoveThirst(player, Config.Status.Thirst.Loss)
-                MadeInFrance.Status.RemoveStamina(player, Config.Status.Stamina.Loss)
+                LSLegacy.Status.RemoveHunger(player, Config.Status.Hunger.Loss)
+                LSLegacy.Status.RemoveThirst(player, Config.Status.Thirst.Loss)
+                LSLegacy.Status.RemoveStamina(player, Config.Status.Stamina.Loss)
             end
         end
     end

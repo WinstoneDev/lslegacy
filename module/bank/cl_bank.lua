@@ -47,7 +47,7 @@ end
 bankMenu.GetPersonnalAccounts = function(accounts)
     local result = {}
     for key, value in pairs(accounts) do
-        if value.owner == MadeInFrance.PlayerData.identifier then
+        if value.owner == LSLegacy.PlayerData.identifier then
             table.insert(result, value)
         end
     end
@@ -71,31 +71,31 @@ atmMenu.OpenMenu = function(data)
                     RageUI.Separator("↓ Argent sur votre compte : "..bankMenu.GetAccount(data.card_account).amountMoney..'~g~$~s~ ↓')
                     RageUI.Button('Ajouter de l\'argent', nil, {}, true, {
                         onSelected = function()
-                            local amount = MadeInFrance.KeyboardInput('Somme', 10)
+                            local amount = LSLegacy.KeyboardInput('Somme', 10)
                             if tonumber(amount) then
                                 if tonumber(amount) > 0 then
-                                    MadeInFrance.SendEventToServer('BankAddMoney', amount, data.card_account)
+                                    LSLegacy.SendEventToServer('BankAddMoney', amount, data.card_account)
                                     RageUI.CloseAll()
                                 else
-                                    MadeInFrance.ShowNotification(nil, 'Vous devez entrer un montant positif.', 'error')
+                                    LSLegacy.ShowNotification(nil, 'Vous devez entrer un montant positif.', 'error')
                                 end
                             else
-                                MadeInFrance.ShowNotification(nil, 'Vous devez entrer un montant valide.', 'error')
+                                LSLegacy.ShowNotification(nil, 'Vous devez entrer un montant valide.', 'error')
                             end
                         end
                     })
                     RageUI.Button('Retirer de l\'argent', nil, {}, true, {
                         onSelected = function()
-                            local amount = MadeInFrance.KeyboardInput('Somme', 10)
+                            local amount = LSLegacy.KeyboardInput('Somme', 10)
                             if tonumber(amount) then
                                 if tonumber(amount) > 0 then
-                                    MadeInFrance.SendEventToServer('BankwithdrawMoney', amount, data.card_account)
+                                    LSLegacy.SendEventToServer('BankwithdrawMoney', amount, data.card_account)
                                     RageUI.CloseAll()
                                 else
-                                    MadeInFrance.ShowNotification(nil, 'Vous devez entrer un montant positif.', 'error')
+                                    LSLegacy.ShowNotification(nil, 'Vous devez entrer un montant positif.', 'error')
                                 end
                             else
-                                MadeInFrance.ShowNotification(nil, 'Vous devez entrer un montant valide.', 'error')
+                                LSLegacy.ShowNotification(nil, 'Vous devez entrer un montant valide.', 'error')
                             end
                         end
                     })
@@ -122,7 +122,7 @@ bankMenu.OpenMenu = function()
                     RageUI.Button('Mes comptes banquaires', nil, {RightLabel = '→'}, true, {}, bankMenu.accountsMenu)
                     RageUI.Button('Créer un compte', nil, {RightLabel = '→'}, true, {
                         onSelected = function()
-                            MadeInFrance.SendEventToServer('BankCreateAccount')
+                            LSLegacy.SendEventToServer('BankCreateAccount')
                         end
                     })
                 end)
@@ -173,7 +173,7 @@ bankMenu.OpenMenu = function()
                                 bankMenu.selectedAccount.text = '~r~Non'
                                 RageUI.Visible(bankMenu.accountActionsMenu, false)
                                 RageUI.Visible(bankMenu.mainMenu, true)
-                                MadeInFrance.SendEventToServer('BankChangeAccountStatus', bankMenu.selectedAccount.id, bankMenu.selectedAccount.courant)
+                                LSLegacy.SendEventToServer('BankChangeAccountStatus', bankMenu.selectedAccount.id, bankMenu.selectedAccount.courant)
                             else
                                 local exist = false
                                 for key, value in pairs(bankMenu.GetPersonnalAccounts(bankMenu.accounts)) do
@@ -187,9 +187,9 @@ bankMenu.OpenMenu = function()
                                     bankMenu.selectedAccount.text = '~g~Oui'
                                     RageUI.Visible(bankMenu.accountActionsMenu, false)
                                     RageUI.Visible(bankMenu.mainMenu, true)
-                                    MadeInFrance.SendEventToServer('BankChangeAccountStatus', bankMenu.selectedAccount.id, bankMenu.selectedAccount.courant)
+                                    LSLegacy.SendEventToServer('BankChangeAccountStatus', bankMenu.selectedAccount.id, bankMenu.selectedAccount.courant)
                                 else
-                                    MadeInFrance.ShowNotification('Maze Bank', 'Vous avez déjà un compte courant.', 'error')
+                                    LSLegacy.ShowNotification('Maze Bank', 'Vous avez déjà un compte courant.', 'error')
                                 end                                
                             end
                         end
@@ -199,7 +199,7 @@ bankMenu.OpenMenu = function()
                             onSelected = function()
                                 RageUI.Visible(bankMenu.accountActionsMenu, false)
                                 RageUI.Visible(bankMenu.mainMenu, true)
-                                MadeInFrance.SendEventToServer('BankCreateCard', bankMenu.selectedAccount.id)
+                                LSLegacy.SendEventToServer('BankCreateCard', bankMenu.selectedAccount.id)
                             end
                         })
                     else
@@ -214,12 +214,12 @@ bankMenu.OpenMenu = function()
                         onSelected = function()
                             RageUI.Visible(bankMenu.accountActionsMenu, false)
                             RageUI.Visible(bankMenu.mainMenu, true)
-                            MadeInFrance.SendEventToServer('BankDeleteAccount', bankMenu.selectedAccount.id)
+                            LSLegacy.SendEventToServer('BankDeleteAccount', bankMenu.selectedAccount.id)
                         end
                     })
                 end)
                 RageUI.IsVisible(bankMenu.cardMenu, function()
-                    RageUI.Separator('Numéro : ~g~'..MadeInFrance.RegroupNumbers(bankMenu.selectedCard.card_number)..'~s~')
+                    RageUI.Separator('Numéro : ~g~'..LSLegacy.RegroupNumbers(bankMenu.selectedCard.card_number)..'~s~')
                     RageUI.Separator('Appartenant à ~b~'..bankMenu.selectedCard.owner_name)
                     RageUI.Separator('Expiration : ~g~'..bankMenu.selectedCard.card_expiration_date)
                     RageUI.Separator('CVV : ~g~'..bankMenu.selectedCard.card_cvv)
@@ -231,8 +231,8 @@ bankMenu.OpenMenu = function()
     end
 end
 
-MadeInFrance.RegisterClientEvent('openBankMenu', function()
-    MadeInFrance.SendEventToServer('GetBankAccounts')
+LSLegacy.RegisterClientEvent('openBankMenu', function()
+    LSLegacy.SendEventToServer('GetBankAccounts')
     bankMenu.OpenMenu()
 end)
 
@@ -274,23 +274,23 @@ function NearAtms()
       end
 end
 
-MadeInFrance.RegisterClientEvent('useCarteBank', function(data)
+LSLegacy.RegisterClientEvent('useCarteBank', function(data)
     if NearAtms() then
-        local input = MadeInFrance.KeyboardInput('Code PIN', 4)
+        local input = LSLegacy.KeyboardInput('Code PIN', 4)
         if tonumber(input) then
             if tonumber(input) == tonumber(data.card_pin) then
-                MadeInFrance.SendEventToServer('GetBankAccounts')
+                LSLegacy.SendEventToServer('GetBankAccounts')
                 Wait(100)
                 atmMenu.OpenMenu(data)
             else
-                MadeInFrance.ShowNotification('Maze Bank', 'Le code PIN est incorrect.', 'error')
+                LSLegacy.ShowNotification('Maze Bank', 'Le code PIN est incorrect.', 'error')
             end
         else
-            MadeInFrance.ShowNotification('Maze Bank', 'Vous avez entré un code invalide.', 'error')
+            LSLegacy.ShowNotification('Maze Bank', 'Vous avez entré un code invalide.', 'error')
         end
     end
 end)
 
-MadeInFrance.RegisterClientEvent('receiveBankAccounts', function(accounts)
+LSLegacy.RegisterClientEvent('receiveBankAccounts', function(accounts)
     bankMenu.accounts = accounts
 end)

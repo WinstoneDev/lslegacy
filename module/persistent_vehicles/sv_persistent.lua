@@ -1,5 +1,5 @@
-MadeInFrance = MadeInFrance or {}
-MadeInFrance.AP = { Active = {} }
+LSLegacy = LSLegacy or {}
+LSLegacy.AP = { Active = {} }
 
 -- Vérifie si le véhicule est blacklisté
 local function isBlacklisted(entity)
@@ -27,7 +27,7 @@ local function saveVehicle(entity)
         body = GetVehicleBodyHealth(entity),
         tank = GetVehiclePetrolTankHealth(entity),
         dirt = GetVehicleDirtLevel(entity),
-        fuel = MadeInFrance.AP.Active[plate].fuel,
+        fuel = LSLegacy.AP.Active[plate].fuel,
         lock = GetVehicleDoorLockStatus(entity),
         windows = {},
         extras = {}
@@ -52,11 +52,11 @@ local function saveVehicle(entity)
 
     local state_bags = {}
     
-    if MadeInFrance.AP.Active[plate].tuning then
-        tuning = MadeInFrance.AP.Active[plate].tuning
+    if LSLegacy.AP.Active[plate].tuning then
+        tuning = LSLegacy.AP.Active[plate].tuning
         if type(tuning) ~= 'table' then
             tuning = json.decode(tuning)
-            MadeInFrance.AP.Active[plate].tuning = tuning
+            LSLegacy.AP.Active[plate].tuning = tuning
         end
     end
 
@@ -104,11 +104,11 @@ local function spawnVehicle(row)
     if status.windows then for i=0,7 do if status.windows[i] then SmashVehicleWindow(entity,i) end end end
     if status.extras then for i=0,20 do if status.extras[i] ~= nil then SetVehicleExtra(entity,i, status.extras[i] and 0 or 1) end end end
 
-    MadeInFrance.AP.Active[row.plate] = { netId = netId, entity = entity, model = row.model }
+    LSLegacy.AP.Active[row.plate] = { netId = netId, entity = entity, model = row.model }
 end
 
 -- Fonction pour spawn un véhicule persistant correctement
-function MadeInFrance.AP.SpawnPersistentVehicle(model, pos, heading, targetPlayer)
+function LSLegacy.AP.SpawnPersistentVehicle(model, pos, heading, targetPlayer)
     local modelHash = tonumber(model) or GetHashKey(model)
     local vehicle = CreateVehicle(modelHash, pos.x, pos.y, pos.z, heading or 0.0, true, false)
     Wait(250)
@@ -116,31 +116,31 @@ function MadeInFrance.AP.SpawnPersistentVehicle(model, pos, heading, targetPlaye
     SetVehicleNumberPlateText(vehicle, plate)
 
     local netId = NetworkGetNetworkIdFromEntity(vehicle)
-    MadeInFrance.AP.Active[plate] = { netId = netId, entity = vehicle, model = modelHash, extras = {}, tankHealth = 1000.0, engineHealth = 1000.0, fuel = 50.0 }
+    LSLegacy.AP.Active[plate] = { netId = netId, entity = vehicle, model = modelHash, extras = {}, tankHealth = 1000.0, engineHealth = 1000.0, fuel = 50.0 }
     Wait(500)
     if targetPlayer then
         local ped = GetPlayerPed(targetPlayer)
         if DoesEntityExist(ped) then
             TaskWarpPedIntoVehicle(ped, vehicle, -1)
         end
-        MadeInFrance.SendEventToClient("ap:vehicleSpawned", targetPlayer, { netId = netId, plate = plate, extras = {}, tankHealth = 1000.0, engineHealth = 1000.0, fuel = 50.0 })
+        LSLegacy.SendEventToClient("ap:vehicleSpawned", targetPlayer, { netId = netId, plate = plate, extras = {}, tankHealth = 1000.0, engineHealth = 1000.0, fuel = 50.0 })
     end
 end
 
-MadeInFrance.RegisterServerEvent("ap:updateVehicleStatus", function(plate, status)
+LSLegacy.RegisterServerEvent("ap:updateVehicleStatus", function(plate, status)
     if not plate or not status then return end
-    if MadeInFrance.AP.Active[plate] then
-        MadeInFrance.AP.Active[plate].fuel = status.fuel
-        MadeInFrance.AP.Active[plate].tuning = status.tuning
+    if LSLegacy.AP.Active[plate] then
+        LSLegacy.AP.Active[plate].fuel = status.fuel
+        LSLegacy.AP.Active[plate].tuning = status.tuning
     end
 end)
 
-MadeInFrance.RegisterServerEvent("ap:updateVehicle", function(netId)
+LSLegacy.RegisterServerEvent("ap:updateVehicle", function(netId)
     local entity = NetworkGetEntityFromNetworkId(netId)
     if DoesEntityExist(entity) then saveVehicle(entity) end
 end)
 
-MadeInFrance.AddEventHandler('ap:clientsetonSpawn', function(source)
+LSLegacy.AddEventHandler('ap:clientsetonSpawn', function(source)
     MySQL.Async.fetchAll('SELECT * FROM persistent_vehicles', {}, function(rows)
         for _, row in ipairs(rows) do
             local status = json.decode(row.status)
@@ -150,8 +150,8 @@ MadeInFrance.AddEventHandler('ap:clientsetonSpawn', function(source)
                     extras[i] = status.extras[i] or false
                 end
             end
-            MadeInFrance.SendEventToClient("ap:vehicleSpawned", source, { 
-                netId = MadeInFrance.AP.Active[row.plate].netId, 
+            LSLegacy.SendEventToClient("ap:vehicleSpawned", source, { 
+                netId = LSLegacy.AP.Active[row.plate].netId, 
                 plate = row.plate, 
                 extras = extras,
                 tankHealth = status.tank or 1000.0,
@@ -159,8 +159,8 @@ MadeInFrance.AddEventHandler('ap:clientsetonSpawn', function(source)
                 tuning = json.decode(row.tuning), 
                 fuel = status.fuel or 50
             })
-            MadeInFrance.AP.Active[row.plate].fuel = status.fuel
-            MadeInFrance.AP.Active[row.plate].tuning = json.decode(row.tuning)
+            LSLegacy.AP.Active[row.plate].fuel = status.fuel
+            LSLegacy.AP.Active[row.plate].tuning = json.decode(row.tuning)
         end
     end)
 end)
@@ -170,10 +170,10 @@ CreateThread(function()
     Wait(5000)
     while true do
         if not Config.AP.Enable then goto continue end
-        local players = MadeInFrance.ServerPlayers
+        local players = LSLegacy.ServerPlayers
 
         if json.encode(players) ~= "[]" then
-            for plate, v in pairs(MadeInFrance.AP.Active) do
+            for plate, v in pairs(LSLegacy.AP.Active) do
                 if DoesEntityExist(v.entity) then
                     saveVehicle(v.entity)
                 end
@@ -182,7 +182,7 @@ CreateThread(function()
 
             MySQL.Async.fetchAll([[SELECT * FROM persistent_vehicles]], {}, function(rows)
                 for _, row in ipairs(rows) do
-                    if not MadeInFrance.AP.Active[row.plate] then
+                    if not LSLegacy.AP.Active[row.plate] then
                         spawnVehicle(row)
                     end
                 end

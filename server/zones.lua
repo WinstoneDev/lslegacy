@@ -1,5 +1,5 @@
----@class MadeInFrance.RegisteredZones
-MadeInFrance.RegisteredZones = {}
+---@class LSLegacy.RegisteredZones
+LSLegacy.RegisteredZones = {}
 
 ---RegisterZone
 ---@type function
@@ -17,13 +17,13 @@ MadeInFrance.RegisteredZones = {}
 ---@param pedInfos table
 ---@return any
 ---@public
-MadeInFrance.RegisterZone = function(name, coords, interactFunc, drawDist, drawMarker, markerInfos, drawBlip, blipInfos, drawNotification, notificationInfos, drawPed, pedInfos)
+LSLegacy.RegisterZone = function(name, coords, interactFunc, drawDist, drawMarker, markerInfos, drawBlip, blipInfos, drawNotification, notificationInfos, drawPed, pedInfos)
     if not name then return end
     if not coords then return end
     if not interactFunc then return end
     if not drawDist then return end
-    if not MadeInFrance.RegisteredZones[name] then
-        MadeInFrance.RegisteredZones[name] = {
+    if not LSLegacy.RegisteredZones[name] then
+        LSLegacy.RegisteredZones[name] = {
             name = name,
             coords = coords,
             interactFunc = interactFunc,
@@ -43,31 +43,31 @@ MadeInFrance.RegisterZone = function(name, coords, interactFunc, drawDist, drawM
     end
 end
 
-MadeInFrance.RegisterServerEvent('zones:haveInteract', function(zone)
+LSLegacy.RegisterServerEvent('zones:haveInteract', function(zone)
     local _source = source
     Citizen.CreateThread(function()
-        if MadeInFrance.RegisteredZones[zone].interactFunc then
-            MadeInFrance.RegisteredZones[zone].interactFunc(_source)
+        if LSLegacy.RegisteredZones[zone].interactFunc then
+            LSLegacy.RegisteredZones[zone].interactFunc(_source)
         end
     end)
 end)
 
-MadeInFrance.RegisterServerEvent('haveExitedZone', function()
+LSLegacy.RegisterServerEvent('haveExitedZone', function()
     local _src = source
-    local player = MadeInFrance.GetPlayerFromId(_src)
+    local player = LSLegacy.GetPlayerFromId(_src)
     player.currentZone = "Aucune"
 end)
 
 Citizen.CreateThread(function()
     Wait(15000)
     while true do
-        for index, player in pairs(MadeInFrance.ServerPlayers) do
-            local _coords = MadeInFrance.GetEntityCoords(player.source)
-              for name, zone in pairs(MadeInFrance.RegisteredZones) do
+        for index, player in pairs(LSLegacy.ServerPlayers) do
+            local _coords = LSLegacy.GetEntityCoords(player.source)
+              for name, zone in pairs(LSLegacy.RegisteredZones) do
                 if #(_coords-zone.coords) <= zone.drawDist then
                     if player.currentZone ~= name then
                         Config.Development.Print('Player '..player.source..' is in zone ' .. name)
-                        MadeInFrance.SendEventToClient('zones:enteredZone', player.source, zone)
+                        LSLegacy.SendEventToClient('zones:enteredZone', player.source, zone)
                         player.currentZone = name
                     end
                 end
@@ -83,11 +83,11 @@ end)
 ---@param source number
 ---@return any
 ---@public
-MadeInFrance.RegisterPeds = function(zones, source)
+LSLegacy.RegisterPeds = function(zones, source)
     for name, zone in pairs(zones) do
         if zone.drawPed then
             Config.Development.Print("Registering ped " .. zone.pedInfos.pedName)
-            MadeInFrance.SpawnPedZone(zone.pedInfos.pedModel, zone.pedInfos.coords, zone.name, source)
+            LSLegacy.SpawnPedZone(zone.pedInfos.pedModel, zone.pedInfos.coords, zone.name, source)
         end
     end
 end

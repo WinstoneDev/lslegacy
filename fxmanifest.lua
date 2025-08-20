@@ -70,9 +70,3 @@ server_scripts {
     'server/deferallsCards.lua',
     'server/anticheat.lua'
 }
-
-exports {
-    "GetPlayerInventoryItems",
-    "GetPlayerInventoryWeight",
-    "GetOriginalLabel"
-}

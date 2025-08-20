@@ -1,7 +1,7 @@
----@class MadeInFrance.Inventory
-MadeInFrance.Inventory = {}
-MadeInFrance.Inventory.ActionItems = {}
-MadeInFrance.ItemsId = {}
+---@class LSLegacy.Inventory
+LSLegacy.Inventory = {}
+LSLegacy.Inventory.ActionItems = {}
+LSLegacy.ItemsId = {}
 
 MySQL.ready(function()
     MySQL.Async.fetchAll('SELECT inventory FROM players', {}, function(result)
@@ -9,7 +9,7 @@ MySQL.ready(function()
             local inventory = json.decode(v.inventory)
             for key, value in pairs(inventory) do
                 if value.uniqueId then
-                    MadeInFrance.ItemsId[value.uniqueId] = value.uniqueId
+                    LSLegacy.ItemsId[value.uniqueId] = value.uniqueId
                 end
             end
         end
@@ -20,14 +20,14 @@ end)
 ---@type function
 ---@return number
 ---@public
-MadeInFrance.Inventory.GiveUniqueId = function()
+LSLegacy.Inventory.GiveUniqueId = function()
     local uniqueId = math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)..math.random(0, 9)
 
-    if not MadeInFrance.ItemsId[uniqueId] then
-        MadeInFrance.ItemsId[uniqueId] = uniqueId
+    if not LSLegacy.ItemsId[uniqueId] then
+        LSLegacy.ItemsId[uniqueId] = uniqueId
         return uniqueId
     else
-        MadeInFrance.Inventory.GiveUniqueId()
+        LSLegacy.Inventory.GiveUniqueId()
     end
 end
 
@@ -35,7 +35,7 @@ end
 ---@type function
 ---@return table
 ---@public
-MadeInFrance.Inventory.GetAllItems = function()
+LSLegacy.Inventory.GetAllItems = function()
     local items = {}
     for key, value in pairs(Config.Items) do
         items[key] = value
@@ -48,7 +48,7 @@ end
 ---@param item string
 ---@return boolean
 ---@public
-MadeInFrance.Inventory.DoesItemExists = function(item)
+LSLegacy.Inventory.DoesItemExists = function(item)
     if not item then return false end
     if Config.Items[item] then
         return true
@@ -62,9 +62,9 @@ end
 ---@param item string
 ---@return table
 ---@public
-MadeInFrance.Inventory.GetInfosItem = function(item)
+LSLegacy.Inventory.GetInfosItem = function(item)
     if not item then return end
-    if Config.Items[item] and MadeInFrance.Inventory.DoesItemExists(item) then
+    if Config.Items[item] and LSLegacy.Inventory.DoesItemExists(item) then
         return Config.Items[item]
     else
         return nil
@@ -76,7 +76,7 @@ end
 ---@param inventory table
 ---@return number
 ---@public
-MadeInFrance.Inventory.GetInventoryWeight = function(inventory)
+LSLegacy.Inventory.GetInventoryWeight = function(inventory)
     if not inventory then return end
     local weight = 0
 
@@ -92,7 +92,7 @@ end
 ---@param item string
 ---@return table
 ---@public
-MadeInFrance.Inventory.GetInventoryItem = function(player, item)
+LSLegacy.Inventory.GetInventoryItem = function(player, item)
     if not item then return end
     local count = 0
     local data = nil
@@ -119,12 +119,12 @@ end
 ---@param quantity number
 ---@return boolean
 ---@public
-MadeInFrance.Inventory.CanCarryItem = function(player, item, quantity)
+LSLegacy.Inventory.CanCarryItem = function(player, item, quantity)
     if not player then return end
     if not item then return end
     if not quantity then quantity = 1 end
-    if not MadeInFrance.Inventory.DoesItemExists(item) then return end
-    local weight = MadeInFrance.Inventory.GetInventoryWeight(player.inventory)
+    if not LSLegacy.Inventory.DoesItemExists(item) then return end
+    local weight = LSLegacy.Inventory.GetInventoryWeight(player.inventory)
     local itemWeight = Config.Items[item].weight * quantity
     if math.floor(weight + itemWeight) <= Config.Informations["MaxWeight"] then
         return true
@@ -142,14 +142,14 @@ end
 ---@param uniqueId number
 ---@param data table
 ---@return any
-MadeInFrance.Inventory.AddItemInInventory = function(player, item, quantity, newlabel, uniqueId, data)
+LSLegacy.Inventory.AddItemInInventory = function(player, item, quantity, newlabel, uniqueId, data)
     if not player then return end
     if not item then return end
     if not quantity then return end
     local exist = false
 
-    if MadeInFrance.Inventory.DoesItemExists(item) then
-        if MadeInFrance.Inventory.CanCarryItem(player, item, quantity) then
+    if LSLegacy.Inventory.DoesItemExists(item) then
+        if LSLegacy.Inventory.CanCarryItem(player, item, quantity) then
             local inventory = player.inventory
             local Itemlabel = newlabel or Config.Items[item].label
 
@@ -166,7 +166,7 @@ MadeInFrance.Inventory.AddItemInInventory = function(player, item, quantity, new
             if not exist then
                 if Config.InsertItems[item] then
                     if uniqueId == nil then
-                        uniqueId = MadeInFrance.Inventory.GiveUniqueId()
+                        uniqueId = LSLegacy.Inventory.GiveUniqueId()
                     end 
                     if data ~= nil then
                         table.insert(inventory, {data = data, uniqueId = uniqueId, name = item, label = Itemlabel, count = quantity})
@@ -179,9 +179,9 @@ MadeInFrance.Inventory.AddItemInInventory = function(player, item, quantity, new
             end
 
             player.inventory = inventory
-            local weight = MadeInFrance.Inventory.GetInventoryWeight(player.inventory)
+            local weight = LSLegacy.Inventory.GetInventoryWeight(player.inventory)
             player.weight = weight
-            MadeInFrance.SendEventToClient('UpdatePlayer', player.source, player)
+            LSLegacy.SendEventToClient('UpdatePlayer', player.source, player)
         end
     end
 end
@@ -194,7 +194,7 @@ end
 ---@param itemLabel string
 ---@return any
 ---@public
-MadeInFrance.Inventory.RemoveItemInInventory = function(player, item, quantity, itemLabel)
+LSLegacy.Inventory.RemoveItemInInventory = function(player, item, quantity, itemLabel)
     if not player then return end
     if not item then return end
     if not quantity then return end
@@ -234,9 +234,9 @@ MadeInFrance.Inventory.RemoveItemInInventory = function(player, item, quantity, 
     end
 
     player.inventory = inventory
-    local weight = MadeInFrance.Inventory.GetInventoryWeight(player.inventory)
+    local weight = LSLegacy.Inventory.GetInventoryWeight(player.inventory)
     player.weight = weight
-    MadeInFrance.SendEventToClient('UpdatePlayer', player.source, player)
+    LSLegacy.SendEventToClient('UpdatePlayer', player.source, player)
 end
 
 ---RenameItemLabel
@@ -249,7 +249,7 @@ end
 ---@param uniqueId number
 ---@return any
 ---@public
-MadeInFrance.Inventory.RenameItemLabel = function(player, name, lastLabel, newLabel, quantity, uniqueId)
+LSLegacy.Inventory.RenameItemLabel = function(player, name, lastLabel, newLabel, quantity, uniqueId)
     if not player then return end
     if not name then return end
     if not lastLabel then return end
@@ -296,9 +296,9 @@ MadeInFrance.Inventory.RenameItemLabel = function(player, name, lastLabel, newLa
     if not exist then
         table.insert(inventory, {name = itemName, label = newLabel, count = quantity})
     end
-    MadeInFrance.SendEventToClient('notify', player.source, nil, "Vous avez changé le nom "..lastLabel.." en "..newLabel..".", 'success')
+    LSLegacy.SendEventToClient('notify', player.source, nil, "Vous avez changé le nom "..lastLabel.." en "..newLabel..".", 'success')
     player.inventory = inventory
-    MadeInFrance.SendEventToClient('UpdatePlayer', player.source, player)
+    LSLegacy.SendEventToClient('UpdatePlayer', player.source, player)
 end
 
 ---RegisterUsableItem
@@ -307,8 +307,8 @@ end
 ---@param callback function
 ---@return any
 ---@public
-MadeInFrance.RegisterUsableItem = function(item, cb)
-	MadeInFrance.Inventory.ActionItems[item] = cb
+LSLegacy.RegisterUsableItem = function(item, cb)
+	LSLegacy.Inventory.ActionItems[item] = cb
 end
 
 ---UseItem
@@ -317,131 +317,131 @@ end
 ---@param ... any
 ---@return any
 ---@public
-MadeInFrance.UseItem = function(item, ...)
-    if MadeInFrance.Inventory.ActionItems[item] then
-	    MadeInFrance.Inventory.ActionItems[item](...)
+LSLegacy.UseItem = function(item, ...)
+    if LSLegacy.Inventory.ActionItems[item] then
+	    LSLegacy.Inventory.ActionItems[item](...)
     end
 end
 
-MadeInFrance.RegisterServerEvent('renameItem', function(name, lastLabel, newLabel, quantity, uniqueId)
-    local player = MadeInFrance.GetPlayerFromId(source)
-    MadeInFrance.Inventory.RenameItemLabel(player, name, lastLabel, newLabel, quantity, uniqueId)
+LSLegacy.RegisterServerEvent('renameItem', function(name, lastLabel, newLabel, quantity, uniqueId)
+    local player = LSLegacy.GetPlayerFromId(source)
+    LSLegacy.Inventory.RenameItemLabel(player, name, lastLabel, newLabel, quantity, uniqueId)
 end)
 
-MadeInFrance.RegisterServerEvent('useItem', function(item, ...)
-    local player = MadeInFrance.GetPlayerFromId(source)
-    if MadeInFrance.Inventory.GetInventoryItem(player, item) ~= nil then
-        if MadeInFrance.Inventory.GetInventoryItem(player, item).count > 0 then
-            MadeInFrance.UseItem(item, ...)
+LSLegacy.RegisterServerEvent('useItem', function(item, ...)
+    local player = LSLegacy.GetPlayerFromId(source)
+    if LSLegacy.Inventory.GetInventoryItem(player, item) ~= nil then
+        if LSLegacy.Inventory.GetInventoryItem(player, item).count > 0 then
+            LSLegacy.UseItem(item, ...)
         end
     end
 end)
 
-MadeInFrance.RegisterServerEvent('transfer', function(table)
+LSLegacy.RegisterServerEvent('transfer', function(table)
     local source = source
     local sourcePed = GetPlayerPed(source)
     local targetPed = GetPlayerPed(table.target)
-    local player = MadeInFrance.GetPlayerFromId(source)
-    local target = MadeInFrance.GetPlayerFromId(table.target)
+    local player = LSLegacy.GetPlayerFromId(source)
+    local target = LSLegacy.GetPlayerFromId(table.target)
     
     if #(GetEntityCoords(sourcePed)-GetEntityCoords(targetPed)) <= 7.0 then
         if table.type == 'item_standard' then
-            if MadeInFrance.Inventory.GetInventoryItem(player, table.name) ~= nil then
-                if MadeInFrance.Inventory.GetInventoryItem(player, table.name).count >= table.count then
-                    if MadeInFrance.Inventory.CanCarryItem(target, table.name, table.count) then
-                        MadeInFrance.Inventory.RemoveItemInInventory(player, table.name, table.count, table.label)
-                        MadeInFrance.Inventory.AddItemInInventory(target, table.name, table.count, table.label, table.uniqueId, table.data)
-                        MadeInFrance.SendEventToClient('notify', table.target, nil, table.count..' '..table.label..' ont été ajouté(s) à votre inventaire.', 'success')
-                        MadeInFrance.SendEventToClient('notify', source, nil, table.count..' '..table.label..' ont été retiré(s) de votre inventaire.', 'success')
+            if LSLegacy.Inventory.GetInventoryItem(player, table.name) ~= nil then
+                if LSLegacy.Inventory.GetInventoryItem(player, table.name).count >= table.count then
+                    if LSLegacy.Inventory.CanCarryItem(target, table.name, table.count) then
+                        LSLegacy.Inventory.RemoveItemInInventory(player, table.name, table.count, table.label)
+                        LSLegacy.Inventory.AddItemInInventory(target, table.name, table.count, table.label, table.uniqueId, table.data)
+                        LSLegacy.SendEventToClient('notify', table.target, nil, table.count..' '..table.label..' ont été ajouté(s) à votre inventaire.', 'success')
+                        LSLegacy.SendEventToClient('notify', source, nil, table.count..' '..table.label..' ont été retiré(s) de votre inventaire.', 'success')
                     else
-                        MadeInFrance.SendEventToClient('notify', table.target, nil, 'Vous ne pouvez pas transporter cet objet.', 'error')
-                        MadeInFrance.SendEventToClient('notify', source, nil, 'La personne ne peut pas transporter cet objet.', 'error')
+                        LSLegacy.SendEventToClient('notify', table.target, nil, 'Vous ne pouvez pas transporter cet objet.', 'error')
+                        LSLegacy.SendEventToClient('notify', source, nil, 'La personne ne peut pas transporter cet objet.', 'error')
                     end
                 end
             end
         elseif table.type == 'item_cash' then
-            if MadeInFrance.Money.GetPlayerMoney(player) >= table.count then
-                MadeInFrance.Money.RemovePlayerMoney(player, table.count)
-                MadeInFrance.Money.AddPlayerMoney(target, table.count)
-                MadeInFrance.SendEventToClient('notify', table.target, nil, 'Vous avez reçu '..table.count..' $.', 'success')
-                MadeInFrance.SendEventToClient('notify', source, nil, 'Vous avez donné '..table.count..' $ à la personne.', 'success')
+            if LSLegacy.Money.GetPlayerMoney(player) >= table.count then
+                LSLegacy.Money.RemovePlayerMoney(player, table.count)
+                LSLegacy.Money.AddPlayerMoney(target, table.count)
+                LSLegacy.SendEventToClient('notify', table.target, nil, 'Vous avez reçu '..table.count..' $.', 'success')
+                LSLegacy.SendEventToClient('notify', source, nil, 'Vous avez donné '..table.count..' $ à la personne.', 'success')
             else
-                MadeInFrance.SendEventToClient('notify', source, nil, 'Vous n\'avez pas assez d\'argent.', 'error')
+                LSLegacy.SendEventToClient('notify', source, nil, 'Vous n\'avez pas assez d\'argent.', 'error')
             end
         elseif table.type == 'item_dirty' then
-            if MadeInFrance.Money.GetPlayerDirtyMoney(player) >= table.count then
-                MadeInFrance.Money.RemovePlayerDirtyMoney(player, table.count)
-                MadeInFrance.Money.AddPlayerDirtyMoney(target, table.count)
-                MadeInFrance.SendEventToClient('notify', table.target, nil, 'Vous avez reçu '..table.count..' $.', 'success')
-                MadeInFrance.SendEventToClient('notify', source, nil, 'Vous avez donné '..table.count..' $ à la personne.', 'success')
+            if LSLegacy.Money.GetPlayerDirtyMoney(player) >= table.count then
+                LSLegacy.Money.RemovePlayerDirtyMoney(player, table.count)
+                LSLegacy.Money.AddPlayerDirtyMoney(target, table.count)
+                LSLegacy.SendEventToClient('notify', table.target, nil, 'Vous avez reçu '..table.count..' $.', 'success')
+                LSLegacy.SendEventToClient('notify', source, nil, 'Vous avez donné '..table.count..' $ à la personne.', 'success')
             else
-                MadeInFrance.SendEventToClient('notify', source, nil, 'Vous n\'avez pas assez d\'argent sale.', 'error')
+                LSLegacy.SendEventToClient('notify', source, nil, 'Vous n\'avez pas assez d\'argent sale.', 'error')
             end
         end
     else
-        MadeInFrance.SendEventToClient('notify', source, nil, 'Il n\'y a aucune personne aux alentours de vous.', 'error')
+        LSLegacy.SendEventToClient('notify', source, nil, 'Il n\'y a aucune personne aux alentours de vous.', 'error')
     end
 end)
 
-MadeInFrance.RegisterServerEvent('giveItem', function(item, quantity, newlabel, uniqueId, data)
+LSLegacy.RegisterServerEvent('giveItem', function(item, quantity, newlabel, uniqueId, data)
     local _source = source
-    local player = MadeInFrance.GetPlayerFromId(_source)
+    local player = LSLegacy.GetPlayerFromId(_source)
     if player then
         if item == 'money' or item == 'dirty' then
 			if item == 'money' then
-				MadeInFrance.Money.AddPlayerMoney(player, quantity)
-				MadeInFrance.SendEventToClient('notify', player.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. '$', 'success')
+				LSLegacy.Money.AddPlayerMoney(player, quantity)
+				LSLegacy.SendEventToClient('notify', player.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. '$', 'success')
 			elseif item == 'dirty' then
-				MadeInFrance.Money.AddPlayerDirtyMoney(player, quantity)
-				MadeInFrance.SendEventToClient('notify', player.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. '$', 'success')
+				LSLegacy.Money.AddPlayerDirtyMoney(player, quantity)
+				LSLegacy.SendEventToClient('notify', player.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. '$', 'success')
 			end
 			return
 		end
 
         if string.match(item, 'food_') then
-            if MadeInFrance.Inventory.CanCarryItem(player, item, quantity) then
+            if LSLegacy.Inventory.CanCarryItem(player, item, quantity) then
                 dataFood = {
                     durability = 100
                 }
-                MadeInFrance.Inventory.AddItemInInventory(player, item, quantity, newlabel, uniqueId, dataFood)
-                MadeInFrance.SendEventToClient('notify', player.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. 'x ' .. newlabel or MadeInFrance.Inventory.GetInfosItem(item).label, 'success')
+                LSLegacy.Inventory.AddItemInInventory(player, item, quantity, newlabel, uniqueId, dataFood)
+                LSLegacy.SendEventToClient('notify', player.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. 'x ' .. newlabel or LSLegacy.Inventory.GetInfosItem(item).label, 'success')
             else
-                MadeInFrance.SendEventToClient('notify', player.source, 'Inventaire', 'Vous ne pouvez pas porter + de cet item.', 'error')
+                LSLegacy.SendEventToClient('notify', player.source, 'Inventaire', 'Vous ne pouvez pas porter + de cet item.', 'error')
             end
             return
         end
 
 		if not string.match(item, 'weapon_') then
-            if MadeInFrance.Inventory.CanCarryItem(player, item, quantity) then
-                MadeInFrance.Inventory.AddItemInInventory(player, item, quantity, newlabel, uniqueId, data)
-                MadeInFrance.SendEventToClient('notify', player.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. 'x ' .. newlabel or MadeInFrance.Inventory.GetInfosItem(item).label, 'success')
+            if LSLegacy.Inventory.CanCarryItem(player, item, quantity) then
+                LSLegacy.Inventory.AddItemInInventory(player, item, quantity, newlabel, uniqueId, data)
+                LSLegacy.SendEventToClient('notify', player.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. 'x ' .. newlabel or LSLegacy.Inventory.GetInfosItem(item).label, 'success')
             else
-                MadeInFrance.SendEventToClient('notify', player.source, 'Inventaire', 'Vous ne pouvez pas porter + de cet item.', 'error')
+                LSLegacy.SendEventToClient('notify', player.source, 'Inventaire', 'Vous ne pouvez pas porter + de cet item.', 'error')
             end
 		else
-            if MadeInFrance.Inventory.CanCarryItem(player, item, quantity) then
+            if LSLegacy.Inventory.CanCarryItem(player, item, quantity) then
                 dataWeapon = {
                     ammo = 0,
                     components = {},
-                    serialNumber = MadeInFrance.GenerateNumeroDeSerie()
+                    serialNumber = LSLegacy.GenerateNumeroDeSerie()
                 }
-                MadeInFrance.Inventory.AddItemInInventory(player, item, quantity, nil, nil, dataWeapon)
-                MadeInFrance.SendEventToClient('notify', player.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. 'x ' .. MadeInFrance.Inventory.GetInfosItem(item).label, 'success')
+                LSLegacy.Inventory.AddItemInInventory(player, item, quantity, nil, nil, dataWeapon)
+                LSLegacy.SendEventToClient('notify', player.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. 'x ' .. LSLegacy.Inventory.GetInfosItem(item).label, 'success')
             else
-                MadeInFrance.SendEventToClient('notify', player.source, 'Inventaire', 'Vous ne pouvez pas porter + de cet item.', 'error')
+                LSLegacy.SendEventToClient('notify', player.source, 'Inventaire', 'Vous ne pouvez pas porter + de cet item.', 'error')
             end
 		end
     end
 end)
 
-MadeInFrance.RegisterServerEvent('removeItem', function(item, quantity, label)
+LSLegacy.RegisterServerEvent('removeItem', function(item, quantity, label)
     local _source = source
-    local player = MadeInFrance.GetPlayerFromId(_source)
+    local player = LSLegacy.GetPlayerFromId(_source)
     if player then
-        if MadeInFrance.Inventory.GetInventoryItem(player, item) then
-            if MadeInFrance.Inventory.GetInventoryItem(player, item).count >= quantity then
-                MadeInFrance.Inventory.RemoveItemInInventory(player, item, quantity, label)
-                MadeInFrance.SendEventToClient('notify', _source, nil, "Vous avez perdu "..quantity.." "..label or MadeInFrance.Inventory.GetInfosItem(item).label, 'success')
+        if LSLegacy.Inventory.GetInventoryItem(player, item) then
+            if LSLegacy.Inventory.GetInventoryItem(player, item).count >= quantity then
+                LSLegacy.Inventory.RemoveItemInInventory(player, item, quantity, label)
+                LSLegacy.SendEventToClient('notify', _source, nil, "Vous avez perdu "..quantity.." "..label or LSLegacy.Inventory.GetInfosItem(item).label, 'success')
             end
         end
     end

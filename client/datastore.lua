@@ -1,17 +1,17 @@
-MadeInFrance.DataStore = {}
-MadeInFrance.DataStores= {}
+LSLegacy.DataStore = {}
+LSLegacy.DataStores= {}
 
-MadeInFrance.RegisterClientEvent('UpdateDatastore', function(data)
+LSLegacy.RegisterClientEvent('UpdateDatastore', function(data)
     if not data then return end
-    MadeInFrance.DataStores = data
+    LSLegacy.DataStores = data
 end)
 
-MadeInFrance.DataStore.RegisterDataStore = function(name, data)
+LSLegacy.DataStore.RegisterDataStore = function(name, data)
     if not name or not data then return end
-    MadeInFrance.SendEventToServer('RegisterDataStore', name, data)
+    LSLegacy.SendEventToServer('RegisterDataStore', name, data)
 end
 
-MadeInFrance.DataStore.RegisterTrunk = function(vehicle)
+LSLegacy.DataStore.RegisterTrunk = function(vehicle)
     if not vehicle then return end
     local plate = GetVehicleNumberPlateText(vehicle)
     local data = {
@@ -21,10 +21,10 @@ MadeInFrance.DataStore.RegisterTrunk = function(vehicle)
         money = 0,
         dirty = 0
     }
-    MadeInFrance.SendEventToServer('RegisterDataStore', data.name, data)
+    LSLegacy.SendEventToServer('RegisterDataStore', data.name, data)
 end
 
-MadeInFrance.DataStore.RegisterBAG = function(vehicle)
+LSLegacy.DataStore.RegisterBAG = function(vehicle)
     if not vehicle then return end
     local plate = GetVehicleNumberPlateText(vehicle)
     local data = {
@@ -34,10 +34,10 @@ MadeInFrance.DataStore.RegisterBAG = function(vehicle)
         money = 0,
         dirty = 0
     }
-    MadeInFrance.SendEventToServer('RegisterDataStore', data.name, data)
+    LSLegacy.SendEventToServer('RegisterDataStore', data.name, data)
 end
 
-MadeInFrance.DataStore.GetInventoryWeight = function(inventory)
+LSLegacy.DataStore.GetInventoryWeight = function(inventory)
     if not inventory then return end
     local weight = 0
     Wait(100)
@@ -47,21 +47,21 @@ MadeInFrance.DataStore.GetInventoryWeight = function(inventory)
     return weight
 end
 
-MadeInFrance.DataStore.GetTrunk = function(plate)
+LSLegacy.DataStore.GetTrunk = function(plate)
     if not plate then return end
     local name = 'trunk_' .. plate
-    if MadeInFrance.DataStores[name] then
-        return MadeInFrance.DataStores[name]
+    if LSLegacy.DataStores[name] then
+        return LSLegacy.DataStores[name]
     else
         return nil
     end
 end
 
-MadeInFrance.DataStore.GetBAG = function(plate)
+LSLegacy.DataStore.GetBAG = function(plate)
     if not plate then return end
     local name = 'bag_' .. plate
-    if MadeInFrance.DataStores[name] then
-        return MadeInFrance.DataStores[name]
+    if LSLegacy.DataStores[name] then
+        return LSLegacy.DataStores[name]
     else
         return nil
     end

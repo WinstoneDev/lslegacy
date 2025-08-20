@@ -1,14 +1,14 @@
----@class MadeInFrance.DataStore
-MadeInFrance.DataStore = {}
-MadeInFrance.DataStores = {}
+---@class LSLegacy.DataStore
+LSLegacy.DataStore = {}
+LSLegacy.DataStores = {}
 
 Citizen.CreateThread(function()
     MySQL.Async.fetchAll('SELECT * FROM datastore', {}, function(result)
         for k, v in pairs(result) do
-            MadeInFrance.DataStores[v.name] = v
+            LSLegacy.DataStores[v.name] = v
         end
     end)
-    for k, v in pairs(MadeInFrance.DataStores) do
+    for k, v in pairs(LSLegacy.DataStores) do
         if type(v.inventory) ~= "table" then
             v.inventory = json.decode(v.inventory)
         end
@@ -18,7 +18,7 @@ end)
 Citizen.CreateThread(function()
     Wait(5000)
     while true do
-        for name, datastore in pairs(MadeInFrance.DataStores) do
+        for name, datastore in pairs(LSLegacy.DataStores) do
             if datastore then
                 if type(datastore.inventory) ~= "table" then
                     datastore.inventory = json.decode(datastore.inventory)
@@ -62,10 +62,10 @@ end)
 ---@param name string
 ---@return table | nil
 ---@public
-MadeInFrance.DataStore.GetDataStore = function(name)
+LSLegacy.DataStore.GetDataStore = function(name)
     if not name then return end
-    if MadeInFrance.DataStores[name] then
-        return MadeInFrance.DataStores[name]
+    if LSLegacy.DataStores[name] then
+        return LSLegacy.DataStores[name]
     else
         return nil
     end
@@ -76,7 +76,7 @@ end
 ---@param inventory table
 ---@return number
 ---@public
-MadeInFrance.DataStore.GetInventoryWeight = function(inventory)
+LSLegacy.DataStore.GetInventoryWeight = function(inventory)
     if not inventory then return end
     local weight = 0
 
@@ -93,12 +93,12 @@ end
 ---@param quantity number
 ---@return boolean
 ---@public
-MadeInFrance.DataStore.CanStoreItem = function(datastore, item, quantity)
+LSLegacy.DataStore.CanStoreItem = function(datastore, item, quantity)
     if not datastore then return end
     if not item then return end
     if not quantity then quantity = 1 end
-    if not MadeInFrance.Inventory.DoesItemExists(item) then return end
-    local weight = MadeInFrance.DataStore.GetInventoryWeight(datastore.inventory)
+    if not LSLegacy.Inventory.DoesItemExists(item) then return end
+    local weight = LSLegacy.DataStore.GetInventoryWeight(datastore.inventory)
     local itemWeight = Config.Items[item].weight * quantity
     if math.floor(weight + itemWeight) <= Config.Informations["MaxWeight"] then
         return true
@@ -113,11 +113,11 @@ end
 ---@param amount number
 ---@return any
 ---@public
-MadeInFrance.DataStore.AddMoney = function(datastore, amount)
+LSLegacy.DataStore.AddMoney = function(datastore, amount)
     if not datastore or not amount then return end
     if not datastore.money then datastore.money = 0 end
     datastore.money = datastore.money + amount
-    MadeInFrance.SendEventToClient('UpdateDatastore', source, MadeInFrance.DataStores)
+    LSLegacy.SendEventToClient('UpdateDatastore', source, LSLegacy.DataStores)
 end
 
 ---AddDirtyMoney
@@ -126,11 +126,11 @@ end
 ---@param amount number
 ---@return any
 ---@public
-MadeInFrance.DataStore.AddDirtyMoney = function(datastore, amount)
+LSLegacy.DataStore.AddDirtyMoney = function(datastore, amount)
     if not datastore or not amount then return end
     if not datastore.dirty then datastore.dirty = 0 end
     datastore.dirty = datastore.dirty + amount
-    MadeInFrance.SendEventToClient('UpdateDatastore', source, MadeInFrance.DataStores)
+    LSLegacy.SendEventToClient('UpdateDatastore', source, LSLegacy.DataStores)
 end
 
 ---RemoveMoney
@@ -139,12 +139,12 @@ end
 ---@param amount number
 ---@return any
 ---@public
-MadeInFrance.DataStore.RemoveMoney = function(datastore, amount)
+LSLegacy.DataStore.RemoveMoney = function(datastore, amount)
     if not datastore or not amount then return false end
     if not datastore.money then datastore.money = 0 end
     if datastore.money >= amount then
         datastore.money = datastore.money - amount
-        MadeInFrance.SendEventToClient('UpdateDatastore', source, MadeInFrance.DataStores)
+        LSLegacy.SendEventToClient('UpdateDatastore', source, LSLegacy.DataStores)
     end
 end
 
@@ -154,12 +154,12 @@ end
 ---@param amount number
 ---@return any
 ---@public
-MadeInFrance.DataStore.RemoveDirtyMoney = function(datastore, amount)
+LSLegacy.DataStore.RemoveDirtyMoney = function(datastore, amount)
     if not datastore or not amount then return false end
     if not datastore.dirty then datastore.dirty = 0 end
     if datastore.dirty >= amount then
         datastore.dirty = datastore.dirty - amount
-        MadeInFrance.SendEventToClient('UpdateDatastore', source, MadeInFrance.DataStores)
+        LSLegacy.SendEventToClient('UpdateDatastore', source, LSLegacy.DataStores)
     end
 end
 
@@ -168,7 +168,7 @@ end
 ---@param datastore table
 ---@return number
 ---@public
-MadeInFrance.DataStore.GetMoney = function(datastore)
+LSLegacy.DataStore.GetMoney = function(datastore)
     if not datastore then return 0 end
     if not datastore.money then datastore.money = 0 end
     return datastore.money
@@ -179,7 +179,7 @@ end
 ---@param datastore table
 ---@return number
 ---@public
-MadeInFrance.DataStore.GetDirtyMoney = function(datastore)
+LSLegacy.DataStore.GetDirtyMoney = function(datastore)
     if not datastore then return 0 end
     if not datastore.dirty then datastore.dirty = 0 end
     return datastore.dirty
@@ -191,7 +191,7 @@ end
 ---@param item string
 ---@return table
 ---@public
-MadeInFrance.DataStore.GetInventoryItem = function(datastore, item)
+LSLegacy.DataStore.GetInventoryItem = function(datastore, item)
     if not item then return end
     local count = 0
     local data = nil
@@ -220,14 +220,14 @@ end
 ---@param uniqueId number
 ---@param data table
 ---@return any
-MadeInFrance.DataStore.AddItemInInventory = function(datastore, item, quantity, newLabel, uniqueId, data)
+LSLegacy.DataStore.AddItemInInventory = function(datastore, item, quantity, newLabel, uniqueId, data)
     if not datastore then return end
     if not item then return end
     if not quantity then return end
     local exist = false
     local source = source
-    if MadeInFrance.Inventory.DoesItemExists(item) then
-        if MadeInFrance.DataStore.CanStoreItem(datastore, item, quantity) then
+    if LSLegacy.Inventory.DoesItemExists(item) then
+        if LSLegacy.DataStore.CanStoreItem(datastore, item, quantity) then
             local inventory = datastore.inventory
             local Itemlabel = newLabel or Config.Items[item].label
 
@@ -253,7 +253,7 @@ MadeInFrance.DataStore.AddItemInInventory = function(datastore, item, quantity, 
                 end
             end
             datastore.inventory = inventory
-            MadeInFrance.SendEventToClient('UpdateDatastore', source, MadeInFrance.DataStores)
+            LSLegacy.SendEventToClient('UpdateDatastore', source, LSLegacy.DataStores)
         end
     end
 end
@@ -266,7 +266,7 @@ end
 ---@param itemLabel string
 ---@return any
 ---@public
-MadeInFrance.DataStore.RemoveItemInInventory = function(datastore, item, quantity, itemLabel)
+LSLegacy.DataStore.RemoveItemInInventory = function(datastore, item, quantity, itemLabel)
     if not datastore then return end
     if not item then return end
     if not quantity then return end
@@ -306,7 +306,7 @@ MadeInFrance.DataStore.RemoveItemInInventory = function(datastore, item, quantit
         end
     end
     datastore.inventory = inventory
-    MadeInFrance.SendEventToClient('UpdateDatastore', source, MadeInFrance.DataStores)
+    LSLegacy.SendEventToClient('UpdateDatastore', source, LSLegacy.DataStores)
 end
 
 ---RegisterDataStore
@@ -315,17 +315,17 @@ end
 ---@param data table
 ---@return any
 ---@public
-MadeInFrance.DataStore.RegisterDataStore = function(name, data)
+LSLegacy.DataStore.RegisterDataStore = function(name, data)
     if not name or not data then return end
-    if MadeInFrance.DataStores[name] then
+    if LSLegacy.DataStores[name] then
         Config.Development.Print("DataStore " .. name .. " already exists.")
         return
     end
-    MadeInFrance.DataStores[name] = data
-    MadeInFrance.SendEventToClient('UpdateDatastore', source, MadeInFrance.DataStores)
+    LSLegacy.DataStores[name] = data
+    LSLegacy.SendEventToClient('UpdateDatastore', source, LSLegacy.DataStores)
 end
 
-MadeInFrance.RegisterServerEvent('RegisterDataStore', function(name, data)
+LSLegacy.RegisterServerEvent('RegisterDataStore', function(name, data)
     if not name or not data then return end
-    MadeInFrance.DataStore.RegisterDataStore(name, data)
+    LSLegacy.DataStore.RegisterDataStore(name, data)
 end)

@@ -1,7 +1,7 @@
 local lastVeh = nil
 
 -- Enregistrement de l'event côté client
-MadeInFrance.RegisterClientEvent("ap:vehicleSpawned", function(data)
+LSLegacy.RegisterClientEvent("ap:vehicleSpawned", function(data)
     local netId = data.netId
     local plate = data.plate
     local entity = NetworkGetEntityFromNetworkId(netId)
@@ -48,7 +48,7 @@ CreateThread(function()
         if veh ~= 0 and veh ~= lastVeh then
             lastVeh = veh
         elseif veh == 0 and lastVeh ~= nil then
-            MadeInFrance.SendEventToServer("ap:updateVehicle", VehToNet(lastVeh))
+            LSLegacy.SendEventToServer("ap:updateVehicle", VehToNet(lastVeh))
             lastVeh = nil
         end
         Wait(Config.AP.UpdateIntervalMs)
@@ -117,7 +117,7 @@ local function updateVehicleStatus(veh)
         extras = extras,
     }
 
-    MadeInFrance.SendEventToServer("ap:updateVehicleStatus", plate, status)
+    LSLegacy.SendEventToServer("ap:updateVehicleStatus", plate, status)
 end
 
 -- Thread principal pour update fuel/dirt

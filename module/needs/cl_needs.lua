@@ -87,7 +87,7 @@ local function SetupFoodScaleform(durability, itemWeightKg, isDrink)
     return sf
 end
 
-MadeInFrance.RegisterClientEvent('useNeed', function(name, data, uniqueId)
+LSLegacy.RegisterClientEvent('useNeed', function(name, data, uniqueId)
     activeFood = name
     activeData = data
     activeUniqueId = uniqueId
@@ -109,7 +109,7 @@ CreateThread(function()
                 PlayEatDrinkAnim(itemCfg.anim == 'drinking')
                 Wait(3000)
                 AttachPropToHand(Config.Items[activeFood].props)
-                MadeInFrance.SendEventToServer('applyNeedEffect', activeFood, activeData, activeUniqueId)
+                LSLegacy.SendEventToServer('applyNeedEffect', activeFood, activeData, activeUniqueId)
             end
 
             if IsControlJustPressed(0, 73) then
@@ -124,7 +124,7 @@ CreateThread(function()
     end
 end)
 
-MadeInFrance.RegisterClientEvent("updateFoodDurability", function(uniqueId, durabilityPercent)
+LSLegacy.RegisterClientEvent("updateFoodDurability", function(uniqueId, durabilityPercent)
     if activeUniqueId == uniqueId and durabilityPercent > 0 then
         local itemCfg = Config.NeedsItems[activeFood]
         local itemWeight = Config.Items[activeFood] and Config.Items[activeFood].weight or 0

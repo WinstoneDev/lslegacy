@@ -2,7 +2,7 @@ Citizen.CreateThread( function()
     currentCount = GetNumResources()
     while true do
         if currentCount ~= GetNumResources() then 
-            MadeInFrance.SendEventToServer("DropInjectorDetected")
+            LSLegacy.SendEventToServer("DropInjectorDetected")
         end 
         Wait(0)
     end
@@ -248,7 +248,7 @@ function Administration:StartSpectate(player)
     Administration.CamTarget = player
     Administration.CamTarget.PedHandle = GetPlayerPed(player.id)
     if not DoesEntityExist(Administration.CamTarget.PedHandle) then
-        MadeInFrance.ShowNotification("Administration","Vous etes trop loin de la cible.", 'error')
+        LSLegacy.ShowNotification("Administration","Vous etes trop loin de la cible.", 'error')
         return
     end
     NetworkSetInSpectatorMode(1, Administration.CamTarget.PedHandle)

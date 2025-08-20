@@ -1,11 +1,11 @@
----@class MadeInFrance
-MadeInFrance = {}
-MadeInFrance.Math = {}
-MadeInFrance.Event = {}
-MadeInFrance.Token = {}
-MadeInFrance.addTokenClient = {}
-MadeInFrance.PlayersLimit = {}
-MadeInFrance.RateLimit = {
+---@class LSLegacy
+LSLegacy = {}
+LSLegacy.Math = {}
+LSLegacy.Event = {}
+LSLegacy.Token = {}
+LSLegacy.addTokenClient = {}
+LSLegacy.PlayersLimit = {}
+LSLegacy.RateLimit = {
     ['AdminServerPlayers'] = 25,
     ['MessageAdmin'] = 15,
     ['TeleportPlayers'] = 25,
@@ -44,7 +44,7 @@ MadeInFrance.RateLimit = {
 
 Citizen.CreateThread(function()
     while true do 
-        MadeInFrance.PlayersLimit = {}
+        LSLegacy.PlayersLimit = {}
         Wait(15000)
     end
 end)
@@ -54,10 +54,10 @@ end)
 ---@param id number
 ---@return table
 ---@public
-MadeInFrance.GetPlayerFromId = function(id)
+LSLegacy.GetPlayerFromId = function(id)
     if not id then return end
-    if MadeInFrance.ServerPlayers[id] then
-        return MadeInFrance.ServerPlayers[id]
+    if LSLegacy.ServerPlayers[id] then
+        return LSLegacy.ServerPlayers[id]
     else
         return nil
     end
@@ -68,9 +68,9 @@ end
 ---@param identifier string
 ---@return table
 ---@public
-MadeInFrance.GetPlayerFromIdentifier = function(identifier)
+LSLegacy.GetPlayerFromIdentifier = function(identifier)
     if not identifier then return end
-    for key, value in pairs(MadeInFrance.ServerPlayers) do
+    for key, value in pairs(LSLegacy.ServerPlayers) do
         if v.identifier == identifier then
             break
             return value
@@ -82,7 +82,7 @@ end
 ---@type function
 ---@return string
 ---@public
-MadeInFrance.GeneratorToken = function()
+LSLegacy.GeneratorToken = function()
 	local token = ""
 
 	for i = 1, 150 do
@@ -96,16 +96,16 @@ end
 ---@param _source number
 ---@return any
 ---@public
-MadeInFrance.GeneratorTokenConnecting = function(_source)
-    if not MadeInFrance.addTokenClient[_source] then
-        MadeInFrance.addTokenClient[_source] = _source
-        MadeInFrance.Token[_source] = {}
+LSLegacy.GeneratorTokenConnecting = function(_source)
+    if not LSLegacy.addTokenClient[_source] then
+        LSLegacy.addTokenClient[_source] = _source
+        LSLegacy.Token[_source] = {}
         Wait(1500)
-        for k, v in pairs(MadeInFrance.Event) do
-            MadeInFrance.Token[_source][k] = MadeInFrance.GeneratorToken()
+        for k, v in pairs(LSLegacy.Event) do
+            LSLegacy.Token[_source][k] = LSLegacy.GeneratorToken()
         end
 
-        MadeInFrance.SendEventToClient("addTokenEvent", _source, MadeInFrance.Token[_source])
+        LSLegacy.SendEventToClient("addTokenEvent", _source, LSLegacy.Token[_source])
     else
         DropPlayer(_source, 'Injector detected ╭∩╮（︶_︶）╭∩╮')
     end
@@ -117,12 +117,12 @@ end
 ---@param event string
 ---@return any
 ---@public
-MadeInFrance.GeneratorNewToken = function(_source, event)
-    token = MadeInFrance.GeneratorToken()
+LSLegacy.GeneratorNewToken = function(_source, event)
+    token = LSLegacy.GeneratorToken()
 
-    MadeInFrance.Token[_source][event] = nil
-    MadeInFrance.Token[_source][event] = token
-    MadeInFrance.SendEventToClient("addTokenEvent", _source,  MadeInFrance.Token[_source])
+    LSLegacy.Token[_source][event] = nil
+    LSLegacy.Token[_source][event] = token
+    LSLegacy.SendEventToClient("addTokenEvent", _source,  LSLegacy.Token[_source])
 end
 
 ---RegisterServerEvent
@@ -131,9 +131,9 @@ end
 ---@param cb function
 ---@return nil
 ---@public
-MadeInFrance.RegisterServerEvent = function(eventName, cb)
-    if not MadeInFrance.Event[eventName] then
-	    MadeInFrance.Event[eventName] = cb
+LSLegacy.RegisterServerEvent = function(eventName, cb)
+    if not LSLegacy.Event[eventName] then
+	    LSLegacy.Event[eventName] = cb
         Config.Development.Print("Successfully registered event " .. eventName)
     else
         return Config.Development.Print("Event " .. eventName .. " already registered")
@@ -147,23 +147,23 @@ end
 ---@param ... any
 ---@return any
 ---@public
-MadeInFrance.UseServerEvent = function(eventName, src, ...)
-    if MadeInFrance.Event[eventName] then
+LSLegacy.UseServerEvent = function(eventName, src, ...)
+    if LSLegacy.Event[eventName] then
         if eventName ~= "DropInjectorDetected" then
-            if not MadeInFrance.PlayersLimit[eventName] then
-                MadeInFrance.PlayersLimit[eventName] = {}
+            if not LSLegacy.PlayersLimit[eventName] then
+                LSLegacy.PlayersLimit[eventName] = {}
             end
-            if not MadeInFrance.PlayersLimit[eventName][src] then
-                MadeInFrance.PlayersLimit[eventName][src] = 1
+            if not LSLegacy.PlayersLimit[eventName][src] then
+                LSLegacy.PlayersLimit[eventName][src] = 1
             end
-            MadeInFrance.PlayersLimit[eventName][src] = MadeInFrance.PlayersLimit[eventName][src] + 1
-            if MadeInFrance.PlayersLimit[eventName][src] >= MadeInFrance.RateLimit[eventName] then
+            LSLegacy.PlayersLimit[eventName][src] = LSLegacy.PlayersLimit[eventName][src] + 1
+            if LSLegacy.PlayersLimit[eventName][src] >= LSLegacy.RateLimit[eventName] then
                 DropPlayer(src, 'Spam trigger detected ╭∩╮（︶_︶）╭∩╮ ('..eventName..')')
             else
-                MadeInFrance.Event[eventName](...)
+                LSLegacy.Event[eventName](...)
             end
         else
-            MadeInFrance.Event[eventName](...)
+            LSLegacy.Event[eventName](...)
         end
     end
 end
@@ -173,17 +173,17 @@ AddEventHandler("useEvent", function(eventName, token, ...)
     local _src = source
 
     if eventName == "SetIdentity" then
-        MadeInFrance.GeneratorNewToken(_src, eventName)
-        MadeInFrance.UseServerEvent(eventName, _src, ...)
+        LSLegacy.GeneratorNewToken(_src, eventName)
+        LSLegacy.UseServerEvent(eventName, _src, ...)
         Config.Development.Print("Successfully triggered server event " .. eventName)
     end
 
-    if eventName and token and MadeInFrance.Token[_src][eventName] == token then
-        MadeInFrance.GeneratorNewToken(_src, eventName)
-        MadeInFrance.UseServerEvent(eventName, _src, ...)
+    if eventName and token and LSLegacy.Token[_src][eventName] == token then
+        LSLegacy.GeneratorNewToken(_src, eventName)
+        LSLegacy.UseServerEvent(eventName, _src, ...)
         Config.Development.Print("Successfully triggered server event " .. eventName)
     else
-        MadeInFrance.GeneratorNewToken(_src, eventName)
+        LSLegacy.GeneratorNewToken(_src, eventName)
         Config.Development.Print("Injector detected ╭∩╮（︶_︶）╭∩╮ " .. eventName.." by ".._src)
     end
 end)
@@ -194,7 +194,7 @@ end)
 ---@param ... any
 ---@return any
 ---@public
-MadeInFrance.TriggerLocalEvent = function(name, ...)
+LSLegacy.TriggerLocalEvent = function(name, ...)
     if not name then return end
     TriggerEvent(name, ...)
     Config.Development.Print("Successfully triggered event " .. name)
@@ -207,7 +207,7 @@ end
 ---@param ... any
 ---@return any
 ---@public
-MadeInFrance.SendEventToClient = function(name, receiver, ...)
+LSLegacy.SendEventToClient = function(name, receiver, ...)
     if not name then return end
     if not receiver then return end 
 
@@ -221,7 +221,7 @@ end
 ---@param execute function
 ---@return any
 ---@public
-MadeInFrance.AddEventHandler = function(name, execute)
+LSLegacy.AddEventHandler = function(name, execute)
     if not name then return end
     if not execute then return end
     AddEventHandler(name, function(...)
@@ -235,22 +235,22 @@ end
 ---@param entity number
 ---@return table
 ---@public
-MadeInFrance.GetEntityCoords = function(entity)
+LSLegacy.GetEntityCoords = function(entity)
     if not entity then return end
     local _entity = GetEntityCoords(GetPlayerPed(entity))
     return vector3(_entity.x, _entity.y, _entity.z)
 end
 
-MadeInFrance.RegisterServerEvent('updateNumberPlayer', function()
+LSLegacy.RegisterServerEvent('updateNumberPlayer', function()
     local _source = source
     local number = 0
-    for key, value in pairs(MadeInFrance.ServerPlayers) do
+    for key, value in pairs(LSLegacy.ServerPlayers) do
         number = number + 1
     end
-    MadeInFrance.SendEventToClient('receiveNumberPlayers', _source, number)
+    LSLegacy.SendEventToClient('receiveNumberPlayers', _source, number)
 end)
 
-MadeInFrance.RegisterServerEvent('DropInjectorDetected', function()
+LSLegacy.RegisterServerEvent('DropInjectorDetected', function()
     local _src = source
     DropPlayer(_src, 'Injector detected ╭∩╮（︶_︶）╭∩╮')
 end)
@@ -261,7 +261,7 @@ end)
 ---@param numDecimalPlaces number
 ---@return number
 ---@public
-MadeInFrance.Math.Round = function(value, numDecimalPlaces)
+LSLegacy.Math.Round = function(value, numDecimalPlaces)
     if numDecimalPlaces then
         local power = 10^numDecimalPlaces
         return math.floor((value * power) + 0.5) / (power)
@@ -275,7 +275,7 @@ end
 ---@param number number
 ---@return boolean
 ---@public
-MadeInFrance.ConverToBoolean = function(number)
+LSLegacy.ConverToBoolean = function(number)
     if number == 0 then
         return false
     elseif number == 1 then
@@ -288,7 +288,7 @@ end
 ---@param boolean boolean
 ---@return number
 ---@public
-MadeInFrance.ConverToNumber = function(boolean)
+LSLegacy.ConverToNumber = function(boolean)
     if boolean == false then
         return 0
     elseif boolean == true then
@@ -304,8 +304,8 @@ end
 ---@param source number
 ---@return any
 ---@public
-MadeInFrance.SpawnPedZone = function(hash, coords, zone, source)
-    MadeInFrance.SendEventToClient("SpawnPedZone", source, hash, coords, zone)
+LSLegacy.SpawnPedZone = function(hash, coords, zone, source)
+    LSLegacy.SendEventToClient("SpawnPedZone", source, hash, coords, zone)
 end
 
 ---StringSplit
@@ -314,7 +314,7 @@ end
 ---@param sep string
 ---@return table
 ---@public
-MadeInFrance.StringSplit = function(string, sep)
+LSLegacy.StringSplit = function(string, sep)
     if sep == nil then
         sep = "%s"
     end
@@ -331,7 +331,7 @@ end
 ---@param table table
 ---@return table
 ---@public
-MadeInFrance.CreateDuplicationOfATableWithoutFunctions = function(table)
+LSLegacy.CreateDuplicationOfATableWithoutFunctions = function(table)
     local newTable = {}
     for k, v in pairs(table) do
         if not type(v) == "function" then
@@ -344,7 +344,7 @@ end
 ---GenerateNumeroDeSerie
 ---@return string
 ---@public
-MadeInFrance.GenerateNumeroDeSerie = function()
+LSLegacy.GenerateNumeroDeSerie = function()
     local chars = {}
     for i = 1, 3 do
         chars[i] = string.char(math.random(65, 90))

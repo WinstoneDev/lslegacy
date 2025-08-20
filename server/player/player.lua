@@ -1,9 +1,9 @@
----@class MadeInFrance.ServerPlayers
-MadeInFrance.ServerPlayers = {}
+---@class LSLegacy.ServerPlayers
+LSLegacy.ServerPlayers = {}
 
-MadeInFrance.RegisterServerEvent('ReceiveUpdateServerPlayer', function(data)
+LSLegacy.RegisterServerEvent('ReceiveUpdateServerPlayer', function(data)
     local source = source
-    MadeInFrance.ServerPlayers[source] = data
+    LSLegacy.ServerPlayers[source] = data
 end)
 
 local function GetPlayerDiscord(source)
@@ -38,13 +38,13 @@ RegisterNetEvent("registerPlayer")
 AddEventHandler("registerPlayer", function()
     local source = source
 
-    if not MadeInFrance.ServerPlayers[source] then
-        MadeInFrance.GeneratorTokenConnecting(source)
+    if not LSLegacy.ServerPlayers[source] then
+        LSLegacy.GeneratorTokenConnecting(source)
         MySQL.Async.fetchAll('SELECT * FROM players WHERE identifier = @identifier', {
             ['@identifier'] = GetPlayerIndentifier(source)
         }, function(result)
             if not result[1] then
-                MadeInFrance.ServerPlayers[source] = {
+                LSLegacy.ServerPlayers[source] = {
                     name = GetPlayerName(source),
                     identifier = GetPlayerIndentifier(source),
                     ip = GetPlayerEP(source),
@@ -55,7 +55,7 @@ AddEventHandler("registerPlayer", function()
                     inventory = {},
                     currentZone = "Aucune",
                     coords = vector3(0, 0, 0),
-                    weight = MadeInFrance.Inventory.GetInventoryWeight({}) or 0,
+                    weight = LSLegacy.Inventory.GetInventoryWeight({}) or 0,
                     health = 200,
                     armor = 0,
                     skin = nil,
@@ -69,25 +69,25 @@ AddEventHandler("registerPlayer", function()
                     }
                 }
                 MySQL.Async.insert('INSERT INTO players (identifier, discordId, token, characterInfos, coords, status) VALUES(@identifier, @discordId, @token, @characterInfos, @coords, @status)', {
-                    ['@identifier'] = MadeInFrance.ServerPlayers[source].identifier,
-                    ['@discordId'] = MadeInFrance.ServerPlayers[source].discordId,
-                    ['@token'] = MadeInFrance.ServerPlayers[source].token,
-                    ['@characterInfos'] = json.encode(MadeInFrance.ServerPlayers[source].characterInfos),
-                    ['@coords'] = json.encode(MadeInFrance.ServerPlayers[source].coords),
-                    ['@status'] = json.encode(MadeInFrance.ServerPlayers[source].status)
+                    ['@identifier'] = LSLegacy.ServerPlayers[source].identifier,
+                    ['@discordId'] = LSLegacy.ServerPlayers[source].discordId,
+                    ['@token'] = LSLegacy.ServerPlayers[source].token,
+                    ['@characterInfos'] = json.encode(LSLegacy.ServerPlayers[source].characterInfos),
+                    ['@coords'] = json.encode(LSLegacy.ServerPlayers[source].coords),
+                    ['@status'] = json.encode(LSLegacy.ServerPlayers[source].status)
                 }, function()
                 end)
                 Wait(500)
                 MySQL.Async.fetchAll('SELECT * FROM players WHERE identifier = @identifier', {
-                    ['@identifier'] = MadeInFrance.ServerPlayers[source].identifier
+                    ['@identifier'] = LSLegacy.ServerPlayers[source].identifier
                 }, function(result)
                     if result[1] then
-                        MadeInFrance.ServerPlayers[source].id = result[1].id
+                        LSLegacy.ServerPlayers[source].id = result[1].id
                     end
                 end)
-                MadeInFrance.SendEventToClient('InitPlayer', source, MadeInFrance.ServerPlayers[source])
-                MadeInFrance.RegisterPeds(MadeInFrance.RegisteredZones, source)
-                for k, v in pairs(MadeInFrance.Commands) do
+                LSLegacy.SendEventToClient('InitPlayer', source, LSLegacy.ServerPlayers[source])
+                LSLegacy.RegisterPeds(LSLegacy.RegisteredZones, source)
+                for k, v in pairs(LSLegacy.Commands) do
                     if v.suggestion then
                         if not v.suggestion.arguments then v.suggestion.arguments = {} end
                         if not v.suggestion.help then v.suggestion.help = '' end
@@ -95,12 +95,12 @@ AddEventHandler("registerPlayer", function()
                     end
                 end
                 Config.Development.Print("Successfully registered player " .. GetPlayerName(source))
-                MadeInFrance.SendEventToClient('zones:registerBlips', source, MadeInFrance.RegisteredZones)
-                MadeInFrance.SendEventToClient('UpdateDatastore', source, MadeInFrance.DataStores)
+                LSLegacy.SendEventToClient('zones:registerBlips', source, LSLegacy.RegisteredZones)
+                LSLegacy.SendEventToClient('UpdateDatastore', source, LSLegacy.DataStores)
                 Wait(5000)
-                MadeInFrance.TriggerLocalEvent('ap:clientsetonSpawn', source)
+                LSLegacy.TriggerLocalEvent('ap:clientsetonSpawn', source)
             else
-                MadeInFrance.ServerPlayers[source] = {
+                LSLegacy.ServerPlayers[source] = {
                     id = result[1].id,
                     name = GetPlayerName(source),
                     identifier = result[1].identifier,
@@ -121,17 +121,17 @@ AddEventHandler("registerPlayer", function()
                     status = json.decode(result[1].status)
                 }
                 MySQL.Async.execute('UPDATE players SET token = @token, discordId = @discordId WHERE identifier = @identifier', {
-                    ['@token'] = MadeInFrance.ServerPlayers[source].token,
-                    ['@discordId'] = MadeInFrance.ServerPlayers[source].discordId,
-                    ['@identifier'] = MadeInFrance.ServerPlayers[source].identifier
+                    ['@token'] = LSLegacy.ServerPlayers[source].token,
+                    ['@discordId'] = LSLegacy.ServerPlayers[source].discordId,
+                    ['@identifier'] = LSLegacy.ServerPlayers[source].identifier
                 })
                 Wait(250)
-                local weight = MadeInFrance.Inventory.GetInventoryWeight(MadeInFrance.ServerPlayers[source].inventory)
-                MadeInFrance.ServerPlayers[source].weight = weight or 0
+                local weight = LSLegacy.Inventory.GetInventoryWeight(LSLegacy.ServerPlayers[source].inventory)
+                LSLegacy.ServerPlayers[source].weight = weight or 0
                 Wait(250)
-                MadeInFrance.SendEventToClient('InitPlayer', source, MadeInFrance.ServerPlayers[source])
-                MadeInFrance.RegisterPeds(MadeInFrance.RegisteredZones, source)
-                for k, v in pairs(MadeInFrance.Commands) do
+                LSLegacy.SendEventToClient('InitPlayer', source, LSLegacy.ServerPlayers[source])
+                LSLegacy.RegisterPeds(LSLegacy.RegisteredZones, source)
+                for k, v in pairs(LSLegacy.Commands) do
                     if v.suggestion then
                         if not v.suggestion.arguments then v.suggestion.arguments = {} end
                         if not v.suggestion.help then v.suggestion.help = '' end
@@ -140,10 +140,10 @@ AddEventHandler("registerPlayer", function()
                     end
                 end
                 Config.Development.Print("Successfully registered player " .. GetPlayerName(source))
-                MadeInFrance.SendEventToClient('zones:registerBlips', source, MadeInFrance.RegisteredZones)
-                MadeInFrance.SendEventToClient('UpdateDatastore', source, MadeInFrance.DataStores)
+                LSLegacy.SendEventToClient('zones:registerBlips', source, LSLegacy.RegisteredZones)
+                LSLegacy.SendEventToClient('UpdateDatastore', source, LSLegacy.DataStores)
                 Wait(5000)
-                MadeInFrance.TriggerLocalEvent('ap:clientsetonSpawn', source)
+                LSLegacy.TriggerLocalEvent('ap:clientsetonSpawn', source)
             end
         end)
     else
@@ -155,23 +155,23 @@ end)
 Citizen.CreateThread(function()
     Wait(10000)
     while true do
-        for k, player in pairs(MadeInFrance.ServerPlayers) do
+        for k, player in pairs(LSLegacy.ServerPlayers) do
             local _source = player.source
-            local coords = MadeInFrance.GetEntityCoords(_source)
+            local coords = LSLegacy.GetEntityCoords(_source)
             player.coords = coords
             MySQL.Async.execute('UPDATE players SET coords = @coords, skin = @skin, inventory = @inventory, money = @money, status = @status WHERE id = @id', {
                 ['@coords'] = json.encode(coords),
-                ['@id'] = MadeInFrance.ServerPlayers[_source].id,
-                ["@skin"] = json.encode(MadeInFrance.ServerPlayers[_source].skin),
-                ['@inventory'] = json.encode(MadeInFrance.ServerPlayers[_source].inventory),
-                ['@money'] = json.encode({cash = MadeInFrance.ServerPlayers[_source].cash, dirty = MadeInFrance.ServerPlayers[_source].dirty}),
+                ['@id'] = LSLegacy.ServerPlayers[_source].id,
+                ["@skin"] = json.encode(LSLegacy.ServerPlayers[_source].skin),
+                ['@inventory'] = json.encode(LSLegacy.ServerPlayers[_source].inventory),
+                ['@money'] = json.encode({cash = LSLegacy.ServerPlayers[_source].cash, dirty = LSLegacy.ServerPlayers[_source].dirty}),
                 ['@health'] = GetEntityHealth(GetPlayerPed(_source)),
-                ['@status'] = json.encode(MadeInFrance.ServerPlayers[_source].status)
+                ['@status'] = json.encode(LSLegacy.ServerPlayers[_source].status)
             }) 
-            MadeInFrance.SendEventToClient('UpdateServerPlayer', _source)
-            MadeInFrance.SendEventToClient('UpdateDatastore', _source, MadeInFrance.DataStores)
+            LSLegacy.SendEventToClient('UpdateServerPlayer', _source)
+            LSLegacy.SendEventToClient('UpdateDatastore', _source, LSLegacy.DataStores)
             Wait(500)
-            MadeInFrance.SendEventToClient('UpdatePlayer', _source, MadeInFrance.ServerPlayers[_source])
+            LSLegacy.SendEventToClient('UpdatePlayer', _source, LSLegacy.ServerPlayers[_source])
            
         end
         Wait(60000)
@@ -182,24 +182,24 @@ end)
 Citizen.CreateThread(function()
     Wait(10000)
     while true do
-        MadeInFrance.SendEventToClient('notify', -1, 'Synchronisation automatique', 'Vous avez bien synchronisé votre personnage.', 'success')
+        LSLegacy.SendEventToClient('notify', -1, 'Synchronisation automatique', 'Vous avez bien synchronisé votre personnage.', 'success')
         Wait(5*60000)
     end
 end)
 
-MadeInFrance.AddEventHandler('playerDropped', function()
+LSLegacy.AddEventHandler('playerDropped', function()
     local _source = source
-    if MadeInFrance.ServerPlayers[_source] then
+    if LSLegacy.ServerPlayers[_source] then
         MySQL.Async.execute('UPDATE players SET coords = @coords, inventory = @inventory, money = @money, health = @health, skin = @skin, status = @status WHERE id = @id', {
-            ['@coords'] = json.encode(MadeInFrance.ServerPlayers[_source].coords),
-            ['@inventory'] = json.encode(MadeInFrance.ServerPlayers[_source].inventory),
-            ['@money'] = json.encode({cash = MadeInFrance.ServerPlayers[_source].cash, dirty = MadeInFrance.ServerPlayers[_source].dirty}),
-            ['@id'] = MadeInFrance.ServerPlayers[_source].id,
+            ['@coords'] = json.encode(LSLegacy.ServerPlayers[_source].coords),
+            ['@inventory'] = json.encode(LSLegacy.ServerPlayers[_source].inventory),
+            ['@money'] = json.encode({cash = LSLegacy.ServerPlayers[_source].cash, dirty = LSLegacy.ServerPlayers[_source].dirty}),
+            ['@id'] = LSLegacy.ServerPlayers[_source].id,
             ['@health'] = GetEntityHealth(GetPlayerPed(source)),
-            ['@skin'] = json.encode(MadeInFrance.ServerPlayers[_source].skin),
-            ['@status'] = json.encode(MadeInFrance.ServerPlayers[_source].status)
+            ['@skin'] = json.encode(LSLegacy.ServerPlayers[_source].skin),
+            ['@status'] = json.encode(LSLegacy.ServerPlayers[_source].status)
         })
-        MadeInFrance.ServerPlayers[_source] = nil
+        LSLegacy.ServerPlayers[_source] = nil
         Config.Development.Print("Player " .. _source .. " disconnected")
     end
 end)
