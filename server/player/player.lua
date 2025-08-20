@@ -66,7 +66,11 @@ AddEventHandler("registerPlayer", function()
                         hunger = 100,
                         thirst = 100,
                         stamina = 100
-                    }
+                    },
+                    job = "unemployed",
+                    job_grade = 0,
+                    faction = "unemployed",
+                    faction_grade = 0
                 }
                 MySQL.Async.insert('INSERT INTO players (identifier, discordId, token, characterInfos, coords, status) VALUES(@identifier, @discordId, @token, @characterInfos, @coords, @status)', {
                     ['@identifier'] = LSLegacy.ServerPlayers[source].identifier,
@@ -118,7 +122,11 @@ AddEventHandler("registerPlayer", function()
                     cash = json.decode(result[1].money).cash,
                     dirty = json.decode(result[1].money).dirty,
                     group = result[1].group,
-                    status = json.decode(result[1].status)
+                    status = json.decode(result[1].status),
+                    job = result[1].job,
+                    job_grade = result[1].job_grade,
+                    faction = result[1].faction,
+                    faction_grade = result[1].faction_grade
                 }
                 MySQL.Async.execute('UPDATE players SET token = @token, discordId = @discordId WHERE identifier = @identifier', {
                     ['@token'] = LSLegacy.ServerPlayers[source].token,
@@ -166,7 +174,7 @@ Citizen.CreateThread(function()
                 ['@inventory'] = json.encode(LSLegacy.ServerPlayers[_source].inventory),
                 ['@money'] = json.encode({cash = LSLegacy.ServerPlayers[_source].cash, dirty = LSLegacy.ServerPlayers[_source].dirty}),
                 ['@health'] = GetEntityHealth(GetPlayerPed(_source)),
-                ['@status'] = json.encode(LSLegacy.ServerPlayers[_source].status)
+                ['@status'] = json.encode(LSLegacy.ServerPlayers[_source].status),
             }) 
             LSLegacy.SendEventToClient('UpdateServerPlayer', _source)
             LSLegacy.SendEventToClient('UpdateDatastore', _source, LSLegacy.DataStores)
@@ -190,14 +198,18 @@ end)
 LSLegacy.AddEventHandler('playerDropped', function()
     local _source = source
     if LSLegacy.ServerPlayers[_source] then
-        MySQL.Async.execute('UPDATE players SET coords = @coords, inventory = @inventory, money = @money, health = @health, skin = @skin, status = @status WHERE id = @id', {
+        MySQL.Async.execute('UPDATE players SET coords = @coords, inventory = @inventory, money = @money, health = @health, skin = @skin, status = @status, job = @job, job_grade = @job_grade, faction = @faction, faction_grade = @faction_grade WHERE id = @id', {
             ['@coords'] = json.encode(LSLegacy.ServerPlayers[_source].coords),
             ['@inventory'] = json.encode(LSLegacy.ServerPlayers[_source].inventory),
             ['@money'] = json.encode({cash = LSLegacy.ServerPlayers[_source].cash, dirty = LSLegacy.ServerPlayers[_source].dirty}),
             ['@id'] = LSLegacy.ServerPlayers[_source].id,
             ['@health'] = GetEntityHealth(GetPlayerPed(source)),
             ['@skin'] = json.encode(LSLegacy.ServerPlayers[_source].skin),
-            ['@status'] = json.encode(LSLegacy.ServerPlayers[_source].status)
+            ['@status'] = json.encode(LSLegacy.ServerPlayers[_source].status),
+            ['@job'] = LSLegacy.ServerPlayers[_source].job,
+            ['@job_grade'] = LSLegacy.ServerPlayers[_source].job_grade,
+            ['@faction'] = LSLegacy.ServerPlayers[_source].faction,
+            ['@faction_grade'] = LSLegacy.ServerPlayers[_source].faction_grade
         })
         LSLegacy.ServerPlayers[_source] = nil
         Config.Development.Print("Player " .. _source .. " disconnected")

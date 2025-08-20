@@ -342,6 +342,7 @@ LSLegacy.CreateDuplicationOfATableWithoutFunctions = function(table)
 end
 
 ---GenerateNumeroDeSerie
+---@type function
 ---@return string
 ---@public
 LSLegacy.GenerateNumeroDeSerie = function()

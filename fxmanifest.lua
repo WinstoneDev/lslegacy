@@ -32,6 +32,7 @@ client_scripts {
     'client/player/spawn.lua',
     'client/player/pickup.lua',
     'client/player/status.lua',
+    'client/player/jobs.lua',
     'inventory/utils.lua',
     'inventory/client/main.lua',
     'module/adminmenu/cl_admin.lua',
