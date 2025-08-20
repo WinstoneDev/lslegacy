@@ -8,11 +8,14 @@ MadeInFrance.RegisterClientEvent("ap:vehicleSpawned", function(data)
     if DoesEntityExist(entity) then
         if data.extras then
             for i=0,20 do
-                SetVehicleExtra(entity, i, data.extras[i] and 0 or 1)
+                if data.extras[i] ~= nil then
+                    SetVehicleExtra(entity, i, data.extras[i] and 0 or 1)
+                end
             end
         end
-        SetVehicleEngineHealth(entity, data.engineHealth or 1000.0)
-        SetVehiclePetrolTankHealth(entity, data.tankHealth or 1000.0)
+        SetVehicleEngineHealth(entity, data.engineHealth)
+        SetVehiclePetrolTankHealth(entity, data.tankHealth)
+        SetVehicleFuelLevel(entity, tonumber(data.fuel))
         if data.tuning then
             for i = 0, 49 do
                 if data.tuning[i] ~= nil then
@@ -39,17 +42,16 @@ end)
 -- Thread principal pour toucher / quitter le véhicule
 CreateThread(function()
     while true do
-        Wait(250)
         local ped = PlayerPedId()
         local veh = GetVehiclePedIsIn(ped, false)
 
         if veh ~= 0 and veh ~= lastVeh then
             lastVeh = veh
-            MadeInFrance.SendEventToServer("ap:touchVehicle", VehToNet(veh))
         elseif veh == 0 and lastVeh ~= nil then
             MadeInFrance.SendEventToServer("ap:updateVehicle", VehToNet(lastVeh))
             lastVeh = nil
         end
+        Wait(Config.AP.UpdateIntervalMs)
     end
 end)
 
@@ -74,11 +76,6 @@ RegisterCommand("clearvehicles", function()
 
     -- Notification
     print("[ClearVehicles] Véhicules supprimés :", deletedCount)
-    TriggerEvent('chat:addMessage', {
-        color = {255, 0, 0},
-        multiline = true,
-        args = {"[SYSTEM]", "Véhicules supprimés : " .. deletedCount}
-    })
 end, false)
 
 local function updateVehicleStatus(veh)
@@ -87,9 +84,9 @@ local function updateVehicleStatus(veh)
     local plate = GetVehicleNumberPlateText(veh)
 
     -- Mods / tuning
-    local tuning = {}
+    local tuningV = {}
     for i = 0, 49 do
-        tuning[i] = GetVehicleMod(veh, i)
+        tuningV[i] = GetVehicleMod(veh, i)
     end
 
     local colorPrimary, colorSecondary = GetVehicleColours(veh)
@@ -108,7 +105,7 @@ local function updateVehicleStatus(veh)
         fuel = GetVehicleFuelLevel(veh),
 
         tuning = {
-            mods = tuning,
+            mods = tuningV,
             colorPrimary = colorPrimary,
             colorSecondary = colorSecondary,
             pearlColor = pearlColor,
@@ -127,11 +124,11 @@ end
 CreateThread(function()
     Wait(5000)
     while true do
-        Wait(15000) 
         local ped = PlayerPedId()
         local veh = GetVehiclePedIsIn(ped, false)
         if veh ~= 0 then
             updateVehicleStatus(veh)
         end
+        Wait(Config.AP.UpdateIntervalMs) 
     end
 end)

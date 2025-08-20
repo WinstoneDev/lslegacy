@@ -38,7 +38,6 @@ MadeInFrance.RateLimit = {
     ['removeAmmo'] = 20,
     ['updateNumberPlayer'] = 20,
     ['applyNeedEffect'] = 20,
-    ['ap:touchVehicle'] = 20,
     ['ap:updateVehicle'] = 20,
     ['ap:updateVehicleStatus'] = 20,
 }

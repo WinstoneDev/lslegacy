@@ -27,7 +27,7 @@ local function saveVehicle(entity)
         body = GetVehicleBodyHealth(entity),
         tank = GetVehiclePetrolTankHealth(entity),
         dirt = GetVehicleDirtLevel(entity),
-        fuel = MadeInFrance.AP.Active[plate].fuel or 100.0,
+        fuel = MadeInFrance.AP.Active[plate].fuel,
         lock = GetVehicleDoorLockStatus(entity),
         windows = {},
         extras = {}
@@ -51,11 +51,19 @@ local function saveVehicle(entity)
     tuning.windowTint = GetVehicleWindowTint(entity)
 
     local state_bags = {}
+    
+    if MadeInFrance.AP.Active[plate].tuning then
+        tuning = MadeInFrance.AP.Active[plate].tuning
+        if type(tuning) ~= 'table' then
+            tuning = json.decode(tuning)
+            MadeInFrance.AP.Active[plate].tuning = tuning
+        end
+    end
 
     local snapshot = {
         position = { x = pos.x, y = pos.y, z = pos.z, h = GetEntityHeading(entity) },
         status = status,
-        tuning = MadeInFrance.AP.Active[plate].tuning or tuning,
+        tuning = tuning,
         state_bags = state_bags,
         model = GetEntityModel(entity),
         trailer = nil
@@ -79,7 +87,7 @@ end
 
 
 -- Spawn d'un véhicule avec restauration complète
-local function spawnVehicle(row, targetPlayer)
+local function spawnVehicle(row)
     local pos = json.decode(row.position)
     local status = json.decode(row.status)
     local entity = CreateVehicle(row.model, pos.x, pos.y, pos.z, pos.h or 0.0, true, true)
@@ -97,26 +105,6 @@ local function spawnVehicle(row, targetPlayer)
     if status.extras then for i=0,20 do if status.extras[i] ~= nil then SetVehicleExtra(entity,i, status.extras[i] and 0 or 1) end end end
 
     MadeInFrance.AP.Active[row.plate] = { netId = netId, entity = entity, model = row.model }
-
-    -- Notifie le client ciblé
-    if targetPlayer then
-        local extras = {}
-        if status.extras then
-            for i=0,20 do
-                extras[i] = status.extras[i] or false
-            end
-        end
-        MadeInFrance.SendEventToClient("ap:vehicleSpawned", targetPlayer, { 
-            netId = netId, 
-            plate = row.plate, 
-            extras = extras,
-            tankHealth = status.tank or 1000.0,
-            engineHealth = status.engine or 1000.0,
-            tuning = row.tuning or {}
-        })
-    end
-
-    return entity
 end
 
 -- Fonction pour spawn un véhicule persistant correctement
@@ -128,39 +116,26 @@ function MadeInFrance.AP.SpawnPersistentVehicle(model, pos, heading, targetPlaye
     SetVehicleNumberPlateText(vehicle, plate)
 
     local netId = NetworkGetNetworkIdFromEntity(vehicle)
-    MadeInFrance.AP.Active[plate] = { netId = netId, entity = vehicle, model = modelHash }
+    MadeInFrance.AP.Active[plate] = { netId = netId, entity = vehicle, model = modelHash, extras = {}, tankHealth = 1000.0, engineHealth = 1000.0, fuel = 50.0 }
     Wait(500)
     if targetPlayer then
         local ped = GetPlayerPed(targetPlayer)
         if DoesEntityExist(ped) then
             TaskWarpPedIntoVehicle(ped, vehicle, -1)
         end
-        MadeInFrance.SendEventToClient("ap:vehicleSpawned", targetPlayer, { netId = netId, plate = plate })
+        MadeInFrance.SendEventToClient("ap:vehicleSpawned", targetPlayer, { netId = netId, plate = plate, extras = {}, tankHealth = 1000.0, engineHealth = 1000.0, fuel = 50.0 })
     end
-
-    return true, vehicle
 end
 
-MadeInFrance.RegisterServerEvent("ap:updateVehicleStatus", function(source, plate, status)
+MadeInFrance.RegisterServerEvent("ap:updateVehicleStatus", function(plate, status)
     if not plate or not status then return end
-
     if MadeInFrance.AP.Active[plate] then
-        MadeInFrance.AP.Active[plate].fuel  = status.fuel
-
-        MadeInFrance.AP.Active[plate].tuning = status.tuning or {}
+        MadeInFrance.AP.Active[plate].fuel = status.fuel
+        MadeInFrance.AP.Active[plate].tuning = status.tuning
     end
 end)
 
-
--- Enregistrement des events serveur
-MadeInFrance.RegisterServerEvent("ap:touchVehicle", function(source, netId)
-    local entity = NetworkGetEntityFromNetworkId(netId)
-    if DoesEntityExist(entity) then
-        MadeInFrance.AP.Active[(GetVehicleNumberPlateText(entity) or ""):upper()] = { netId = netId, entity = entity, model = GetEntityModel(entity) }
-    end
-end)
-
-MadeInFrance.RegisterServerEvent("ap:updateVehicle", function(source, netId)
+MadeInFrance.RegisterServerEvent("ap:updateVehicle", function(netId)
     local entity = NetworkGetEntityFromNetworkId(netId)
     if DoesEntityExist(entity) then saveVehicle(entity) end
 end)
@@ -169,51 +144,59 @@ MadeInFrance.AddEventHandler('ap:clientsetonSpawn', function(source)
     MySQL.Async.fetchAll('SELECT * FROM persistent_vehicles', {}, function(rows)
         for _, row in ipairs(rows) do
             local status = json.decode(row.status)
-            local pos = json.decode(row.position)
-    
-            MadeInFrance.SendEventToClient("ap:vehicleSpawned", source, {
+            local extras = {}
+            if status.extras then
+                for i=0,20 do
+                    extras[i] = status.extras[i] or false
+                end
+            end
+            MadeInFrance.SendEventToClient("ap:vehicleSpawned", source, { 
                 netId = MadeInFrance.AP.Active[row.plate].netId, 
-                plate = row.plate,
-                extras = status.extras or {},
-                engineHealth = status.engine or 1000.0,
+                plate = row.plate, 
+                extras = extras,
                 tankHealth = status.tank or 1000.0,
+                engineHealth = status.engine or 1000.0,
+                tuning = json.decode(row.tuning), 
+                fuel = status.fuel or 50
             })
+            MadeInFrance.AP.Active[row.plate].fuel = status.fuel
+            MadeInFrance.AP.Active[row.plate].tuning = json.decode(row.tuning)
         end
     end)
 end)
 
 -- Thread principal : update / spawn / cleanup
 CreateThread(function()
+    Wait(5000)
     while true do
-        Wait(Config.AP.UpdateIntervalMs)
         if not Config.AP.Enable then goto continue end
         local players = MadeInFrance.ServerPlayers
 
-        -- sauvegarde des véhicules actifs
-        for plate, v in pairs(MadeInFrance.AP.Active) do
-            if DoesEntityExist(v.entity) then
-                saveVehicle(v.entity)
-            end
-        end
-
-
-        MySQL.Async.fetchAll([[SELECT * FROM persistent_vehicles]], {}, function(rows)
-            for _, row in ipairs(rows) do
-                if not MadeInFrance.AP.Active[row.plate] and json.encode(players) ~= "[]" then
-                    spawnVehicle(row)
+        if json.encode(players) ~= "[]" then
+            for plate, v in pairs(MadeInFrance.AP.Active) do
+                if DoesEntityExist(v.entity) then
+                    saveVehicle(v.entity)
                 end
             end
-        end)
 
 
-        -- cleanup
-        if Config.AP.Cleanup then
-            MySQL.Async.execute([[
-                DELETE FROM persistent_vehicles
-                WHERE last_seen_at < (NOW() - INTERVAL @days DAY)
-            ]], { ['@days'] = Config.AP.CleanupDays })
+            MySQL.Async.fetchAll([[SELECT * FROM persistent_vehicles]], {}, function(rows)
+                for _, row in ipairs(rows) do
+                    if not MadeInFrance.AP.Active[row.plate] then
+                        spawnVehicle(row)
+                    end
+                end
+            end)
+
+            -- cleanup
+            if Config.AP.Cleanup then
+                MySQL.Async.execute([[
+                    DELETE FROM persistent_vehicles
+                    WHERE last_seen_at < (NOW() - INTERVAL @days DAY)
+                ]], { ['@days'] = Config.AP.CleanupDays })
+            end
         end
-
+        Wait(Config.AP.UpdateIntervalMs)
         ::continue::
     end
 end)

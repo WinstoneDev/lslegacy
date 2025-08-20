@@ -21,7 +21,7 @@ Config.DiscordStatus = {
 Config.AP = {}
 
 Config.AP.Enable = true
-Config.AP.UpdateIntervalMs = 30000
+Config.AP.UpdateIntervalMs = 15000
 Config.AP.Cleanup = false
 Config.AP.CleanupDays = 31 
 Config.AP.SendCleanupToGarage = true
