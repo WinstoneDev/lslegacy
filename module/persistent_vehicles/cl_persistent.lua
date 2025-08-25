@@ -52,15 +52,19 @@ LSLegacy.RegisterClientEvent("ap:vehicleSpawned", function(data)
             end
         end
         if data.extras then
+            for i = 0, 20 do
+                if DoesExtraExist(entity, i) then
+                    SetVehicleExtra(entity, i, 1)
+                end
+            end
             for k, v in pairs(data.extras) do
-                print(k, v)
-               -- if v == true then
-                    --SetVehicleExtra(entity, k, 0)
-                print(IsVehicleExtraTurnedOn(entity, k))
-                --elseif v == false then
-                   -- SetVehicleExtra(entity, k, 1)
-                    --print(IsVehicleExtraTurnedOn(entity, k))
-               -- end
+                if DoesExtraExist(entity, v.id) then
+                   if v.state then
+                       SetVehicleExtra(entity, v.id, 0)
+                   else
+                       SetVehicleExtra(entity, v.id, 1)
+                   end
+                end
             end
         end
         SetVehicleEngineHealth(entity, data.engineHealth)
@@ -143,9 +147,9 @@ local function updateVehicleStatus(veh)
     for i = 0, 20 do
         if DoesExtraExist(veh, i) then
             if IsVehicleExtraTurnedOn(veh, i) == 1 then
-                extras[i] = true
+                extras[i] = {id = i, state = true}
             elseif IsVehicleExtraTurnedOn(veh, i) == false then
-                extras[i] = false
+                extras[i] = {id = i, state = false}
             end
         end
     end
