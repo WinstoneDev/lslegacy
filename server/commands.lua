@@ -103,7 +103,7 @@ LSLegacy.RegisterCommand = function(name, group, callback, suggestion, console)
 				if source == 0 and command.console then
 					Config.Development.Print(error)
 				else
-                    LSLegacy.SendEventToClient('chat:addMessage', player.source, {args = {'^LSLegacy', error}})
+                    LSLegacy.SendEventToClient('chat:addMessage', player.source, {args = {'LSLegacy', error}})
 				end
 			else
                 if source ~= 0 and player ~= nil then
@@ -114,11 +114,11 @@ LSLegacy.RegisterCommand = function(name, group, callback, suggestion, console)
                                     if source == 0 and command.console then
                                         Config.Development.Print(msg)
                                     else
-                                        LSLegacy.SendEventToClient('chat:addMessage', player.source, {args = {'^LSLegacy', msg}})
+                                        LSLegacy.SendEventToClient('chat:addMessage', player.source, {args = {'LSLegacy', msg}})
                                     end
                                 end, rawCommand)
                             else
-                                LSLegacy.SendEventToClient('chat:addMessage', player.source, {args = {'^LSLegacy', 'Vous n\'avez pas les permissions pour utiliser cette commande'}})
+                                LSLegacy.SendEventToClient('chat:addMessage', player.source, {args = {'LSLegacy', 'Vous n\'avez pas les permissions pour utiliser cette commande'}})
                             end
                         end
                     end
@@ -149,7 +149,7 @@ LSLegacy.RegisterCommand('announce', 3, function(player, args, showError, rawCom
         text = text ..sm[i].. " " 
     end
 	LSLegacy.SendEventToClient('notify', -1, 'Administration', text, 'warning')
-end, {help = "Affiche un message pour tout le serveur", validate = false, arguments = {{name = 'message', help = 'Message', type = 'fullstring'}}}, false)
+end, {help = "Affiche un message pour tout le serveur", validate = false, arguments = {{name = 'message', help = 'Message', type = 'fullstring'}}}, true)
 
 LSLegacy.RegisterCommand('kick', 1, function(player, args, showError, rawCommand)
 	local player = args.playerId
@@ -161,7 +161,7 @@ LSLegacy.RegisterCommand('kick', 1, function(player, args, showError, rawCommand
 		end
 		DropPlayer(player.source, message .. ' (kick par ' .. player.name .. ')')
 	end
-end, {help = "Permet de déconnecter un joueur", validate = false, arguments = {{name = 'playerId', help = 'Id du joueur', type = 'player'}, {name = 'reason', help = "Raison du kick", type = "fullstring"}}}, false)
+end, {help = "Permet de déconnecter un joueur", validate = false, arguments = {{name = 'playerId', help = 'Id du joueur', type = 'player'}, {name = 'reason', help = "Raison du kick", type = "fullstring"}}}, true)
 
 LSLegacy.RegisterCommand('sync', 0, function(player, args, showError, rawCommand)
 	local source = player.source
@@ -195,7 +195,7 @@ LSLegacy.RegisterCommand('ban', 1, function(player, args, showError, rawCommand)
         reason = reason ..sm[i].. " " 
     end
     Shared.Anticheat.BanPlayer(player, args.time, reason, player.source)
-end, {help = "Permet de bannir un joueur", validate = false, arguments = {{name = 'playerId', help = 'Id du joueur', type = 'player'}, {name = 'time', help = "Temps du ban (en heures)", type = "number"}, {name = "reason", help = "Raison du ban", type = "fullstring"}}}, false)
+end, {help = "Permet de bannir un joueur", validate = false, arguments = {{name = 'playerId', help = 'Id du joueur', type = 'player'}, {name = 'time', help = "Temps du ban (en heures)", type = "number"}, {name = "reason", help = "Raison du ban", type = "fullstring"}}}, true)
 
 LSLegacy.RegisterCommand('banreload', 4, function(player, args, showError, rawCommand)
     Shared.Anticheat.ReloadFromDatabase()
@@ -264,7 +264,7 @@ LSLegacy.RegisterCommand('giveitem', 1, function(player, args, showError, rawCom
 	else
 		showError('Veuillez spécifier un item et un joueur cible.')
 	end
-end, {help = "Permet de donner un item à un joueur", validate = false, arguments = {{name = 'playerId', help = 'ID du joueur cible', type = 'player'}, {name = 'item', help = 'Nom de l\'item', type = 'string'}, {name = 'quantity', help = 'Quantité de l\'item', type = 'number'}}}, false)
+end, {help = "Permet de donner un item à un joueur", validate = true, arguments = {{name = 'playerId', help = 'ID du joueur cible', type = 'player'}, {name = 'item', help = 'Nom de l\'item', type = 'string'}, {name = 'quantity', help = 'Quantité de l\'item', type = 'number'}}}, true)
 
 LSLegacy.RegisterCommand('car', 1, function(player, args, showError, rawCommand)
     local modelName = args.model
@@ -290,3 +290,29 @@ end,
     arguments = {{name = 'model', help = "Nom du modèle du véhicule", type = 'string'}}
 }, false)
 
+LSLegacy.RegisterCommand('setjob', 1, function(player, args, showError, rawCommand)
+	local targetPlayer = args.playerId
+	local job = args.job
+	local grade = args.grade
+
+	if targetPlayer and job and grade then
+		if LSLegacy.Jobs.DoesJobExist(job) and LSLegacy.Jobs.DoesJobGradeExist(job, grade) then
+			LSLegacy.Jobs.SetJob(targetPlayer, job)
+			LSLegacy.Jobs.SetJobGrade(targetPlayer, grade)
+			LSLegacy.SendEventToClient('notify', targetPlayer.source, nil, 'Votre métier a été mis à jour en ' .. LSLegacy.Jobs.GetJobLabel(job) .. ' - ' .. LSLegacy.Jobs.GetJobGradeLabel(job, grade) .. '.', 'success')
+			showError('Le métier du joueur a été mis à jour.')
+		else
+			showError('Le métier ou le grade spécifié n\'existe pas.')
+		end
+	else
+		showError('Veuillez spécifier un joueur cible, un métier et un grade.')
+	end
+end, {
+	help = "Permet de changer le métier d'un joueur",
+	validate = true,
+	arguments = {
+		{name = 'playerId', help = 'ID du joueur cible', type = 'player'},
+		{name = 'job', help = 'Nom du métier', type = 'string'},
+		{name = 'grade', help = 'Grade du métier', type = 'number'}
+	}
+}, true)

@@ -1,7 +1,6 @@
 LSLegacy = LSLegacy or {}
 LSLegacy.AP = { Active = {} }
 
--- Vérifie si le véhicule est blacklisté
 local function isBlacklisted(entity)
     local model = GetEntityModel(entity)
     for _, m in ipairs(Config.AP.Blacklist.Models) do
@@ -14,13 +13,28 @@ local function isBlacklisted(entity)
     return false
 end
 
--- Sauvegarde complète d'un véhicule
 local function saveVehicle(entity)
     if not DoesEntityExist(entity) then return end
     if isBlacklisted(entity) then return end
 
     local plate = (GetVehicleNumberPlateText(entity) or ""):upper()
     local pos = GetEntityCoords(entity)
+
+    while LSLegacy.AP.Active[plate] == nil do 
+        Wait(100)
+    end
+
+    while LSLegacy.AP.Active[plate].fuel == nil do 
+        Wait(100)
+    end
+
+    while LSLegacy.AP.Active[plate].windows == nil do 
+        Wait(100)
+    end
+
+    while LSLegacy.AP.Active[plate].extras == nil do 
+        Wait(100)
+    end
 
     local status = {
         engine = GetVehicleEngineHealth(entity),
@@ -29,21 +43,12 @@ local function saveVehicle(entity)
         dirt = GetVehicleDirtLevel(entity),
         fuel = LSLegacy.AP.Active[plate].fuel,
         lock = GetVehicleDoorLockStatus(entity),
-        windows = {},
-        extras = {}
+        windows = LSLegacy.AP.Active[plate].windows or {},
+        extras = LSLegacy.AP.Active[plate].extras or {},
+        tyreData = LSLegacy.AP.Active[plate].tyreData or {},
+        doorsBroken = LSLegacy.AP.Active[plate].doorsBroken or {}
     }
 
-    -- Windows
-    for i = 0, 7 do
-        status.windows[i] = not IsVehicleWindowIntact(entity, i)
-    end
-
-    -- Extras
-    for i = 0, 20 do
-        status.extras[i] = IsVehicleExtraTurnedOn(entity, i) or false
-    end
-
-    -- Tuning
     local tuning = {}
     tuning.colorPrimary, tuning.colorSecondary = GetVehicleColours(entity)
     tuning.pearlColor, tuning.wheelColor = GetVehicleExtraColours(entity)
@@ -86,28 +91,21 @@ local function saveVehicle(entity)
 end
 
 
--- Spawn d'un véhicule avec restauration complète
 local function spawnVehicle(row)
     local pos = json.decode(row.position)
     local status = json.decode(row.status)
     local entity = CreateVehicle(row.model, pos.x, pos.y, pos.z, pos.h or 0.0, true, true)
-    Wait(500)
+    while DoesEntityExist(entity) == false do
+        Wait(100)
+    end
     local netId = NetworkGetNetworkIdFromEntity(entity)
-
     SetVehicleNumberPlateText(entity, row.plate)
-    
-    -- Restaurer état complet
     SetVehicleBodyHealth(entity, status.body or 1000.0)
     SetVehicleDirtLevel(entity, status.dirt or 0.0)
     SetVehicleDoorsLocked(entity, status.lock or 1)
-
-    if status.windows then for i=0,7 do if status.windows[i] then SmashVehicleWindow(entity,i) end end end
-    if status.extras then for i=0,20 do if status.extras[i] ~= nil then SetVehicleExtra(entity,i, status.extras[i] and 0 or 1) end end end
-
     LSLegacy.AP.Active[row.plate] = { netId = netId, entity = entity, model = row.model }
 end
 
--- Fonction pour spawn un véhicule persistant correctement
 function LSLegacy.AP.SpawnPersistentVehicle(model, pos, heading, targetPlayer)
     local modelHash = tonumber(model) or GetHashKey(model)
     local vehicle = CreateVehicle(modelHash, pos.x, pos.y, pos.z, heading or 0.0, true, false)
@@ -116,14 +114,14 @@ function LSLegacy.AP.SpawnPersistentVehicle(model, pos, heading, targetPlayer)
     SetVehicleNumberPlateText(vehicle, plate)
 
     local netId = NetworkGetNetworkIdFromEntity(vehicle)
-    LSLegacy.AP.Active[plate] = { netId = netId, entity = vehicle, model = modelHash, extras = {}, tankHealth = 1000.0, engineHealth = 1000.0, fuel = 50.0 }
+    LSLegacy.AP.Active[plate] = { netId = netId, entity = vehicle, model = modelHash, extras = {}, tankHealth = 1000.0, engineHealth = 1000.0, fuel = 50.0, windows = {} }
     Wait(500)
     if targetPlayer then
         local ped = GetPlayerPed(targetPlayer)
         if DoesEntityExist(ped) then
             TaskWarpPedIntoVehicle(ped, vehicle, -1)
         end
-        LSLegacy.SendEventToClient("ap:vehicleSpawned", targetPlayer, { netId = netId, plate = plate, extras = {}, tankHealth = 1000.0, engineHealth = 1000.0, fuel = 50.0 })
+        LSLegacy.SendEventToClient("ap:vehicleSpawned", -1, { netId = netId, plate = plate, extras = {}, tankHealth = 1000.0, engineHealth = 1000.0, fuel = 50.0, windows = {} })
     end
 end
 
@@ -132,6 +130,10 @@ LSLegacy.RegisterServerEvent("ap:updateVehicleStatus", function(plate, status)
     if LSLegacy.AP.Active[plate] then
         LSLegacy.AP.Active[plate].fuel = status.fuel
         LSLegacy.AP.Active[plate].tuning = status.tuning
+        LSLegacy.AP.Active[plate].windows = status.windows
+        LSLegacy.AP.Active[plate].extras = status.extras
+        LSLegacy.AP.Active[plate].tyreData = status.tyreData
+        LSLegacy.AP.Active[plate].doorsBroken = status.doorsBroken
     end
 end)
 
@@ -143,31 +145,35 @@ end)
 LSLegacy.AddEventHandler('ap:clientsetonSpawn', function(source)
     MySQL.Async.fetchAll('SELECT * FROM persistent_vehicles', {}, function(rows)
         for _, row in ipairs(rows) do
-            local status = json.decode(row.status)
-            local extras = {}
-            if status.extras then
-                for i=0,20 do
-                    extras[i] = status.extras[i] or false
-                end
+            local status = type(row.status) == "string" and json.decode(row.status) or row.status
+            local tuning = type(row.tuning) == "string" and json.decode(row.tuning) or row.tuning
+            while LSLegacy.AP.Active[row.plate] == nil do 
+                Wait(100)
+            end
+            while LSLegacy.AP.Active[row.plate].netId == nil do
+                Wait(100)
             end
             LSLegacy.SendEventToClient("ap:vehicleSpawned", source, { 
                 netId = LSLegacy.AP.Active[row.plate].netId, 
                 plate = row.plate, 
-                extras = extras,
+                extras = status.extras or {},
                 tankHealth = status.tank or 1000.0,
                 engineHealth = status.engine or 1000.0,
-                tuning = json.decode(row.tuning), 
-                fuel = status.fuel or 50
+                tuning = tuning, 
+                fuel = status.fuel or 50.0,
+                status = status
             })
             LSLegacy.AP.Active[row.plate].fuel = status.fuel
-            LSLegacy.AP.Active[row.plate].tuning = json.decode(row.tuning)
+            LSLegacy.AP.Active[row.plate].tuning = tuning or {}
+            LSLegacy.AP.Active[row.plate].windows = status.windows or {}
+            LSLegacy.AP.Active[row.plate].extras = status.extras or {}
+            LSLegacy.AP.Active[row.plate].tyreData = status.tyreData or {}
+            LSLegacy.AP.Active[row.plate].doorsBroken = status.doorsBroken or {}
         end
     end)
 end)
 
--- Thread principal : update / spawn / cleanup
 CreateThread(function()
-    Wait(5000)
     while true do
         if not Config.AP.Enable then goto continue end
         local players = LSLegacy.ServerPlayers

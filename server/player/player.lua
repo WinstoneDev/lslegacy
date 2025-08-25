@@ -101,7 +101,6 @@ AddEventHandler("registerPlayer", function()
                 Config.Development.Print("Successfully registered player " .. GetPlayerName(source))
                 LSLegacy.SendEventToClient('zones:registerBlips', source, LSLegacy.RegisteredZones)
                 LSLegacy.SendEventToClient('UpdateDatastore', source, LSLegacy.DataStores)
-                Wait(5000)
                 LSLegacy.TriggerLocalEvent('ap:clientsetonSpawn', source)
             else
                 LSLegacy.ServerPlayers[source] = {
@@ -150,7 +149,6 @@ AddEventHandler("registerPlayer", function()
                 Config.Development.Print("Successfully registered player " .. GetPlayerName(source))
                 LSLegacy.SendEventToClient('zones:registerBlips', source, LSLegacy.RegisteredZones)
                 LSLegacy.SendEventToClient('UpdateDatastore', source, LSLegacy.DataStores)
-                Wait(5000)
                 LSLegacy.TriggerLocalEvent('ap:clientsetonSpawn', source)
             end
         end)

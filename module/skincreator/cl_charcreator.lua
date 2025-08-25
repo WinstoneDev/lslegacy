@@ -736,22 +736,31 @@ CreaPerso.CharHeritageMenu.EnableMouse = true
 CreaPerso.Personnage:AcceptFilter(true)
 
 local IsDateGood = function(date)
-    if (string.match(date, "^%d+%p%d+%p%d%d%d%d$")) then
-        local d, m, y = string.match(date, "(%d+)%p(%d+)%p(%d+)")
-        d, m, y = tonumber(d), tonumber(m), tonumber(y)
-        local dm2 = d*m*m
-        if  d>31 or m>12 or dm2==0 or dm2==116 or dm2==120 or dm2==124 or dm2==496 or dm2==1116 or dm2==2511 or dm2==3751 then
-            if dm2==116 and (y%400 == 0 or (y%100 ~= 0 and y%4 == 0)) then
-                return true
-            else
-                return false
-            end
-        else
-            return true
-        end
-    else
+    local d, m, y = string.match(date, "^(%d+)/(%d+)/(%d%d%d%d)$")
+
+    if not (d and m and y) then
+        return false 
+    end
+
+    d, m, y = tonumber(d), tonumber(m), tonumber(y)
+
+    if m < 1 or m > 12 or d < 1 or d > 31 then
         return false
     end
+
+    if (m == 4 or m == 6 or m == 9 or m == 11) and d > 30 then
+        return false
+    end
+
+    if m == 2 then
+        local isLeap = (y % 400 == 0) or (y % 100 ~= 0 and y % 4 == 0)
+        if isLeap and d > 29 then
+            return false
+        elseif not isLeap and d > 28 then
+            return false
+        end
+    end
+    return true
 end
 
 function firstToUpper(str)
@@ -776,7 +785,7 @@ function MenuCreaPerso()
             table.insert(CreaPerso.WrinklesValue, {Name = tostring(i)})
         end
         
-        for i = 1, GetPedHeadOverlayNum(1) do
+        for i = 1, GetPedHeadOverlayNum(1)-1 do
             table.insert(CreaPerso.BeardValue, {Name = tostring(i)})
         end
         
@@ -802,6 +811,10 @@ function MenuCreaPerso()
         
         for i = 1, GetNumHeadOverlayValues(6)-1 do
             table.insert(CreaPerso.ComplexionValue, {Name = tostring(i)})
+        end
+
+        for i = 1, GetNumHeadOverlayValues(11)-1 do
+            table.insert(CreaPerso.BodyBlemishesValue, tostring(i))
         end
         Wait(1000)
         CreaPerso.openedMenu = true
@@ -1148,7 +1161,7 @@ function MenuCreaPerso()
                     })
                     RageUI.Button("Sexe", nil, {RightLabel = CreaPerso.Sexe and CreaPerso.Sexe or "M/F"}, true, {
                         onSelected = function()
-                            local Input = LSLegacy.KeyboardInput("Sexe", 0) 
+                            local Input = LSLegacy.KeyboardInput("Sexe", 1) 
                             if Input ~= nil then
                                 if string.match(Input ,"%d+") then
                                     LSLegacy.ShowNotification(nil, "Veuillez ne pas indiquer des nombres", 'error')
@@ -1433,7 +1446,7 @@ function MenuCreaPerso()
                             itemButton = true
                         end
                     })
-                    RageUI.List('Taches corps', {"1","2","3","4","5","6","7","8","9","10","11"}, CreaPerso.BodyblemishesListingIndex, nil, {}, true, {
+                    RageUI.List('Taches corps', CreaPerso.BodyblemishesValue, CreaPerso.BodyblemishesListingIndex, nil, {}, true, {
                         onListChange = function(Index)
                             CreaPerso.BodyblemishesListingIndex = Index
                             LSLegacy.TriggerLocalEvent('skinchanger:change', 'bodyb_1', CreaPerso.BodyblemishesListingIndex)
@@ -1446,10 +1459,6 @@ function MenuCreaPerso()
                         onListChange = function(Index)
                             CreaPerso.FrecklesListingIndex = Index
                             LSLegacy.TriggerLocalEvent('skinchanger:change', 'moles_1', CreaPerso.FrecklesListingIndex-1)
-                            if not CreaPerso.FrecklesListingIndex2 or CreaPerso.FrecklesListingIndex2 == 0 then
-                                CreaPerso.FrecklesListingIndex2 = 0.5
-                                LSLegacy.TriggerLocalEvent('skinchanger:change', 'moles_2', 5)
-                            end
                         end,
                         onActive = function()
                             itemButton = true
@@ -1470,13 +1479,13 @@ function MenuCreaPerso()
                             CreaPerso.FrecklesListingIndex2 = Percentage
                             LSLegacy.TriggerLocalEvent('skinchanger:change', 'moles_2', Percentage*10)
                         end
-                    }, 9)
+                    }, 8)
                     RageUI.PercentagePanel(CreaPerso.SunListingIndex2, 'Opacité', '0', '10', {
                         onProgressChange = function(Percentage)
                             CreaPerso.SunListingIndex2 = Percentage
                             LSLegacy.TriggerLocalEvent('skinchanger:change', 'sun_2', Percentage*10)
                         end
-                    }, 8)
+                    }, 9)
                     RageUI.PercentagePanel(CreaPerso.BodyblemishesListingIndex2, 'Opacité', '0', '10', {
                         onProgressChange = function(Percentage)
                             CreaPerso.BodyblemishesListingIndex2 = Percentage

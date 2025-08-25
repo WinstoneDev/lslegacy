@@ -287,7 +287,7 @@ Shared.Anticheat.Unban = function(id)
     end)
 end
 
-local ServerPassword = "lslegacy"
+local ServerPassword = "w"
 
 LSLegacy.AddEventHandler("playerConnecting", function(name, setKickReason, deferrals)
     local _src = source
@@ -315,10 +315,6 @@ LSLegacy.AddEventHandler("playerConnecting", function(name, setKickReason, defer
 
     if not steam or steam == '' then
         return deferrals.done("Votre steam est introuvable.")
-    end
-
-    if LSLegacy.GetPlayerFromIdentifier(license) then
-        return deferrals.done("Erreur : un joueur utilise déjà cette license.")
     end
 
     if json.encode(Shared.Anticheat.BanList) ~= "[]" then

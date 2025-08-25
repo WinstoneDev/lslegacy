@@ -29,11 +29,4 @@ LSLegacy.RegisterServerEvent("SetIdentity", function(NDF, Prenom, DDN, Sexe, Tai
     })
 
     player.characterInfos = infos
-
-    if LSLegacy.Inventory.CanCarryItem(player, 'food_burger', 5) then
-        LSLegacy.Inventory.AddItemInInventory(player, "food_burger", 5, 'BurgerShot MaxiBeef')
-    end
-    if LSLegacy.Inventory.CanCarryItem(player, 'food_sprunk', 5) then
-        LSLegacy.Inventory.AddItemInInventory(player, "food_sprunk", 5, 'Sprunk 33cl')
-    end
 end)

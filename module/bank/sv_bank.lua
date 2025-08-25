@@ -247,7 +247,7 @@ LSLegacy.Bank.GenerateIBAN = function(length)
         end
     end
 
-    string = 'MIF' .. string
+    string = 'LSL' .. string
 
     local exist = false
 

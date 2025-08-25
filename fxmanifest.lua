@@ -44,7 +44,8 @@ client_scripts {
     'module/bank/cl_paymentMenu.lua',
     'module/clothshop/cl_clothshop.lua',
     'module/needs/cl_needs.lua',
-    'module/persistent_vehicles/cl_persistent.lua'
+    'module/persistent_vehicles/cl_persistent.lua',
+    'module/persistent_vehicles/cl_extramenu.lua'
 }
 
 shared_scripts {

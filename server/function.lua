@@ -76,6 +76,7 @@ LSLegacy.GetPlayerFromIdentifier = function(identifier)
             return value
         end
     end
+    return nil
 end
 
 ---GeneratorToken
@@ -104,7 +105,6 @@ LSLegacy.GeneratorTokenConnecting = function(_source)
         for k, v in pairs(LSLegacy.Event) do
             LSLegacy.Token[_source][k] = LSLegacy.GeneratorToken()
         end
-
         LSLegacy.SendEventToClient("addTokenEvent", _source, LSLegacy.Token[_source])
     else
         DropPlayer(_source, 'Injector detected ╭∩╮（︶_︶）╭∩╮')
@@ -347,10 +347,10 @@ end
 ---@public
 LSLegacy.GenerateNumeroDeSerie = function()
     local chars = {}
-    for i = 1, 3 do
+    for i = 1, 2 do
         chars[i] = string.char(math.random(65, 90))
     end
-    for i = 4, 10 do
+    for i = 3, 9 do
         chars[i] = string.char(math.random(48, 57))
     end
     return table.concat(chars)

@@ -1,7 +1,33 @@
 ---@class LSLegacy.Jobs
 LSLegacy.Jobs = {}
-LSLegacy.AvailableJobs = {}
-LSLegacy.AvailableFactions = {}
+LSLegacy.AvailableJobs = {
+    ['unemployed'] = {
+        label = "Chômeur",
+        grades = {
+            [0] = {
+                label = "Chômeur"
+            }
+        }
+    },
+    ['police'] = {
+        label = "Police Nationale",
+        grades = {
+            [0] = {
+                label = "Policier Adjoint"
+            }
+        }
+    }
+}
+LSLegacy.AvailableFactions = {
+    ['unemployed'] = {
+        label = "Chômeur",
+        grades = {
+            [0] = {
+                label = "Chômeur"
+            }
+        }
+    }
+}
 
 ---GetAvailableJobs
 ---@type function
@@ -171,7 +197,7 @@ LSLegacy.Jobs.SetFactionGrade = function(player, grade)
     LSLegacy.SendEventToClient('UpdatePlayer', player.source, LSLegacy.ServerPlayers[player.source])
 end
 
-LSLegacy.RegisterServent('SetJob', function(job, grade)
+LSLegacy.RegisterServerEvent('SetJob', function(job, grade)
     local _src = source
     local player = LSLegacy.GetPlayerFromId(_src)
 

@@ -21,7 +21,7 @@ Config.DiscordStatus = {
 Config.AP = {}
 
 Config.AP.Enable = true
-Config.AP.UpdateIntervalMs = 15000
+Config.AP.UpdateIntervalMs = 5000
 Config.AP.Cleanup = false
 Config.AP.CleanupDays = 31 
 Config.AP.SendCleanupToGarage = true
@@ -86,7 +86,7 @@ Config.NeedsItems = {
     ['food_bread'] = { hunger = 40, thirst = 0, stamina = 0, anim = 'eating', portion = 10 },
     ['food_burger'] = { hunger = 70, thirst = 0, stamina = 0, anim = 'eating', portion = 20 },
     ['food_water']  = { hunger = 0, thirst = 100, stamina = 0, anim = 'drinking', portion = 15 },
-    ['food_sprunk'] = { hunger = 0, thirst = 80, stamina = 15, anim = 'drinking', portion = 15 },
+    ['food_sprunk'] = { hunger = 0, thirst = 80, stamina = 15, anim = 'drinking', portion = 15 }
 }
 
 Config.InsertItems = {
