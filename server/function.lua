@@ -40,6 +40,7 @@ LSLegacy.RateLimit = {
     ['applyNeedEffect'] = 20,
     ['ap:updateVehicle'] = 20,
     ['ap:updateVehicleStatus'] = 20,
+    ['ap:requestVehicleDeletion'] = 20
 }
 
 Citizen.CreateThread(function()
