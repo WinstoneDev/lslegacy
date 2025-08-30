@@ -10,15 +10,19 @@ local FastWeapons = GetFieldValueFromName('LSLegacy')
 local currentMenu = 'items'
 local ItemVetement = {
     ['tshirt'] = {15, 0},
+    ['torso'] = {-1, 0},
+    ['arms'] = {-1, 0},
     ['pants'] = {14, 0},
     ['shoes'] = {34, 0},
-    ['helmet'] ={-1, 0},
+    ['helmet'] = {-1, 0},
     ['glasses'] = {-1, 0},
     ['chain'] = {-1, 0},
     ['bags'] = {-1, 0},
-    ['helmet'] = {-1, 0},
-    ['glasses'] = {0, 0},
-    ['ears'] = {-1, 0}
+    ['ears'] = {-1, 0},
+    ['watches'] = {-1, 0},
+    ['bracelet'] = {-1, 0},
+    ['mask'] = {-1, 0},
+    ['decals'] = {-1, 0}
 }
 
 Citizen.CreateThread(function()
@@ -227,8 +231,8 @@ function closeInventory()
 
     if CurrentVehicle ~= nil then
         if not IsPedInAnyVehicle(PlayerPedId(), false) then
-            SetVehicleDoorShut(CurrentVehicle, 5, false) -- ferme coffre visuellement
-            PlayTrunkAnim(PlayerPedId(), "close") -- anim seulement si à pied
+            SetVehicleDoorShut(CurrentVehicle, 5, false) 
+            PlayTrunkAnim(PlayerPedId(), "close")
         end
         CurrentVehicle = nil
     end
@@ -479,7 +483,8 @@ function loadPlayerInventory(result, vehicle)
                         })
                     end
                     trunkWeight = GramsOrKg(LSLegacy.DataStore.GetInventoryWeight(items) or 0)
-                    trunkMaxWeight = 50
+                    vehicleClass = GetVehicleClass(vehicle)
+                    trunkMaxWeight = Config.VehicleTrunks[vehicleClass] or 50
                     weightText = trunkWeight.. " / "..trunkMaxWeight..'KG'
                     if cash > 0 then
                         table.insert(items, {
@@ -534,7 +539,8 @@ function loadPlayerInventory(result, vehicle)
                         })
                     end
                     trunkWeight = GramsOrKg(LSLegacy.DataStore.GetInventoryWeight(items) or 0)
-                    trunkMaxWeight = 50
+                    vehicleClass = GetVehicleClass(vehicle)
+                    trunkMaxWeight = Config.VehicleTrunks[vehicleClass] or 50
                     weightText = trunkWeight.. " / "..trunkMaxWeight..'KG'
                     if cash > 0 then
                         table.insert(items, {
@@ -594,7 +600,8 @@ function loadPlayerInventory(result, vehicle)
                         })
                     end
                     trunkWeight = GramsOrKg(LSLegacy.DataStore.GetInventoryWeight(items) or 0)
-                    trunkMaxWeight = 50
+                    vehicleClass = GetVehicleClass(vehicle)
+                    trunkMaxWeight = Config.VehicleGloveboxes[vehicleClass] or 50
                     weightText = trunkWeight.. " / "..trunkMaxWeight..'KG'
                     if cash > 0 then
                         table.insert(items, {
@@ -650,7 +657,8 @@ function loadPlayerInventory(result, vehicle)
                         })
                     end
                     trunkWeight = GramsOrKg(LSLegacy.DataStore.GetInventoryWeight(items) or 0)
-                    trunkMaxWeight = 50
+                    vehicleClass = GetVehicleClass(vehicle)
+                    trunkMaxWeight = Config.VehicleGloveboxes[vehicleClass] or 50
                     weightText = trunkWeight.. " / "..trunkMaxWeight..'KG'
                     if cash > 0 then
                         table.insert(items, {
@@ -730,7 +738,8 @@ function loadPlayerInventory(result, vehicle)
                         })
                     end
                     trunkWeight = GramsOrKg(LSLegacy.DataStore.GetInventoryWeight(items) or 0)
-                    trunkMaxWeight = 50
+                    vehicleClass = GetVehicleClass(vehicle)
+                    trunkMaxWeight = Config.VehicleTrunks[vehicleClass] or 50
                     weightText = trunkWeight.. " / "..trunkMaxWeight..'KG'
                     if cash > 0 then
                         table.insert(items, {
@@ -784,7 +793,8 @@ function loadPlayerInventory(result, vehicle)
                         })
                     end
                     trunkWeight = GramsOrKg(LSLegacy.DataStore.GetInventoryWeight(items) or 0)
-                    trunkMaxWeight = 50
+                    vehicleClass = GetVehicleClass(vehicle)
+                    trunkMaxWeight = Config.VehicleTrunks[vehicleClass] or 50
                     weightText = trunkWeight.. " / "..trunkMaxWeight..'KG'
                     if cash > 0 then
                         table.insert(items, {
@@ -844,7 +854,8 @@ function loadPlayerInventory(result, vehicle)
                         })
                     end
                     trunkWeight = GramsOrKg(LSLegacy.DataStore.GetInventoryWeight(items) or 0)
-                    trunkMaxWeight = 50
+                    vehicleClass = GetVehicleClass(vehicle)
+                    trunkMaxWeight = Config.VehicleGloveboxes[vehicleClass] or 50
                     weightText = trunkWeight.. " / "..trunkMaxWeight..'KG'
                     if cash > 0 then
                         table.insert(items, {
@@ -898,7 +909,8 @@ function loadPlayerInventory(result, vehicle)
                         })
                     end
                     trunkWeight = GramsOrKg(LSLegacy.DataStore.GetInventoryWeight(items) or 0)
-                    trunkMaxWeight = 50
+                    vehicleClass = GetVehicleClass(vehicle)
+                    trunkMaxWeight = Config.VehicleGloveboxes[vehicleClass] or 50
                     weightText = trunkWeight.. " / "..trunkMaxWeight..'KG'
                     if cash > 0 then
                         table.insert(items, {
@@ -977,7 +989,8 @@ function loadPlayerInventory(result, vehicle)
                         })
                     end
                     trunkWeight = GramsOrKg(LSLegacy.DataStore.GetInventoryWeight(items) or 0)
-                    trunkMaxWeight = 50
+                    vehicleClass = GetVehicleClass(vehicle)
+                    trunkMaxWeight = Config.VehicleTrunks[vehicleClass] or 50
                     weightText = trunkWeight.. " / "..trunkMaxWeight..'KG'
                     if cash > 0 then
                         table.insert(items, {
@@ -1031,7 +1044,8 @@ function loadPlayerInventory(result, vehicle)
                         })
                     end
                     trunkWeight = GramsOrKg(LSLegacy.DataStore.GetInventoryWeight(items) or 0)
-                    trunkMaxWeight = 50
+                    vehicleClass = GetVehicleClass(vehicle)
+                    trunkMaxWeight = Config.VehicleTrunks[vehicleClass] or 50
                     weightText = trunkWeight.. " / "..trunkMaxWeight..'KG'
                     if cash > 0 then
                         table.insert(items, {
@@ -1091,7 +1105,8 @@ function loadPlayerInventory(result, vehicle)
                         })
                     end
                     trunkWeight = GramsOrKg(LSLegacy.DataStore.GetInventoryWeight(items) or 0)
-                    trunkMaxWeight = 50
+                    vehicleClass = GetVehicleClass(vehicle)
+                    trunkMaxWeight = Config.VehicleGloveboxes[vehicleClass] or 50
                     weightText = trunkWeight.. " / "..trunkMaxWeight..'KG'
                     if cash > 0 then
                         table.insert(items, {
@@ -1145,7 +1160,8 @@ function loadPlayerInventory(result, vehicle)
                         })
                     end
                     trunkWeight = GramsOrKg(LSLegacy.DataStore.GetInventoryWeight(items) or 0)
-                    trunkMaxWeight = 50
+                    vehicleClass = GetVehicleClass(vehicle)
+                    trunkMaxWeight = Config.VehicleGloveboxes[vehicleClass] or 50
                     weightText = trunkWeight.. " / "..trunkMaxWeight..'KG'
                     if cash > 0 then
                         table.insert(items, {
@@ -1269,14 +1285,19 @@ RegisterNUICallback("UseItem", function(data, cb)
                     TriggerEvent('skinchanger:getSkin', function(skin)
                         skins = {}
                         skins['tshirt'] = {skin.tshirt_1, skin.tshirt_2}
+                        skins['torso'] = {skin.torso_1, skin.torso_2}
+                        skins['arms'] = {skin.arms_1, skin.torso_2}
                         skins['pants'] = {skin.pants_1, skin.pants_2}
                         skins['shoes'] = {skin.shoes_1, skin.shoes_2}
                         skins['helmet'] = {skin.helmet_1, skin.helmet_2}
                         skins['glasses'] = {skin.glasses_1, skin.glasses_2}
                         skins['chain'] = {skin.chain_1, skin.chain_2}
                         skins['bags'] = {skin.bags_1, skin.bags_2}
-                        skins['helmet'] = {skin.helmet_1, skin.helmet_2}
-                        skins['glasses'] = {skin.glasses_1, skin.glasses_2}
+                        skins['ears'] = {skin.ears_1, skin.ears_2}
+                        skins['watches'] = {skin.watches_1, skin.watches_2}
+                        skins['bracelet'] = {skin.bracelets_1, skin.bracelets_2}
+                        skins['mask'] = {skin.mask_1, skin.mask_2}
+                        skins['decals'] = {skin.decals_1, skin.decals_2}
                     end)
 
                     if skins[data.item.name][1] ~= data.item.data[1] or skins[data.item.name][2] ~= data.item.data[2] then
