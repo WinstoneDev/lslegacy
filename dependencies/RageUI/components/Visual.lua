@@ -46,9 +46,9 @@ end
 
 function Visual.PromptDuration(duration, text, spinner)
     Citizen.CreateThread(function()
-        Wait(0)
+        Citizen.Wait(0)
         Visual.Prompt(text, spinner)
-        Wait(duration)
+        Citizen.Wait(duration)
         if (BusyspinnerIsOn()) then
             BusyspinnerOff();
         end
