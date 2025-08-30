@@ -46,7 +46,8 @@ local function saveVehicle(entity)
         windows = LSLegacy.AP.Active[plate].windows or {},
         extras = LSLegacy.AP.Active[plate].extras or {},
         tyreData = LSLegacy.AP.Active[plate].tyreData or {},
-        doorsBroken = LSLegacy.AP.Active[plate].doorsBroken or {}
+        doorsBroken = LSLegacy.AP.Active[plate].doorsBroken or {},
+        visualDamage = LSLegacy.AP.Active[plate].visualDamage or {}
     }
 
     local tuning = {}
@@ -109,7 +110,7 @@ end
 function LSLegacy.AP.SpawnPersistentVehicle(model, pos, heading, targetPlayer)
     local modelHash = tonumber(model) or GetHashKey(model)
     local vehicle = CreateVehicle(modelHash, pos.x, pos.y, pos.z, heading or 0.0, true, false)
-    Wait(250)
+    Wait(1000)
     plate = GetVehicleNumberPlateText(vehicle)
     SetVehicleNumberPlateText(vehicle, plate)
 
@@ -125,6 +126,45 @@ function LSLegacy.AP.SpawnPersistentVehicle(model, pos, heading, targetPlayer)
     end
 end
 
+function LSLegacy.AP.DeleteVehicle(plate, entity)
+    if LSLegacy.AP.Active[plate] then
+        LSLegacy.AP.Active[plate] = nil
+    end
+
+    MySQL.Async.execute(
+        'DELETE FROM persistent_vehicles WHERE plate = @plate',
+        { ['@plate'] = plate }
+    )
+
+    if DoesEntityExist(entity) then
+        DeleteEntity(entity)
+    end
+end
+
+LSLegacy.RegisterServerEvent("ap:requestVehicleDeletion", function(netId, plate)
+    local source = source
+    local player = LSLegacy.GetPlayerFromId(source)
+    
+    if not player then return end
+
+    local entity = NetworkGetEntityFromNetworkId(netId)
+
+    if DoesEntityExist(entity) then
+        LSLegacy.AP.DeleteVehicle(plate, entity)
+        LSLegacy.SendEventToClient('notify', source, 'Succès', 'Le véhicule a été supprimé.', 'success')
+    else
+        LSLegacy.SendEventToClient('notify', source, 'Erreur', 'Impossible de trouver le véhicule à supprimer.', 'error')
+    end
+end)
+
+LSLegacy.RegisterCommand('dv', 1, function(player, args, showError, rawCommand)
+    LSLegacy.SendEventToClient('ap:findAndDeleteVehicle', player.source)
+end,
+{
+    help = "Supprime le véhicule que vous conduisez ou le plus proche (rayon de 3m).",
+    validate = false
+}, false)
+
 LSLegacy.RegisterServerEvent("ap:updateVehicleStatus", function(plate, status)
     if not plate or not status then return end
     if LSLegacy.AP.Active[plate] then
@@ -134,6 +174,7 @@ LSLegacy.RegisterServerEvent("ap:updateVehicleStatus", function(plate, status)
         LSLegacy.AP.Active[plate].extras = status.extras
         LSLegacy.AP.Active[plate].tyreData = status.tyreData
         LSLegacy.AP.Active[plate].doorsBroken = status.doorsBroken
+        LSLegacy.AP.Active[plate].visualDamage = status.visualDamage
     end
 end)
 
@@ -169,6 +210,7 @@ LSLegacy.AddEventHandler('ap:clientsetonSpawn', function(source)
             LSLegacy.AP.Active[row.plate].extras = status.extras or {}
             LSLegacy.AP.Active[row.plate].tyreData = status.tyreData or {}
             LSLegacy.AP.Active[row.plate].doorsBroken = status.doorsBroken or {}
+            LSLegacy.AP.Active[row.plate].visualDamage = status.visualDamage or {}
         end
     end)
 end)

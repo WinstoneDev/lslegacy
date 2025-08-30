@@ -8,6 +8,56 @@ LSLegacy.RegisterClientEvent("ap:vehicleSpawned", function(data)
     if DoesEntityExist(entity) then
         local status = data.status
         if status then
+                if status.visualDamage then
+                    if status.visualDamage.bumpers then
+                        if status.visualDamage.bumpers.front == 1 then
+                            SetVehicleDamage(entity, 0.0, 2.0, 0.5, 500.0, 100.0, true) -- impact avant
+                        end
+                        if status.visualDamage.bumpers.rear == 1 then
+                            SetVehicleDamage(entity, 0.0, -2.0, 0.5, 500.0, 100.0, true) -- impact arrière
+                        end
+                    end
+
+                    if status.visualDamage.doors then
+                        for doorIndex, d in pairs(status.visualDamage.doors) do
+                            local index = tonumber(doorIndex)
+                            if index and GetIsDoorValid(entity, index) then
+                                if d.damaged then
+                                    SetVehicleDoorBroken(entity, index, true)
+                                elseif d.angle and d.angle > 0.1 then
+                                    SetVehicleDoorOpen(entity, index, false, true)
+                                else
+                                    SetVehicleDoorShut(entity, index, false)
+                                end
+                            end
+                        end
+                    end
+
+                    if status.visualDamage and status.visualDamage.deformation then
+                        for _, deform in pairs(status.visualDamage.deformation) do
+                            if deform and deform.damage then
+                                local dmg = deform.damage * 1000.0
+                                SetVehicleDamage(entity, deform.x, deform.y, deform.z, dmg, 100.0, true)
+                            end
+                        end
+                    end
+                end
+            if data.extras then
+                for i = 0, 20 do
+                    if DoesExtraExist(entity, i) then
+                        LSLegacy.SetVehicleExtra_PreserveDamage(entity, i, false)
+                    end
+                end
+                for k, v in pairs(data.extras) do
+                    if DoesExtraExist(entity, v.id) then
+                        if v.state then
+                            LSLegacy.SetVehicleExtra_PreserveDamage(entity, v.id, true)
+                        else
+                            LSLegacy.SetVehicleExtra_PreserveDamage(entity, v.id, false)
+                        end
+                    end
+                end
+            end
             for k, v in pairs(status.windows) do
                 if v ~= nil then
                     if v.broken then
@@ -21,8 +71,9 @@ LSLegacy.RegisterClientEvent("ap:vehicleSpawned", function(data)
             end
             if status.doorsBroken then
                 for doorIndex, isBroken in pairs(status.doorsBroken) do
-                    if isBroken then
-                        SetVehicleDoorBroken(entity, tonumber(doorIndex), true)
+                    local index = tonumber(doorIndex)
+                    if index and isBroken and GetIsDoorValid(entity, index) then
+                        SetVehicleDoorBroken(entity, index, true)
                     end
                 end
             end
@@ -48,22 +99,6 @@ LSLegacy.RegisterClientEvent("ap:vehicleSpawned", function(data)
                         SetTyreHealth(entity, id, wheelData.health)
                         SetTyreWearMultiplier(entity, id, wheelData.wear)
                     end
-                end
-            end
-        end
-        if data.extras then
-            for i = 0, 20 do
-                if DoesExtraExist(entity, i) then
-                    SetVehicleExtra(entity, i, 1)
-                end
-            end
-            for k, v in pairs(data.extras) do
-                if DoesExtraExist(entity, v.id) then
-                   if v.state then
-                       SetVehicleExtra(entity, v.id, 0)
-                   else
-                       SetVehicleExtra(entity, v.id, 1)
-                   end
                 end
             end
         end
@@ -93,6 +128,36 @@ LSLegacy.RegisterClientEvent("ap:vehicleSpawned", function(data)
     end
 end)
 
+LSLegacy.RegisterClientEvent("ap:findAndDeleteVehicle", function()
+    local ped = PlayerPedId()
+    local vehicleToDelete = nil
+
+    if IsPedInAnyVehicle(ped, false) then
+        vehicleToDelete = GetVehiclePedIsIn(ped, false)
+    else
+        local coords = GetEntityCoords(ped)
+        local closestVehicle = GetClosestVehicle(coords.x, coords.y, coords.z, 3.0, 0, 70)
+        
+        if closestVehicle ~= 0 and DoesEntityExist(closestVehicle) then
+            vehicleToDelete = closestVehicle
+        end
+    end
+
+    if vehicleToDelete then
+        local netId = VehToNet(vehicleToDelete)
+        local plate = GetVehicleNumberPlateText(vehicleToDelete)
+
+        if NetworkDoesEntityExistWithNetworkId(netId) then
+            LSLegacy.SendEventToServer("ap:requestVehicleDeletion", netId, plate)
+        else
+            DeleteEntity(vehicleToDelete)
+            LSLegacy.SendEventToServer("ap:requestVehicleDeletion", 0, plate)
+        end
+    else
+        LSLegacy.ShowNotification('Erreur', 'Aucun véhicule trouvé à proximité.', 'error')
+    end
+end)
+
 CreateThread(function()
     while true do
         local ped = PlayerPedId()
@@ -107,28 +172,6 @@ CreateThread(function()
         Wait(Config.AP.UpdateIntervalMs)
     end
 end)
-
-RegisterCommand("clearvehicles", function()
-    local ped = PlayerPedId()
-    local coords = GetEntityCoords(ped)
-    local radius = 500.0
-
-    local vehicles = GetGamePool("CVehicle")
-    local deletedCount = 0
-
-    for _, veh in ipairs(vehicles) do
-        if DoesEntityExist(veh) then
-            local vehCoords = GetEntityCoords(veh)
-            if #(coords - vehCoords) <= radius then
-                DeleteEntity(veh)
-                deletedCount = deletedCount + 1
-            end
-        end
-    end
-
-    print("[ClearVehicles] Véhicules supprimés :", deletedCount)
-end, false)
-
 
 local function updateVehicleStatus(veh)
     if veh == 0 then return end
@@ -184,6 +227,43 @@ local function updateVehicleStatus(veh)
         end
     end
 
+    local bumpers = {
+        front = IsVehicleBumperBrokenOff(veh, true),
+        rear = IsVehicleBumperBrokenOff(veh, false)
+    }
+
+    local doors = {}
+    for i = 0, 7 do
+        if GetIsDoorValid(veh, i) then
+            doors[i] = {
+                damaged = IsVehicleDoorDamaged(veh, i),
+                angle = GetVehicleDoorAngleRatio(veh, i)
+            }
+        end
+    end
+
+    local offsets = {
+        {x=0.0, y=2.0, z=0.5},   -- avant
+        {x=0.0, y=-2.0, z=0.5},  -- arrière
+        {x=0.0, y=0.0, z=1.2},   -- toit
+        {x=-1.0, y=0.0, z=0.5},  -- gauche
+        {x=1.0, y=0.0, z=0.5}    -- droite
+    }
+
+    local deformation = {}
+    for _, offset in ipairs(offsets) do
+        local deform = GetVehicleDeformationAtPos(veh, vector3(offset.x, offset.y, offset.z))
+        local intensity = #(deform)*5
+        if intensity > 0.01 then 
+            table.insert(deformation, {
+                x = offset.x,
+                y = offset.y,
+                z = offset.z,
+                damage = intensity
+            })
+        end
+    end
+
     local status = {
         fuel = GetVehicleFuelLevel(veh),
         tuning = {
@@ -201,6 +281,13 @@ local function updateVehicleStatus(veh)
         doorsBroken = doorsBroken
     }
 
+
+    status.visualDamage = {
+        bumpers = bumpers,
+        doors = doors,
+        deformation = deformation
+    }
+
     LSLegacy.SendEventToServer("ap:updateVehicleStatus", plate, status)
 end
 
@@ -212,5 +299,48 @@ CreateThread(function()
             updateVehicleStatus(veh)
         end
         Wait(Config.AP.UpdateIntervalMs) 
+    end
+end)
+
+Citizen.CreateThread(function()
+    while true do
+        local waitTime = 5000
+        local playerPed = PlayerPedId()
+        local vehicle = GetVehiclePedIsIn(playerPed, false)
+
+        if vehicle ~= 0 and GetPedInVehicleSeat(vehicle, -1) == playerPed then
+
+            if GetIsVehicleEngineRunning(vehicle) and GetEntitySpeed(vehicle) > 0.5 then
+                local vehicleClass = GetVehicleClass(vehicle)
+                local baseLossRate = Config.FuelConsumption.LossRateByClass[vehicleClass]
+
+                local maxGear = GetVehicleHighGear(vehicle)
+                local isElectric = (maxGear <= 1)
+
+                if baseLossRate then
+                    local currentSpeedKmh = GetEntitySpeed(vehicle) * 3.6
+                    local speedMultiplier = math.max(0.5, currentSpeedKmh / 150.0)
+                    if isElectric then
+                        speedMultiplier = speedMultiplier * 0.8
+                    end
+                    local totalLoss = baseLossRate * speedMultiplier
+                    local currentFuel = GetVehicleFuelLevel(vehicle)
+                    local newFuel = currentFuel - totalLoss
+
+                    if newFuel < 0 then
+                        newFuel = 0
+                    end
+
+                    SetVehicleFuelLevel(vehicle, newFuel)
+
+                    if newFuel <= 0 and GetIsVehicleEngineRunning(vehicle) then
+                        SetVehicleEngineOn(vehicle, false, true, true)
+                        LSLegacy.ShowNotification(nil, "Votre véhicule n'a plus d'essence !", 'error')
+                    end
+                end
+            end
+        end
+        
+        Wait(waitTime)
     end
 end)
