@@ -29,23 +29,25 @@ Citizen.CreateThread(function()
                     function(id)
                         if id then
                             MySQL.Async.execute(
-                                'UPDATE datastore SET inventory = @inventory, money = @money, dirty = @dirty WHERE id = @id',
+                                'UPDATE datastore SET inventory = @inventory, money = @money, dirty = @dirty, weight = @weight WHERE id = @id',
                                 {
                                     ['@id'] = id,
                                     ['@inventory'] = json.encode(datastore.inventory),
                                     ['@money'] = datastore.money or 0,
-                                    ['@dirty'] = datastore.dirty or 0
+                                    ['@dirty'] = datastore.dirty or 0,
+                                    ['@weight'] = datastore.maxWeight or 0
                                 }
                             )
                         else
                             MySQL.Async.execute(
-                                'INSERT INTO datastore (type, name, inventory, money, dirty) VALUES (@type, @name, @inventory, @money, @dirty)',
+                                'INSERT INTO datastore (type, name, inventory, money, dirty, weight) VALUES (@type, @name, @inventory, @money, @dirty, @weight)',
                                 {
                                     ['@name'] = name,
                                     ['@type'] = datastore.type,
                                     ['@inventory'] = json.encode(datastore.inventory),
                                     ['@money'] = datastore.money or 0,
-                                    ['@dirty'] = datastore.dirty or 0
+                                    ['@dirty'] = datastore.dirty or 0,
+                                    ['@weight'] = datastore.maxWeight or 0
                                 }
                             )
                         end
@@ -100,7 +102,7 @@ LSLegacy.DataStore.CanStoreItem = function(datastore, item, quantity)
     if not LSLegacy.Inventory.DoesItemExists(item) then return end
     local weight = LSLegacy.DataStore.GetInventoryWeight(datastore.inventory)
     local itemWeight = Config.Items[item].weight * quantity
-    if math.floor(weight + itemWeight) <= Config.Informations["MaxWeight"] then
+    if math.floor(weight + itemWeight) <= datastore.maxWeight then
         return true
     else
         return false

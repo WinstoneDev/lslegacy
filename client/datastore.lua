@@ -19,7 +19,8 @@ LSLegacy.DataStore.RegisterTrunk = function(vehicle)
         name = 'trunk_' .. plate,
         type = 'trunk',
         money = 0,
-        dirty = 0
+        dirty = 0,
+        maxWeight = Config.VehicleTrunks[GetVehicleClass(vehicle)]
     }
     LSLegacy.SendEventToServer('RegisterDataStore', data.name, data)
 end
@@ -32,7 +33,8 @@ LSLegacy.DataStore.RegisterBAG = function(vehicle)
         name = 'bag_' .. plate,
         type = 'trunk',
         money = 0,
-        dirty = 0
+        dirty = 0,
+        maxWeight = Config.VehicleGloveboxes[GetVehicleClass(vehicle)]
     }
     LSLegacy.SendEventToServer('RegisterDataStore', data.name, data)
 end
