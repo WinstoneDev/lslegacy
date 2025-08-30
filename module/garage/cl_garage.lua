@@ -123,16 +123,16 @@ garagemenu.openMainMenu = function()
                         onSelected = function()
                             local closestPlayer = GetNearbyPlayer(3.0)
                             if closestPlayer then
-                                ESX.TriggerServerCallback('garageCreator:getPlayerName', function(playerName)
+                                LSLegacy.TriggerServerCallback('garageCreator:getPlayerName', function(playerName)
                                     if playerName then
                                         garagemenu.playerNameSelected = playerName
                                     else
-                                        ESX.ShowNotification(Translate('error'))
-                                    end 
+                                        LSLegacy.ShowNotification('Garage Creator', "Erreur lors de la récupération du nom du joueur.", 'error')
+                                    end
                                 end, GetPlayerServerId(closestPlayer))  
                             else
                                 LSLegacy.ShowNotification('Garage Creator', 'Aucun joueur à proximité !', 'error')
-                                ESX.TriggerServerCallback('garageCreator:getPlayerName', function(playerName)
+                                LSLegacy.TriggerServerCallback('garageCreator:getPlayerName', function(playerName)
                                     if playerName then
                                         garagemenu.playerNameSelected = playerName
                                     else
@@ -144,10 +144,10 @@ garagemenu.openMainMenu = function()
                     })
                 end
                 if garagemenu.ownertypeIndex == 3 then
-                    RageUI.Button(string.format(Translate('choose_job'), garagemenu.jobSelected), nil, {RightLabel = "→"}, true, {})
+                    RageUI.Button(string.format("Job", garagemenu.jobSelected), nil, {RightLabel = "→"}, true, {})
                 end
                 if garagemenu.ownertypeIndex == 4 then
-                    RageUI.Button(string.format(Translate('choose_job2'), garagemenu.factionSelected), nil, {RightLabel = "→"}, true, {})
+                    RageUI.Button(string.format("Faction", garagemenu.factionSelected), nil, {RightLabel = "→"}, true, {})
                 end
             end)
 
@@ -155,3 +155,7 @@ garagemenu.openMainMenu = function()
         end
     end)
 end
+
+LSLegacy.RegisterClientEvent("garageCreator:openMenu", function()
+    garagemenu.openMainMenu()
+end)
