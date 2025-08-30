@@ -1,6 +1,10 @@
 fx_version 'adamant'
 game 'gta5'
 
+author 'Bastien MAGAN'
+description 'Framework privé pour le serveur LSLegacy'
+version '1.0.0'
+
 files {
     'inventory/html/*.html',
     'inventory/html/js/*.js',
@@ -23,6 +27,7 @@ client_scripts {
     'dependencies/RageUI/menu/items/*.lua',
     'dependencies/RageUI/menu/panels/*.lua',
     'dependencies/RageUI/menu/windows/*.lua',
+    'client/callbacks.lua',
     'client/datastore.lua',
     'client/anticheat.lua',
     'client/zones.lua',
@@ -45,7 +50,9 @@ client_scripts {
     'module/clothshop/cl_clothshop.lua',
     'module/needs/cl_needs.lua',
     'module/persistent_vehicles/cl_persistent.lua',
-    'module/persistent_vehicles/cl_extramenu.lua'
+    'module/persistent_vehicles/cl_extramenu.lua',
+    'module/garage/cl_garage.lua',
+    'client/cayo.lua'
 }
 
 shared_scripts {
@@ -56,6 +63,7 @@ server_scripts {
     '@mysql-async/lib/MySQL.lua',
     'shared/sv_config.lua',
     'server/function.lua',
+    'server/callbacks.lua',
     'server/commands.lua',
     'server/zones.lua',
     'server/datastore.lua',
@@ -69,6 +77,7 @@ server_scripts {
     'module/clothshop/sv_clothshop.lua',
     'module/needs/sv_needs.lua',
     'module/persistent_vehicles/sv_persistent.lua',
+    'module/garage/sv_garage.lua',
     'server/deferallsCards.lua',
     'server/anticheat.lua'
 }
