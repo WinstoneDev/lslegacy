@@ -19,16 +19,92 @@ Config.DiscordStatus = {
 }
 
 Config.AP = {}
-
 Config.AP.Enable = true
 Config.AP.UpdateIntervalMs = 5000
 Config.AP.Cleanup = false
-Config.AP.CleanupDays = 31 
+Config.AP.CleanupDays = 31
 Config.AP.SendCleanupToGarage = true
 Config.AP.OnlyOwnedVehicles = false
 Config.AP.Blacklist = {
     Models = { `cargoplane` },
     Plates = { "ADMIN", "TEST" }
+}
+
+Config.FuelConsumption = {
+    LossRateByClass = {
+        [0] = 0.04, -- Compacts
+        [1] = 0.05, -- Sedans
+        [2] = 0.07, -- SUVs
+        [3] = 0.06, -- Coupes
+        [4] = 0.09, -- Muscle
+        [5] = 0.08, -- Sports Classics
+        [6] = 0.08, -- Sports
+        [7] = 0.11, -- Super
+        [8] = 0.03, -- Motorcycles
+        [9] = 0.10, -- Off-road
+        [10] = 0.12,-- Industrial
+        [11] = 0.09,-- Utility
+        [12] = 0.07,-- Vans
+        [13] = 0,   -- Cycles
+        [14] = 0.08,-- Boats
+        [15] = 0.10,-- Helicopters
+        [16] = 0.13,-- Planes
+        [17] = 0.06,-- Service
+        [18] = 0.08,-- Emergency
+        [19] = 0.11,-- Military
+        [20] = 0.12,-- Commercial
+        [21] = 0    -- Trains
+    }
+}
+
+Config.VehicleTrunks = {
+    [0] = 75,   -- Compacts
+    [1] = 100,  -- Sedans
+    [2] = 150,  -- SUVs
+    [3] = 80,   -- Coupes
+    [4] = 90,   -- Muscle
+    [5] = 85,   -- Sports Classics
+    [6] = 65,   -- Sports
+    [7] = 50,   -- Super
+    [8] = 15,   -- Motorcycles
+    [9] = 200,  -- Off-road
+    [10] = 500, -- Industrial
+    [11] = 250, -- Utility
+    [12] = 350, -- Vans
+    [13] = 0,   -- Cycles
+    [14] = 100, -- Boats
+    [15] = 75,  -- Helicopters
+    [16] = 200, -- Planes
+    [17] = 180, -- Service
+    [18] = 150, -- Emergency
+    [19] = 300, -- Military
+    [20] = 400, -- Commercial
+    [21] = 0    -- Trains
+}
+
+Config.VehicleGloveboxes = {
+    [0] = 10,   -- Compacts
+    [1] = 15,   -- Sedans
+    [2] = 20,   -- SUVs
+    [3] = 10,   -- Coupes
+    [4] = 10,   -- Muscle
+    [5] = 10,   -- Sports Classics
+    [6] = 5,    -- Sports
+    [7] = 5,    -- Super
+    [8] = 2,    -- Motorcycles
+    [9] = 15,   -- Off-road
+    [10] = 25,  -- Industrial
+    [11] = 25,  -- Utility
+    [12] = 20,  -- Vans
+    [13] = 0,   -- Cycles
+    [14] = 10,  -- Boats
+    [15] = 10,  -- Helicopters
+    [16] = 15,  -- Planes
+    [17] = 20,  -- Service
+    [18] = 20,  -- Emergency
+    [19] = 20,  -- Military
+    [20] = 25,  -- Commercial
+    [21] = 0    -- Trains
 }
 
 Config.Development = {
@@ -67,14 +143,19 @@ Config.Items = {
     ['9mm_ammo'] = {label = "9mm", weight = 0.001, props = "prop_ld_ammo_pack_01"},
 
     ['tshirt'] = {label = "Haut", weight = 0.2, props = "prop_ld_tshirt_01"},
+    ['torso'] = {label = "Haut", weight = 0.2, props = "prop_ld_tshirt_01"},
+    ['arms'] = {label = "Gants/Bras", weight = 0.5, props = "prop_boxing_glove_01"},
     ['pants'] = {label = "Pantalon", weight = 0.3, props = "prop_cs_box_clothes"},
     ['shoes'] = {label = "Chaussure", weight = 0.8, props = "prop_ld_shoe_01"},
     ['helmet'] = {label = "Chapeau", weight = 0.1, props = "prop_cs_box_clothes"},
     ['glasses'] = {label = "Lunettes", weight = 0.1, props = "prop_cs_sol_glasses"},
     ['chain'] = {label = "Chaine", weight = 0.2, props = "prop_cs_box_clothes"},
     ['bags'] = {label = "Sacs", weight = 0.5, props = "prop_cs_box_clothes"},
-    ['helmet'] = {label = "Chapeau", weight = 0.1, props = "prop_cs_box_clothes"},
-    ['ears'] = {label = "Oreillette", weight = 0.1, props = "prop_cs_box_clothes"}
+    ['ears'] = {label = "Oreillette", weight = 0.1, props = "prop_cs_box_clothes"},
+    ['watches'] = {label = "Montre", weight = 0.1, props = "p_watch_04"},
+    ['bracelet'] = {label = "Bracelet", weight = 0.1, props = "p_watch_04"},
+    ['mask'] = {label = "Masque", weight = 0.1, props = "p_mask_01"},
+    ['decals'] = {label = "Badge", weight = 0.1, props = "prop_cs_box_clothes"}
 }
 
 Config.AmmoForWeapon = {
@@ -83,10 +164,10 @@ Config.AmmoForWeapon = {
 }
 
 Config.NeedsItems = {
-    ['food_bread'] = { hunger = 40, thirst = 0, stamina = 0, anim = 'eating', portion = 10 },
-    ['food_burger'] = { hunger = 70, thirst = 0, stamina = 0, anim = 'eating', portion = 20 },
-    ['food_water']  = { hunger = 0, thirst = 100, stamina = 0, anim = 'drinking', portion = 15 },
-    ['food_sprunk'] = { hunger = 0, thirst = 80, stamina = 15, anim = 'drinking', portion = 15 }
+    ['food_bread'] = { hunger = 70, thirst = 0, stamina = 0, anim = 'eating', portion = 10 },
+    ['food_burger'] = { hunger = 80, thirst = 0, stamina = 0, anim = 'eating', portion = 20 },
+    ['food_water']  = { hunger = 0, thirst = 80, stamina = 0, anim = 'drinking', portion = 15 },
+    ['food_sprunk'] = { hunger = 0, thirst = 60, stamina = 50, anim = 'drinking', portion = 15 }
 }
 
 Config.InsertItems = {
@@ -101,15 +182,19 @@ Config.InsertItems = {
     ['food_sprunk'] = true,
 
     ['tshirt'] = true,
+    ['torso'] = true,
+    ['arms'] = true,
     ['pants'] = true,
     ['shoes'] = true,
     ['helmet'] = true,
     ['glasses'] = true,
     ['chain'] = true,
     ['bags'] = true,
-    ['helmet'] = true,
-    ['glasses'] = true,
-    ['ears'] = true
+    ['ears'] = true,
+    ['watches'] = true,
+    ['bracelet'] = true,
+    ['mask'] = true,
+    ['decals'] = true
 }
 
 Config.ResourcesClientEvent = {
@@ -123,13 +208,16 @@ Config.ResourcesClientEvent = {
     ['webpack'] = true,
     ['yarn'] = true,
     ['brutal_notify'] = true,
-    ['speedometer'] = true
+    ['speedometer'] = true,
+    ['ContextMenu'] = true,
+    ['map'] = true,
+    ['gfx-autopilot'] = true
 }
 
 Config.PickupModelCollision = {
-	["p_ld_stinger_s"] = true,
-	["prop_barrier_work05"] = true,
-	["prop_mp_cone_02"] = true
+    ["p_ld_stinger_s"] = true,
+    ["prop_barrier_work05"] = true,
+    ["prop_mp_cone_02"] = true
 }
 
 Config.zoneClothShop = {
@@ -182,11 +270,11 @@ Config.Status = {
     UpdateInterval = 60,
 
     Hunger = {
-        Loss = 0.83 
+        Loss = 0.83
     },
 
     Thirst = {
-        Loss = 1.11 
+        Loss = 1.11
     },
 
     Stamina = {
