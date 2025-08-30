@@ -250,3 +250,39 @@ LSLegacy.RegroupNumbers = function(number)
     end
     return result
 end
+
+LSLegacy.SetVehicleExtra_PreserveDamage = function(vehicle, extraId, state)
+    if not DoesEntityExist(vehicle) then return end
+    local bodyHealth = GetVehicleBodyHealth(vehicle)
+    local engineHealth = GetVehicleEngineHealth(vehicle)
+    local fuelLevel = GetVehicleFuelLevel(vehicle)
+
+    local brokenWindows = {}
+    for i = 0, 8 do 
+        if not IsVehicleWindowIntact(vehicle, i) then
+            brokenWindows[i] = true
+        end
+    end
+
+    local burstTires = {}
+    for i = 0, 5 do
+        if IsVehicleTyreBurst(vehicle, i, false) then
+            burstTires[i] = true
+        end
+    end
+
+    local extraState = state and 0 or 1
+    SetVehicleExtra(vehicle, extraId, extraState)
+    Citizen.Wait(0)
+    SetVehicleBodyHealth(vehicle, bodyHealth)
+    SetVehicleEngineHealth(vehicle, engineHealth)
+    SetVehicleFuelLevel(vehicle, fuelLevel)
+
+    for windowIndex, _ in pairs(brokenWindows) do
+        SmashVehicleWindow(vehicle, windowIndex)
+    end
+
+    for tireIndex, _ in pairs(burstTires) do
+        SetVehicleTyreBurst(vehicle, tireIndex, true, 1000.0)
+    end
+end
