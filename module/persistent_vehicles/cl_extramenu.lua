@@ -47,11 +47,11 @@ function ExtrasMenu:OpenMenu()
                                 onSelected = function()
                                     local newState = nil
                                     if isExtraOn == 1 then
-                                        newState = 1
+                                        newState = false
                                     elseif isExtraOn == false then
-                                        newState = 0
+                                        newState = true
                                     end
-                                    SetVehicleExtra(ExtrasMenu.currentVeh, i, newState)
+                                    LSLegacy.SetVehicleExtra_PreserveDamage(ExtrasMenu.currentVeh, i, newState)
                                 end
                             })
                         end
