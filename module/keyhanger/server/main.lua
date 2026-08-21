@@ -1,9 +1,4 @@
--- =====================================================================
---  UTILITY KEYHANGER — Serveur
---  Chaque porte-clés est adossé à un DataStore (comme un coffre).
---  Les clés sont déposées/récupérées via l'inventaire ; les props
---  visibles sont synchronisés à partir du contenu du DataStore.
--- =====================================================================
+-- Chaque porte-clés est adossé à un DataStore (comme un coffre) ; les clés sont déposées/récupérées via l'inventaire, les props visibles sont synchronisés à partir de son contenu.
 
 local C = KeyHanger.Config
 
@@ -19,10 +14,6 @@ LSLegacy.RateLimit['keyhanger:rename']        = 10
 LSLegacy.RateLimit['keyhanger:share']         = 15
 LSLegacy.RateLimit['keyhanger:unshare']       = 15
 LSLegacy.RateLimit['keyhanger:createKey']     = 15
-
--- ---------------------------------------------------------------------
---  HELPERS
--- ---------------------------------------------------------------------
 
 local function dbg(...) if C.Debug then print("[keyhanger]", ...) end end
 
@@ -69,10 +60,6 @@ local function canManage(player, board)
     end
     return board.ownerId == player.identifier
 end
-
--- ---------------------------------------------------------------------
---  DATASTORE DU SUPPORT
--- ---------------------------------------------------------------------
 
 local function ensureDatastore(board)
     local name = dsName(board.id)
@@ -138,10 +125,6 @@ local function serializeBoard(board)
     }
 end
 
--- ---------------------------------------------------------------------
---  PERSISTANCE BDD (métadonnées du support)
--- ---------------------------------------------------------------------
-
 local function saveBoardDB(board)
     MySQL.update.await([[
         UPDATE keyhanger_boards
@@ -152,10 +135,6 @@ local function saveBoardDB(board)
         json.encode(board.coords), board.heading, json.encode(board.access or {}), board.id,
     })
 end
-
--- ---------------------------------------------------------------------
---  SYNCHRONISATION CLIENTS
--- ---------------------------------------------------------------------
 
 local function syncBoardToAll(board)
     LSLegacy.SendEventToClient('keyhanger:sync:board', -1, serializeBoard(board))
@@ -170,10 +149,6 @@ local function syncAllTo(src)
     for id, board in pairs(KeyHanger.Boards) do list[id] = serializeBoard(board) end
     LSLegacy.SendEventToClient('keyhanger:sync:all', src, list)
 end
-
--- ---------------------------------------------------------------------
---  GARDE D'ACCÈS DATASTORE (gate les dépôts/retraits côté serveur)
--- ---------------------------------------------------------------------
 
 local prevGuard = LSLegacy.DataStoreGuard
 LSLegacy.DataStoreGuard = function(src, name, action, item)
@@ -202,10 +177,6 @@ AddEventHandler('lslegacy:containerUpdated', function(name)
         syncBoardToAll(board)
     end
 end)
-
--- ---------------------------------------------------------------------
---  INITIALISATION : table + chargement des supports
--- ---------------------------------------------------------------------
 
 MySQL.ready(function()
     MySQL.query.await([[
@@ -264,10 +235,6 @@ CreateThread(function()
     end
 end)
 
--- ---------------------------------------------------------------------
---  EVENTS CLIENT -> SERVEUR
--- ---------------------------------------------------------------------
-
 LSLegacy.RegisterServerEvent('keyhanger:requestBoards', function()
     local src = source
     if not KeyHanger.Loaded then
@@ -294,7 +261,6 @@ LSLegacy.RegisterServerEvent('keyhanger:open', function(boardId)
     LSLegacy.SendEventToClient('keyhanger:openContainer', src, dsName(boardId), board.label, C.Storage.maxWeight)
 end)
 
--- Création d'un support (placement admin)
 LSLegacy.RegisterServerEvent('keyhanger:create', function(data)
     local src = source
     local player = LSLegacy.GetPlayerFromId(src)
@@ -362,7 +328,6 @@ LSLegacy.RegisterServerEvent('keyhanger:remove', function(boardId)
     LSLegacy.SendEventToClient('notify', src, KeyHanger.L('title'), KeyHanger.L('manage_remove') .. " ✓", 'success')
 end)
 
--- Renommer
 LSLegacy.RegisterServerEvent('keyhanger:rename', function(boardId, newLabel)
     local src = source
     local player = LSLegacy.GetPlayerFromId(src)
@@ -378,7 +343,6 @@ LSLegacy.RegisterServerEvent('keyhanger:rename', function(boardId, newLabel)
     syncBoardToAll(board)
 end)
 
--- Partage
 LSLegacy.RegisterServerEvent('keyhanger:share', function(boardId, targetSrc)
     local src = source
     local player = LSLegacy.GetPlayerFromId(src)
@@ -411,7 +375,6 @@ LSLegacy.RegisterServerEvent('keyhanger:share', function(boardId, targetSrc)
     LSLegacy.SendEventToClient('notify', target.source, KeyHanger.L('title'), KeyHanger.L('share_added', board.label), 'info')
 end)
 
--- Retirer un partage
 LSLegacy.RegisterServerEvent('keyhanger:unshare', function(boardId, identifier)
     local src = source
     local player = LSLegacy.GetPlayerFromId(src)
@@ -428,10 +391,6 @@ LSLegacy.RegisterServerEvent('keyhanger:unshare', function(boardId, identifier)
         LSLegacy.SendEventToClient('notify', src, KeyHanger.L('title'), KeyHanger.L('share_removed', name), 'success')
     end
 end)
-
--- ---------------------------------------------------------------------
---  ITEM : CLÉ DE VÉHICULE
--- ---------------------------------------------------------------------
 
 LSLegacy.RegisterUsableItem(C.Item, function(data)
     local src = source
@@ -485,10 +444,6 @@ exports('createBoard', function(data)
     syncBoardToAll(b)
     return insertId
 end)
-
--- ---------------------------------------------------------------------
---  COMMANDES
--- ---------------------------------------------------------------------
 
 LSLegacy.RegisterCommand(C.Placement.command, C.Placement.group, function(player)
     LSLegacy.SendEventToClient('keyhanger:placement:start', player.source)

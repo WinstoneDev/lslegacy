@@ -11,6 +11,8 @@ Framework FiveM standalone (aucune dépendance à ESX ou QBCore) pour serveur de
 - [Crédits](#crédits)
 - [Licence](#licence)
 
+Pour modifier ou étendre le framework, voir [DEVELOPMENT.md](DEVELOPMENT.md) (architecture, API `LSLegacy.*`, comment ajouter un module).
+
 ## Installation
 
 ### Prérequis
@@ -28,7 +30,7 @@ Framework FiveM standalone (aucune dépendance à ESX ou QBCore) pour serveur de
 ### Étapes
 
 1. Placez le dossier `lslegacy` dans `resources/`.
-2. Importez `winframe_database.sql` dans votre base de données.
+2. La plupart des tables sont créées automatiquement au premier démarrage (`CREATE TABLE IF NOT EXISTS`). `winframe_database.sql` (à la racine) sert de référence pour un import manuel des tables du socle ; certains modules ont leur propre fichier de référence (`module/mdt/sql/mdt.sql`, `module/samu/sql/medical.sql`, `module/atelier/sql/atelier.sql`, `module/emotes/sql/emotes.sql`, `module/keyhanger/keyhanger.sql`, `module/multichar/sql/*.sql`) — un import manuel n'est utile que si vous préférez ne pas laisser le premier démarrage créer les tables lui-même.
 3. Dans `server.cfg` :
    ```
    ensure ox_lib

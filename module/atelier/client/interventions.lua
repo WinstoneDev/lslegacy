@@ -1,8 +1,4 @@
---  MODULE ATELIER — Interventions (client)
---  Minijeu de réparation générique + déclenchement des réparations
---  mécaniques / pneus (ox_target véhicule) et carrosserie (pièce portée
---  en main, touche E — cf. client/inventory.lua qui capte la touche et
---  émet l'event local 'atelier:requestInstallPart').
+-- Carrosserie : pièce portée en main, touche E — cf. client/inventory.lua qui émet 'atelier:requestInstallPart'.
 
 local cooldowns = {}
 
@@ -105,9 +101,7 @@ LSLegacy.RegisterClientEvent('atelier:repairResult', function(data)
     Notify(data.success and Lang.Atelier.repair_done or Lang.Atelier.repair_failed, data.success and 'success' or 'error')
 end)
 
--- Pose d'une pièce portée en main (carrosserie)
--- Déclenché par client/inventory.lua sur la touche E, quand une pièce
--- carried est en main et un véhicule est à portée.
+-- Pose d'une pièce portée en main (carrosserie), déclenché par client/inventory.lua sur la touche E.
 
 local MULTI_TARGET_PARTS = {
     piece_portiere = { { id = 'portiere_avg', label = 'Avant gauche' }, { id = 'portiere_avd', label = 'Avant droite' },

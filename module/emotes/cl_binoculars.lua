@@ -1,8 +1,4 @@
--- =====================================================================
---  JUMELLES — touche J
---  Repris de rpemotes-reborn (client/Binoculars.lua), simplifié (sans le
---  scaleform d'instructions ni la vision nocturne/thermique) et traduit.
--- =====================================================================
+-- Repris de rpemotes-reborn (client/Binoculars.lua), simplifié (sans vision nocturne/thermique) et traduit.
 
 local usingBinoculars = false
 local fov = 40.0

@@ -1,8 +1,4 @@
--- ═══════════════════════════════════════════════════════════════════
---  MODULE LTD — Caisse / Réassort / Alarme / Vol (client)
---  Ciblage : ox_target (ALT) sur les zones caisse/réserve/rayons
---  Chaque magasin (storeId) a son propre stock, totalement indépendant.
--- ═══════════════════════════════════════════════════════════════════
+-- Caisse / Réassort / Alarme / Vol (client). Chaque magasin (storeId) a son propre stock, totalement indépendant.
 
 local cooldowns = {}
 
@@ -35,10 +31,6 @@ local function GetClosestPlayerServerId(coords, range)
     if not closest then return nil end
     return GetPlayerServerId(closest)
 end
-
--- ══════════════════════════════════════════════════════════════════
---  CAISSE — VENTE
--- ══════════════════════════════════════════════════════════════════
 
 local function OpenRegister(store)
     if not LTD.IsOnDuty() or LTD.GetStoreId() ~= store.id then
@@ -93,10 +85,6 @@ LSLegacy.RegisterClientEvent('ltd:purchaseNotice', function(data)
     if not data then return end
     Notify(string.format(Lang.LTD.sold_to_you, data.label, data.price), 'info')
 end)
-
--- ══════════════════════════════════════════════════════════════════
---  RÉSERVE — RÉASSORT DES RAYONS + REMPLISSAGE MANUEL
--- ══════════════════════════════════════════════════════════════════
 
 local function OpenStorage(store)
     if not LTD.IsOnDuty() or LTD.GetStoreId() ~= store.id then
@@ -172,10 +160,6 @@ LSLegacy.RegisterClientEvent('ltd:fillResult', function(data)
     end
 end)
 
--- ══════════════════════════════════════════════════════════════════
---  ALARME MANUELLE (employé)
--- ══════════════════════════════════════════════════════════════════
-
 RegisterCommand('ltd_alarm', function()
     if not LTD.IsOnDuty() then return end
     if HasCooldown('alarm') then Notify(Lang.LTD.action_cooldown, 'error') return end
@@ -192,11 +176,7 @@ LSLegacy.RegisterClientEvent('ltd:alarmReceived', function(data)
     SetNewWaypoint(data.coords.x, data.coords.y)
 end)
 
--- ══════════════════════════════════════════════════════════════════
---  VOL À L'ÉTALAGE (accessible à tous, sauf le personnel en service
---  DE CE MAGASIN — un employé du magasin A peut voler au magasin B)
--- ══════════════════════════════════════════════════════════════════
-
+-- Vol à l'étalage accessible à tous, sauf le personnel en service de ce magasin (un employé du magasin A peut voler au magasin B).
 local function StealItem(store)
     if LTD.IsOnDuty() and LTD.GetStoreId() == store.id then return end
     if HasCooldown('theft') then Notify(Lang.LTD.action_cooldown, 'error') return end
@@ -216,10 +196,6 @@ end)
 LSLegacy.RegisterClientEvent('ltd:theftAlertEmployee', function()
     Notify(Lang.LTD.theft_alert_employee, 'error')
 end)
-
--- ══════════════════════════════════════════════════════════════════
---  CIBLAGE OX_TARGET — Caisse / Réserve / Rayons (par magasin)
--- ══════════════════════════════════════════════════════════════════
 
 for _, store in ipairs(Config.LTD.Stores) do
     exports.ox_target:addBoxZone({

@@ -6,8 +6,6 @@ DeferralCards = {
     Input = {}
 }
 
---------------------------------------------------[[ Cards ]]--------------------------------------------------
-
 function DeferralCards.Card.Create(self, pOptions)
     if not pOptions then return end
     pOptions.type = 'AdaptiveCard'
@@ -32,8 +30,6 @@ end
         }
     })
 ]]
-
---------------------------------------------------[[ Card Elements ]]--------------------------------------------------
 
 function DeferralCards.CardElement.TextBlock(self, pOptions)
     if not pOptions then return end
@@ -159,8 +155,6 @@ end
     })
 ]]
 
---------------------------------------------------[[ Containers ]]--------------------------------------------------
-
 function DeferralCards.Container.Create(self, pOptions)
     if not pOptions then return end
     pOptions.type = 'Container'
@@ -278,8 +272,6 @@ end
     })
 ]]
 
---------------------------------------------------[[ Actions ]]--------------------------------------------------
-
 function DeferralCards.Action.OpenUrl(self, pOptions)
     if not pOptions then return end
     pOptions.type = 'Action.OpenUrl'
@@ -367,8 +359,6 @@ end
         }
     })
 ]]
-
---------------------------------------------------[[ Inputs ]]--------------------------------------------------
 
 function DeferralCards.Input.Text(self, pOptions)
     if not pOptions then return end

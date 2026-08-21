@@ -1,8 +1,4 @@
--- =====================================================================
---  MODULE SIT — Client
---  Port fidèle du fonctionnement de mnr_sitanywhere (bridge ox_target +
---  logique client), adapté aux conventions LSLegacy.
--- =====================================================================
+-- Port fidèle du fonctionnement de mnr_sitanywhere (bridge ox_target + logique client), adapté aux conventions LSLegacy.
 
 local C = Sit.Config
 
@@ -109,10 +105,7 @@ local function TrySit(entity)
     PlaySit(entity, seatIndex)
 end
 
--- ---------------------------------------------------------------------
---  CIBLAGE OX_TARGET — uniquement sur les modèles calibrés (data/models.lua)
--- ---------------------------------------------------------------------
-
+-- Ciblage ox_target uniquement sur les modèles calibrés (data/models.lua)
 local targetModels = {}
 for hash in pairs(Sit.Models) do
     targetModels[#targetModels + 1] = hash

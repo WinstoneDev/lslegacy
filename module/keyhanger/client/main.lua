@@ -1,9 +1,4 @@
--- =====================================================================
---  UTILITY KEYHANGER — Client
---  Rendu physique des supports + clés (visibles en direct), ciblage
---  ox_target (ouvrir comme un coffre / gérer), synchronisation, et
---  utilisation de la clé de véhicule (verrouillage).
--- =====================================================================
+-- Rendu physique des supports + clés, ciblage ox_target, synchronisation, et utilisation de la clé de véhicule.
 
 local C = KeyHanger.Config
 local ox_target = exports['ox_target']
@@ -12,10 +7,6 @@ KeyHanger.Boards = {}     -- [id] = board (synchronisé serveur, contient .keys 
 local spawned   = {}      -- [id] = { board = handle, keys = {handle...}, sig = string }
 
 local function dbg(...) if C.Debug then print("[keyhanger]", ...) end end
-
--- ---------------------------------------------------------------------
---  UTILITAIRES PROPS
--- ---------------------------------------------------------------------
 
 local function loadModel(model)
     local hash = type(model) == "number" and model or GetHashKey(model)
@@ -30,8 +21,7 @@ local function loadModel(model)
 end
 KeyHanger.LoadModel = loadModel
 
--- noCollision=true uniquement pour les clés décoratives. Le SUPPORT garde sa
--- collision : ox_target en a besoin (le raycast doit s'arrêter sur le prop).
+-- noCollision=true uniquement pour les clés décoratives. Le support garde sa collision, ox_target en a besoin (le raycast doit s'arrêter dessus).
 local function makeProp(model, x, y, z, heading, noCollision)
     local hash = loadModel(model)
     if not hash then return nil end
@@ -44,10 +34,6 @@ local function makeProp(model, x, y, z, heading, noCollision)
     return obj
 end
 
--- ---------------------------------------------------------------------
---  CIBLAGE (ouvrir / gérer)
--- ---------------------------------------------------------------------
-
 local function canManageLocal(board)
     local pd = LSLegacy.PlayerData
     if not pd or not board then return false end
@@ -56,9 +42,7 @@ local function canManageLocal(board)
     return board.ownerId == pd.identifier
 end
 
--- Ciblage sur l'ENTITÉ du support (le prop a sa collision → le raycast
--- d'ox_target s'arrête dessus). Une zone sphère serait inutile ici car
--- ox_target résout la cible au point d'impact du rayon.
+-- Ciblage sur l'entité du support (le prop a sa collision, le raycast s'arrête dessus) : une zone sphère serait inutile ici.
 local function addBoardTarget(id, handle)
     ox_target:addLocalEntity(handle, {
         {
@@ -85,10 +69,6 @@ local function removeBoardTarget(id, handle)
     end
 end
 
--- ---------------------------------------------------------------------
---  RENDU DES SUPPORTS + CLÉS
--- ---------------------------------------------------------------------
-
 local function keysSignature(board)
     local t = {}
     for i, k in ipairs(board.keys or {}) do t[i] = k.prop end
@@ -110,9 +90,7 @@ local function buildKeys(id, board, showKeys)
     dbg(("buildKeys #%s show=%s keys=%d"):format(id, tostring(showKeys), #(board.keys or {})))
     if not showKeys then return end
 
-    -- Placement en coordonnées MONDE depuis l'orientation du support :
-    --   forward (hors du mur) et right sont dérivés du heading, donc les clés
-    --   apparaissent TOUJOURS devant la planche (indépendant des axes du modèle).
+    -- Placement en coordonnées monde depuis l'orientation du support, pour que les clés apparaissent toujours devant la planche.
     local bc = GetEntityCoords(s.board)
     local h  = math.rad(board.heading or 0.0)
     local fwdX, fwdY     = -math.sin(h), math.cos(h)
@@ -185,10 +163,6 @@ CreateThread(function()
     end
 end)
 
--- ---------------------------------------------------------------------
---  SYNCHRONISATION (serveur -> client)
--- ---------------------------------------------------------------------
-
 LSLegacy.RegisterClientEvent('keyhanger:sync:all', function(boards)
     KeyHanger.Boards = boards or {}
     local n = 0 ; for _ in pairs(KeyHanger.Boards) do n = n + 1 end
@@ -222,10 +196,6 @@ CreateThread(function()
     LSLegacy.SendEventToServer('keyhanger:requestBoards')
 end)
 
--- ---------------------------------------------------------------------
---  OUVERTURE (comme un coffre via DataStore)
--- ---------------------------------------------------------------------
-
 local function reachAnim()
     LSLegacy.RequestAnimDict("anim@heists@keycard@", function()
         TaskPlayAnim(PlayerPedId(), "anim@heists@keycard@", "exit", 8.0, -8.0, 600, 48, 0, false, false, false)
@@ -244,10 +214,6 @@ end
 LSLegacy.RegisterClientEvent('keyhanger:openContainer', function(name, label, maxWeight)
     TriggerEvent('inventory:openContainer', name, KeyHanger.L('container_label', label or "?"), maxWeight)
 end)
-
--- ---------------------------------------------------------------------
---  GESTION (menu RageUI réservé au propriétaire : renommer/partager/retirer)
--- ---------------------------------------------------------------------
 
 local MG = {}
 MG.menu   = RageUI.CreateMenu("Porte-clés", "Gestion du support")
@@ -329,10 +295,6 @@ function KeyHanger.OpenManage(id)
     end)
 end
 
--- ---------------------------------------------------------------------
---  UTILISATION DE LA CLÉ (verrouillage de véhicule)
--- ---------------------------------------------------------------------
-
 local function trim(s) return (s and s:gsub("%s+$", "")) or "" end
 
 LSLegacy.RegisterClientEvent('keyhanger:useKey', function(data)
@@ -376,10 +338,6 @@ LSLegacy.RegisterClientEvent('keyhanger:useKey', function(data)
     Citizen.SetTimeout(700, function() ClearPedTasks(ped) end)
 end)
 
--- ---------------------------------------------------------------------
---  CRÉATION DE CLÉ (commande -> véhicule le plus proche)
--- ---------------------------------------------------------------------
-
 LSLegacy.RegisterClientEvent('keyhanger:createKeyForNearest', function()
     local ped = PlayerPedId()
     local veh = LSLegacy.GetClosestVehicle(GetEntityCoords(ped), 6.0)
@@ -392,10 +350,6 @@ LSLegacy.RegisterClientEvent('keyhanger:createKeyForNearest', function()
     if not display or display == "NULL" then display = GetDisplayNameFromVehicleModel(modelHash) end
     LSLegacy.SendEventToServer('keyhanger:createKey', plate, modelHash, display)
 end)
-
--- ---------------------------------------------------------------------
---  NETTOYAGE
--- ---------------------------------------------------------------------
 
 AddEventHandler('onResourceStop', function(resource)
     if resource ~= GetCurrentResourceName() then return end

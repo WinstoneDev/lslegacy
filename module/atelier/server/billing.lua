@@ -1,8 +1,4 @@
---  MODULE ATELIER — Facturation
---  Pas de devis : les prestations s'accumulent sur un "ticket" ouvert
---  par plaque jusqu'à ce qu'un mécano déclenche la facture finale.
---  Flux : diagnostic → interventions → prestations → facture → paiement
---  → enregistrement (§18 du cahier des charges).
+-- Les prestations s'accumulent sur un "ticket" ouvert par plaque jusqu'à ce qu'un mécano déclenche la facture finale.
 
 MySQL.Async.execute([[
     CREATE TABLE IF NOT EXISTS atelier_invoices (
@@ -155,17 +151,11 @@ LSLegacy.Bank.RegisterPaymentResultHandler('atelier', function(plate, success)
     end
 end)
 
--- Un ticket abandonné (véhicule reparti sans facturation, session terminée)
--- reste en mémoire tant que le serveur tourne : il n'est jamais perdu par
--- accident, mais ne doit pas fuiter indéfiniment. Purge après 6h d'inactivité.
+-- Un ticket abandonné reste en mémoire tant que le serveur tourne ; purge après 6h.
 CreateThread(function()
     while true do
         Wait(3600000)
-        -- Les tickets n'ont pas d'horodatage de création individuel avant
-        -- cette purge : on ne peut pas dater précisément leur ancienneté
-        -- sans étendre la structure, donc on ne purge que si le client
-        -- associé est hors ligne (le ticket ne peut alors plus jamais être
-        -- réglé par ce client).
+        -- Pas d'horodatage individuel : on ne purge que si le client associé est hors ligne.
         for plate, ticket in pairs(LSLegacy.Atelier.Tickets) do
             if not LSLegacy.Atelier.GetPlayer(ticket.customerSrc) then
                 LSLegacy.Atelier.Tickets[plate] = nil

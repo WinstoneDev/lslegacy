@@ -1,6 +1,4 @@
---  MODULE ATELIER — Diagnostic (client)
---  Ciblage : ox_target (véhicule) — Rapport : ox_lib context (lecture
---  seule, aucune réparation depuis cet écran)
+-- Écran de diagnostic en lecture seule, aucune réparation déclenchée ici.
 
 local cooldowns = {}
 

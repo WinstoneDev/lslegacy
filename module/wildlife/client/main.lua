@@ -1,8 +1,4 @@
--- ═══════════════════════════════════════════════════════════════════
---  MODULE WILDLIFE — Client
---  Supprime périodiquement les peds animaux listés en config dès qu'ils
---  apparaissent (population ambiante du jeu, gérée côté client).
--- ═══════════════════════════════════════════════════════════════════
+-- Supprime périodiquement les peds animaux listés en config dès qu'ils apparaissent (population ambiante du jeu).
 
 local suppressedHashes = {}
 local hasSuppressed    = false
@@ -12,8 +8,6 @@ for _, modelName in ipairs(Config.Wildlife.SuppressedModels) do
 end
 
 CreateThread(function()
-    -- Aucune espèce à supprimer : inutile de parcourir tout le pool de peds
-    -- toutes les 2 s pour rien.
     if not hasSuppressed then return end
 
     while true do

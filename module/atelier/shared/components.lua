@@ -1,16 +1,7 @@
---  MODULE ATELIER — Référentiel des composants (partagé client/serveur)
---  Un composant = un pourcentage d'état (0-100), persisté dans
---  atelier_vehicles.components (voir server/vehicles.lua).
---
---  Trois catégories :
---    mechanical → dérivée en continu de GetVehicleEngineHealth (native)
---    tyres      → dérivée en continu de GetTyreHealth (native, par roue)
---    body       → PAS toutes observables nativement (capot/ailes/pare-
---                 chocs/bas de caisse/phares/vitres n'ont pas d'état GTA
---                 individuel) : notre table est ici la SEULE source de
---                 vérité, modifiée uniquement par nos interventions.
---                 `carrosserie_generale` seule est recalée sur
---                 GetVehicleBodyHealth (native), les autres non.
+-- Un composant = un pourcentage d'état (0-100), persisté dans atelier_vehicles.components.
+-- mechanical/tyres sont dérivées en continu des natifs GTA ; body n'est pas toutes observables
+-- nativement (seule `carrosserie_generale` est recalée sur GetVehicleBodyHealth) : notre table est
+-- la seule source de vérité pour les autres, modifiée uniquement par nos interventions.
 
 LSLegacy = LSLegacy or {}
 LSLegacy.Atelier = LSLegacy.Atelier or {}
@@ -48,7 +39,7 @@ LSLegacy.Atelier.Components = {
     },
 }
 
--- Renvoie l'état par défaut (100% partout) pour un véhicule jamais rencontré.
+-- État par défaut : 100% partout, pour un véhicule jamais rencontré.
 function LSLegacy.Atelier.DefaultComponentState()
     local state = {}
     for category, components in pairs(LSLegacy.Atelier.Components) do
@@ -60,7 +51,6 @@ function LSLegacy.Atelier.DefaultComponentState()
     return state
 end
 
--- Recherche un composant par son id, quelle que soit sa catégorie.
 -- @return string|nil category
 -- @return table|nil def
 function LSLegacy.Atelier.FindComponent(componentId)

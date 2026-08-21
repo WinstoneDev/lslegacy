@@ -1,10 +1,4 @@
--- =====================================================================
---  MODULE SIT — Actions (scenarios GTA natifs)
---  Repris tel quel de config/actions.lua de mnr_sitanywhere : ce sont de
---  vraies scenarios PROP_HUMAN_SEAT_* du jeu (TaskStartScenarioAtPosition),
---  pas des anims génériques. C'est ce qui garantit une pose stable et
---  correctement calée sur l'objet.
--- =====================================================================
+-- Repris de config/actions.lua de mnr_sitanywhere : vraies scenarios PROP_HUMAN_SEAT_* natives (TaskStartScenarioAtPosition), pas des anims génériques.
 
 Sit = Sit or {}
 Sit.Actions = {

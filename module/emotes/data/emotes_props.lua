@@ -1,9 +1,5 @@
--- =====================================================================
---  DONNÉES ÉMOTES — catégorie « props »
---  Généré à partir de rpemotes-reborn (alberttheprince), filtré (pas de
---  contenu adulte, pas d'émotes synchronisées à 2 joueurs) et traduit en
---  français. Ne pas éditer à la main : voir le script de génération.
--- =====================================================================
+-- Catégorie « props ». Généré à partir de rpemotes-reborn (alberttheprince), filtré (pas de contenu
+-- adulte, pas d'émotes synchronisées à 2 joueurs) et traduit en français. Ne pas éditer à la main : voir le script de génération.
 
 EmotesData = EmotesData or {}
 EmotesData.props = {

@@ -1,12 +1,7 @@
---  MODULE ATELIER — Entreprises
---  Chaque entreprise = un job LSLegacy + ses propres grades/permissions/
---  zones/stock. Aucune coordonnée ni job n'est en dur ailleurs dans le
---  module : tout le reste itère sur Config.Atelier.Companies.
---
---  Permissions disponibles (voir shared/permissions.lua) :
---    diagnostic, repair_mechanical, repair_bodywork, maintenance,
---    performance, customization, billing, manage_stock,
---    manage_employees, manage_company (= admin_atelier, accorde tout)
+-- Chaque entreprise = un job LSLegacy + ses propres grades/permissions/zones/stock.
+-- Permissions disponibles (voir shared/permissions.lua) : diagnostic, repair_mechanical,
+-- repair_bodywork, maintenance, performance, customization, billing, manage_stock,
+-- manage_employees, manage_company (= admin_atelier, accorde tout)
 
 Config.Atelier.Companies = {}
 

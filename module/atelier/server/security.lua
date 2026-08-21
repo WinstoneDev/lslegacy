@@ -1,7 +1,4 @@
---  MODULE ATELIER — Helpers de sécurité (serveur)
---  Toute la logique métier s'appuie exclusivement sur ces fonctions :
---  jamais de job/grade/entreprise lu depuis une donnée envoyée par le
---  client.
+-- Toute la logique métier s'appuie exclusivement sur ces fonctions : jamais de job/grade/entreprise lu depuis le client.
 
 LSLegacy.Atelier = LSLegacy.Atelier or {}
 
@@ -29,12 +26,10 @@ function LSLegacy.Atelier.GetCharacterId(src)
     return p and p["boutique-id"] or nil
 end
 
--- Vérifie que src est un employé (peu importe l'entreprise) d'atelier.
 function LSLegacy.Atelier.IsEmployee(src)
     return LSLegacy.Atelier.GetCompany(src) ~= nil
 end
 
--- Vérifie que src est en service (prérequis de toute intervention pro).
 function LSLegacy.Atelier.IsOnDuty(src)
     local agent = LSLegacy.Atelier.Agents[src]
     return agent ~= nil and agent.onDuty == true

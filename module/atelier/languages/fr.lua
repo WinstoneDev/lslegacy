@@ -1,5 +1,3 @@
---  MODULE ATELIER — Strings français
-
 Lang = Lang or {}
 
 Lang.Atelier = {

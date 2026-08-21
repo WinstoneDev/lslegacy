@@ -1,5 +1,3 @@
---  MODULE ATELIER — Dépôt de pièces & pièce portée en main (client)
---  Zone ox_target (dépôt) + touche E (proximité véhicule, pose)
 
 Atelier.HeldPart = nil   -- nom de l'item actuellement porté en main (ou nil)
 Atelier.HeldProp = nil

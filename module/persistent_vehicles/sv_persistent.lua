@@ -121,7 +121,6 @@ local function saveVehicle(entity)
         model = GetEntityModel(entity),
     }
 
-    -- Collecte des state bags à persister
     -- Entity(entity).state lit les bags côté serveur (synchronisés par les clients)
     local stateBags = {}
     local hb = Entity(entity).state.handbrake
@@ -156,10 +155,7 @@ local function spawnVehicle(row)
     SetVehicleDirtLevel(entity, status.dirt or 0.0)
     SetVehicleDoorsLocked(entity, status.lock or 1)
 
-    -- Restauration des state bags sauvegardés
-    -- Entity(entity).state:set(key, value, true) : replicate=true → tous les clients
-    -- reçoivent le bag au chargement de l'entité, ce qui déclenche leur
-    -- AddStateBagChangeHandler (feux stop, roues bloquées, etc.)
+    -- replicate=true : tous les clients reçoivent le bag au chargement, ce qui déclenche leur AddStateBagChangeHandler
     local rawBags = row.state_bags
     local stateBags = (type(rawBags) == "string" and rawBags ~= "") and json.decode(rawBags) or {}
     if stateBags.handbrake ~= nil then
@@ -169,12 +165,7 @@ local function spawnVehicle(row)
     LSLegacy.AP.Active[row.plate] = { netId = netId, entity = entity, model = row.model }
 end
 
--- Spawn un véhicule à partir d'une ligne persistent_vehicles (plate, model,
--- position, status, tuning, state_bags) et diffuse l'intégralité du tuning +
--- status aux clients (ap:vehicleSpawned), comme au chargement du serveur.
--- Sert aux spawns « à chaud » (ex. sortie de fourrière) où l'on veut restaurer
--- mods/couleurs/dégâts à l'identique. Renvoie le netId (ou nil si échec).
--- Doit être appelée depuis un thread (utilise Wait).
+-- Spawn "à chaud" d'un véhicule persisté (ex. sortie de fourrière) en restaurant mods/couleurs/dégâts. Doit être appelée depuis un thread (utilise Wait).
 function LSLegacy.AP.SpawnPersistedRow(row, target)
     if not row or not row.plate then return nil end
     local status = type(row.status) == "string" and json.decode(row.status) or row.status or {}
@@ -363,7 +354,6 @@ CreateThread(function()
                 end)
             end)
 
-            -- cleanup
             if Config.AP.Cleanup then
                 MySQL.Async.execute([[
                     DELETE FROM persistent_vehicles

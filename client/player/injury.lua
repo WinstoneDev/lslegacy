@@ -1,7 +1,3 @@
--- -----------------------------------------------------------------------
---  CLIENT - Blessures / KO / Coma
--- -----------------------------------------------------------------------
-
 local isLimping     = false
 local isKO          = false
 local isComa        = false
@@ -137,9 +133,6 @@ local PAIN_MSGS = {
     },
 }
 
--- -----------------------------------------------------------------------
---  Helpers visuels
--- -----------------------------------------------------------------------
 local function DrawCenteredText(text, x, y, scale, font, r, g, b, a)
     SetTextFont(font or 4)
     SetTextScale(0.0, scale or 0.5)
@@ -151,9 +144,6 @@ local function DrawCenteredText(text, x, y, scale, font, r, g, b, a)
     DrawText(x, y)
 end
 
--- -----------------------------------------------------------------------
---  Boiterie
--- -----------------------------------------------------------------------
 local function startLimp(ped)
     if isLimping then return end
     isLimping = true
@@ -169,9 +159,6 @@ local function stopLimp(ped)
     ResetPedMovementClipset(ped, 0.3)
 end
 
--- -----------------------------------------------------------------------
---  Réduction de vitesse (contrebalancée par Endurance)
--- -----------------------------------------------------------------------
 local function updateSpeedModifier(health)
     if isKO or isComa then return end
     local ped            = PlayerPedId()
@@ -192,9 +179,6 @@ local function updateSpeedModifier(health)
     end
 end
 
--- -----------------------------------------------------------------------
---  Notifications de douleur contextuelles (toutes les 45 s)
--- -----------------------------------------------------------------------
 local function getPainMsg(health)
     local isHeavy = health < 115
     local w       = lastDmgWeapon
@@ -241,10 +225,7 @@ local function checkPainNotif(health)
     end
 end
 
--- -----------------------------------------------------------------------
---  Synchronisation de la blessure (catégorie + zone) vers le serveur,
---  utilisée par le SAMU/Pompiers pour proposer la trousse de soins adaptée.
--- -----------------------------------------------------------------------
+-- Catégorie + zone de la blessure, utilisée par le SAMU/Pompiers pour proposer la trousse de soins adaptée.
 local function getWoundCategory()
     local w = lastDmgWeapon
     local b = lastDamageBone
@@ -284,9 +265,6 @@ local function syncWound(force)
     LSLegacy.SendEventToServer("LSLegacy:injury:syncWound", { category = category, zone = zone })
 end
 
--- -----------------------------------------------------------------------
---  État KO
--- -----------------------------------------------------------------------
 local function enterKO(ped)
     if isKO or isComa then return end
     isKO      = true
@@ -342,9 +320,7 @@ local function enterKO(ped)
     end)
 end
 
--- -----------------------------------------------------------------------
---  Boucle d'affichage coma (partagée entre enterComa et resumeComa)
--- -----------------------------------------------------------------------
+-- Boucle d'affichage coma, partagée entre enterComa et resumeComa.
 local function runComaScreen(totalSeconds)
     local endTime = GetGameTimer() + totalSeconds * 1000
 
@@ -401,9 +377,6 @@ local function runComaScreen(totalSeconds)
     end)
 end
 
--- -----------------------------------------------------------------------
---  Entrée en coma
--- -----------------------------------------------------------------------
 local function enterComa()
     if isComa then return end
     isComa     = true
@@ -425,9 +398,7 @@ local function enterComa()
     runComaScreen(Config.Injury.ComaDuration)
 end
 
--- -----------------------------------------------------------------------
---  Reprise du coma après reconnexion (serveur envoie le temps restant)
--- -----------------------------------------------------------------------
+-- Reprise du coma après reconnexion : le serveur envoie le temps restant.
 LSLegacy.RegisterClientEvent("LSLegacy:injury:resumeComa", function(remaining)
     if isComa then return end
     isComa     = true
@@ -443,9 +414,6 @@ LSLegacy.RegisterClientEvent("LSLegacy:injury:resumeComa", function(remaining)
     runComaScreen(remaining)
 end)
 
--- -----------------------------------------------------------------------
---  Admin revive : sortie forcée KO / coma
--- -----------------------------------------------------------------------
 LSLegacy.RegisterClientEvent("LSLegacy:injury:adminRevive", function(health)
     isKO   = false
     isComa = false
@@ -469,9 +437,6 @@ LSLegacy.RegisterClientEvent("LSLegacy:injury:adminRevive", function(health)
     end)
 end)
 
--- -----------------------------------------------------------------------
---  Respawn à l'hôpital
--- -----------------------------------------------------------------------
 LSLegacy.RegisterClientEvent("LSLegacy:client:respawn", function()
     isKO   = false
     isComa = false
@@ -500,9 +465,6 @@ LSLegacy.RegisterClientEvent("LSLegacy:client:respawn", function()
     DoScreenFadeIn(1200)
 end)
 
--- -----------------------------------------------------------------------
---  Touche E pour appeler les EMS en coma (keymapping natif FiveM)
--- -----------------------------------------------------------------------
 Keys.Register("e", "callems_coma", "Appeler les EMS (état coma)", function()
     if not isComa or emsCallled then return end
     emsCallled = true
@@ -510,9 +472,7 @@ Keys.Register("e", "callems_coma", "Appeler les EMS (état coma)", function()
     LSLegacy.ShowNotification("EMS", "Appel envoyé aux services médicaux d'urgence.", "info")
 end)
 
--- -----------------------------------------------------------------------
---  Suivi de la dernière arme reçue (fallback si GetPedCauseOfDeath échoue)
--- -----------------------------------------------------------------------
+-- Suivi de la dernière arme reçue, en fallback si GetPedCauseOfDeath échoue.
 LSLegacy.AddEventHandler("gameEventTriggered", function(name, args)
     if name ~= "CEventNetworkEntityDamage" then return end
     local victim = args[1]
@@ -559,19 +519,11 @@ LSLegacy.AddEventHandler("gameEventTriggered", function(name, args)
     end
 end)
 
--- -----------------------------------------------------------------------
---  Réplication de l'état KO/coma
---
---  isKO/isComa n'existent que sur la machine de la victime : un autre
---  joueur (le SAMU qui vise son patient) n'a aucun moyen de savoir s'il est
---  inconscient, et devait le déduire de sa santé — approximatif, et faux
---  dès que la victime a été relevée par un chemin natif. On publie donc
---  l'état dans un statebag répliqué.
---
---  Mise à jour par recopie depuis les variables locales plutôt qu'à chaque
---  point d'entrée/sortie : il y a six endroits qui remettent isKO/isComa à
---  false, en oublier un laisserait un patient marqué inconscient à vie.
--- -----------------------------------------------------------------------
+-- isKO/isComa n'existent que sur la machine de la victime ; on publie donc l'état
+-- dans un statebag répliqué pour que le SAMU sache si son patient est inconscient.
+-- Recopié en boucle plutôt qu'à chaque point d'entrée/sortie : il y a six endroits
+-- qui remettent isKO/isComa à false, en oublier un laisserait un patient marqué
+-- inconscient à vie.
 CreateThread(function()
     local last = false
     while true do
@@ -584,17 +536,10 @@ CreateThread(function()
     end
 end)
 
--- -----------------------------------------------------------------------
---  Health Inspection (SAMU) : tampon des dégâts par membre
---
---  Un envoi par frame faisait sauter la limite anti-spam du serveur
---  (samu:hi:damage = 40 events / 15 s, cf. server/function.lua) dès qu'une
---  source de dégâts continue entrait en jeu — feu, noyade, rafale, traînage
---  par un véhicule — et déconnectait le joueur pour "Spam trigger detected".
---  On accumule donc les dégâts par (membre, catégorie) et on les envoie
---  groupés une fois par seconde : le total reste exact, le nombre d'events
---  tombe à 15 au maximum par fenêtre.
--- -----------------------------------------------------------------------
+-- Health Inspection (SAMU) : un envoi par frame faisait sauter la limite anti-spam
+-- du serveur (samu:hi:damage = 40 events / 15 s, cf. server/function.lua) dès qu'une
+-- source de dégâts continue entrait en jeu. On accumule donc les dégâts par
+-- (membre, catégorie) et on les envoie groupés une fois par seconde.
 local woundDamageBuffer = {}
 
 local function queueWoundDamage(part, category, amount)
@@ -623,23 +568,12 @@ CreateThread(function()
     end
 end)
 
--- -----------------------------------------------------------------------
---  Filet de sécurité : rattrapage de la mort native GTA
---
---  SetPedSuffersCriticalHits(false) et l'interception des dégâts ci-dessus
---  réduisent les cas de mort native, mais ne les éliminent pas : sur un
---  burst de dégâts, le moteur peut tuer le ped avant que le moindre code
---  Lua n'ait la main. GTA déroule alors sa séquence "wasted" + respawn
---  natif, qui laisse derrière elle un cadavre orphelin — non networké,
---  donc IsPedAPlayer() = false, donc invisible pour ox_target : le SAMU ne
---  peut plus ni l'analyser ni le réanimer — pendant que le vrai joueur
---  réapparaît ailleurs sans son skin.
---
---  On ne cherche donc plus à empêcher la mort, on la RATTRAPE : dès la
---  frame où le ped est mort, NetworkResurrectLocalPlayer le ressuscite sur
---  place, avant que le moteur ait le temps de dérouler sa séquence. Le
---  joueur bascule ensuite normalement en KO/coma.
--- -----------------------------------------------------------------------
+-- Filet de sécurité : sur un burst de dégâts, le moteur peut tuer le ped avant que
+-- le moindre code Lua n'ait la main, ce qui laisse un cadavre orphelin non networké
+-- (invisible pour ox_target, donc inaccessible au SAMU) pendant que le joueur
+-- réapparaît ailleurs sans son skin. On ne cherche donc plus à empêcher la mort,
+-- on la rattrape : dès la frame où le ped est mort, NetworkResurrectLocalPlayer le
+-- ressuscite sur place avant que le moteur ne déroule sa séquence "wasted".
 local lastResurrect = 0
 
 CreateThread(function()
@@ -690,9 +624,6 @@ CreateThread(function()
     end
 end)
 
--- -----------------------------------------------------------------------
---  Boucle principale : surveillance santé, vitesse, douleur
--- -----------------------------------------------------------------------
 CreateThread(function()
     Wait(8000)
     while true do

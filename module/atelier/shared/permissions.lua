@@ -1,13 +1,8 @@
---  MODULE ATELIER — Permissions & résolution d'entreprise
---  (partagé client/serveur, même convention que module/mdt/shared/permissions.lua)
---
---  RÈGLE D'OR (sécurité) : côté serveur, toujours résoudre job/grade
---  depuis LSLegacy.GetPlayerFromId(src) — jamais depuis le client.
+-- RÈGLE D'OR (sécurité) : côté serveur, toujours résoudre job/grade depuis LSLegacy.GetPlayerFromId(src), jamais depuis le client.
 
 LSLegacy = LSLegacy or {}
 LSLegacy.Atelier = LSLegacy.Atelier or {}
 
--- Trouve l'entreprise (config) rattachée à un job donné.
 -- @param job string
 -- @return string|nil companyId
 -- @return table|nil company
@@ -19,7 +14,6 @@ function LSLegacy.Atelier.GetCompanyForJob(job)
     return nil
 end
 
--- Le job appartient-il à une entreprise de l'atelier ?
 function LSLegacy.Atelier.IsAtelierJob(job)
     return LSLegacy.Atelier.GetCompanyForJob(job) ~= nil
 end
@@ -42,7 +36,7 @@ function LSLegacy.Atelier.GetPermissions(companyId, grade)
     return perms
 end
 
--- Le grade possède-t-il une permission ? (manage_company accorde tout)
+-- manage_company accorde toutes les permissions.
 function LSLegacy.Atelier.HasPermission(companyId, grade, perm)
     if not perm then return true end
     local perms = LSLegacy.Atelier.GetPermissions(companyId, grade)
@@ -50,7 +44,6 @@ function LSLegacy.Atelier.HasPermission(companyId, grade, perm)
     return perms[perm] == true
 end
 
--- Libellé d'un grade.
 function LSLegacy.Atelier.GetGradeLabel(companyId, grade)
     local company = Config.Atelier.Companies[companyId]
     local rank = company and company.grades and company.grades[tonumber(grade) or 0]

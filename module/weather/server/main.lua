@@ -1,37 +1,6 @@
--- ════════════════════════════════════════════════════════════════════
---  MÉTÉO DYNAMIQUE — Serveur
---  codem-dynamicweather n'expose que des overrides temporaires (pas de
---  forecast persistant scriptable) : ce module simule donc la météo
---  dynamique lui-même, en tirant une météo pondérée et cohérente par
---  zone (voir config.lua) et en la poussant via
---  exports['codem-dynamicweather']:setAreaWeather(...) à intervalle réel
---  aléatoire, indépendamment pour chacune des 4 zones.
---
---  La température n'est pas piochée dans une plage fixe : elle est
---  calculée à partir d'une saison (vraie date IRL de la machine) et de
---  l'heure in-game, puis ajustée par la météo tirée.
---
---  L'horloge in-game n'est plus pilotée par codem-dynamicweather
---  (Config.HandleTime = false côté codem-dynamicweather) : le SERVEUR
---  calcule l'heure (saison, vitesse jour/nuit) et la DIFFUSE aux
---  clients, qui l'appliquent avec NetworkOverrideClockTime/SetClockDate
---  — natives CLIENT ONLY, voir module/weather/client/main.lua. Un simple
---  SetClockTime ne suffit PAS : FXServer fait tourner sa propre horloge
---  réseau en continu et écrase un override ponctuel au tick suivant ;
---  NetworkOverrideClockTime doit être réaffirmé à chaque frame côté
---  client pour que le freeze (et le cycle dynamique) tiennent vraiment.
---  Le lever/coucher de soleil (heures IN-GAME) se décale avec la saison
---  (même modèle cosinus que la météo), mais la durée RÉELLE du jour et
---  de la nuit reste fixe (Config.Weather.RealSecondsDayPhase /
---  RealSecondsNightPhase) — la vitesse de l'horloge est donc recalculée
---  en continu. La date diffusée est toujours la VRAIE date de la
---  machine (VPS), jamais un calendrier in-game qui dérive, pour garder
---  la saison cohérente quel que soit le nombre de jours in-game écoulés.
---
---  Météo (/weathercycle on|off) et horloge (freeze admin) sont DEUX
---  flags INDÉPENDANTS : couper la météo dynamique ne gèle pas
---  l'horloge, et inversement.
--- ════════════════════════════════════════════════════════════════════
+-- codem-dynamicweather n'expose que des overrides temporaires (pas de forecast persistant) : ce module simule la météo lui-même, tirage pondéré par zone (voir config.lua) poussé via setAreaWeather à intervalle aléatoire indépendant par zone.
+-- L'horloge in-game est calculée et diffusée par le serveur (Config.HandleTime = false côté codem-dynamicweather) ; les clients l'appliquent avec NetworkOverrideClockTime/SetClockDate (natives client only). La date diffusée est toujours la vraie date de la machine, pour garder la saison cohérente.
+-- Météo (/weathercycle on|off) et horloge (freeze admin) sont deux flags indépendants.
 
 local CFG = Config.Weather
 local WEATHER_RESOURCE = 'codem-dynamicweather'
@@ -52,27 +21,19 @@ local function Clamp(value, min, max)
     return value
 end
 
--- ── Saison : interpolation été/hiver sur la vraie date IRL de la
---    machine (cosinus, pic d'été ~21 juin = jour 172, creux d'hiver
---    ~21 décembre) → 1.0 = plein été, -1.0 = plein hiver ─────────────
+-- Interpolation été/hiver sur la vraie date IRL (cosinus, pic ~21 juin = jour 172) → 1.0 = plein été, -1.0 = plein hiver.
 local function SeasonFactor()
     local dayOfYear = tonumber(os.date('*t').yday) or 172
     return math.cos((2 * math.pi * (dayOfYear - 172)) / 365)
 end
 
--- ════════════════════════════════════════════════════════════════════
---  MÉTÉO
--- ════════════════════════════════════════════════════════════════════
-
--- ── Cycle jour/nuit : lit l'heure IN-GAME. Pic de chaleur ~15h, creux
---    de froid ~3h (cosinus) → 1.0 = 15h, -1.0 = 3h ───────────────────
+-- Cycle jour/nuit sur l'heure in-game. Pic de chaleur ~15h, creux ~3h (cosinus) → 1.0 = 15h, -1.0 = 3h.
 local function DiurnalFactor()
     local hour = totalMinutes and (totalMinutes / 60) or 12
     return math.cos((2 * math.pi * (hour - 15)) / 24)
 end
 
--- ── Température ambiante de la zone à l'instant présent, AVANT le
---    delta propre à la météo qui sera tirée ─────────────────────────
+-- Température ambiante de la zone, avant le delta propre à la météo qui sera tirée.
 local function AmbientTemperature(zone)
     local season = SeasonFactor()
     local seasonAvg = (zone.summerAvgTemp + zone.winterAvgTemp) / 2
@@ -84,9 +45,7 @@ local function AmbientTemperature(zone)
     return seasonAvg + diurnal + jitter
 end
 
--- ── Tirage pondéré parmi les entrées éligibles (bornes minAmbient /
---    maxAmbient respectées), en évitant si possible de retomber sur la
---    dernière météo de la zone ──────────────────────────────────────
+-- Tirage pondéré parmi les entrées éligibles (bornes minAmbient/maxAmbient respectées), en évitant si possible la dernière météo de la zone.
 local function PickWeather(areaId, zone, ambient)
     local eligible = {}
     local totalWeight = 0
@@ -167,11 +126,7 @@ local function RandomIntervalMs()
     return math.random(CFG.MinIntervalMinutes, CFG.MaxIntervalMinutes) * 60000
 end
 
--- Chaque zone tourne sur son propre thread avec son propre délai
--- aléatoire, pour que les 4 zones ne changent jamais toutes en même
--- temps. Le thread ne s'arrête jamais : il "saute" juste son tour tant
--- que `weatherEnabled` est à false, pour pouvoir reprendre
--- instantanément dès que /weathercycle on est utilisé.
+-- Chaque zone tourne sur son propre thread/délai ; il "saute" son tour tant que weatherEnabled est false, pour reprendre instantanément au /weathercycle on.
 local function StartAreaCycle(areaId, zone)
     CreateThread(function()
         while true do
@@ -183,12 +138,7 @@ local function StartAreaCycle(areaId, zone)
     end)
 end
 
--- ════════════════════════════════════════════════════════════════════
---  HORLOGE
--- ════════════════════════════════════════════════════════════════════
-
--- Heures (in-game) de lever/coucher de soleil pour la saison du jour,
--- + durée du jour en heures. Pivot 12h, amplitude Config.Weather.DaylightAmplitudeHours.
+-- Heures (in-game) de lever/coucher de soleil pour la saison du jour, + durée du jour en heures. Pivot 12h.
 local function SunriseSunset()
     local dayLengthHours = Clamp(12 + CFG.DaylightAmplitudeHours * SeasonFactor(), 6, 18)
     local sunrise = 12 - dayLengthHours / 2
@@ -196,8 +146,7 @@ local function SunriseSunset()
     return sunrise, sunset, dayLengthHours
 end
 
--- Vitesse courante de l'horloge (ms réels par minute in-game) pour la
--- phase (jour ou nuit) dans laquelle tombe `minutes`.
+-- Vitesse courante de l'horloge (ms réels par minute in-game) pour la phase (jour ou nuit) dans laquelle tombe `minutes`.
 local function MsPerGameMinute(minutes)
     local sunrise, sunset, dayLengthHours = SunriseSunset()
     local sunriseMin, sunsetMin = sunrise * 60, sunset * 60
@@ -212,9 +161,7 @@ local function MsPerGameMinute(minutes)
     end
 end
 
--- SetClockTime/SetClockDate sont CLIENT ONLY : on diffuse l'heure à
--- appliquer plutôt que d'appeler la native ici. `receiver` = -1 pour
--- tout le monde (tick normal), ou un seul joueur (sync à la connexion).
+-- SetClockTime/SetClockDate sont CLIENT ONLY : on diffuse l'heure. `receiver` = -1 pour tout le monde, ou un seul joueur (sync à la connexion).
 local function BroadcastClock(receiver)
     local hour = math.floor(totalMinutes / 60)
     local minute = math.floor(totalMinutes % 60)
@@ -230,12 +177,10 @@ local function ReadInitialTotalMinutes()
     return 8 * 60 -- repli : 8h00
 end
 
--- ── API partagée (menu admin, etc.) ────────────────────────────────
+-- API partagée (menu admin, etc.)
 LSLegacy.Weather = LSLegacy.Weather or {}
 
--- Recale l'heure ET le point de départ de la boucle : le cycle jour/nuit
--- n'est jamais interrompu par un set manuel, seulement recalé dessus
--- (fonctionne aussi bien gelé que dynamique).
+-- Recale l'heure ET le point de départ de la boucle : le cycle jour/nuit n'est jamais interrompu par un set manuel, seulement recalé dessus.
 function LSLegacy.Weather.SetTime(hour, minute)
     hour = math.floor(Clamp(tonumber(hour) or 0, 0, 23))
     minute = math.floor(Clamp(tonumber(minute) or 0, 0, 59))
@@ -249,11 +194,7 @@ function LSLegacy.Weather.GetTime()
     return math.floor(totalMinutes / 60), math.floor(totalMinutes % 60)
 end
 
--- Gèle/dégèle l'horloge SANS toucher au cycle météo (flag indépendant,
--- piloté depuis le menu admin). Capture simplement l'heure courante :
--- la boucle continue de la repousser toutes les CFG.TimeTickMs pour
--- compenser la dérive naturelle du moteur GTA, sans plus jamais avancer
--- `totalMinutes` tant que c'est gelé.
+-- Gèle/dégèle l'horloge sans toucher au cycle météo (flag indépendant) ; la boucle continue de repousser l'heure pour compenser la dérive du moteur, sans plus avancer totalMinutes tant que c'est gelé.
 function LSLegacy.Weather.SetTimeFrozen(state)
     timeFrozen = state and true or false
     return timeFrozen
@@ -277,10 +218,7 @@ local function StartClock()
 
         while true do
             Wait(CFG.TimeTickMs)
-            -- Le moteur GTA fait avancer l'horloge tout seul côté client
-            -- entre deux SetClockTime : il faut continuer à la repousser à
-            -- chaque tick même gelée, sinon elle dérive à la vitesse par
-            -- défaut du jeu au lieu de rester bloquée.
+            -- Continuer à repousser l'heure même gelée, sinon elle dérive à la vitesse par défaut du jeu.
             if not timeFrozen then
                 local msPerGameMinute = MsPerGameMinute(totalMinutes)
                 local gameMinutesElapsed = CFG.TimeTickMs / msPerGameMinute
@@ -291,17 +229,12 @@ local function StartClock()
     end)
 end
 
--- ════════════════════════════════════════════════════════════════════
---  DÉMARRAGE + COMMANDE
--- ════════════════════════════════════════════════════════════════════
-
 CreateThread(function()
     while GetResourceState(WEATHER_RESOURCE) ~= 'started' do
         Wait(1000)
     end
 
-    -- Premier tirage immédiat pour chaque zone au démarrage (avec retries :
-    -- les données de codem-dynamicweather peuvent finir de charger juste après).
+    -- Premier tirage immédiat pour chaque zone au démarrage, avec retries (les données de codem-dynamicweather peuvent finir de charger juste après).
     for areaId, zone in ipairs(CFG.Zones) do
         ApplyAreaWeatherRetrying(areaId, zone, 10, 3000)
         StartAreaCycle(areaId, zone)

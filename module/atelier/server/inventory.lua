@@ -1,7 +1,5 @@
---  MODULE ATELIER — Stock de pièces (serveur)
---  Un DataStore LSLegacy par entreprise (jamais ox_inventory, jamais de
---  table SQL parallèle). Réservation à la prise, restitution si annulée,
---  consommation définitive uniquement à la validation d'une intervention.
+-- Un DataStore LSLegacy par entreprise. Réservation à la prise, restitution si annulée,
+-- consommation définitive uniquement à la validation d'une intervention.
 
 -- [src] = { item, companyId, expiresAt }
 LSLegacy.Atelier.Reservations = LSLegacy.Atelier.Reservations or {}
@@ -11,11 +9,9 @@ local function StashName(companyId)
     return company and company.stashName or nil
 end
 
--- Charge (paresseusement) le DataStore d'une entreprise. Paresseux à
--- dessein : le chargement de LSLegacy.DataStores depuis la table `datastore`
--- est asynchrone au démarrage (server/datastore.lua) — un enregistrement
--- tenté trop tôt écraserait un stock déjà persisté. Même pattern que
--- module/keyhanger/server/main.lua (ensureDatastore).
+-- Chargement paresseux à dessein : LSLegacy.DataStores se charge en async au démarrage,
+-- un enregistrement tenté trop tôt écraserait un stock déjà persisté (même pattern que
+-- module/keyhanger/server/main.lua).
 local function EnsureStash(companyId)
     local name = StashName(companyId)
     if not name then return nil end
@@ -33,9 +29,7 @@ local function EnsureStash(companyId)
     return ds
 end
 
--- Les stashes atelier ne passent JAMAIS par les events génériques
--- PutIntoTrunk/TakeFromTrunk (aucune piste d'audit, aucune notion de
--- réservation) : uniquement par les events dédiés de ce fichier.
+-- Les stashes atelier ne passent JAMAIS par les events génériques PutIntoTrunk/TakeFromTrunk, uniquement par ceux de ce fichier.
 local prevGuard = LSLegacy.DataStoreGuard
 LSLegacy.DataStoreGuard = function(src, name, action, item)
     if name and name:sub(1, 8) == 'atelier_' then return false end

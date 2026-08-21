@@ -1,10 +1,4 @@
--- =====================================================================
---  MODULE SIT — Serveur
---  Suit qui occupe quelle place, pour éviter deux joueurs assis sur la
---  même place d'un banc/canapé multi-places. Port de server/server.lua
---  de mnr_sitanywhere.
--- =====================================================================
-
+-- Suit qui occupe quelle place, pour éviter deux joueurs sur la même place d'un banc/canapé multi-places. Port de server/server.lua de mnr_sitanywhere.
 local occupied = {} -- [entity] = { [seatIndex] = source }
 
 lib.callback.register('sit:server:occupy', function(source, netId, seatIndex)

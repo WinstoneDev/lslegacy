@@ -1,16 +1,11 @@
---  MODULE ATELIER — Réparation (mécanique, pneus, carrosserie)
---  Un seul handler générique : la logique (permission → pièce tenue →
---  consommation → réparation → facturation) est identique pour les
---  trois catégories de composants, seule la permission requise diffère.
+-- Un seul handler générique : la logique est identique pour les trois catégories de composants, seule la permission diffère.
 
 local function RequiredPermission(category)
     if category == 'body' then return 'repair_bodywork' end
     return 'repair_mechanical' -- mécanique ET pneus (§11 du cahier des charges)
 end
 
--- Le joueur le plus proche du véhicule (hors mécanicien) : c'est TOUJOURS
--- le serveur qui résout cette distance, jamais une valeur envoyée par le
--- client.
+-- Le joueur le plus proche du véhicule (hors mécanicien) : distance TOUJOURS résolue côté serveur, jamais envoyée par le client.
 local function GetNearestCustomer(entity, mecanoSrc, range)
     range = range or 10.0
     local coords = GetEntityCoords(entity)

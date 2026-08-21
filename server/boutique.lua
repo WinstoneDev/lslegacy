@@ -1,23 +1,14 @@
--- ================================================================
---  tebex-credits/server.lua
---  Ajoute des crédits boutique à un joueur via la commande Tebex.
---  L'identifier utilisé est "license:xxxx" (CFX/Rockstar license).
+-- Ajoute des crédits boutique à un joueur via la commande Tebex.
+-- L'identifier utilisé est "license:xxxx" (CFX/Rockstar license).
 --
---  Commandes Tebex à configurer :
---    addcredits {identifier} {amount}
---    logpurchase {username} {transaction} {price} {currency} {date} {time} {email} {packageId} {packagePrice} {packageExpiry} {identifier} {packageName}
--- ================================================================
+-- Commandes Tebex à configurer :
+--   addcredits {identifier} {amount}
+--   logpurchase {username} {transaction} {price} {currency} {date} {time} {email} {packageId} {packagePrice} {packageExpiry} {identifier} {packageName}
 
--- ──────────────────────────────────────────────────────────────
---  Configuration
--- ──────────────────────────────────────────────────────────────
 local WEBHOOK_URL = GetConvar('lslegacy_webhook_boutique', '')
 local SERVER_NAME = "LS Legacy"
 
--- ──────────────────────────────────────────────────────────────
---  LastSundayUtcEpoch — epoch UTC du dernier dimanche d'un mois donné,
---  à `hourUtc` heure UTC pile (utilisé pour les bascules d'heure d'été).
--- ──────────────────────────────────────────────────────────────
+-- Epoch UTC du dernier dimanche d'un mois donné, à `hourUtc` heure UTC pile (bascules d'heure d'été).
 local function LastSundayUtcEpoch(year, month, hourUtc)
     -- Astuce : le "jour 0" du mois suivant = dernier jour du mois demandé
     local lastDayTs = os.time({ year = year, month = month + 1, day = 0, hour = 12, min = 0, sec = 0 })
@@ -28,12 +19,9 @@ local function LastSundayUtcEpoch(year, month, hourUtc)
     return os.time({ year = year, month = month, day = sundayDay, hour = hourUtc, min = 0, sec = 0 })
 end
 
--- ──────────────────────────────────────────────────────────────
---  ParisUtcOffsetHours — détermine automatiquement si `utcTs` (epoch UTC)
---  tombe pendant l'heure d'été européenne (CEST, UTC+2) ou l'heure d'hiver
---  (CET, UTC+1). Règle UE : bascule à 1h UTC le dernier dimanche de mars,
---  et à 1h UTC le dernier dimanche d'octobre.
--- ──────────────────────────────────────────────────────────────
+-- Détermine si `utcTs` (epoch UTC) tombe pendant l'heure d'été européenne (CEST, UTC+2)
+-- ou l'heure d'hiver (CET, UTC+1). Règle UE : bascule à 1h UTC le dernier dimanche de
+-- mars, et à 1h UTC le dernier dimanche d'octobre.
 local function ParisUtcOffsetHours(utcTs)
     local year = os.date("!*t", utcTs).year
     local dstStart = LastSundayUtcEpoch(year, 3, 1)
@@ -45,10 +33,7 @@ local function ParisUtcOffsetHours(utcTs)
     return 1 -- CET (hiver)
 end
 
--- ──────────────────────────────────────────────────────────────
---  ToLocalTime — convertit {date}/{time} Tebex (UTC) vers l'heure
---  française, car Tebex envoie toujours ces valeurs en UTC.
--- ──────────────────────────────────────────────────────────────
+-- Convertit {date}/{time} Tebex (UTC) vers l'heure française, car Tebex envoie toujours ces valeurs en UTC.
 local function ToLocalTime(dateStr, timeStr)
     local d64, m64, y64 = tostring(dateStr):match("^(%d%d)/(%d%d)/(%d%d)$")
 
@@ -92,18 +77,10 @@ local function GetPlayerLicense(source)
     return nil
 end
 
--- ──────────────────────────────────────────────────────────────
---  MAX_TRANSACTIONS_HISTORY — nombre de transactions conservées
---  par personnage dans `players`.`boutique-transactions` (évite
---  une colonne JSON qui grossit indéfiniment).
--- ──────────────────────────────────────────────────────────────
+-- Nombre de transactions conservées par personnage (évite une colonne JSON qui grossit indéfiniment).
 local MAX_TRANSACTIONS_HISTORY = 200
 
--- ──────────────────────────────────────────────────────────────
---  LogTransactionToCharacter — ajoute la transaction à l'historique
---  JSON du personnage (players.`boutique-transactions`), rattachée
---  au personnage via son `boutique-id`.
--- ──────────────────────────────────────────────────────────────
+-- Ajoute la transaction à l'historique JSON du personnage (players.`boutique-transactions`), via son `boutique-id`.
 local function LogTransactionToCharacter(identifier, record)
     if not identifier then return end
 
@@ -156,9 +133,6 @@ local function LogTransactionToCharacter(identifier, record)
     end)
 end
 
--- ──────────────────────────────────────────────────────────────
---  SendDiscordEmbed — envoie un embed stylisé sur le webhook
--- ──────────────────────────────────────────────────────────────
 local function SendDiscordEmbed(embed)
     PerformHttpRequest(WEBHOOK_URL, function(statusCode, text, headers)
         if statusCode ~= 200 and statusCode ~= 204 then
@@ -167,10 +141,7 @@ local function SendDiscordEmbed(embed)
     end, "POST", json.encode({ embeds = { embed } }), { ["Content-Type"] = "application/json" })
 end
 
--- ──────────────────────────────────────────────────────────────
---  Fonction principale : ajoute des crédits en BDD
---  Fonctionne que le joueur soit EN LIGNE ou HORS LIGNE
--- ──────────────────────────────────────────────────────────────
+-- Ajoute des crédits en BDD, que le joueur soit en ligne ou hors ligne.
 local function AddCredits(identifier, amount)
     if not identifier or not amount then return end
     amount = tonumber(amount)
@@ -191,10 +162,6 @@ local function AddCredits(identifier, amount)
     end)
 end
 
--- ──────────────────────────────────────────────────────────────
---  Commande : addcredits <identifier> <amount>
---  Tebex → addcredits {identifier} 100
--- ──────────────────────────────────────────────────────────────
 RegisterCommand("addcredits", function(source, args, rawCommand)
     if source ~= 0 then
         print("[Tebex-Credits] Commande réservée à la console/Tebex.")
@@ -212,14 +179,9 @@ RegisterCommand("addcredits", function(source, args, rawCommand)
     AddCredits(identifier, amount)
 end, true)
 
--- ──────────────────────────────────────────────────────────────
---  Commande : logpurchase — log un achat Tebex sur Discord
---
---  Tebex command à configurer (TOUT sur une seule ligne) :
---    logpurchase {username} {transaction} {price} {currency} {date} {time} {email} {packageId} {packagePrice} {packageExpiry} {identifier} {packageName}
---
---  Note : {packageName} est en DERNIER pour capturer les espaces éventuels
--- ──────────────────────────────────────────────────────────────
+-- Log un achat Tebex sur Discord. Tebex command à configurer (tout sur une seule ligne) :
+--   logpurchase {username} {transaction} {price} {currency} {date} {time} {email} {packageId} {packagePrice} {packageExpiry} {identifier} {packageName}
+-- {packageName} est en dernier pour capturer les espaces éventuels.
 RegisterCommand("logpurchase", function(source, args, rawCommand)
     if source ~= 0 then
         print("[Tebex-Credits] logpurchase réservée à la console/Tebex.")
@@ -327,11 +289,8 @@ RegisterCommand("logpurchase", function(source, args, rawCommand)
     SendDiscordEmbed(embed)
 end, true)
 
--- ──────────────────────────────────────────────────────────────
---  Commande : /idboutique — affiche au joueur son ID boutique
---  (players.`boutique-id`, à renseigner dans la variable {boutique-id}
---  du checkout Tebex pour recevoir ses crédits).
--- ──────────────────────────────────────────────────────────────
+-- /idboutique affiche au joueur son ID boutique (players.`boutique-id`, à renseigner dans
+-- la variable {boutique-id} du checkout Tebex pour recevoir ses crédits).
 LSLegacy.RegisterCommand('idboutique', 0, function(player, args, showError, rawCommand)
     local boutiqueId = player and player["boutique-id"]
     if not boutiqueId then

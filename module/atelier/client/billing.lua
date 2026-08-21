@@ -1,6 +1,4 @@
---  MODULE ATELIER — Facturation (client)
---  Aucun devis : cet écran ne fait qu'afficher les prestations déjà
---  réalisées et accumulées côté serveur, puis déclenche le paiement.
+-- Aucun devis : affiche les prestations déjà accumulées côté serveur, puis déclenche le paiement.
 
 local function Notify(msg, type)
     TriggerEvent(Config.Atelier.NotifyEvent, 'Atelier', msg, 5000, type or 'info')

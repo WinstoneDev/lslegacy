@@ -1,7 +1,4 @@
--- ═══════════════════════════════════════════════════════════════════
---  MODULE LTD — Stock rayons/réserve, vente, vol, alarme (serveur)
---  Stock et alarme INDÉPENDANTS par magasin (storeId).
--- ═══════════════════════════════════════════════════════════════════
+-- Stock et alarme indépendants par magasin (storeId).
 
 local ShelfStock   = {}  -- { [storeId] = { [item] = quantity } }
 local ReserveStock = {}  -- { [storeId] = { [item] = quantity } }
@@ -35,8 +32,6 @@ local function GetStoreCoords(storeId)
     end
     return nil
 end
-
--- ── Table SQL stock (clé composite magasin + article) ────────────────
 
 MySQL.Async.execute([[
     CREATE TABLE IF NOT EXISTS ltd_stock (
@@ -81,10 +76,6 @@ local function SaveStock(storeId, item)
     )
 end
 
--- ══════════════════════════════════════════════════════════════════
---  CONSULTATION STOCK
--- ══════════════════════════════════════════════════════════════════
-
 LSLegacy.RegisterServerEvent('ltd:requestShelfStock', function(data)
     local src = source
     if not data or not IsValidStore(data.storeId) then return end
@@ -98,10 +89,6 @@ LSLegacy.RegisterServerEvent('ltd:requestReserveStock', function(data)
     if not IsEmployee(src) or not IsLtdOnDutyAt(src, data.storeId) then return end
     TriggerClientEvent('ltd:reserveStockResult', src, ReserveStock[data.storeId])
 end)
-
--- ══════════════════════════════════════════════════════════════════
---  VENTE EN CAISSE
--- ══════════════════════════════════════════════════════════════════
 
 -- token -> { employeeSrc, storeId, item, customerSrc }
 local PendingSales = {}
@@ -162,10 +149,6 @@ LSLegacy.RegisterServerEvent('ltd:sellItem', function(data)
     LSLegacy.Bank.OpenPaymentMenu(data.customer, 'Achat - ' .. entry.label, entry.price, { meta = { type = 'ltd', refId = token } })
 end)
 
--- ══════════════════════════════════════════════════════════════════
---  RÉASSORT DES RAYONS (réserve → rayon, même magasin)
--- ══════════════════════════════════════════════════════════════════
-
 LSLegacy.RegisterServerEvent('ltd:restockShelf', function(data)
     local src = source
     if not data or not IsValidStore(data.storeId) then return end
@@ -191,10 +174,6 @@ LSLegacy.RegisterServerEvent('ltd:restockShelf', function(data)
     TriggerClientEvent('ltd:restockResult', src, { success = true, label = entry.label, amount = amount })
 end)
 
--- ══════════════════════════════════════════════════════════════════
---  REMPLISSAGE MANUEL DE LA RÉSERVE (Responsable, même magasin)
--- ══════════════════════════════════════════════════════════════════
-
 LSLegacy.RegisterServerEvent('ltd:fillReserve', function(data)
     local src = source
     if not data or not IsValidStore(data.storeId) then return end
@@ -217,10 +196,6 @@ LSLegacy.RegisterServerEvent('ltd:fillReserve', function(data)
 
     TriggerClientEvent('ltd:fillResult', src, { success = true, label = entry.label, amount = amount })
 end)
-
--- ══════════════════════════════════════════════════════════════════
---  ALARME — manuelle ou déclenchée par un vol (scoped à un magasin)
--- ══════════════════════════════════════════════════════════════════
 
 local function TriggerAlarm(storeId)
     local now = os.time()
@@ -253,10 +228,6 @@ LSLegacy.RegisterServerEvent('ltd:triggerAlarm', function(data)
     if not IsEmployee(src) or not IsLtdOnDutyAt(src, data.storeId) then return end
     TriggerAlarm(data.storeId)
 end)
-
--- ══════════════════════════════════════════════════════════════════
---  VOL À L'ÉTALAGE (magasin par magasin, totalement indépendants)
--- ══════════════════════════════════════════════════════════════════
 
 LSLegacy.RegisterServerEvent('ltd:stealItem', function(data)
     local src = source

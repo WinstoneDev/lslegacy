@@ -1,18 +1,4 @@
--- ─────────────────────────────────────────────────────────────────────────────
--- Menu de gestion véhicule — ox_lib radial menu
---
--- Extras/Portes/Vitres/Moteur/Feux de détresse sont ajoutés directement dans
--- le menu circulaire global d'ox_lib quand le joueur est dans un véhicule, et
--- retirés à la sortie. F5 simule la touche du menu radial (ox_lib n'expose pas
--- d'API pour ouvrir un menu précis, seulement sa commande de toggle interne),
--- ce qui ouvre/ferme directement ce menu.
---
--- Les sous-menus (Portes, Vitres, Extras) sont enregistrés une fois à l'entrée
--- dans le véhicule, puis reconstruits après chaque action pour refléter le
--- nouvel état — un rafraîchissement en continu provoquerait un clignotement du
--- menu (ox_lib ferme/rouvre le radial à chaque lib.registerRadial/addRadialItem
--- sur le menu affiché), donc on ne le fait que sur interaction du joueur.
--- ─────────────────────────────────────────────────────────────────────────────
+-- F5 simule le toggle radial ox_lib (pas d'API dédiée pour ouvrir un menu précis) ; les sous-menus ne se reconstruisent que sur interaction pour éviter un clignotement du radial affiché.
 
 local VehicleMenu = {
     currentVeh = 0,
@@ -45,10 +31,6 @@ local TopLevelIds = { 'vehiclemenu_extras_link', 'vehiclemenu_doors_link', 'vehi
 local PassengerTopLevelIds = { 'vehiclemenu_seat_driver' }
 for i = 0, 7 do PassengerTopLevelIds[#PassengerTopLevelIds + 1] = 'vehiclemenu_seat_' .. i end
 
--- ─── Changer de place — conducteur (sous-menu) et passager (racine) ───────
--- Place le joueur directement dans le siège visé (SetPedIntoVehicle), sans
--- animation de sortie/entrée : on ne quitte jamais le véhicule.
-
 local SeatLabels = {
     [0] = 'Passager avant',
     [1] = 'Passager arrière gauche',
@@ -60,9 +42,7 @@ local function seatLabel(index)
 end
 
 local function changeSeat(vehicle, seat)
-    -- La place peut avoir été prise par un autre joueur entre l'affichage du
-    -- menu et le clic : on revérifie ici plutôt que de se fier à la liste
-    -- construite au moment de l'ouverture.
+    -- La place peut avoir été prise entre l'affichage du menu et le clic, on revérifie ici.
     if not IsVehicleSeatFree(vehicle, seat) then
         LSLegacy.ShowNotification(nil, "Cette place est déjà occupée.", "error")
         refreshSeats(vehicle)
@@ -107,8 +87,6 @@ refreshSeats = function(vehicle)
     lib.registerRadial({ id = 'vehiclemenu_seats', items = buildSeatItems(vehicle) })
 end
 
--- ─── Racine (items ajoutés directement au menu radial global) ─────────────
-
 local function buildTopLevelItems(vehicle)
     if GetPedInVehicleSeat(vehicle, -1) ~= PlayerPedId() then
         return buildSeatItems(vehicle)
@@ -150,9 +128,7 @@ local function buildTopLevelItems(vehicle)
 end
 
 refreshTopLevel = function(vehicle)
-    -- addRadialItem met à jour par id mais ne retire pas ceux qui ne sont
-    -- plus pertinents (ex: passage conducteur <-> passager) : on nettoie
-    -- explicitement l'autre jeu d'ids avant d'ajouter les items actuels.
+    -- addRadialItem ne retire pas les ids devenus non pertinents (ex: passage conducteur <-> passager), donc on nettoie l'autre jeu d'abord.
     local isDriver = GetPedInVehicleSeat(vehicle, -1) == PlayerPedId()
     local staleIds = isDriver and PassengerTopLevelIds or TopLevelIds
 
@@ -162,8 +138,6 @@ refreshTopLevel = function(vehicle)
 
     lib.addRadialItem(buildTopLevelItems(vehicle))
 end
-
--- ─── Portes ─────────────────────────────────────────────────────────────────
 
 local function buildDoorItems(vehicle)
     local items = {
@@ -225,8 +199,6 @@ end
 refreshDoors = function(vehicle)
     lib.registerRadial({ id = 'vehiclemenu_doors', items = buildDoorItems(vehicle) })
 end
-
--- ─── Vitres ─────────────────────────────────────────────────────────────────
 
 local function buildWindowItems(vehicle)
     if not VehicleMenu.windows[vehicle] then
@@ -290,8 +262,6 @@ refreshWindows = function(vehicle)
     lib.registerRadial({ id = 'vehiclemenu_windows', items = buildWindowItems(vehicle) })
 end
 
--- ─── Extras ─────────────────────────────────────────────────────────────────
-
 local function buildExtraItems(vehicle)
     local items = {}
 
@@ -325,14 +295,10 @@ refreshExtras = function(vehicle)
     lib.registerRadial({ id = 'vehiclemenu_extras', items = buildExtraItems(vehicle) })
 end
 
--- ─── Enregistrement initial des sous-menus ─────────────────────────────────
-
 lib.registerRadial({ id = 'vehiclemenu_doors', items = {} })
 lib.registerRadial({ id = 'vehiclemenu_windows', items = {} })
 lib.registerRadial({ id = 'vehiclemenu_extras', items = {} })
 lib.registerRadial({ id = 'vehiclemenu_seats', items = {} })
-
--- ─── Ajout/retrait des items globaux selon la présence dans un véhicule ───
 
 CreateThread(function()
     while true do
@@ -367,17 +333,8 @@ CreateThread(function()
     end
 end)
 
--- ─── Touche F5 : simule la commande de toggle du menu radial ox_lib ───────
--- (ox_lib n'expose pas d'API publique pour ouvrir un menu radial précis, donc
--- on déclenche directement la commande liée à sa touche par défaut, ce qui
--- ouvre/ferme le menu global — lequel ne contient que nos items pendant que
--- le joueur est dans un véhicule.)
-
 Keys.Register("F5", "F5", "Ouvrir le menu de gestion du véhicule", function()
-    -- La liste des places libres peut avoir changé depuis la dernière
-    -- ouverture (autre joueur monté/descendu) : on la rafraîchit juste
-    -- avant l'ouverture plutôt qu'en continu, pour éviter le clignotement
-    -- du menu affiché (cf. commentaire en tête de fichier).
+    -- Rafraîchit juste avant l'ouverture (plutôt qu'en continu) pour éviter le clignotement du menu affiché.
     local vehicle = GetVehiclePedIsIn(PlayerPedId(), false)
     if vehicle ~= 0 then
         if VehicleMenu.isDriver then
@@ -390,11 +347,7 @@ Keys.Register("F5", "F5", "Ouvrir le menu de gestion du véhicule", function()
     ExecuteCommand('+ox_lib-radial')
 end)
 
--- ─────────────────────────────────────────────────────────────────────────────
--- Feux de détresse — SET_VEHICLE_INDICATOR_LIGHTS doit être réappliqué tant
--- que le clignotant n'a pas de logique moteur derrière, sinon le jeu peut le
--- réinitialiser (changement de siège, IA, etc.)
--- ─────────────────────────────────────────────────────────────────────────────
+-- SetVehicleIndicatorLights doit être réappliqué en continu, sinon le jeu peut réinitialiser l'état (changement de siège, IA, etc.)
 CreateThread(function()
     while true do
         local any = false

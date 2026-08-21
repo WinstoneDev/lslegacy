@@ -77,7 +77,6 @@ Citizen.CreateThread(function()
         local ped = PlayerPedId()
         local pid = PlayerId()
         
-        -- Anti GodMode (Health Check)
         if Shared.Anticheat.AntiGodMode then
             local health = GetEntityHealth(ped)
             if GetPlayerInvincible_2(pid) then
@@ -93,7 +92,6 @@ Citizen.CreateThread(function()
             end
         end
 
-        -- Anti Invisible
         if Shared.Anticheat.AntiInvisible then
             local alpha = GetEntityAlpha(ped)
             if not IsEntityVisible(ped) or not IsEntityVisibleToScript(ped) or alpha <= 150 then
@@ -102,7 +100,6 @@ Citizen.CreateThread(function()
             end
         end
 
-        -- Anti Radar
         if Shared.Anticheat.AntiRadar then
              -- Only check if not in vehicle (some servers enable radar in vehicle)
             if not IsRadarHidden() and not IsPedInAnyVehicle(ped, true) then
@@ -111,13 +108,11 @@ Citizen.CreateThread(function()
             end
         end
         
-        -- Anti Spectate
         if Shared.Anticheat.AntiSpectate and NetworkIsInSpectatorMode() then
             TriggerServerEvent("8jWpZudyvjkDXQ2RVXf9", "spectatormode")
             return
         end
 
-        -- Anti Thermal/Night Vision
         if Shared.Anticheat.AntiThermalVision and GetUsingseethrough() then
             TriggerServerEvent("8jWpZudyvjkDXQ2RVXf9", "thermalvision") 
             return
@@ -127,8 +122,7 @@ Citizen.CreateThread(function()
             return
         end
 
-        -- Anti Resource Start/Stop (Count Check)
-        if Shared.Anticheat.AntiResourceStartorStop then 
+        if Shared.Anticheat.AntiResourceStartorStop then
             local resCount = GetNumResources()
             if resources and resources ~= resCount then
                 TriggerServerEvent("8jWpZudyvjkDXQ2RVXf9", "antiresourcestop")
@@ -145,8 +139,7 @@ Citizen.CreateThread(function()
     while true do
         Citizen.Wait(500)
         local ped = PlayerPedId()
-        
-        -- Cleanup / enforcement
+
         SetRunSprintMultiplierForPlayer(PlayerId(), 1.0)
         SetSwimMultiplierForPlayer(PlayerId(), 1.0)
         SetPedInfiniteAmmoClip(ped, false)
@@ -163,7 +156,6 @@ Citizen.CreateThread(function()
              end
         end
         
-        -- Anti SpeedHack (Basic speed check)
         if Shared.Anticheat.AntiSpeedHacks then
             if not IsPedInAnyVehicle(ped, true) and GetEntitySpeed(ped) > 10 and not IsPedFalling(ped) and not IsPedInParachuteFreeFall(ped) and not IsPedRagdoll(ped) then
                 TriggerServerEvent("8jWpZudyvjkDXQ2RVXf9", "speedhack") 
@@ -171,13 +163,11 @@ Citizen.CreateThread(function()
             end
         end
         
-        -- Anti SuperJump
         if Shared.Anticheat.SuperJump and IsPedJumping(ped) then
             TriggerServerEvent('8jWpZudyvjkDXQ2RVXf9', "superjump")
             return
         end
 
-        -- Anti Explosive Bullets
         if Shared.Anticheat.AntiExplosiveBullets then
             local dmgType = GetWeaponDamageType(GetSelectedPedWeapon(ped))
             if dmgType == 4 or dmgType == 5 or dmgType == 6 or dmgType == 13 then
@@ -186,7 +176,6 @@ Citizen.CreateThread(function()
             end
         end
         
-        -- Anti Blacklisted Weapons
         if Shared.Anticheat.AntiBlacklistedWeapons then
              for _, weapon in ipairs(Shared.Anticheat.BlacklistedWeapons) do
                 if HasPedGotWeapon(ped, weapon, false) then
@@ -197,7 +186,6 @@ Citizen.CreateThread(function()
             end
         end
         
-        -- Anti Give Armor
         if Shared.Anticheat.AntiGiveArmor and GetPedArmour(ped) > 100 then
              TriggerServerEvent("8jWpZudyvjkDXQ2RVXf9", "givearmour") 
              return
@@ -310,7 +298,6 @@ function dot(v1, v2)
     return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z
 end
 
--- Events Setup
 local _evhandler = AddEventHandler
 _evhandler("onClientResourceStop", function(resourceName)
     TriggerServerEvent("8jWpZudyvjkDXQ2RVXf9", "stoppedresource", resourceName)
@@ -321,7 +308,6 @@ _evhandler("onResourceStop", function(resourceName)
     TriggerServerEvent("8jWpZudyvjkDXQ2RVXf9", "stoppedac")
 end)
 
--- Heartbeat
 if Shared.Anticheat.Heartbeat then
     RegisterNetEvent("rwe:HeartbeatCheck")
     AddEventHandler("rwe:HeartbeatCheck", function(token)

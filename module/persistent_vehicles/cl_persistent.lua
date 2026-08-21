@@ -305,17 +305,7 @@ CreateThread(function()
     end
 end)
 
--- ─────────────────────────────────────────────────────────────────────────────
--- CONSOMMATION DE CARBURANT — conduite ET ralenti
---
--- GetVehicleHighGear(vehicle) → nombre de vitesses max
---   ≤ 1 → véhicule électrique (pas de boîte de vitesses conventionnelle)
---
--- Branches :
---   speed > 0.5 m/s  → consommation proportionnelle à la vitesse (comportement original)
---   speed ≤ 0.5 m/s  → consommation au ralenti (moteur tournant, véhicule à l'arrêt)
---                       Beaucoup plus faible ; encore réduite pour les électriques.
--- ─────────────────────────────────────────────────────────────────────────────
+-- Consommation de carburant en conduite ET au ralenti (GetVehicleHighGear <= 1 = électrique).
 Citizen.CreateThread(function()
     while true do
         local waitTime  = 5000
@@ -339,8 +329,7 @@ Citizen.CreateThread(function()
                 local currentFuel = GetVehicleFuelLevel(vehicle)
                 local newFuel
 
-                -- Regen active → pas de consommation (la récupération se fait dans
-                -- l'autre thread ; déduire ici annulerait le gain)
+                -- Regen active → pas de consommation ici (gérée par l'autre thread, sinon on annulerait le gain)
                 local regenActive = isElectric
                     and speed * 3.6 >= Config.FuelConsumption.RegenMinSpeedKmh
                     and GetControlNormal(0, 71) < 0.05
@@ -349,7 +338,6 @@ Citizen.CreateThread(function()
                 if regenActive then
                     -- rien : le thread regen gère le niveau de carburant
                 elseif speed > 0.5 then
-                    -- ── Consommation en marche ──────────────────────────────
                     if baseLossRate and baseLossRate > 0 then
                         local speedKmh        = speed * 3.6
                         local speedMultiplier = math.max(0.5, speedKmh / 150.0)
@@ -359,9 +347,7 @@ Citizen.CreateThread(function()
                         newFuel = math.max(0, currentFuel - baseLossRate * speedMultiplier)
                     end
                 else
-                    -- ── Consommation au ralenti ─────────────────────────────
-                    -- IdleLossRate : consommation de base à l'arrêt (par tick de 5s)
-                    -- ElectricIdleMultiplier : réduction pour véhicules électriques
+                    -- Consommation au ralenti : IdleLossRate par tick de 5s, réduit pour les électriques
                     if baseLossRate and baseLossRate > 0 then
                         local idleLoss = Config.FuelConsumption.IdleLossRate
                         if isElectric then
@@ -389,36 +375,7 @@ Citizen.CreateThread(function()
     end
 end)
 
--- ─────────────────────────────────────────────────────────────────────────────
--- RÉGÉNÉRATION ÉLECTRIQUE — freinage régénératif + récupération d'énergie
---
--- Deux effets combinés quand l'accélérateur est relâché sur un électrique :
---
---   1. FREINAGE PHYSIQUE : ApplyForceToEntity oppose une force à la vélocité
---      3D complète (X, Y, Z) → décélération progressive quelle que soit la
---      direction (virage, pente). Appelé chaque frame (wait=0).
---
---   2. RÉCUPÉRATION D'ÉNERGIE : SetVehicleFuelLevel par palier d'1s.
---      GetGameTimer() évite l'over-regen même en boucle frame-par-frame.
---
--- Détection d'activation :
---   GetVehicleCurrentGear > 0   → marche avant uniquement
---   GetControlNormal(0, 71) < 0.05 → accélérateur relâché
---   speedKmh ≥ RegenMinSpeedKmh    → vitesse suffisante
---
--- ApplyForceToEntity — pourquoi forceType=3 et isForceRel=true :
---   forceType = 3 (external impulse) : s'applique directement comme delta de
---   vélocité, contourne les contraintes internes du moteur physique. Bien plus
---   efficace que le type 1 (force normale) pour ralentir un véhicule en mouvement.
---
---   isForceRel = true : force scalée par la masse → même décélération pour
---   tous les véhicules (berline ou camion avec le même ElectricRegenBrakeForce).
---
--- ElectricRegenBrakeForce :
---   0.1  → freinage léger, à peine perceptible
---   0.3  → freinage modéré (mode EV standard)   ← défaut
---   0.6  → freinage fort  (one-pedal driving)
--- ─────────────────────────────────────────────────────────────────────────────
+-- Freinage régénératif électrique : décélère (ApplyForceToEntity, forceType=3 = impulsion externe) et récupère de l'énergie par palier d'1s quand l'accélérateur est relâché en roulant.
 CreateThread(function()
     local lastRegenMs = 0
 
@@ -428,9 +385,7 @@ CreateThread(function()
         local wait      = 500
 
         if vehicle ~= 0 and GetPedInVehicleSeat(vehicle, -1) == playerPed then
-            -- GetVehicleHighGear <= 1 détecte "une seule vitesse" mais attrape aussi
-            -- motos (8), vélos (13), bateaux (14), hélicos (15), avions (16)
-            -- et Open Wheels (22). On exclut ces classes.
+            -- GetVehicleHighGear <= 1 attrape aussi motos/vélos/bateaux/hélicos/avions/Open Wheels ; on les exclut.
             local vClass     = GetVehicleClass(vehicle)
             local isElectric = GetVehicleHighGear(vehicle) <= 1
                 and vClass ~= 8   -- Motorcycles
@@ -449,14 +404,12 @@ CreateThread(function()
                    and throttle < 0.05
                    and gear > 0
                 then
-                    -- ── Freinage physique (chaque frame) ───────────────────
                     local vel   = GetEntityVelocity(vehicle)
                     local speed = GetEntitySpeed(vehicle)
 
                     if speed > 0.1 then
                         local brk = Config.FuelConsumption.ElectricRegenBrakeForce
-                        -- Vélocité normalisée en 3D (X, Y, Z) → direction exacte du mouvement
-                        -- Force opposée = freinage régénératif
+                        -- Force opposée à la vélocité normalisée = freinage régénératif
                         ApplyForceToEntity(vehicle, 3,
                             -vel.x / speed * brk,
                             -vel.y / speed * brk,
@@ -471,7 +424,6 @@ CreateThread(function()
                         )
                     end
 
-                    -- ── Récupération d'énergie (palier 1 seconde) ──────────
                     local now = GetGameTimer()
                     if now - lastRegenMs >= 1000 then
                         local regenAmount = speedKmh * Config.FuelConsumption.ElectricRegenRate

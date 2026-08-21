@@ -1,8 +1,5 @@
--- =====================================================================
---  DONNÉES ÉMOTES — catégorie « expressions »
---  Généré à partir de rpemotes-reborn (alberttheprince), traduit en français.
---  Ne pas éditer à la main : voir le script de génération.
--- =====================================================================
+-- Catégorie « expressions ». Généré à partir de rpemotes-reborn (alberttheprince), traduit en français.
+-- Ne pas éditer à la main : voir le script de génération.
 
 EmotesData = EmotesData or {}
 EmotesData.expressions = {

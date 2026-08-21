@@ -1,7 +1,3 @@
--- =====================================================================
---  UTILITY KEYHANGER — Locales FR
--- =====================================================================
-
 KeyHanger = KeyHanger or {}
 KeyHanger.Locales = KeyHanger.Locales or {}
 

@@ -1,6 +1,3 @@
---  MODULE ATELIER — Configuration cœur (générique, sans rien de
---  spécifique à une entreprise : voir config/companies.lua pour ça)
-
 Config.Atelier = {}
 
 Config.Atelier.NotifyEvent = 'brutal_notify:SendAlert'

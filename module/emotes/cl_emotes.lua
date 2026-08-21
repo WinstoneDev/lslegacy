@@ -1,11 +1,6 @@
--- =====================================================================
---  MENU ÉMOTES (RageUI) — touche F3
---  Adapté de rpemotes-reborn (github.com/alberttheprince/rpemotes-reborn) :
---  les données (module/emotes/data/*.lua) sont extraites de son catalogue
---  officiel, débarrassées de tout contenu adulte, puis traduites en français.
---  Volontairement exclus : Pointer du doigt / Ragdoll / Lever les mains /
---  S'accroupir, déjà liés à leurs propres touches (B / U / X).
--- =====================================================================
+-- Adapté de rpemotes-reborn (github.com/alberttheprince/rpemotes-reborn) : données extraites de son
+-- catalogue officiel, débarrassées de tout contenu adulte, traduites en français. Volontairement exclus :
+-- Pointer du doigt / Ragdoll / Lever les mains / S'accroupir, déjà liés à leurs propres touches (B/U/X).
 
 local Emotes = {
     currentId = nil, -- id de l'émote en cours (nil si aucune)
@@ -26,9 +21,7 @@ for _, category in ipairs(Categories) do
     end
 end
 
--- ---------------------------------------------------------------------
---  CHARGEMENT DES RESSOURCES
--- ---------------------------------------------------------------------
+-- Chargement des ressources
 
 local function loadAnimDict(dict)
     if HasAnimDictLoaded(dict) then return true end
@@ -48,9 +41,7 @@ local function loadPropModel(model)
     return hash
 end
 
--- ---------------------------------------------------------------------
---  DÉMARRAGE / ARRÊT
--- ---------------------------------------------------------------------
+-- Démarrage / arrêt
 
 local function stopEmote()
     local ped = PlayerPedId()
@@ -109,10 +100,7 @@ local function startEmote(item)
     end
 end
 
--- ---------------------------------------------------------------------
---  PTFX PARTAGÉS — visibles par tout le monde (statebag répliqué), pour
---  les émotes qui ont un effet de particules (fumée, feu, feux d'artifice…)
--- ---------------------------------------------------------------------
+-- PTFX partagés — visibles par tout le monde via statebag répliqué (fumée, feu, feux d'artifice…)
 
 local PtfxHandles = {} -- [serverId] = handle de particule en cours
 
@@ -151,12 +139,7 @@ AddStateBagChangeHandler('lslegacy_emotes_ptfx', '', function(bagName, _key, val
     RemoveNamedPtfxAsset(value.asset)
 end)
 
--- ---------------------------------------------------------------------
---  ÉMOTES ANIMAUX — nécessitent que le ped soit déjà un modèle compatible
---  (ce serveur n'a pas de système "devenir animal" : ces animations
---  utilisent le squelette d'un chien/chat/coyote et ne jouent pas sur un
---  ped humain).
--- ---------------------------------------------------------------------
+-- Émotes animaux — nécessitent que le ped soit déjà un modèle compatible (pas de système "devenir animal" ici).
 
 local AnimalGroupModels = {
     dog_big   = { `a_c_rottweiler`, `a_c_shepherd`, `a_c_retriever`, `a_c_husky` },
@@ -213,9 +196,7 @@ AddEventHandler('onResourceStop', function(resource)
     end
 end)
 
--- ---------------------------------------------------------------------
---  STYLES DE MARCHE — persistants via KVP (survit déco/reco sur ce PC)
--- ---------------------------------------------------------------------
+-- Styles de marche — persistants via KVP (survit déco/reco sur ce PC)
 
 local Walks = { current = nil, byId = {} }
 for _, w in ipairs(EmotesData.walks) do Walks.byId[w.id] = w end
@@ -245,9 +226,7 @@ CreateThread(function()
     end
 end)
 
--- ---------------------------------------------------------------------
---  EXPRESSIONS DU VISAGE — persistantes via KVP
--- ---------------------------------------------------------------------
+-- Expressions du visage — persistantes via KVP
 
 local Expressions = { current = nil, byId = {} }
 for _, e in ipairs(EmotesData.expressions) do Expressions.byId[e.id] = e end
@@ -272,11 +251,7 @@ CreateThread(function()
     end
 end)
 
--- ---------------------------------------------------------------------
---  ÉMOTES SYNCHRONISÉES À 2 JOUEURS
---  Proximité (3m) + confirmation par la cible : touche Y = accepter,
---  touche L = refuser (10s pour répondre).
--- ---------------------------------------------------------------------
+-- Émotes synchronisées à 2 joueurs. Proximité (3m) + confirmation par la cible : Y = accepter, L = refuser (10s).
 
 local Shared = { byId = {}, partner = nil, active = nil, awaitingResponse = false }
 for _, s in ipairs(EmotesData.shared) do Shared.byId[s.id] = s end
@@ -417,9 +392,7 @@ CreateThread(function()
     end
 end)
 
--- ---------------------------------------------------------------------
---  ANNULATION EXTERNE (touche X du menu crouch) + API exposée
--- ---------------------------------------------------------------------
+-- Annulation externe (touche X du menu crouch) + API exposée
 
 LSLegacy.Emotes = LSLegacy.Emotes or {}
 
@@ -462,9 +435,7 @@ local function sortedData(data)
     return sorted
 end
 
--- ---------------------------------------------------------------------
---  FAVORIS — sauvegardés par personnage (players.`boutique-id`), pas par compte
--- ---------------------------------------------------------------------
+-- Favoris — sauvegardés par personnage (players.`boutique-id`), pas par compte
 
 local Favorites = { keys = {} }
 
@@ -525,9 +496,7 @@ CreateThread(function()
     end
 end)
 
--- ---------------------------------------------------------------------
---  COMMANDE /e <id> — jouer une émote directement par son identifiant
--- ---------------------------------------------------------------------
+-- Commande /e <id> — jouer une émote directement par son identifiant
 
 RegisterCommand('e', function(_source, args)
     local id = args[1]
@@ -563,9 +532,7 @@ RegisterCommand('e', function(_source, args)
     LSLegacy.ShowNotification("Emotes", ("'%s' n'est pas un identifiant d'émote valide."):format(id), "error")
 end, false)
 
--- ---------------------------------------------------------------------
---  MENU RAGEUI — Principal > Catégorie > Liste
--- ---------------------------------------------------------------------
+-- Menu RageUI — Principal > Catégorie > Liste
 
 EmotesMenu = {
     opened    = false,

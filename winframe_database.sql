@@ -884,8 +884,10 @@ CREATE TABLE IF NOT EXISTS `exit_sleeping` (
 --  Tables documentées séparément (schémas dédiés par module)
 -- =============================================================
 --  - keyhanger_boards          → module/keyhanger/keyhanger.sql
---  - mdt_* (12 tables police)  → module/mdt/sql/mdt.sql
+--  - mdt_* (22 tables police)  → module/mdt/sql/mdt.sql
 --  - mdt_med_* (SAMU)          → module/samu/sql/medical.sql
+--  - atelier_* (4 tables)      → module/atelier/sql/atelier.sql
+--  - emotes_favorites          → module/emotes/sql/emotes.sql
 --  - phone_* (lb-phone)        → [Autres]/lb-phone/phone.sql (ressource tierce)
 --  - multichar (migration)     → module/multichar/sql/multichar.sql
 -- =============================================================

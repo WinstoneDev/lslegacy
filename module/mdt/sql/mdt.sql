@@ -321,13 +321,127 @@ CREATE TABLE IF NOT EXISTS `mdt_training_signups` (
     `id`            INT(11)      NOT NULL AUTO_INCREMENT,
     `training_id`   INT(11)      NOT NULL,
     `identifier`    VARCHAR(60)  NOT NULL,
+    `character_id`  INT                   DEFAULT NULL,
     `citizen_name`  VARCHAR(100) NOT NULL DEFAULT '',
     `grade`         INT(11)      NOT NULL DEFAULT 0,
     `grade_label`   VARCHAR(60)  NOT NULL DEFAULT '',
     `created_at`    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    UNIQUE KEY `uq_mts` (`training_id`, `identifier`),
+    UNIQUE KEY `uq_mts` (`training_id`, `character_id`),
     KEY `idx_mts_training` (`training_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -------------------------------------------------------------
+--  mdt_report_evidence — Preuves liées à un rapport d'intervention
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `mdt_report_evidence` (
+    `id`         INT(11)      NOT NULL AUTO_INCREMENT,
+    `report_id`  INT(11)      NOT NULL,
+    `ev_type`    VARCHAR(20)  NOT NULL DEFAULT '',
+    `ev_ref`     VARCHAR(60)  NOT NULL,
+    `label`      VARCHAR(200) NOT NULL DEFAULT '',
+    `linked_by`  VARCHAR(60)  NOT NULL DEFAULT '',
+    `created_at` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_mre` (`report_id`, `ev_ref`),
+    KEY `idx_mre_report` (`report_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -------------------------------------------------------------
+--  mdt_vehicle_flags — Véhicules signalés (volés, surveillance...)
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `mdt_vehicle_flags` (
+    `plate`              VARCHAR(12)  NOT NULL,
+    `department`         VARCHAR(50)  NOT NULL DEFAULT 'police',
+    `wanted`             INT          NOT NULL DEFAULT 0,
+    `reason`             VARCHAR(255) NOT NULL DEFAULT '',
+    `location`           VARCHAR(20)  NOT NULL DEFAULT 'circulation',
+    `officer_identifier` VARCHAR(60)  NOT NULL DEFAULT '',
+    `officer_name`       VARCHAR(100) NOT NULL DEFAULT '',
+    `updated_at`         TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`plate`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -------------------------------------------------------------
+--  mdt_agent_skills — Compétences validées par agent
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `mdt_agent_skills` (
+    `id`           INT(11)      NOT NULL AUTO_INCREMENT,
+    `department`   VARCHAR(50)  NOT NULL DEFAULT 'police',
+    `identifier`   VARCHAR(60)  NOT NULL,
+    `character_id` INT                   DEFAULT NULL,
+    `skill`        VARCHAR(150) NOT NULL,
+    `obtained_at`  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_mas` (`character_id`, `skill`),
+    KEY `idx_mas_identifier` (`identifier`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -------------------------------------------------------------
+--  mdt_agent_meta — Matricule, date d'embauche, arme de service
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `mdt_agent_meta` (
+    `id`             INT(11)      NOT NULL AUTO_INCREMENT,
+    `identifier`     VARCHAR(60)  NOT NULL,
+    `character_id`   INT                   DEFAULT NULL,
+    `department`     VARCHAR(50)  NOT NULL DEFAULT 'police',
+    `matricule`      VARCHAR(20)  NOT NULL DEFAULT '',
+    `hire_date`      VARCHAR(20)  NOT NULL DEFAULT '',
+    `tenure_date`    VARCHAR(20)  NOT NULL DEFAULT '',
+    `service_weapon` VARCHAR(20)  NOT NULL DEFAULT '',
+    `created_at`     TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_meta_matricule` (`matricule`),
+    UNIQUE KEY `uq_meta_character` (`character_id`),
+    KEY `idx_meta_identifier` (`identifier`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -------------------------------------------------------------
+--  mdt_agent_career — Historique des grades successifs
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `mdt_agent_career` (
+    `id`           INT(11)      NOT NULL AUTO_INCREMENT,
+    `identifier`   VARCHAR(60)  NOT NULL,
+    `character_id` INT                   DEFAULT NULL,
+    `grade_index`  INT(11)      NOT NULL,
+    `start_date`   VARCHAR(20)  NOT NULL DEFAULT '',
+    `end_date`     VARCHAR(20)  NOT NULL DEFAULT '',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uq_career` (`character_id`, `grade_index`),
+    KEY `idx_career_identifier` (`identifier`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -------------------------------------------------------------
+--  mdt_agent_assignments — Affectations / codes de poste
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `mdt_agent_assignments` (
+    `id`           INT(11)      NOT NULL AUTO_INCREMENT,
+    `identifier`   VARCHAR(60)  NOT NULL,
+    `character_id` INT                   DEFAULT NULL,
+    `code`         VARCHAR(80)  NOT NULL DEFAULT '',
+    `start_date`   VARCHAR(20)  NOT NULL DEFAULT '',
+    `end_date`     VARCHAR(20)  NOT NULL DEFAULT '',
+    `created_at`   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_assign_identifier` (`identifier`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -------------------------------------------------------------
+--  mdt_agent_commendations — Félicitations / sanctions internes
+-- -------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `mdt_agent_commendations` (
+    `id`            INT(11)      NOT NULL AUTO_INCREMENT,
+    `identifier`    VARCHAR(60)  NOT NULL,
+    `character_id`  INT                   DEFAULT NULL,
+    `obtained_date` VARCHAR(20)  NOT NULL DEFAULT '',
+    `nature`        VARCHAR(40)  NOT NULL DEFAULT '',
+    `reason`        VARCHAR(255) NOT NULL DEFAULT '',
+    `details`       TEXT                  DEFAULT NULL,
+    `author`        VARCHAR(60)  NOT NULL DEFAULT '',
+    `author_name`   VARCHAR(100) NOT NULL DEFAULT '',
+    `created_at`    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_comm_identifier` (`identifier`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =============================================================

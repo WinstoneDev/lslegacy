@@ -1,15 +1,4 @@
--- ════════════════════════════════════════════════════════════════════
---  POMPE À ESSENCE PUBLIQUE — Client
---  Blips rouges (grand public) sur les mêmes positions que les blips bleus
---  du job intérimaire (Config.Interim.Stations) — chacun voit la couleur
---  correspondant à son usage : bleu = ravitaillement pompiste, rouge =
---  achat d'essence pour son véhicule.
---
---  Flux 100% event-driven (pas de callback synchrone, cassé dans ce
---  projet) : StartFuelPurchase envoie pompe:requestFill et attend
---  pompe:fillAuthorized (serveur = source de vérité, vérifie argent + stock
---  station AVANT toute délivrance) avant de démarrer la progress bar.
--- ════════════════════════════════════════════════════════════════════
+-- Flux 100% event-driven (callback synchrone cassé dans ce projet) : StartFuelPurchase attend pompe:fillAuthorized (serveur vérifie argent + stock) avant de démarrer la progress bar.
 
 local CFG = Config.Pompe
 
@@ -87,7 +76,6 @@ local function FindNearestStation(coords)
     return closest
 end
 
--- ── Séquence de plein (une fois le serveur ayant autorisé une quantité) ──
 local function RunFillSequence(vehicle, currentLiters, capacity, station, maxDeliverable)
     local duration = math.max(1000, math.floor(CFG.FillDuration * (maxDeliverable / capacity)))
 
@@ -149,7 +137,7 @@ local function RunFillSequence(vehicle, currentLiters, capacity, station, maxDel
     })
 end
 
--- ── Demande de plein en cours (une seule à la fois) ──────────────────────
+-- Demande de plein en cours (une seule à la fois)
 local pendingFill = nil
 
 LSLegacy.RegisterClientEvent('pompe:fillAuthorized', function(data)

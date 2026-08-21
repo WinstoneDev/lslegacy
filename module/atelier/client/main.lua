@@ -1,8 +1,3 @@
---  MODULE ATELIER — Client principal
---  Service (avec confirmation SERVEUR avant bascule du flag local),
---  blips, zones ox_target (prise de service / vestiaire / garage),
---  tenue.
-
 Atelier = Atelier or {}
 Atelier.OnDuty    = false
 Atelier.CompanyId = nil
@@ -72,10 +67,7 @@ local function ToggleDuty(companyId)
     end
 end
 
--- Le flag local ne bascule QU'À la confirmation serveur : avant ce
--- correctif, l'ancien module mécanicien basculait le flag côté client
--- avant même l'envoi de l'event, ce qui pouvait désynchroniser l'état
--- affiché en cas de refus serveur.
+-- Le flag local ne bascule QU'À la confirmation serveur, pour éviter une désynchronisation en cas de refus.
 LSLegacy.RegisterClientEvent('atelier:dutyResult', function(data)
     pendingDutyToggle = false
     if not data or not data.success then return end

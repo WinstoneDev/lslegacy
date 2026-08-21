@@ -1,9 +1,4 @@
--- ═══════════════════════════════════════════════════════════════════
---  MODULE LTD — Client principal
---  Gestion : prise/fin de service, tenue, blips — DEUX MAGASINS
---  INDÉPENDANTS (Grove Street / Grapeseed), aucune donnée partagée.
---  Interactions : ox_target (zones) + ox_lib (menus)
--- ═══════════════════════════════════════════════════════════════════
+-- Prise/fin de service, tenue, blips — deux magasins indépendants (Grove Street / Grapeseed), aucune donnée partagée.
 
 LTD = LTD or {}
 LTD.OnDuty    = false
@@ -14,8 +9,6 @@ LTD.InUniform = false
 local function Notify(msg, type)
     TriggerEvent(Config.LTD.NotifyEvent, 'LTD', msg, 5000, type or 'info')
 end
-
--- ── Utilitaires ────────────────────────────────────────────────────
 
 local function IsEmployee()
     return LSLegacy.PlayerData.job == Config.LTD.Job
@@ -32,8 +25,6 @@ local function GetStore(storeId)
     return nil
 end
 
--- ── Blips ───────────────────────────────────────────────────────────
-
 local function CreateBlips()
     for _, s in ipairs(Config.LTD.Stores) do
         local blip = AddBlipForCoord(s.headquarters.x, s.headquarters.y, s.headquarters.z)
@@ -46,8 +37,6 @@ local function CreateBlips()
         EndTextCommandSetBlipName(blip)
     end
 end
-
--- ── Prise de service (par magasin) ───────────────────────────────────
 
 local function GoOnDuty(storeId)
     if LTD.OnDuty then Notify(Lang.LTD.already_on_duty, 'error') return end
@@ -82,8 +71,6 @@ local function ToggleDuty(storeId)
         GoOnDuty(storeId)
     end
 end
-
--- ── Tenue ──────────────────────────────────────────────────────────
 
 local function ApplyOutfit(outfit)
     local ped    = PlayerPedId()
@@ -131,8 +118,6 @@ local function OpenClothingMenu()
     lib.showContext('ltd_clothing')
 end
 
--- ── Zones ox_target (une par magasin) ─────────────────────────────────
-
 for _, store in ipairs(Config.LTD.Stores) do
     exports.ox_target:addBoxZone({
         coords   = store.headquarters,
@@ -169,14 +154,11 @@ for _, store in ipairs(Config.LTD.Stores) do
     })
 end
 
--- ── Init ─────────────────────────────────────────────────────────────
-
 Citizen.CreateThread(function()
     Wait(2000)
     CreateBlips() -- magasins visibles pour tous (commerce public)
 end)
 
--- Exporter l'état pour les autres sous-modules
 function LTD.IsOnDuty() return LTD.OnDuty end
 function LTD.GetStoreId() return LTD.StoreId end
 function LTD.GetGrade() return LTD.Grade end

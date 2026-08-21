@@ -1,9 +1,4 @@
--- ════════════════════════════════════════════════════════════════════
---  INTÉRIMAIRE — Configuration
---  Job libre (aucune condition de métier) : camion-citerne pour ravitailler
---  les stations essence du monde. Portée v1 : le niveau des stations est une
---  ressource propre à ce job (pas encore consommée par les véhicules joueurs).
--- ════════════════════════════════════════════════════════════════════
+-- Job libre : camion-citerne pour ravitailler les stations essence. Portée v1 : le niveau des stations n'est pas encore consommé par les véhicules joueurs.
 
 Config = Config or {}
 Config.Interim = {

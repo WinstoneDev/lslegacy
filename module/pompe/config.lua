@@ -1,10 +1,4 @@
--- ════════════════════════════════════════════════════════════════════
---  POMPE À ESSENCE PUBLIQUE — Configuration
---  Accessible à tout le monde (pas de job) : le joueur interagit sur un
---  prop de pompe à essence (ox_target:addModel) pour faire le plein de
---  son véhicule le plus proche, en tirant sur le stock réel de la station
---  la plus proche (table interim_stations, alimentée par le job intérimaire).
--- ════════════════════════════════════════════════════════════════════
+-- Pompe publique sans job : interaction sur un prop (ox_target) qui tire sur le stock réel de la station la plus proche (interim_stations, alimentée par le job intérimaire).
 
 Config = Config or {}
 Config.Pompe = {

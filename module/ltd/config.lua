@@ -1,19 +1,11 @@
--- ═══════════════════════════════════════════════════════════════════
---  MODULE LTD — Configuration principale
---  Framework : LSLegacy (custom)
---  Deux magasins INDÉPENDANTS (stock, employés en service, alarme) :
---  Grove Street (Strawberry) et Grapeseed. Même enseigne, même job,
---  mais aucune donnée n'est partagée entre les deux établissements.
---  Coordonnées approximatives — à ajuster si elles ne tombent pas
---  exactement sur l'entrée du magasin.
--- ═══════════════════════════════════════════════════════════════════
+-- Deux magasins indépendants (stock, employés en service, alarme) : Grove Street (Strawberry) et Grapeseed, même enseigne/job mais aucune donnée partagée. Coordonnées approximatives, à ajuster si besoin.
 
 Config.LTD = {}
 
--- ── Job rattaché au module ──────────────────────────────────────────
+-- Job rattaché au module
 Config.LTD.Job = 'ltd'
 
--- ── Magasins ─────────────────────────────────────────────────────────
+-- Magasins
 -- Chaque magasin a son propre stock, ses propres employés en service et
 -- sa propre alarme. `id` doit être unique et stable (utilisé en BDD).
 Config.LTD.Stores = {
@@ -43,7 +35,7 @@ Config.LTD.Stores = {
     },
 }
 
--- ── Tenues disponibles au vestiaire (communes aux deux magasins) ─────
+-- Tenues disponibles au vestiaire (communes aux deux magasins)
 Config.LTD.Outfits = {
     {
         label  = 'Tablier LTD',
@@ -75,7 +67,7 @@ Config.LTD.Uniforms = {
     female = Config.LTD.Outfits[1].female,
 }
 
--- ── Articles vendus en caisse (catalogue commun aux deux magasins) ───
+-- Articles vendus en caisse (catalogue commun aux deux magasins)
 -- `item` doit exister dans Config.Items (shared/config.lua).
 -- Le STOCK, lui, est totalement indépendant par magasin (voir server/stock.lua).
 Config.LTD.Items = {
@@ -86,20 +78,20 @@ Config.LTD.Items = {
     { item = 'cigarettes',  label = 'Cigarettes',      price = 12 },
 }
 
--- ── Quantité de réassort par passage rayon → caisse ───────────────────
+-- Quantité de réassort par passage rayon → caisse
 Config.LTD.RestockAmount = 5
 
--- ── Stock de départ si jamais initialisé ──────────────────────────────
+-- Stock de départ si jamais initialisé
 Config.LTD.DefaultReserveStock = 0
 Config.LTD.DefaultShelfStock   = 10
 
--- ── Vol à l'étalage ───────────────────────────────────────────────────
+-- Vol à l'étalage
 Config.LTD.Theft = {
     cooldown      = 120,  -- secondes entre deux vols sur LE MÊME magasin
     alertRadiusPD = true, -- notifie les policiers en service avec waypoint
 }
 
--- ── Actions / cooldowns ────────────────────────────────────────────────
+-- Actions / cooldowns
 Config.LTD.Actions = {
     interactionRange = 2.5,
     cooldowns = {
@@ -110,5 +102,5 @@ Config.LTD.Actions = {
     },
 }
 
--- ── Notification (même système que les autres métiers) ────────────────
+-- Notification (même système que les autres métiers)
 Config.LTD.NotifyEvent = 'brutal_notify:SendAlert'

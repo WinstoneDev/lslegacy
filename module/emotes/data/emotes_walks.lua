@@ -1,8 +1,5 @@
--- =====================================================================
---  DONNÉES ÉMOTES — catégorie « walks »
---  Généré à partir de rpemotes-reborn (alberttheprince), traduit en français.
---  Ne pas éditer à la main : voir le script de génération.
--- =====================================================================
+-- Catégorie « walks ». Généré à partir de rpemotes-reborn (alberttheprince), traduit en français.
+-- Ne pas éditer à la main : voir le script de génération.
 
 EmotesData = EmotesData or {}
 EmotesData.walks = {

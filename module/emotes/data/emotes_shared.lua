@@ -1,8 +1,5 @@
--- =====================================================================
---  DONNÉES ÉMOTES — catégorie « shared » (synchronisées à 2 joueurs)
---  Généré à partir de rpemotes-reborn (alberttheprince), traduit en français.
---  Ne pas éditer à la main : voir le script de génération.
--- =====================================================================
+-- Catégorie « shared » (synchronisées à 2 joueurs). Généré à partir de rpemotes-reborn (alberttheprince),
+-- traduit en français. Ne pas éditer à la main : voir le script de génération.
 
 EmotesData = EmotesData or {}
 EmotesData.shared = {

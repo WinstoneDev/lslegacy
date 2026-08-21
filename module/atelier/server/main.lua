@@ -1,11 +1,5 @@
---  MODULE ATELIER — Serveur principal
---  Création tables SQL, prise de service, spawn véhicule
-
--- Indexée sur (character_id, company) : contrairement à l'ancien module
--- mecanicien, un même personnage ne peut être employé QUE d'une seule
--- entreprise à la fois (un seul job), mais la clé composite prépare le
--- terrain si un jour une entreprise supplémentaire venait à réutiliser
--- le même personnage après un changement d'employeur.
+-- Indexée sur (character_id, company) : un personnage ne peut être employé que d'une seule
+-- entreprise à la fois, mais la clé composite prépare le terrain pour un futur changement d'employeur.
 MySQL.Async.execute([[
     CREATE TABLE IF NOT EXISTS atelier_agents (
         id            INT AUTO_INCREMENT PRIMARY KEY,
@@ -76,9 +70,7 @@ LSLegacy.RegisterServerEvent('atelier:spawnVehicle', function(data)
     local company = Config.Atelier.Companies[companyId]
     local minGrade = tonumber(data.grade) or 0
 
-    -- Revalidation serveur : le modèle et le grade demandés doivent
-    -- exister dans la config de CETTE entreprise, jamais faire confiance
-    -- au grade envoyé par le client.
+    -- Revalidation serveur : le modèle doit exister dans la config de CETTE entreprise, jamais faire confiance au grade client.
     local found = false
     for _, veh in ipairs((company.vehicles and company.vehicles.tow) or {}) do
         if veh.model == data.model then

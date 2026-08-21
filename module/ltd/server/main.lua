@@ -1,8 +1,4 @@
--- ═══════════════════════════════════════════════════════════════════
---  MODULE LTD — Serveur principal
---  Création tables SQL, gestion prise de service (par magasin)
---  SÉCURITÉ : toutes les actions revalident job/grade depuis ServerPlayers
--- ═══════════════════════════════════════════════════════════════════
+-- Création tables SQL, gestion prise de service (par magasin). Toutes les actions revalident job/grade depuis ServerPlayers.
 
 local LtdAgents = {}   -- { [source] = { onDuty, grade, storeId } }
 
@@ -87,7 +83,6 @@ function IsLtdOnDuty(src)
     return LtdAgents[src] ~= nil and LtdAgents[src].onDuty == true
 end
 
----IsLtdOnDutyAt
 ---@param src number
 ---@param storeId string
 ---@return boolean
@@ -95,7 +90,7 @@ function IsLtdOnDutyAt(src, storeId)
     return LtdAgents[src] ~= nil and LtdAgents[src].onDuty == true and LtdAgents[src].storeId == storeId
 end
 
----GetLtdAgentsAt — agents en service sur un magasin précis
+-- Agents en service sur un magasin précis.
 ---@param storeId string
 function GetLtdAgentsAt(storeId)
     local result = {}

@@ -1,8 +1,4 @@
--- ═══════════════════════════════════════════════════════════════════
---  MODULE FARM — Client principal
---  Activités de récolte (bûcheron/mineur/agriculteur)
---  Circuit : récolte → traitement → revente, chaque étape validée serveur
--- ═══════════════════════════════════════════════════════════════════
+-- Activités de récolte (bûcheron/mineur/agriculteur) : récolte → traitement → revente, chaque étape validée serveur
 
 Farm = Farm or {}
 Farm.Busy = false -- action en cours (récolte ou traitement) — anti double-déclenchement
@@ -11,9 +7,7 @@ local function Notify(msg, type)
     TriggerEvent(Config.Farm.NotifyEvent, 'Farm', msg, 5000, type or 'info')
 end
 
----SpawnStaticPed
----PNJ statique et invincible avec des options ox_target attachées à lui
----directement (addLocalEntity) — pattern repris de module/concessionnaire.
+-- PNJ statique et invincible avec des options ox_target attachées à lui (addLocalEntity) — pattern repris de module/concessionnaire.
 local function SpawnStaticPed(coords, model, heading, options)
     local hash = GetHashKey(model)
     RequestModel(hash)
@@ -31,15 +25,7 @@ local function SpawnStaticPed(coords, model, heading, options)
     return ped
 end
 
--- ══════════════════════════════════════════════════════════════════
---  SPAWN DE LA FAUNE (chasseur) — ARBITRÉ PAR LE SERVEUR.
---  Le client ne décide jamais lui-même "il en manque un" : il exécute
---  uniquement la demande de spawn que le serveur lui délègue (lui seul
---  peut poser l'animal au sol / vérifier l'eau à proximité), et lui
---  renvoie le netId obtenu — le serveur reste l'unique compteur, ce qui
---  évite qu'un spawn en double survienne si deux chasseurs se croisent
---  sur la même zone.
--- ══════════════════════════════════════════════════════════════════
+-- Spawn de la faune (chasseur) arbitré par le serveur : le client exécute seulement la demande déléguée et renvoie le netId, le serveur reste l'unique compteur pour éviter un double spawn.
 
 local function RandomPointInRadius(center, radius)
     local angle = math.random() * 2 * math.pi
@@ -53,11 +39,7 @@ local function RandomPointAround(center, minDist, maxDist)
     return vector3(center.x + math.cos(angle) * dist, center.y + math.sin(angle) * dist, center.z)
 end
 
----IsNearWater
----Littoral uniquement (mouette) : eau détectée proche du niveau du sol
----du joueur, pas juste "présente sur la carte" (sinon toute la carte
----compterait vu la mer environnante). Nécessite une native client —
----c'est pour ça que le serveur délègue ce filtre au client concerné.
+-- Littoral uniquement (mouette) : eau proche du niveau du sol du joueur, pas juste présente sur la carte. Native client-only, d'où la délégation au client.
 local function IsNearWater(coords)
     local found, waterZ = GetWaterHeight(coords.x, coords.y, coords.z)
     if not found then return false end
@@ -66,12 +48,7 @@ end
 
 local SpawnedAnimals = {} -- entités qu'on a nous-mêmes créées, pour le nettoyage à l'arrêt de la ressource
 
----EnsureNetworked
----Le gibier n'est pas toujours networké : les espèces sans `spawnZones`
----(cougar, oiseaux) sont des peds de la population ambiante vanilla, créés
----localement par le jeu — `NetworkGetNetworkIdFromEntity` sur ceux-là émet
----un warning "no net object for entity" et renvoie 0. On les enregistre
----donc à la demande, au moment où le serveur a réellement besoin du netId.
+-- Le gibier n'est pas toujours networké : les peds ambiants vanilla (sans `spawnZones`) renvoient un warning et 0 sur NetworkGetNetworkIdFromEntity tant qu'ils ne sont pas enregistrés à la demande.
 ---@return number|nil netId utilisable côté serveur, nil si l'enregistrement échoue
 local function EnsureNetworked(entity)
     if not DoesEntityExist(entity) then return nil end
@@ -138,17 +115,13 @@ AddEventHandler('onResourceStop', function(res)
     end
 end)
 
--- ── Aide au placement des points de récolte ───────────────────────────
--- Affiche la position actuelle prête à coller dans `Config.Farm.Activities.
--- <activité>.nodes` — se placer à l'endroit voulu puis taper /farmpos.
+-- Affiche la position actuelle prête à coller dans Config.Farm.Activities.<activité>.nodes.
 RegisterCommand('farmpos', function()
     local c = GetEntityCoords(PlayerPedId())
     local line = string.format('{ coords = vector3(%.2f, %.2f, %.2f) },', c.x, c.y, c.z)
     print('[Farm] ' .. line)
     Notify('Position copiée en console F8 : ' .. line, 'info')
 end, false)
-
--- ── Utilitaires ────────────────────────────────────────────────────
 
 local function ItemCount(itemName)
     if not itemName then return 0 end
@@ -164,10 +137,7 @@ local function HasItem(itemName)
     return ItemCount(itemName) > 0
 end
 
--- ── Outils custom tenus en main (pioche, etc. — pas de vraie arme GTA) ──
--- Contrairement à une arme (weapon_hatchet), un outil custom n'a pas de
--- notion native "équipé" : on gère nous-mêmes un prop attaché en main,
--- togglé par une touche, tant qu'il n'est pas rangé.
+-- Outils custom (pioche, etc.) : pas de notion native "équipé" comme une arme GTA, on gère nous-mêmes un prop attaché en main.
 Farm.HeldTool     = nil
 Farm.HeldToolProp = nil
 
@@ -204,10 +174,7 @@ local function EquipHeldTool(tool)
 
     if HasModelLoaded(propHash) then
         local prop = CreateObject(propHash, GetEntityCoords(ped), true, true, true)
-        -- ID d'os numérique (ex: 18905 = main droite) si fourni — pattern
-        -- validé dans module/pompe (repris tel quel du script public ox_fuel).
-        -- `GetEntityBoneIndexByName` avec 'SKEL_R_Hand' semble se rabattre sur
-        -- un os rigide (le prop ne suit pas le bras pendant l'animation).
+        -- ID d'os numérique si fourni (pattern validé dans module/pompe) : GetEntityBoneIndexByName('SKEL_R_Hand') semble se rabattre sur un os rigide qui ne suit pas le bras.
         local boneRef = anim.bone or 'SKEL_R_Hand'
         local bone = type(boneRef) == 'number' and GetPedBoneIndex(ped, boneRef) or GetEntityBoneIndexByName(ped, boneRef)
         local off  = anim.offset or vector3(0.0, 0.0, 0.0)
@@ -221,11 +188,7 @@ local function EquipHeldTool(tool)
     SetModelAsNoLongerNeeded(propHash)
 end
 
----IsToolEquipped
----Pour un outil qui est une vraie arme GTA (weapon_*), vérifie qu'elle est
----actuellement l'arme en main. Pour un outil custom (ex: pioche), équipe
----automatiquement le prop en main s'il ne l'est pas déjà (pas de touche
----manuelle à connaître — juste avoir l'outil dans l'inventaire suffit).
+-- Arme GTA (weapon_*) : vérifie qu'elle est en main. Outil custom : équipe automatiquement le prop s'il ne l'est pas déjà.
 local function IsToolEquipped(tool)
     if not tool then return true end
     if string.match(tool, '^weapon_') then
@@ -236,8 +199,6 @@ local function IsToolEquipped(tool)
     end
     return Farm.HeldTool == tool
 end
-
--- ── Blips ───────────────────────────────────────────────────────────
 
 local function AddFarmBlip(coords, sprite, color, scale, label)
     local blip = AddBlipForCoord(coords.x, coords.y, coords.z)
@@ -269,9 +230,7 @@ CreateThread(function()
     CreateBlips()
 end)
 
--- ── Minijeu générique (barre + appui touche, identique à Mécanicien) ──
--- Réutilisé pour la récolte ET le traitement.
-
+-- Minijeu générique (barre + appui touche, identique à Mécanicien), réutilisé pour la récolte et le traitement.
 local function DrawMinigameBar(pos, zoneStart, zoneEnd)
     DrawRect(0.5, 0.85, 0.3, 0.03, 30, 30, 30, 180)
     DrawRect(0.5 - 0.15 + zoneStart * 0.3, 0.85, (zoneEnd - zoneStart) * 0.3, 0.03, 50, 200, 50, 180)
@@ -337,16 +296,9 @@ function Farm.RunMinigame(onComplete, anim)
     onComplete(hits, cfg.rounds, success)
 end
 
----RunGatherAnim
----Joue une animation de coup d'outil (hache, etc.) avec le prop attaché en
----main, sans minijeu : un coup = une récolte réussie.
+-- Joue une animation de coup d'outil, sans minijeu : un coup = une récolte réussie. Le prop custom (ex: pioche) reste attaché via Farm.HeldTool, pas de prop temporaire séparé ici.
 ---@param anim table Config.Farm.Activities[x].gatherAnim
 ---@param onComplete function appelé avec (success)
----RunGatherAnim
----Le prop de l'outil (si custom, ex: pioche) est déjà attaché en permanence
----via Farm.HeldTool/EquipHeldTool tant qu'il est tenu — cette fonction ne
----gère plus que l'animation elle-même, pas de prop temporaire séparé (ça
----créait un doublon flottant en plus de l'outil déjà en main).
 local function RunGatherAnim(anim, onComplete)
     local ped = PlayerPedId()
 
@@ -368,10 +320,6 @@ local function RunGatherAnim(anim, onComplete)
 
     onComplete(true)
 end
-
--- ══════════════════════════════════════════════════════════════════
---  RÉCOLTE
--- ══════════════════════════════════════════════════════════════════
 
 ---StartGather
 ---@param activityKey string
@@ -479,8 +427,6 @@ LSLegacy.RegisterClientEvent('farm:gatherResult', function(data)
     Notify(string.format(Lang.Farm.gather_success, data.amount or 1, itemLabel), 'success')
 end)
 
--- ── Braconnage — prélèvement de peau (bouton séparé, voir plus bas) ────
-
 local SkinnedCorpses = {} -- [netId] = true — indice client pour masquer l'option une fois utilisée (le serveur reste seul juge)
 
 local function StartPoach(activityKey, entity)
@@ -508,10 +454,6 @@ LSLegacy.RegisterClientEvent('farm:poachingAlertReceived', function(data)
     Notify('Braconnage signalé aux forces de l\'ordre.', 'error')
     SetNewWaypoint(data.coords.x, data.coords.y)
 end)
-
--- ══════════════════════════════════════════════════════════════════
---  TRAITEMENT
--- ══════════════════════════════════════════════════════════════════
 
 local function StartProcess(activityKey)
     if Farm.Busy then return end
@@ -566,10 +508,6 @@ LSLegacy.RegisterClientEvent('farm:processResult', function(data)
     Notify(string.format(Lang.Farm.process_success, data.amount, itemLabel), 'success')
 end)
 
--- ══════════════════════════════════════════════════════════════════
---  REVENTE
--- ══════════════════════════════════════════════════════════════════
-
 local function HasAnythingToSell(activity)
     if activity.processedItems then
         for _, entry in ipairs(activity.processedItems) do
@@ -618,18 +556,10 @@ LSLegacy.RegisterClientEvent('farm:sellResult', function(data)
     Notify(string.format(Lang.Farm.sell_done, table.concat(parts, ' + '), data.total), 'success')
 end)
 
--- ══════════════════════════════════════════════════════════════════
---  COMPACTAGE — sac de pierres
--- ══════════════════════════════════════════════════════════════════
-
 LSLegacy.RegisterClientEvent('farm:compactStonesResult', function(data)
     if not data or not data.success then return end
     Notify(string.format('%d sac(s) de pierres fabriqué(s).', data.bags), 'success')
 end)
-
--- ══════════════════════════════════════════════════════════════════
---  BOUTIQUE — achat public, alimentée par les ventes des mineurs
--- ══════════════════════════════════════════════════════════════════
 
 LSLegacy.RegisterClientEvent('farm:shopStockResult', function(stock)
     stock = stock or {}
@@ -726,10 +656,6 @@ if Config.Farm.ShopBuyPoint then
     })
 end
 
--- ══════════════════════════════════════════════════════════════════
---  ZONES OX_TARGET
--- ══════════════════════════════════════════════════════════════════
-
 for activityKey, activity in pairs(Config.Farm.Activities) do
     -- Nœuds de récolte fixes
     for nodeIndex, node in ipairs(activity.nodes or {}) do
@@ -751,16 +677,8 @@ for activityKey, activity in pairs(Config.Farm.Activities) do
         })
     end
 
-    -- Gibier chassable (chasseur) — ciblage sur le cadavre une fois mort,
-    -- n'importe où sur la carte (peds réels, contrairement au décor/arbres).
-    -- Récupération instantanée (`instantGather`), pas de minijeu.
-    --
-    -- Le ramassage de la carcasse (label selon l'outil en main, purement
-    -- cosmétique — le résultat est identique dans les deux cas, voir
-    -- `StartGather`) est SÉPARÉ du prélèvement de la peau : la peau est un
-    -- bouton en plus, uniquement sur les espèces braconnables
-    -- (`species.peauItem`, coyote/cougar) et couteau en main — voir
-    -- `Config.Farm.Activities.chasseur.poaching`.
+    -- Gibier chassable (chasseur) : ciblage sur le cadavre une fois mort, n'importe où sur la carte. Récupération instantanée, pas de minijeu.
+    -- Le ramassage de la carcasse (label cosmétique selon l'outil en main) est séparé du prélèvement de la peau, bouton en plus réservé aux espèces braconnables couteau en main.
     if activity.species then
         local modelHashes = {}
         for i, sp in ipairs(activity.species) do
@@ -831,10 +749,7 @@ for activityKey, activity in pairs(Config.Farm.Activities) do
         })
     end
 
-    -- Station de traitement — sur un PNJ (`processingNpc`) si défini, sinon
-    -- une zone au sol comme les autres activités. Absente si l'activité n'a
-    -- rien à faire traiter par le joueur lui-même (ex: chasseur, où c'est le
-    -- boucher qui transforme à la vente — voir `multiSellItems`).
+    -- Station de traitement sur un PNJ si `processingNpc` est défini, sinon une zone au sol. Absente si rien n'est à traiter par le joueur (ex: chasseur, transformé à la vente via `multiSellItems`).
     local hasSelfProcessing = activity.processedItems ~= nil or activity.processedItem ~= nil
     local processOptions = hasSelfProcessing and {
         {

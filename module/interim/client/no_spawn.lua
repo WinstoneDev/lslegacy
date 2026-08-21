@@ -1,22 +1,12 @@
--- ════════════════════════════════════════════════════════════════════
---  INTÉRIMAIRE — Zone anti-spawn autour des stations essence
---  Empêche l'apparition de véhicules/pnj ambiants dans un rayon de
---  Config.Interim.StationNoSpawnRadius autour de chaque station référencée,
---  pour éviter qu'une voiture/pnj de trafic vienne bloquer l'interaction.
---  Actif en permanence (pas seulement pendant le service) puisque les
---  stations sont des points fixes du monde.
--- ════════════════════════════════════════════════════════════════════
+-- Empêche l'apparition de véhicules/pnj ambiants dans un rayon de Config.Interim.StationNoSpawnRadius autour de chaque station, actif en permanence (points fixes du monde).
 
 local CFG = Config.Interim
 local RADIUS = CFG.StationNoSpawnRadius or 10.0
--- Marge de détection avant la zone stricte : on coupe la densité de
--- génération un peu avant le rayon réel pour éviter qu'un véhicule/pnj
--- termine sa course de spawn pile dans la zone.
+-- Marge avant la zone stricte, pour éviter qu'un véhicule/pnj termine sa course de spawn pile dans la zone.
 local DETECT_RADIUS = RADIUS + 20.0
 local CLEAR_INTERVAL_MS = 2000
 
--- Ne touche jamais aux entités des joueurs ni aux entités "mission"
--- (camion/remorque de l'intérimaire, pnj de job, etc.).
+-- Ne touche jamais aux entités des joueurs ni aux entités "mission" (camion/remorque de l'intérimaire, pnj de job, etc.).
 local function ClearAmbientVehiclesAround(coords, radius)
     for _, vehicle in ipairs(GetGamePool('CVehicle')) do
         if DoesEntityExist(vehicle) and not IsEntityAMissionEntity(vehicle)

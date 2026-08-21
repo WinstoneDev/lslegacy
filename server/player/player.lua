@@ -66,7 +66,7 @@ AddEventHandler("registerPlayer", function(characterId)
     Config.Development.Print("[registerPlayer] " .. source .. ": jetons générés")
     local identifier = GetPlayerIndentifier(source)
 
-    -- ── Chargement d'un personnage existant (row = ligne players) ──────────
+    -- Chargement d'un personnage existant (row = ligne players)
     local function LoadCharacter(row)
         Config.Development.Print("[registerPlayer] " .. source .. ": LoadCharacter(id=" .. tostring(row["boutique-id"]) .. ", slot=" .. tostring(row.slot) .. ")")
         local defaultSkills = {
@@ -159,7 +159,7 @@ AddEventHandler("registerPlayer", function(characterId)
         end)
     end
 
-    -- ── Création d'un nouveau personnage (nouveau compte, ou nouveau slot) ──
+    -- Création d'un nouveau personnage (nouveau compte, ou nouveau slot)
     local function CreateCharacter(slot)
         Config.Development.Print("[registerPlayer] " .. source .. ": CreateCharacter(slot=" .. tostring(slot) .. ")")
         LSLegacy.ServerPlayers[source] = {

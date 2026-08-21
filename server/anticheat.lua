@@ -610,7 +610,6 @@ if Shared.Anticheat.AntiResource or Shared.Anticheat.AntiResourceManipulation th
     end)
 end
 
--- Explosion Event
 AddEventHandler('explosionEvent', function(sender, ev)
     local name = GetPlayerName(sender)
     local _src = source
@@ -623,7 +622,6 @@ end)
 
 -- TODO: Maybe rework from entityCreated to entityCreating for server-side performance. Disabled for now.
 
--- Heartbeat System
 local PlayerHeartbeats = {}
 
 if Shared.Anticheat.Heartbeat then
@@ -662,10 +660,8 @@ if Shared.Anticheat.Heartbeat then
     end)
 end
 
--- OCR System
 function CaptureScreenshot(target)
     if not Shared.Anticheat.OCR then return end
-    -- Requires the screenshot-basic resource
     local webhook = Shared.Anticheat.OCRWebhook ~= "" and Shared.Anticheat.OCRWebhook or Shared.Anticheat.WebhookDiscord
     
     if GetResourceState('screenshot-basic') == 'started' then
@@ -687,7 +683,6 @@ function CaptureScreenshot(target)
     end
 end
 
--- Performance Init
 local BlacklistedVehiclesHash = {}
 local BlacklistedPedsHash = {}
 local BlacklistedObjectsHash = {}
@@ -707,8 +702,6 @@ Citizen.CreateThread(function()
         BlacklistedObjectsHash[name] = true
     end
 end)
-
--- Entity Protection
 
 if Shared.Anticheat.AntiEntity then
     AddEventHandler('entityCreating', function(entity)
@@ -753,7 +746,6 @@ if Shared.Anticheat.AntiEntity then
 end
 
 
--- Anti Entity Coords / Vehicle Fly (Server Side)
 if Shared.Anticheat.AntiEntityCoords then
     Citizen.CreateThread(function()
         local lastCoords = {}
@@ -765,16 +757,12 @@ if Shared.Anticheat.AntiEntityCoords then
                 if DoesEntityExist(ped) then
                     local vehicle = GetVehiclePedIsIn(ped, false)
                     if vehicle and vehicle ~= 0 and GetPedInVehicleSeat(vehicle, -1) == ped then
-                        -- Player is driver
                         local currentCoords = GetEntityCoords(vehicle)
                         if lastCoords[_src] then
                             local dist = #(currentCoords - lastCoords[_src])
-                            -- 2 seconds interval. Max speed of fastest car ~140 mph ~= 62 m/s.
-                            -- 2 seconds = 124m. Allow margin for falling/lag = 300m.
-                            if dist > 400.0 then 
-                                -- Teleport or Fly Detected
+                            -- 2 seconds interval. Max speed of fastest car ~140 mph ~= 62 m/s = 124m, margin to 400m for falling/lag.
+                            if dist > 400.0 then
                                 -- Beware of interior teleports (check if routing bucket changed? FiveM handles this, coords usually jump)
-                                -- Simple verification:
                                 if GetEntityHeightAboveGround(vehicle) > 50.0 and not IsPedInAnyPlane(ped) and not IsPedInAnyHeli(ped) then
                                      kickorbancheater(_src, "Vol/téléportation de véhicule", "A parcouru " .. math.ceil(dist) .. " unités en 2s.", true, true)
                                 end
@@ -790,15 +778,11 @@ if Shared.Anticheat.AntiEntityCoords then
     end)
 end
 
--- Anti Spoof Projectile & Projectile Security
 if Shared.Anticheat.AntiSpoofProjectile then
     AddEventHandler("weaponDamageEvent", function(sender, data)
         local _src = sender
         -- data struct: damageType, weaponType, destructionDamage, tyreIndex...
         -- FiveM doesn't give projectile origin explicitly in this event easily without parsing damageFlags
-        -- But we can check weapon type validity
-        
-        -- Magic Bullet Check (Distance)
         if data.weaponType ~= 911657153 and data.weaponType ~= 0 then -- Ignore Unarmed/Stun
              local victim = NetworkGetEntityFromNetworkId(data.hitGlobalId)
              local shooter = GetPlayerPed(_src)
@@ -806,9 +790,8 @@ if Shared.Anticheat.AntiSpoofProjectile then
                  local vCoords = GetEntityCoords(victim)
                  local sCoords = GetEntityCoords(shooter)
                  local dist = #(vCoords - sCoords)
-                 
-                 -- Hard limit for most guns is around 250-300m. Snipers more.
-                 -- If distance is crazy (e.g. 1000m) and not a sniper, likely Magic Bullet / Spoof
+
+                 -- Hard limit for most guns is around 250-300m, snipers more
                  if dist > 600.0 then
                       kickorbancheater(_src, "Spoof de projectile", "A touché un joueur situé à " .. math.floor(dist) .. "m de distance.", true, true)
                       CancelEvent()
@@ -818,18 +801,12 @@ if Shared.Anticheat.AntiSpoofProjectile then
     end)
 end
 
-------------------------------------
--------- Fake Message Chat  --------
-------------------------------------
 RegisterNetEvent('chat:server:ServerPSA')
 AddEventHandler('chat:server:ServerPSA', function()
 	local _src = source
     kickorbancheater(_src,"Faux message détecté", "Faux message détecté",true,true)
 end)
 
-------------------------------------
--------- Anti Weapon Flag   --------
-------------------------------------
 RegisterServerEvent('rwe:WeaponFlag')
 AddEventHandler('rwe:WeaponFlag', function(weapon)
     local _src = source
@@ -838,9 +815,6 @@ AddEventHandler('rwe:WeaponFlag', function(weapon)
 end)
 
 
-------------------------------------
--------- Blacklisted Events --------
-------------------------------------
 if Shared.Anticheat.EventsDetect then
     for k, v in pairs(Shared.Anticheat.Events) do
         RegisterServerEvent(v)
@@ -884,9 +858,6 @@ if Shared.Anticheat.ProtectAmbulanceEvent then
     end
 end
 
-------------------------------------
--------- Blacklisted Word ----------
-------------------------------------
 AddEventHandler('chatMessage', function(source, color, message)
     local _src = source
     if not message then return end
@@ -918,9 +889,6 @@ AddEventHandler('_chat:messageEntered', function(author, color, message)
     end
 end)
 
-------------------------------------
--------- Blacklisted Command -------
-------------------------------------
 Citizen.CreateThread(function()
     for i=1, #Shared.Anticheat.BlacklistedCommands, 1 do
         RegisterCommand(Shared.Anticheat.BlacklistedCommands[i], function(source)
@@ -930,10 +898,6 @@ Citizen.CreateThread(function()
     end
 end)
 
-
---------------------------------------------
--------- Anti Taze & Weapon Event & AntiCrash ----------
---------------------------------------------
 AddEventHandler("weaponDamageEvent", function(sender, data)
     if Shared.Anticheat.AntiTaze then
         local _src = sender
@@ -988,9 +952,6 @@ if Shared.Anticheat.ProtectAmbulanceEvent then
     end
 end
 
-------------------------------------
--------- Blacklisted Word ----------
-------------------------------------
 AddEventHandler('chatMessage', function(source, color, message)
     local _src = source
     if not message then
@@ -1026,9 +987,6 @@ AddEventHandler('_chat:messageEntered', function(author, color, message)
     end
 end)
 
-------------------------------------
--------- Blacklisted Command -------
-------------------------------------
 Citizen.CreateThread(function()
     for i=1, #Shared.Anticheat.BlacklistedCommands, 1 do
         RegisterCommand(Shared.Anticheat.BlacklistedCommands[i], function(source)
@@ -1037,10 +995,6 @@ Citizen.CreateThread(function()
         end)
     end
 end)
-
-------------------------------------
---------    Admin Command    -------
-------------------------------------
 
 RegisterNetEvent('rwdeletevehiclesc', function(playerId)
 	local coords = GetEntityCoords(GetPlayerPed(playerId))
@@ -1090,7 +1044,7 @@ RegisterCommand("allentitywipe", function(source)
     end
 end, false)
 
------ EntityCreated different version with display
+-- EntityCreated, version alternative avec affichage client
 AddEventHandler('entityCreated', function(entity)
     if DoesEntityExist(entity) then
         local src = source
@@ -1126,9 +1080,6 @@ AddEventHandler('entityCreated', function(entity)
     end
 end)
 
---------------------------------------------
--------- Anti Taze & Weapon Event & AntiCrash ----------
---------------------------------------------
 AddEventHandler("weaponDamageEvent", function(sender, data)
     if Shared.Anticheat.AntiTaze then
         local _src = sender

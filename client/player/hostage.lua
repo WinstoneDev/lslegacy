@@ -1,12 +1,3 @@
--- ═══════════════════════════════════════════════════════════════════
---  OTAGE (/otage) — prise d'otage sous la menace d'une arme de poing
---  Adapté d'un script de référence (mécanique "TakeHostage") : armes
---  autorisées tirées de Config.HostageWeapons (shared/config.lua),
---  events relayés via LSLegacy pour passer par le système de jetons
---  anti-injection du framework.
---  Ciblage : ox_target (ALT sur un joueur) ou commande /otage.
--- ═══════════════════════════════════════════════════════════════════
-
 local HostageWeaponHashes = {}
 for _, name in ipairs(Config.HostageWeapons) do
     HostageWeaponHashes[#HostageWeaponHashes + 1] = GetHashKey(name)
@@ -138,8 +129,6 @@ RegisterCommand('otage', function()
     callTakeHostage(nil)
 end, false)
 
--- ── Events relayés par le serveur ─────────────────────────────────────
-
 LSLegacy.RegisterClientEvent('lslegacy_hostage:client:syncTarget', function(aggressorSrc)
     local aggressorPed = GetPlayerPed(GetPlayerFromServerId(aggressorSrc))
     if aggressorPed == 0 then return end
@@ -187,8 +176,6 @@ LSLegacy.RegisterClientEvent('lslegacy_hostage:client:stop', function()
     DetachEntity(PlayerPedId(), true, false)
 end)
 
--- ── Boucle d'animation + arme dispo ──────────────────────────────────
-
 CreateThread(function()
     while true do
         local sleep = 1000
@@ -212,8 +199,6 @@ CreateThread(function()
         Wait(sleep)
     end
 end)
-
--- ── Contrôles : [G] relâcher / [H] tuer (côté preneur), restriction otage ──
 
 CreateThread(function()
     while true do
@@ -279,8 +264,6 @@ CreateThread(function()
         end
     end
 end)
-
--- ── Ciblage ox_target ────────────────────────────────────────────────
 
 exports.ox_target:addGlobalPlayer({
     {

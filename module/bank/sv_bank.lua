@@ -1126,9 +1126,7 @@ LSLegacy.RegisterServerEvent("lslegacy:requestBankBalance", function()
     end)
 end)
 
--- -----------------------------------------------------------------------
---  EXPORTS BANK (utilisés par lb-phone)
--- -----------------------------------------------------------------------
+-- Exports bank, utilisés par lb-phone
 
 local function GetCompteCourant(characterId)
     if not characterId then return nil end

@@ -1,11 +1,4 @@
--- =====================================================================
---  MODULE SIT — Modèles supportés
---  Repris intégralement de config/models.lua de mnr_sitanywhere (licence
---  MIT, github.com/Monarch-Devs/mnr_sitanywhere) : 153 props calibrés en
---  jeu (offset local x, y, z, heading par place). Seuls CES modèles
---  affichent l'option ox_target "S'asseoir" — pas de ciblage générique
---  sur n'importe quel objet du monde.
--- =====================================================================
+-- Repris de config/models.lua de mnr_sitanywhere (MIT, github.com/Monarch-Devs/mnr_sitanywhere) : props calibrés en jeu (offset local x, y, z, heading par place).
 
 Sit = Sit or {}
 Sit.Models = {

@@ -1,16 +1,11 @@
--- ═══════════════════════════════════════════════════════════════════
---  MODULE FARM — Serveur principal
---  Circuit : récolte → traitement → revente, chaque étape revalidée ici
---  SÉCURITÉ : outils, quantités et succès du minijeu jamais pris au mot
--- ═══════════════════════════════════════════════════════════════════
+-- Chaque étape (outils, quantités, succès du minijeu) est revalidée ici, jamais prise au mot du client.
 
 local NodeCooldowns  = {} -- ['activityKey_nodeIndex'] = os.time() de la dernière récolte
 local PendingGather   = {} -- [source] = { activity = activityKey, species = speciesTable|nil } — une autorisation en attente, consommée une seule fois
 local LootedCorpses   = {} -- [netId] = true — cadavre de gibier déjà dépecé (chasseur)
 local PoachedCorpses  = {} -- [netId] = true — peau déjà prélevée sur ce cadavre (indépendant du dépeçage, un cadavre peut être dépecé ET dépouillé)
 
--- ── Stock boutique (mineur) — pattern repris de module/ltd/server/stock.lua,
--- une seule "boutique" globale ici (pas de magasin multiple à distinguer).
+-- Stock boutique (mineur), pattern repris de module/ltd/server/stock.lua : une seule boutique globale ici.
 local ShopStock = {} -- [item] = quantity
 
 MySQL.Async.execute([[
@@ -51,14 +46,7 @@ for _, activity in pairs(Config.Farm.Activities) do
     end
 end
 
--- ══════════════════════════════════════════════════════════════════
---  CHASSEUR — peuplement de la faune, ARBITRÉ PAR LE SERVEUR
---  Le client ne décide jamais seul de spawn : deux chasseurs sur la
---  même zone au même moment pourraient sinon spawn chacun le sien
---  avant de se voir mutuellement (race condition réseau). Le serveur
---  est l'unique compteur (`netIds`), délègue juste la création réelle
---  (position au sol, filtre eau) au client le mieux placé pour le faire.
--- ══════════════════════════════════════════════════════════════════
+-- Peuplement de la faune arbitré par le serveur : le client ne décide jamais seul du spawn (risque de double spawn si deux chasseurs se croisent), le serveur reste l'unique compteur et délègue juste la création au client le mieux placé.
 
 local HuntZones         = {} -- [zoneTable de la config] = { model, coords, radius, count, netIds = {}, pending = 0 }
 local AmbientTracking    = {} -- [src] = { [speciesTable de la config] = { netIds = {}, pending = 0 } }
@@ -79,9 +67,7 @@ do
     end
 end
 
--- Rectangle approximatif de la zone urbaine dense de Los Santos — copie
--- de la même heuristique côté client (module/farm/client/main.lua), pas
--- besoin d'une native ici, c'est de la pure géométrie.
+-- Rectangle approximatif de la zone urbaine dense de Los Santos, copie de la même heuristique côté client — pure géométrie, pas besoin de native ici.
 local function IsRuralAreaServer(coords)
     local inCity = coords.x > -1300.0 and coords.x < 1300.0
                and coords.y > -3200.0 and coords.y < 1300.0
@@ -95,9 +81,7 @@ local function PurgeDeadNetIds(list)
     end
 end
 
--- Envoie la demande de spawn à UN SEUL client (celui choisi par le
--- serveur) et marque la place comme "en attente" pour ne pas la
--- redemander à quelqu'un d'autre avant la confirmation.
+-- Envoie la demande à un seul client et marque la place "en attente" pour ne pas la redemander avant confirmation.
 local function RequestHuntSpawn(src, target, event, payload)
     nextHuntRequestId = nextHuntRequestId + 1
     local reqId = nextHuntRequestId
@@ -107,9 +91,7 @@ local function RequestHuntSpawn(src, target, event, payload)
     TriggerClientEvent(event, src, payload)
 end
 
--- Réponse du client délégué : `netId` présent si le spawn a réussi (et
--- passé le filtre eau côté client), absent sinon (modèle non chargé,
--- filtre eau raté...) — dans les deux cas la place "pending" est libérée.
+-- `netId` présent si le spawn a réussi côté client, absent sinon (modèle non chargé, filtre eau raté...) — dans les deux cas la place "pending" est libérée.
 LSLegacy.RegisterServerEvent('farm:animalSpawned', function(data)
     local src = source
     if not data or not data.reqId then return end
@@ -127,13 +109,11 @@ Citizen.CreateThread(function()
     while true do
         Wait(Config.Farm.HuntSpawn.checkInterval)
 
-        -- ── Zones fixes ──────────────────────────────────────────────
         for zone, state in pairs(HuntZones) do
             PurgeDeadNetIds(state.netIds)
 
             if (#state.netIds + state.pending) < state.count then
-                -- Délègue au joueur connecté le plus proche, dans le rayon
-                -- de déclenchement — lui seul sait poser l'animal au sol.
+                -- Délègue au joueur connecté le plus proche, dans le rayon de déclenchement.
                 local bestSrc, bestDist
                 for _, playerId in ipairs(GetPlayers()) do
                     local ped = GetPlayerPed(playerId)
@@ -153,7 +133,7 @@ Citizen.CreateThread(function()
             end
         end
 
-        -- ── Oiseaux ambiants (centrés sur chaque joueur, pas de zone fixe) ──
+        -- Oiseaux ambiants : centrés sur chaque joueur, pas de zone fixe.
         for _, sp in ipairs(chasseur.species) do
             if sp.ambient then
                 for _, playerId in ipairs(GetPlayers()) do
@@ -184,8 +164,6 @@ Citizen.CreateThread(function()
     end
 end)
 
--- ── Helpers ──────────────────────────────────────────────────────────
-
 local function GetPlayer(src)
     return LSLegacy.ServerPlayers[src]
 end
@@ -199,7 +177,6 @@ local function GetItemCount(player, item)
     return entry and entry.count or 0
 end
 
----PickWeighted
 ---@param list table { { item = string, weight = number, ... }, ... }
 ---@return table l'entrée tirée
 local function PickWeighted(list)
@@ -215,10 +192,7 @@ local function PickWeighted(list)
     return list[#list]
 end
 
----GetSellableItems
----Liste unifiée de tout ce qui se vend au point de vente d'une activité :
----produit(s) transformé(s) (`processedItems` ou `processedItem`/`sellPrice`)
----+ item(s) bruts vendables sans traitement (`directSellItems`).
+-- Liste unifiée de tout ce qui se vend au point de vente d'une activité (produits transformés + items bruts vendables directement).
 ---@param activity table
 ---@return table { { item = string, price = number }, ... }
 local function GetSellableItems(activity)
@@ -241,10 +215,6 @@ local function GetSellableItems(activity)
     return list
 end
 
--- ══════════════════════════════════════════════════════════════════
---  RÉCOLTE
--- ══════════════════════════════════════════════════════════════════
-
 LSLegacy.RegisterServerEvent('farm:requestGather', function(data)
     local src    = source
     local player = GetPlayer(src)
@@ -255,9 +225,7 @@ LSLegacy.RegisterServerEvent('farm:requestGather', function(data)
     local activity = Config.Farm.Activities[data.activity]
     if not activity then return end
 
-    -- Deux variantes de nœud : point fixe (`nodes`, cooldown temporel par
-    -- position) ou cadavre de gibier réel (`species`, un seul
-    -- dépeçage possible par cadavre — pas de cooldown à réutiliser).
+    -- Deux variantes de nœud : point fixe (cooldown temporel) ou cadavre de gibier réel (un seul dépeçage possible, pas de cooldown).
     local nodeKey
     local huntedSpecies -- espèce identifiée par le modèle du cadavre (chasseur uniquement)
 
@@ -284,9 +252,7 @@ LSLegacy.RegisterServerEvent('farm:requestGather', function(data)
         for _, sp in ipairs(activity.species) do
             if GetHashKey(sp.model) == model then huntedSpecies = sp break end
         end
-        -- Sans `rawItem`, l'espèce n'a pas de carcasse récupérable (coyote :
-        -- chassé pour sa peau uniquement) — le client ne propose pas l'option,
-        -- on refuse ici aussi le cas d'un event forgé.
+        -- Sans `rawItem`, l'espèce n'a pas de carcasse récupérable (coyote) — refuse ici aussi le cas d'un event forgé.
         if not huntedSpecies or not huntedSpecies.rawItem then return end
 
         local playerCoords = GetEntityCoords(GetPlayerPed(src))
@@ -345,17 +311,14 @@ LSLegacy.RegisterServerEvent('farm:completeGather', function(data)
     -- Quantité et item toujours dérivés de la config serveur, jamais du client.
     local amount = (activity.gatherAnim and activity.gatherAnim.yieldAmount) or 1
 
-    -- Chasseur : l'item rendu dépend de l'espèce identifiée à l'autorisation
-    -- (`pending.species.rawItem`), jamais d'un `rawItem` unique ni du client.
+    -- Chasseur : l'item rendu dépend de l'espèce identifiée à l'autorisation, jamais du client.
     local item = (pending.species and pending.species.rawItem) or activity.rawItem
     if activity.gatherYields then
         item = PickWeighted(activity.gatherYields).item
     end
 
     if not LSLegacy.Inventory.CanCarryItem(player, item, amount) then
-        -- `reason` distinct de l'échec de minijeu : évite au client d'afficher
-        -- en plus le message générique "Récolte ratée" (les deux s'affichaient
-        -- ensemble, contradictoire avec le vrai motif ci-dessous).
+        -- `reason` distinct de l'échec de minijeu, pour éviter un message générique contradictoire côté client.
         TriggerClientEvent('farm:gatherResult', src, { success = false, reason = 'too_heavy' })
         Notify(src, 'Inventaire trop chargé pour récolter.', 'error')
         return
@@ -366,12 +329,7 @@ LSLegacy.RegisterServerEvent('farm:completeGather', function(data)
     TriggerClientEvent('farm:gatherResult', src, { success = true, item = item, amount = amount })
 end)
 
--- ══════════════════════════════════════════════════════════════════
---  BRACONNAGE — prélèvement de peau (chasseur, coyote/cougar uniquement)
---  Action séparée du dépeçage : le cadavre reste en place après (le
---  dépeçage/ramassage normal reste possible en plus, à part).
--- ══════════════════════════════════════════════════════════════════
-
+-- Braconnage (chasseur, coyote/cougar uniquement) : action séparée du dépeçage, le cadavre reste en place après.
 LSLegacy.RegisterServerEvent('farm:requestPoach', function(data)
     local src    = source
     local player = GetPlayer(src)
@@ -406,9 +364,7 @@ LSLegacy.RegisterServerEvent('farm:requestPoach', function(data)
     end
     if not species or not species.peauItem then return end
 
-    -- Le couteau en main est vérifié côté client pour l'affichage de l'option ;
-    -- ici on revalide sa présence en inventaire, seule chose vérifiable côté
-    -- serveur de façon fiable.
+    -- Le couteau en main est vérifié côté client pour l'affichage ; ici on revalide juste sa présence en inventaire, seule chose fiable côté serveur.
     if GetItemCount(player, activity.poaching.tool) <= 0 then
         local toolLabel = Config.Items[activity.poaching.tool] and Config.Items[activity.poaching.tool].label or activity.poaching.tool
         TriggerClientEvent('farm:poachResult', src, { success = false, reason = string.format(Lang.Farm.missing_tool, toolLabel) })
@@ -432,10 +388,6 @@ LSLegacy.RegisterServerEvent('farm:requestPoach', function(data)
 
     TriggerClientEvent('farm:poachResult', src, { success = true, item = species.peauItem, netId = data.netId })
 end)
-
--- ══════════════════════════════════════════════════════════════════
---  TRAITEMENT
--- ══════════════════════════════════════════════════════════════════
 
 LSLegacy.RegisterServerEvent('farm:requestProcess', function(data)
     local src    = source
@@ -480,9 +432,7 @@ LSLegacy.RegisterServerEvent('farm:completeProcess', function(data)
         return
     end
 
-    -- Sortie fixe (`processedItem`) ou tirage pondéré parmi plusieurs
-    -- variantes (`processedItems`, ex : métaux du mineur) — jamais décidé
-    -- par le client.
+    -- Sortie fixe ou tirage pondéré parmi plusieurs variantes (ex : métaux du mineur), jamais décidé par le client.
     local outputItem = activity.processedItem
     if activity.processedItems then
         outputItem = PickWeighted(activity.processedItems).item
@@ -503,10 +453,6 @@ LSLegacy.RegisterServerEvent('farm:completeProcess', function(data)
         amount  = activity.processing.outputPerUnit,
     })
 end)
-
--- ══════════════════════════════════════════════════════════════════
---  REVENTE
--- ══════════════════════════════════════════════════════════════════
 
 LSLegacy.RegisterServerEvent('farm:sellProcessed', function(data)
     local src    = source
@@ -534,10 +480,7 @@ LSLegacy.RegisterServerEvent('farm:sellProcessed', function(data)
         end
     end
 
-    -- Vente directe avec découpe fixe PAR UNITÉ ET PAR ESPÈCE (ex : le
-    -- boucher du chasseur) — chaque carcasse vendue donne une quantité
-    -- garantie de chaque sortie, différente selon l'animal, jamais décidé
-    -- par le client.
+    -- Vente directe avec découpe fixe par unité et par espèce (boucher du chasseur), jamais décidé par le client.
     if activity.multiSellItems then
         for _, ms in ipairs(activity.multiSellItems) do
             local have = GetItemCount(player, ms.rawItem)
@@ -575,10 +518,7 @@ LSLegacy.RegisterServerEvent('farm:sellProcessed', function(data)
     })
 end)
 
--- Revente des peaux de braconnage (illégal) — passe UNIQUEMENT par le
--- receleur, jamais par la boutique publique (`ShopStock`) : ces items ne
--- sont pas des `directSellItems`/`multiSellItems`, `GetSellableItems` ne
--- les voit donc jamais. Argent normal (pas d'argent sale), sur demande.
+-- Revente des peaux : passe uniquement par le receleur, jamais par la boutique publique (absentes de `directSellItems`/`multiSellItems`). Argent normal, pas sale.
 LSLegacy.RegisterServerEvent('farm:sellPoaching', function(data)
     local src    = source
     local player = GetPlayer(src)
@@ -616,10 +556,6 @@ LSLegacy.RegisterServerEvent('farm:sellPoaching', function(data)
     })
 end)
 
--- ══════════════════════════════════════════════════════════════════
---  COMPACTAGE — sac de pierres
--- ══════════════════════════════════════════════════════════════════
-
 LSLegacy.RegisterServerEvent('farm:compactStones', function()
     local src     = source
     local player  = GetPlayer(src)
@@ -645,10 +581,6 @@ LSLegacy.RegisterServerEvent('farm:compactStones', function()
 
     TriggerClientEvent('farm:compactStonesResult', src, { success = true, bags = bags })
 end)
-
--- ══════════════════════════════════════════════════════════════════
---  BOUTIQUE — achat public, alimentée par les ventes des mineurs
--- ══════════════════════════════════════════════════════════════════
 
 LSLegacy.RegisterServerEvent('farm:requestShopStock', function()
     local src = source

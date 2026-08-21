@@ -1,10 +1,5 @@
--- =====================================================================
---  RELAIS SERVEUR — émotes synchronisées à 2 joueurs + favoris (menu F3)
---  Le serveur ne fait que valider la distance et relayer l'événement
---  entre les deux clients ; toute la logique d'animation est côté client.
---  Les favoris sont stockés par personnage (players.`boutique-id`), pas par compte,
---  pour ne pas les partager entre les personnages d'un même identifier.
--- =====================================================================
+-- Relais serveur : ne fait que valider la distance et relayer l'événement, toute la logique d'animation est côté client.
+-- Favoris stockés par personnage (players.`boutique-id`), pas par compte, pour ne pas les partager entre personnages.
 
 MySQL.Async.execute([[
     CREATE TABLE IF NOT EXISTS `emotes_favorites` (

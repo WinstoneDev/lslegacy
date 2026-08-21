@@ -1,8 +1,4 @@
--- =====================================================================
---  UTILITY KEYHANGER — Mode placement (admin)
---  Choix du support/accès puis aperçu temps réel avec accroche au mur
---  (raycast), rotation, hauteur et profondeur réglables.
--- =====================================================================
+-- Mode placement (admin) : choix du support/accès puis aperçu temps réel avec accroche au mur (raycast), rotation, hauteur et profondeur réglables.
 
 local C = KeyHanger.Config
 
@@ -22,10 +18,6 @@ local boardKeys = {}
 for k in pairs(C.Boards) do boardKeys[#boardKeys + 1] = k end
 table.sort(boardKeys)
 
--- ---------------------------------------------------------------------
---  HELPERS
--- ---------------------------------------------------------------------
-
 local function rotToDir(rot)
     local z = math.rad(rot.z)
     local x = math.rad(rot.x)
@@ -44,10 +36,6 @@ local function destroyPreview()
     if previewObj and DoesEntityExist(previewObj) then DeleteEntity(previewObj) end
     previewObj = nil
 end
-
--- ---------------------------------------------------------------------
---  APERÇU & VALIDATION
--- ---------------------------------------------------------------------
 
 local function runPreview()
     placing = true
@@ -182,10 +170,6 @@ local function runPreview()
     end)
 end
 
--- ---------------------------------------------------------------------
---  MENU DE PRÉ-CONFIGURATION (type de support + accès)
--- ---------------------------------------------------------------------
-
 local PMenu = RageUI.CreateMenu("Porte-clés", "Installation d'un porte-clés")
 PMenu:DisplayGlare(true)
 
@@ -230,10 +214,6 @@ local function openPMenu()
         end
     end)
 end
-
--- ---------------------------------------------------------------------
---  ENTRÉE : déclenchée par la commande serveur
--- ---------------------------------------------------------------------
 
 LSLegacy.RegisterClientEvent('keyhanger:placement:start', function()
     if placing then return end

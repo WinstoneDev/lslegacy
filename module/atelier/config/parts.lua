@@ -1,14 +1,7 @@
---  MODULE ATELIER — Catalogue des pièces
---  Les items eux-mêmes (label, poids, prop) sont déclarés dans
---  shared/config.lua → Config.Items (système d'inventaire LSLegacy,
---  jamais dupliqué ici). Cette table ne fait que dire à QUOI sert
---  chaque pièce pour le métier atelier : quel(s) composant(s) elle
---  répare, si elle se porte en main, son prix.
---
---  `repairs` liste les id de composants (voir shared/components.lua)
---  qu'une pose de cette pièce peut réparer. Pour les pièces génériques
---  (portière/aile/pneu, qui existent en plusieurs exemplaires sur le
---  véhicule), le mécano choisit le composant précis au moment de la pose.
+-- Les items (label, poids, prop) sont déclarés dans shared/config.lua -> Config.Items ; cette table
+-- dit seulement à quoi sert chaque pièce pour le métier atelier (composant réparé, portée en main, prix).
+-- `repairs` liste les id de composants (voir shared/components.lua) qu'une pose peut réparer ; pour les
+-- pièces génériques (portière/aile/pneu), le mécano choisit le composant précis au moment de la pose.
 
 Config.Atelier.Parts = {
     -- Carrosserie (portées en main)

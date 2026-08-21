@@ -1,8 +1,4 @@
--- ════════════════════════════════════════════════════════════════════
---  INTÉRIMAIRE — Camion + remorque (spawn à coordonnées fixes, attache)
---  Pas de persistance (véhicules d'outil de job, comme mecanicien/samu) :
---  spawn/despawn simples, aucune ligne persistent_vehicles.
--- ════════════════════════════════════════════════════════════════════
+-- Camion + remorque, spawn à coordonnées fixes. Pas de persistance (véhicules d'outil de job, comme mecanicien/samu) : spawn/despawn simples.
 
 local CFG = Config.Interim
 Interim = Interim or {}
@@ -13,10 +9,7 @@ local function Notify(msg, t)
     TriggerEvent(CFG.NotifyEvent, 'Intérimaire', msg, 5000, t or 'info')
 end
 
--- Exposée pour refuel.lua : la "citerne jaune" à laquelle le personnage doit
--- se rendre pour remplir le camion est l'entité remorque elle-même (elle
--- suit le joueur, sa position n'est donc pas fixe comme celle de la zone
--- d'interaction pos4).
+-- Exposée pour refuel.lua : la citerne à rejoindre est l'entité remorque elle-même, sa position n'est donc pas fixe comme la zone d'interaction pos4.
 function Interim.GetTrailerEntity()
     return trailerEntity
 end
@@ -29,9 +22,7 @@ local function VehicleHasPlayerOccupant(vehicle)
     return false
 end
 
--- Supprime les véhicules PNJ (trafic ambiant/parkés) qui traînent sur les
--- points de spawn fixes du camion/remorque, sans toucher aux véhicules
--- occupés par un joueur.
+-- Supprime les véhicules PNJ qui traînent sur les points de spawn fixes du camion/remorque, sans toucher aux véhicules occupés par un joueur.
 local function ClearVehiclesAround(coords, radius)
     for _, vehicle in ipairs(GetGamePool('CVehicle')) do
         if DoesEntityExist(vehicle) and not VehicleHasPlayerOccupant(vehicle)
@@ -66,7 +57,7 @@ local function SpawnVehicleAt(modelName, coords, heading)
     return veh
 end
 
--- ── Spawn du rig à la prise de service ───────────────────────────────
+-- Spawn du rig à la prise de service
 LSLegacy.RegisterClientEvent('interim:spawnRig', function(data)
     if not data then return end
     Interim.OnDuty = true
@@ -89,7 +80,7 @@ LSLegacy.RegisterClientEvent('interim:spawnRig', function(data)
     Notify('Camion et remorque disponibles dans le parking en face.', 'success')
 end)
 
--- ── Despawn à la fin de service ──────────────────────────────────────
+-- Despawn à la fin de service
 LSLegacy.RegisterClientEvent('interim:despawnRig', function()
     Interim.OnDuty      = false
     Interim.Attached    = false
@@ -108,10 +99,7 @@ LSLegacy.RegisterClientEvent('interim:despawnRig', function()
     truckEntity, trailerEntity = nil, nil
 end)
 
--- ── Détection automatique de l'attache/détache (native GTA : le camion
---    s'attache seul à la remorque en reculant dessus, aucune interaction
---    requise ; il peut aussi se détacher tout seul en cas de choc/mauvaise
---    conduite, d'où la surveillance dans les deux sens) ──────────────────
+-- Détection automatique de l'attache/détache : native GTA, le camion s'attache seul en reculant dessus, et peut se détacher tout seul en cas de choc — d'où la surveillance dans les deux sens.
 CreateThread(function()
     while true do
         Wait(500)

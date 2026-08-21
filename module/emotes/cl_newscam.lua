@@ -1,9 +1,4 @@
--- =====================================================================
---  CAMÉRA NEWS — touche H
---  Repris de rpemotes-reborn (client/NewsCam.lua). Utilise le scaleform
---  vanilla "breaking_news" du jeu (aucun fichier NUI nécessaire) et le
---  clavier à l'écran natif pour éditer les textes.
--- =====================================================================
+-- Repris de rpemotes-reborn (client/NewsCam.lua). Utilise le scaleform vanilla "breaking_news" du jeu.
 
 local usingNewscam = false
 local fov = 40.0

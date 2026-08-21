@@ -1,24 +1,5 @@
--- ════════════════════════════════════════════════════════════════════
---  MÉTÉO DYNAMIQUE — Configuration
---  Pilote automatiquement la météo des 4 zones presets de codem-dynamicweather
---  (Paleto Bay, Sandy Shores, Great Chaparral, Los Santos) via ses exports
---  serveur. codem-dynamicweather doit être `ensure`d avant lslegacy.
---
---  Modèle climatique : chaque zone a son propre climat (été/hiver, écart
---  jour/nuit, panel de météos plausibles). La température affichée à un
---  instant T est calculée, pas piochée dans une plage fixe :
---    1) une base saisonnière, interpolée entre "été" et "hiver" via la
---       VRAIE date IRL de la machine (server/main.lua : os.date) ;
---    2) un delta jour/nuit basé sur l'heure IN-GAME (exports
---       codem-dynamicweather:getTime()) — plus froid la nuit ;
---    3) un léger bruit aléatoire ;
---    4) le delta propre à la météo tirée (la pluie/neige refroidit, le
---       grand soleil réchauffe).
---  Chaque entrée de `pool` peut aussi être bornée par `minAmbient` /
---  `maxAmbient` : elle n'est éligible au tirage que si la température
---  ambiante calculée (avant delta météo) tombe dans cette plage — c'est
---  ce qui empêche par ex. la neige de sortir à Sandy Shores en plein été.
--- ════════════════════════════════════════════════════════════════════
+-- Pilote la météo des 4 zones presets de codem-dynamicweather via ses exports serveur (doit être `ensure`d avant lslegacy).
+-- Température calculée (pas piochée dans une plage fixe) : base saisonnière (vraie date IRL) + delta jour/nuit (heure in-game) + bruit + delta de la météo tirée. minAmbient/maxAmbient bornent l'éligibilité d'une météo à la température ambiante (ex : pas de neige à Sandy Shores en été).
 
 Config = Config or {}
 Config.Weather = {
@@ -44,24 +25,11 @@ Config.Weather = {
     -- un rafraîchissement manuel des 4 zones.
     CommandGroup = 2,
 
-    -- ── Horloge in-game ──────────────────────────────────────────────
-    -- codem-dynamicweather ne fait plus tourner l'horloge lui-même
-    -- (Config.HandleTime = false côté codem-dynamicweather) : c'est ce
-    -- module qui la pilote via exports['codem-dynamicweather']:setTime,
-    -- avec une durée réelle FIXE pour le jour et pour la nuit in-game ;
-    -- seules les heures de lever/coucher de soleil bougent avec la
-    -- saison (vraie date IRL), ce qui fait mécaniquement varier la
-    -- vitesse à laquelle les heures in-game défilent (jour plus "lent"
-    -- l'été qu'en hiver puisqu'il couvre plus d'heures in-game pour la
-    -- même durée réelle, et inversement la nuit).
+    -- Horloge in-game pilotée par ce module (Config.HandleTime = false côté codem-dynamicweather) : durée réelle FIXE du jour/nuit, seules les heures de lever/coucher bougent avec la saison.
     RealSecondsDayPhase = 3 * 3600,   -- durée réelle du jour in-game (lever -> coucher)
     RealSecondsNightPhase = 1 * 3600, -- durée réelle de la nuit in-game (coucher -> lever)
 
-    -- Amplitude été/hiver de la durée du jour in-game (heures), autour
-    -- d'un pivot de 12h. Réutilise le même modèle saisonnier
-    -- (cosinus sur la vraie date IRL) que la météo. ~2.2h correspond
-    -- grosso modo à la latitude de Los Santos (≈ Los Angeles) :
-    -- jour d'été ≈ 14h de soleil, jour d'hiver ≈ 9h45.
+    -- Amplitude été/hiver de la durée du jour in-game (heures), pivot 12h ; ~2.2h ≈ latitude de Los Santos (été ≈14h de soleil, hiver ≈9h45).
     DaylightAmplitudeHours = 2.2,
 
     -- Fréquence réelle (ms) à laquelle l'horloge in-game est recalculée
@@ -69,7 +37,7 @@ Config.Weather = {
     -- d'appels réseau/natives.
     TimeTickMs = 2000,
 
-    -- ── Zones — clé = id de config/Cities.lua (codem-dynamicweather) ──
+    -- Zones — clé = id de config/Cities.lua (codem-dynamicweather).
     -- summerAvgTemp / winterAvgTemp : moyenne au pic de l'été / de l'hiver.
     -- diurnalAmplitude : écart (°C) entre le pic de l'après-midi (~15h)
     -- et le creux avant l'aube (~3h) — plus fort dans un désert qu'en

@@ -1,31 +1,4 @@
--- ════════════════════════════════════════════════════════════════════════════
--- FREIN À MAIN MANUEL — Côté serveur
--- Rôle : relayer le son de serrage/desserrage aux joueurs proches du véhicule
--- ════════════════════════════════════════════════════════════════════════════
-
--- ─────────────────────────────────────────────────────────────────────────────
--- handbrake:broadcastSound
---   Reçoit la demande du conducteur, puis envoie "handbrake:playSound"
---   à chaque joueur dans un rayon de 50 mètres autour du véhicule.
---
--- NetworkGetEntityFromNetworkId(netId)
---   → convertit le network ID en entité serveur
---
--- GetEntityCoords(entity)
---   → position monde de l'entité (vector3)
---
--- GetPlayers()
---   → table des source IDs de tous les joueurs connectés
---
--- GetPlayerPed(playerId)
---   → ped serveur du joueur (pour obtenir sa position)
---
--- #(v1 - v2)
---   → distance euclidienne entre deux vector3 (sucre syntaxique Lua FiveM)
---
--- LSLegacy.SendEventToClient(event, target, ...)
---   → TriggerClientEvent interne avec log Debug
--- ─────────────────────────────────────────────────────────────────────────────
+-- Relaie le son de serrage/desserrage aux joueurs dans un rayon de 50m autour du véhicule.
 LSLegacy.RegisterServerEvent("handbrake:broadcastSound", function(netId, isEngage)
     local _source = source
 
@@ -42,7 +15,6 @@ LSLegacy.RegisterServerEvent("handbrake:broadcastSound", function(netId, isEngag
             local playerPed = GetPlayerPed(playerId)
             if DoesEntityExist(playerPed) then
                 local playerPos = GetEntityCoords(playerPed)
-                -- Rayon de diffusion sonore : 50 mètres
                 if #(vehPos - playerPos) <= 50.0 then
                     LSLegacy.SendEventToClient("handbrake:playSound", playerId, netId, isEngage)
                 end

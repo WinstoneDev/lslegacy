@@ -1,16 +1,4 @@
--- ════════════════════════════════════════════════════════════════════
---  POMPE À ESSENCE PUBLIQUE — Serveur
---  Réutilise la table interim_stations (job intérimaire) comme unique
---  source de vérité du stock essence : chaque plein public déduit
---  exactement ce qui a été livré par les pompistes, aucune double table.
---
---  NB : pas de callback synchrone (LSLegacy.AwaitServerCallback est cassé
---  dans ce projet — events "esx:*" bruts non tokenisés, incompatibles avec
---  le wrapper LSLegacy.RegisterServerEvent). Flux 100% event-driven :
---  le client demande l'autorisation de remplir, le serveur valide (stock +
---  argent) puis répond, le client ne démarre la progress bar qu'une fois
---  autorisé.
--- ════════════════════════════════════════════════════════════════════
+-- Réutilise interim_stations (job intérimaire) comme unique source de vérité du stock. Flux event-driven : LSLegacy.AwaitServerCallback est cassé dans ce projet (events "esx:*" bruts non tokenisés).
 
 local CFG = Config.Pompe
 
@@ -20,10 +8,7 @@ local function Notify(src, msg, t)
     LSLegacy.SendEventToClient(CFG.NotifyEvent, src, 'Station essence', msg, 5000, t or 'info')
 end
 
--- ── Demande d'autorisation de plein : vérifie l'argent du joueur ET le
---    stock de la station AVANT d'autoriser le client à délivrer de
---    l'essence (aucun litre n'est mis dans le réservoir sans cette
---    validation préalable) ────────────────────────────────────────────
+-- Vérifie l'argent du joueur ET le stock de la station avant d'autoriser le client à délivrer de l'essence.
 LSLegacy.RegisterServerEvent('pompe:requestFill', function(data)
     local src = source
     local player = GetPlayer(src)
@@ -69,7 +54,6 @@ LSLegacy.RegisterServerEvent('pompe:requestFill', function(data)
     end)
 end)
 
--- ── Facturation + débit du stock de la station à la fin du plein ────────
 -- token -> { src, stationId, liters, price }
 local PendingFuel = {}
 

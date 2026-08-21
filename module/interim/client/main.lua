@@ -1,8 +1,4 @@
--- ════════════════════════════════════════════════════════════════════
---  INTÉRIMAIRE — Client (PNJ chantier + blip + état partagé)
---  Interim.* est l'état partagé lu par vehicles.lua et refuel.lua
---  (canInteract des zones ox_target), mis à jour par interim:syncState.
--- ════════════════════════════════════════════════════════════════════
+-- Interim.* est l'état partagé lu par vehicles.lua et refuel.lua (canInteract des zones ox_target), mis à jour par interim:syncState.
 
 local CFG = Config.Interim
 
@@ -64,12 +60,7 @@ local function CreateBlip()
     EndTextCommandSetBlipName(b)
 end
 
--- État envoyé par le serveur (source de vérité) après chaque action.
--- NB : un seul LSLegacy.RegisterClientEvent par nom d'event est exécuté dans
--- tout le resource (le wrapper ignore silencieusement les enregistrements
--- suivants) — c'est ici que syncState est réellement traité, et on délègue
--- l'affichage du blip citerne à Interim.ShowTankPoint (posé par refuel.lua)
--- pour éviter un second enregistrement mort.
+-- État envoyé par le serveur (source de vérité). NB : un seul LSLegacy.RegisterClientEvent par nom d'event est exécuté dans le resource — c'est ici que syncState est réellement traité, et on délègue l'affichage du blip citerne à Interim.ShowTankPoint (posé par refuel.lua) pour éviter un second enregistrement mort.
 LSLegacy.RegisterClientEvent('interim:syncState', function(data)
     if not data then return end
     Interim.OnDuty      = data.onDuty and true or false

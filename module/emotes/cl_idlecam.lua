@@ -1,10 +1,5 @@
--- =====================================================================
---  CAMÉRA IDLE — désactivation persistante (survit déco/reco sur ce PC)
---  Repris de rpemotes-reborn (client/NoIdleCam.lua), traduit en français.
---  KVP : 0 = jamais touché (comportement par défaut du jeu), 1 = désactivée,
---  2 = activée. Ce codage permet de distinguer "jamais réglé" de "réglé sur
---  activé", ce que ferait un simple booléen.
--- =====================================================================
+-- Repris de rpemotes-reborn (client/NoIdleCam.lua), traduit en français. Persiste via KVP (survit déco/reco).
+-- KVP : 0 = jamais touché (défaut du jeu), 1 = désactivée, 2 = activée — distingue "jamais réglé" d'un simple booléen.
 
 RegisterCommand('idlecamoff', function()
     DisableIdleCamera(true)

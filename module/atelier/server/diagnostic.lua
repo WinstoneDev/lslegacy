@@ -1,6 +1,4 @@
---  MODULE ATELIER — Diagnostic (serveur)
---  Lecture seule : ne répare rien, ne fait que recaler puis renvoyer
---  l'état complet du véhicule (mécanique + pneus + carrosserie).
+-- Lecture seule : recale puis renvoie l'état complet du véhicule, ne répare rien.
 
 LSLegacy.RegisterServerEvent('atelier:requestDiagnostic', function(data)
     local src = source
@@ -11,8 +9,7 @@ LSLegacy.RegisterServerEvent('atelier:requestDiagnostic', function(data)
     local entity = NetworkGetEntityFromNetworkId(data.vehNet)
     if not DoesEntityExist(entity) then return end
 
-    -- La plaque est TOUJOURS lue depuis l'entité serveur, jamais depuis
-    -- le client : c'est elle qui indexe atelier_vehicles.
+    -- La plaque est TOUJOURS lue depuis l'entité serveur, jamais depuis le client.
     local plate = GetVehicleNumberPlateText(entity):upper()
 
     local snapshot = LSLegacy.Atelier.BuildGTASnapshot(entity)

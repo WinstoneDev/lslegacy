@@ -1,10 +1,5 @@
--- ════════════════════════════════════════════════════════════════════
---  INTÉRIMAIRE — Serveur
---   • Job libre (aucune condition de métier) : chaque joueur a sa propre
---     instance (camion + remorque + citerne), suivie via Interim.Sessions[src].
---   • Les stations essence sont une ressource persistée en BDD (interim_stations),
---     seedée à 50 % au premier démarrage, jamais écrasée ensuite.
--- ════════════════════════════════════════════════════════════════════
+-- Job libre : chaque joueur a sa propre instance (camion + remorque + citerne), suivie via Interim.Sessions[src].
+-- Les stations essence sont persistées en BDD (interim_stations), seedées à 50 % au premier démarrage, jamais écrasées ensuite.
 
 local CFG = Config.Interim
 
@@ -12,9 +7,7 @@ Interim = Interim or {}
 Interim.Sessions = Interim.Sessions or {}
 Interim.StationCache = Interim.StationCache or {}
 
--- ── Table + seed idempotent ──────────────────────────────────────────
--- Niveau des stations en litres réels (fuel_liters), plafonné à
--- Economy.stationCapacity ; seedé à 50 % de ce plafond au premier démarrage.
+-- Niveau des stations en litres réels (fuel_liters), plafonné à Economy.stationCapacity ; seedé à 50 % de ce plafond au premier démarrage.
 local seedLiters = math.floor(CFG.Economy.stationCapacity / 2)
 
 MySQL.Async.execute([[
@@ -48,7 +41,6 @@ MySQL.Async.execute([[
     end)
 end)
 
--- ── Helpers ──────────────────────────────────────────────────────────
 local function GetPlayer(src) return LSLegacy.ServerPlayers[src] end
 
 local function Notify(src, msg, t)
@@ -71,9 +63,7 @@ local function BuildState(session)
     }
 end
 
--- Supprime une entité networkée depuis son netId (fonctionne côté serveur
--- pour les entités networkées ; plus fiable qu'un scan client par plaque
--- puisqu'on garde déjà les netId en mémoire).
+-- Supprime une entité networkée depuis son netId, plus fiable qu'un scan client par plaque puisqu'on garde déjà les netId en mémoire.
 local function DeleteNetEntity(netId)
     if not netId then return end
     local entity = NetworkGetEntityFromNetworkId(netId)
@@ -87,7 +77,6 @@ local function DeleteRig(session)
     DeleteNetEntity(session.trailerNetId)
 end
 
--- ── Prise de service : spawn camion + remorque à coordonnées fixes ───
 LSLegacy.RegisterServerEvent('interim:startDuty', function()
     local src = source
     local player = GetPlayer(src)
@@ -111,7 +100,6 @@ LSLegacy.RegisterServerEvent('interim:startDuty', function()
     Notify(src, 'Vous avez pris votre service.', 'success')
 end)
 
--- ── Fin de service ────────────────────────────────────────────────────
 LSLegacy.RegisterServerEvent('interim:endDuty', function()
     local src = source
     local player = GetPlayer(src)
@@ -125,7 +113,6 @@ LSLegacy.RegisterServerEvent('interim:endDuty', function()
     Notify(src, 'Fin de service.', 'info')
 end)
 
--- ── Le client renvoie les netId du camion/remorque après spawn ───────
 LSLegacy.RegisterServerEvent('interim:rigSpawned', function(data)
     local src = source
     if not GetPlayer(src) then return end
@@ -135,7 +122,6 @@ LSLegacy.RegisterServerEvent('interim:rigSpawned', function(data)
     session.trailerNetId = tonumber(data.trailerNetId)
 end)
 
--- ── Attache remorque→camion confirmée côté client ────────────────────
 LSLegacy.RegisterServerEvent('interim:trailerAttached', function()
     local src = source
     if not GetPlayer(src) then return end
@@ -149,10 +135,7 @@ LSLegacy.RegisterServerEvent('interim:trailerAttached', function()
     Notify(src, 'Remorque attachée. Direction le point de remplissage.', 'success')
 end)
 
--- ── Détache remorque→camion détectée côté client (choc, mauvaise conduite,
---    etc.) : coupe l'accès citerne/stations tant que non rattachée. Le
---    message utilisateur est déjà affiché côté client (feedback immédiat) ;
---    on se contente ici de resynchroniser l'état côté serveur.
+-- Détache détectée côté client : coupe l'accès citerne/stations tant que non rattachée. Le message utilisateur est déjà affiché côté client, on se contente de resynchroniser l'état ici.
 LSLegacy.RegisterServerEvent('interim:trailerDetached', function()
     local src = source
     if not GetPlayer(src) then return end
@@ -163,7 +146,6 @@ LSLegacy.RegisterServerEvent('interim:trailerDetached', function()
     LSLegacy.SendEventToClient('interim:syncState', src, BuildState(session))
 end)
 
--- ── Remplissage de la citerne du camion (pos4) ───────────────────────
 LSLegacy.RegisterServerEvent('interim:requestFillTank', function()
     local src = source
     if not GetPlayer(src) then return end
@@ -180,10 +162,7 @@ LSLegacy.RegisterServerEvent('interim:requestFillTank', function()
     Notify(src, 'Citerne remplie.', 'success')
 end)
 
--- ── Remplissage d'une station essence : déclenché par les zones ci-dessous
---    (canInteractFunc + interactFunc), qui envoient l'anim au client ; ce
---    n'est qu'une fois l'anim terminée côté client que la station est
---    réellement débitée/créditée ici ─────────────────────────────────────
+-- Déclenché par les zones ci-dessous (canInteractFunc + interactFunc), qui envoient l'anim au client ; la station n'est débitée/créditée qu'une fois l'anim terminée côté client.
 LSLegacy.RegisterServerEvent('interim:stationFillComplete', function(data)
     local src = source
     local player = GetPlayer(src)
@@ -297,7 +276,6 @@ for _, s in ipairs(CFG.Stations) do
     )
 end
 
--- ── Nettoyage à la déconnexion ────────────────────────────────────────
 AddEventHandler('playerDropped', function()
     local src = source
     local session = Interim.Sessions[src]

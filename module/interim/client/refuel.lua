@@ -1,15 +1,5 @@
--- ════════════════════════════════════════════════════════════════════
---  INTÉRIMAIRE — Remplissage citerne (pos4) + stations essence
---  Anim + prop + barre de progression via lib.progressBar (ox_lib) : gère
---  seul le chargement de l'anim/du prop, l'attache et le nettoyage.
---
---  NB : ShowTankPoint est exposée sur la table partagée Interim (et non
---  enregistrée sur un second LSLegacy.RegisterClientEvent('interim:syncState'
---  / 'interim:despawnRig', ...)) car ce wrapper n'exécute que le PREMIER
---  handler enregistré pour un nom d'event donné dans tout le resource — un
---  second enregistrement ici serait silencieusement ignoré. main.lua et
---  vehicles.lua appellent donc Interim.ShowTankPoint directement.
--- ════════════════════════════════════════════════════════════════════
+-- Remplissage citerne (pos4) + stations essence, via lib.progressBar (ox_lib).
+-- NB : ShowTankPoint est exposée sur la table partagée Interim plutôt que sur un second RegisterClientEvent, car ce wrapper n'exécute que le premier handler enregistré pour un nom d'event donné — main.lua et vehicles.lua appellent Interim.ShowTankPoint directement.
 
 local CFG = Config.Interim
 Interim = Interim or {}
@@ -44,10 +34,7 @@ local function DoFillProgress(label, duration)
     return DoProgressWithAnim(label, duration or CFG.Anim.duration, CFG.Anim)
 end
 
--- Fait marcher le ped jusqu'à l'arrière de la remorque-citerne (l'entité
--- trailerEntity elle-même, exposée par vehicles.lua) plutôt que vers le
--- point fixe de la zone d'interaction pos4 — la remorque bouge avec le
--- joueur, donc sa position doit être lue en temps réel.
+-- Marche jusqu'à l'entité remorque elle-même (exposée par vehicles.lua) plutôt qu'un point fixe : la remorque bouge avec le joueur, sa position doit être lue en temps réel.
 local function WalkToTanker()
     local trailer = Interim.GetTrailerEntity and Interim.GetTrailerEntity()
     if not trailer or not DoesEntityExist(trailer) then return end
@@ -92,8 +79,7 @@ function Interim.ShowTankPoint(show)
     end
 end
 
--- ── Blips des stations essence, affichés dès que la citerne du camion
---    contient de l'essence (masqués si elle est vide ou hors service) ──
+-- Blips des stations essence, affichés dès que la citerne du camion contient de l'essence.
 local stationBlips = {}
 
 function Interim.ShowStationBlips(show)
@@ -116,7 +102,7 @@ function Interim.ShowStationBlips(show)
     end
 end
 
--- ── Zone de remplissage de la citerne (pos4) ─────────────────────────
+-- Zone de remplissage de la citerne (pos4)
 local tp = CFG.TankPoint.coords
 exports.ox_target:addBoxZone({
     coords = vector3(tp.x, tp.y, tp.z),
@@ -142,11 +128,7 @@ exports.ox_target:addBoxZone({
     },
 })
 
--- ── Stations essence : marker + prompt gérés par le système de zones
---    serveur (server/zones.lua, canInteractFunc + dynamicFunc enregistrés
---    dans module/interim/server/main.lua) — plus de boucle client à scanner
---    les 5 stations en continu, le serveur prévient le client quand il
---    entre dans le rayon d'une zone.
+-- Stations essence : marker + prompt gérés par le système de zones serveur (canInteractFunc + dynamicFunc dans module/interim/server/main.lua), le serveur prévient le client quand il entre dans le rayon d'une zone.
 LSLegacy.RegisterClientEvent('interim:playStationFillAnim', function(data)
     if not data then return end
     if DoFillProgress(('Remplissage de %s...'):format(data.label), data.duration) then

@@ -1,7 +1,3 @@
--- -----------------------------------------------------------------------
---  CLIENT - Compétences
--- -----------------------------------------------------------------------
-
 local SKILL_LABELS = {
     endurance  = "Endurance",
     tir        = "Tir",
@@ -26,9 +22,7 @@ local GTA_STAT_HASHES = {
 local UNARMED_HASH = GetHashKey("weapon_unarmed")
 local skills       = {}
 
--- -----------------------------------------------------------------------
---  Application des stats GTA selon le niveau (0-10 → stat 0-100)
--- -----------------------------------------------------------------------
+-- Applique les stats GTA selon le niveau (0-10 → stat 0-100)
 local function applyGTAStats()
     for skillName, statHash in pairs(GTA_STAT_HASHES) do
         if skills[skillName] then
@@ -37,10 +31,7 @@ local function applyGTAStats()
     end
 end
 
--- -----------------------------------------------------------------------
---  Effets gameplay concrets par compétence
---  Appelé après chaque mise à jour et toutes les 30s (GTA reset ces valeurs)
--- -----------------------------------------------------------------------
+-- Effets gameplay par compétence ; appelé après chaque mise à jour et toutes les 30s (GTA reset ces valeurs)
 local function applySkillEffects()
     local pid       = PlayerId()
     local tir       = skills.tir       and skills.tir.level       or 0
@@ -61,9 +52,6 @@ local function applySkillEffects()
     SetPlayerVehicleDefenseModifier(pid, 1.0 + conduite * 0.02)
 end
 
--- -----------------------------------------------------------------------
---  Notification montée / baisse de niveau (style GTA Online avec mugshot)
--- -----------------------------------------------------------------------
 local function showLevelUpNotif(skillName, newLevel)
     local label = SKILL_LABELS[skillName] or skillName
     LSLegacy.ShowNotification("Compétence en hausse", label .. " est passé niveau " .. newLevel .. " !", "success")
@@ -74,9 +62,6 @@ local function showLevelDownNotif(skillName, newLevel)
     LSLegacy.ShowNotification("Compétence en baisse", label .. " est repassé niveau " .. newLevel .. ".", "warning")
 end
 
--- -----------------------------------------------------------------------
---  Événements reçus du serveur
--- -----------------------------------------------------------------------
 LSLegacy.RegisterClientEvent("LSLegacy:skills:init", function(data)
     for k, v in pairs(data) do
         local xp = v.xp or 0
@@ -113,9 +98,7 @@ LSLegacy.AddEventHandler("InitPlayer", function()
     LSLegacy.SendEventToServer("LSLegacy:skills:requestAll")
 end)
 
--- -----------------------------------------------------------------------
---  Expose le niveau d'une compétence aux autres systèmes (injury, etc.)
--- -----------------------------------------------------------------------
+-- Expose le niveau d'une compétence aux autres systèmes (injury, etc.)
 function GetSkillLevel(skillName)
     return skills[skillName] and skills[skillName].level or 0
 end
@@ -130,9 +113,6 @@ CreateThread(function()
     end
 end)
 
--- -----------------------------------------------------------------------
---  Surveillance de l'activité toutes les 5 secondes
--- -----------------------------------------------------------------------
 CreateThread(function()
     Wait(12000)
     while true do
