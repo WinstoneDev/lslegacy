@@ -1,0 +1,367 @@
+/* ════════════════════════════════════════════════════════════════
+   MDT — Thème Police Nationale française (bleu nuit / blanc / accents)
+   ════════════════════════════════════════════════════════════════ */
+
+:root {
+    --mdt-bg:        #0c1526;
+    --mdt-bg-2:      #111e36;
+    --mdt-panel:     #16243f;
+    --mdt-panel-2:   #1d3155;
+    --mdt-border:    #25395e;
+    --mdt-blue:      #2d6cdf;
+    --mdt-blue-dk:   #1b3a6b;
+    --mdt-text:      #e7eefc;
+    --mdt-text-dim:  #93a4c4;
+    --mdt-green:     #2ecc71;
+    --mdt-orange:    #f39c12;
+    --mdt-red:       #e74c3c;
+    --mdt-radius:    10px;
+    --mdt-font:      'Segoe UI', 'Roboto', system-ui, sans-serif;
+    /* Alias utilisés par les tuiles de statistiques (Labo, Rapports
+       d'intervention) — ils étaient référencés sans être définis, la
+       tuile s'affichait donc sans fond. */
+    --mdt-bg-card:     var(--mdt-panel);
+    --mdt-text-primary: var(--mdt-text);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+    width: 100%; height: 100%;
+    background: transparent;
+    overflow: hidden;
+    font-family: var(--mdt-font);
+    color: var(--mdt-text);
+    user-select: none;
+}
+
+.mdt-hidden { display: none !important; }
+
+/* ── Conteneur plein écran ───────────────────────────────────── */
+/* Aucun voile ni flou : le jeu reste entièrement visible et net
+   autour de la fenêtre. Le conteneur ne sert plus qu'à centrer, mais
+   il couvre toujours l'écran pour capter les clics hors fenêtre (le
+   focus NUI est actif, on ne veut pas qu'ils partent dans le jeu). */
+#mdt {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: transparent;
+}
+
+.mdt-window {
+    /* Fenêtre légèrement agrandie : plus de lignes visibles dans les
+       listes/tableaux sans défiler, tout en restant raisonnable sur un
+       écran 1080p (les vw/vh + plafonds gardent l'ensemble responsive). */
+    width: 84vw; height: 86vh;
+    max-width: 1560px; max-height: 940px;
+    background: var(--mdt-bg);
+    border: 1px solid var(--mdt-border);
+    border-radius: 16px;
+    /* Ombre portée renforcée : c'est elle qui détache maintenant la
+       fenêtre du décor, puisqu'il n'y a plus de voile pour le faire. */
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(0, 0, 0, 0.4);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    animation: mdt-pop 0.18s ease-out;
+}
+@keyframes mdt-pop { from { transform: scale(0.97); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+/* ── En-tête ─────────────────────────────────────────────────── */
+.mdt-header {
+    display: flex; align-items: center; gap: 18px;
+    padding: 14px 20px;
+    background: linear-gradient(120deg, var(--mdt-blue-dk), var(--mdt-bg-2));
+    border-bottom: 1px solid var(--mdt-border);
+}
+.mdt-brand { display: flex; align-items: center; gap: 14px; flex: 1; }
+.mdt-logo { font-size: 30px; filter: drop-shadow(0 2px 4px rgba(0,0,0,.5)); }
+.mdt-title h1 { font-size: 18px; font-weight: 700; letter-spacing: .3px; }
+.mdt-subtitle { font-size: 11px; color: var(--mdt-text-dim); text-transform: uppercase; letter-spacing: 2px; }
+
+.mdt-clock {
+    font-variant-numeric: tabular-nums;
+    font-size: 15px; color: var(--mdt-text-dim);
+    padding: 6px 12px; border: 1px solid var(--mdt-border); border-radius: 8px;
+    background: rgba(0,0,0,.2);
+}
+.mdt-officer { text-align: right; line-height: 1.25; }
+.mdt-officer-name { font-weight: 600; font-size: 14px; }
+.mdt-officer-grade { font-size: 12px; color: var(--mdt-blue); }
+
+.mdt-close {
+    width: 38px; height: 38px; border-radius: 9px;
+    border: 1px solid var(--mdt-border); background: rgba(231,76,60,.12);
+    color: var(--mdt-red); font-size: 16px; cursor: pointer; transition: .15s;
+}
+.mdt-close:hover { background: var(--mdt-red); color: #fff; }
+
+/* ── Corps ───────────────────────────────────────────────────── */
+.mdt-body { display: flex; flex: 1; min-height: 0; }
+
+.mdt-sidebar {
+    width: 230px; flex-shrink: 0;
+    background: var(--mdt-bg-2);
+    border-right: 1px solid var(--mdt-border);
+    padding: 12px 10px; overflow-y: auto;
+}
+.mdt-tab {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px; margin-bottom: 4px;
+    border-radius: 9px; cursor: pointer;
+    color: var(--mdt-text-dim); font-size: 14px; font-weight: 500;
+    transition: .15s; border: 1px solid transparent;
+}
+.mdt-tab .mdt-tab-icon { font-size: 17px; }
+.mdt-tab:hover { background: var(--mdt-panel); color: var(--mdt-text); }
+.mdt-tab.active {
+    background: linear-gradient(120deg, var(--mdt-blue), var(--mdt-blue-dk));
+    color: #fff; border-color: var(--mdt-blue);
+    box-shadow: 0 4px 14px rgba(45,108,223,.3);
+}
+
+.mdt-content {
+    flex: 1; min-width: 0; padding: 22px 28px;
+    overflow-y: auto;
+    /* Un tableau plus large que le panneau (colonnes nombreuses sur un
+       écran étroit) défile horizontalement dans son propre conteneur au
+       lieu de déborder de la fenêtre. */
+    overflow-x: auto;
+}
+
+/* ── Éléments génériques ─────────────────────────────────────── */
+.mdt-page-title { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+.mdt-page-sub { color: var(--mdt-text-dim); font-size: 13px; margin-bottom: 16px; }
+
+.mdt-searchbar { display: flex; gap: 10px; margin-bottom: 20px; }
+.mdt-input, .mdt-select, .mdt-textarea {
+    width: 100%; padding: 11px 14px;
+    background: var(--mdt-panel); color: var(--mdt-text);
+    border: 1px solid var(--mdt-border); border-radius: 9px;
+    font-size: 14px; font-family: var(--mdt-font); outline: none; transition: .15s;
+}
+.mdt-input:focus, .mdt-select:focus, .mdt-textarea:focus { border-color: var(--mdt-blue); }
+.mdt-textarea { resize: vertical; min-height: 90px; }
+
+.mdt-btn {
+    padding: 11px 18px; border-radius: 9px; border: 1px solid var(--mdt-border);
+    background: var(--mdt-panel); color: var(--mdt-text);
+    font-size: 14px; font-weight: 600; cursor: pointer; transition: .15s;
+    white-space: nowrap; display: inline-flex; align-items: center; gap: 8px;
+}
+.mdt-btn:hover { background: var(--mdt-panel-2); }
+.mdt-btn-primary { background: var(--mdt-blue); border-color: var(--mdt-blue); color: #fff; }
+.mdt-btn-primary:hover { background: #3f7cf0; }
+.mdt-btn-danger { background: rgba(231,76,60,.14); border-color: rgba(231,76,60,.4); color: var(--mdt-red); }
+.mdt-btn-danger:hover { background: var(--mdt-red); color: #fff; }
+.mdt-btn-sm { padding: 7px 12px; font-size: 12px; }
+.mdt-btn:disabled { opacity: .45; cursor: not-allowed; }
+
+/* ── Cartes / panneaux ───────────────────────────────────────── */
+.mdt-card {
+    background: var(--mdt-panel); border: 1px solid var(--mdt-border);
+    border-radius: var(--mdt-radius); padding: 16px 18px; margin-bottom: 14px;
+}
+.mdt-card-title {
+    font-size: 13px; text-transform: uppercase; letter-spacing: 1.4px;
+    color: var(--mdt-text-dim); margin-bottom: 12px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+}
+.mdt-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.mdt-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+
+/* Listes de résultats cliquables */
+.mdt-list { display: flex; flex-direction: column; gap: 7px; }
+.mdt-list-item {
+    display: flex; align-items: center; gap: 14px;
+    padding: 11px 16px; background: var(--mdt-panel); border: 1px solid var(--mdt-border);
+    border-radius: 9px; cursor: pointer; transition: .12s;
+}
+.mdt-list-item:hover { border-color: var(--mdt-blue); transform: translateX(2px); }
+.mdt-list-item .mdt-li-main { flex: 1; }
+.mdt-li-name { font-weight: 600; font-size: 15px; }
+.mdt-li-sub { font-size: 12px; color: var(--mdt-text-dim); margin-top: 2px; }
+
+/* Champs clé/valeur (fiches) */
+.mdt-kv { display: grid; grid-template-columns: 130px 1fr; gap: 8px 14px; font-size: 14px; }
+.mdt-kv dt { color: var(--mdt-text-dim); }
+.mdt-kv dd { font-weight: 500; }
+
+/* Tableaux */
+.mdt-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: max-content; }
+.mdt-table th {
+    text-align: left; padding: 9px 12px; color: var(--mdt-text-dim);
+    font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: .8px;
+    border-bottom: 1px solid var(--mdt-border);
+    white-space: nowrap;
+}
+.mdt-table td { padding: 9px 12px; border-bottom: 1px solid rgba(37,57,94,.5); }
+.mdt-table tr:hover td { background: rgba(45,108,223,.06); }
+
+/* Badges */
+.mdt-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .5px;
+}
+.mdt-badge-green  { background: rgba(46,204,113,.16); color: var(--mdt-green); }
+.mdt-badge-orange { background: rgba(243,156,18,.16); color: var(--mdt-orange); }
+.mdt-badge-red    { background: rgba(231,76,60,.16); color: var(--mdt-red); }
+.mdt-badge-blue   { background: rgba(45,108,223,.16); color: var(--mdt-blue); }
+.mdt-badge-gray   { background: rgba(147,164,196,.14); color: var(--mdt-text-dim); }
+
+/* Estampille d'origine d'une pièce du dossier commun aux forces de
+   l'ordre (Police / Gendarmerie). Volontairement discrète : elle qualifie
+   une signature déjà affichée, elle ne doit pas la concurrencer. */
+.mdt-dep-badge {
+    display: inline-block; margin-left: 6px; vertical-align: middle;
+    padding: 1px 7px; border-radius: 4px;
+    background: var(--mdt-blue-dk); color: #fff;
+    font-size: 10px; font-weight: 700; letter-spacing: .4px;
+    text-transform: uppercase; white-space: nowrap;
+}
+
+.mdt-wanted-flag {
+    background: var(--mdt-red); color: #fff; font-size: 10px; font-weight: 800;
+    padding: 2px 8px; border-radius: 5px; text-transform: uppercase; letter-spacing: .5px;
+}
+
+/* Pills de filtre */
+.mdt-pills { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
+.mdt-pill {
+    padding: 8px 16px; border-radius: 20px; font-size: 13px; cursor: pointer;
+    background: var(--mdt-panel); border: 1px solid var(--mdt-border); color: var(--mdt-text-dim);
+    transition: .15s;
+}
+.mdt-pill:hover { color: var(--mdt-text); }
+.mdt-pill.active { background: var(--mdt-blue); border-color: var(--mdt-blue); color: #fff; }
+
+/* État vide */
+.mdt-empty { text-align: center; color: var(--mdt-text-dim); padding: 40px 20px; font-size: 14px; }
+.mdt-empty .mdt-empty-ico { font-size: 40px; display: block; margin-bottom: 10px; opacity: .5; }
+
+/* Bannière "fonctionnalité visuelle / à venir" */
+.mdt-soon {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 16px; border-radius: 9px; margin-bottom: 16px; font-size: 13px;
+    background: rgba(243,156,18,.1); border: 1px dashed rgba(243,156,18,.45); color: var(--mdt-orange);
+}
+
+.mdt-back { color: var(--mdt-text-dim); cursor: pointer; font-size: 13px; margin-bottom: 14px; display: inline-flex; gap: 6px; }
+.mdt-back:hover { color: var(--mdt-text); }
+
+.mdt-form-row { margin-bottom: 14px; }
+.mdt-form-row label { display: block; font-size: 12px; color: var(--mdt-text-dim); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .6px; }
+.mdt-form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 6px; }
+
+/* ── Modale ──────────────────────────────────────────────────── */
+/* Voile léger (.3) pour rester cohérent avec le conteneur principal,
+   devenu transparent : le jeu reste lisible autour. C'est l'ombre
+   portée de la modale qui assure l'essentiel de la séparation. */
+.mdt-modal-overlay {
+    position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: rgba(3,7,15,.3); z-index: 50;
+}
+.mdt-modal {
+    width: 560px; max-width: 92vw; max-height: 86vh; overflow-y: auto;
+    background: var(--mdt-bg-2); border: 1px solid var(--mdt-border);
+    border-radius: 14px;
+    box-shadow: 0 24px 70px rgba(0,0,0,.8), 0 0 0 1px rgba(0,0,0,.4);
+    animation: mdt-pop .15s ease-out;
+}
+.mdt-modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px; border-bottom: 1px solid var(--mdt-border);
+}
+.mdt-modal-header h3 { font-size: 16px; }
+.mdt-modal-close { background: none; border: none; color: var(--mdt-text-dim); font-size: 18px; cursor: pointer; }
+.mdt-modal-close:hover { color: var(--mdt-text); }
+.mdt-modal-body { padding: 20px; }
+.mdt-modal-footer { padding: 14px 20px; border-top: 1px solid var(--mdt-border); display: flex; gap: 10px; justify-content: flex-end; }
+
+/* ── Toasts ──────────────────────────────────────────────────── */
+.mdt-toasts { position: fixed; bottom: 24px; right: 24px; display: flex; flex-direction: column; gap: 10px; z-index: 60; }
+.mdt-toast {
+    padding: 13px 18px; border-radius: 9px; font-size: 14px; font-weight: 500;
+    background: var(--mdt-panel-2); border-left: 4px solid var(--mdt-blue);
+    box-shadow: 0 8px 24px rgba(0,0,0,.4); animation: mdt-slide .2s ease-out; max-width: 360px;
+}
+.mdt-toast.ok  { border-left-color: var(--mdt-green); }
+.mdt-toast.err { border-left-color: var(--mdt-red); }
+@keyframes mdt-slide { from { transform: translateX(40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--mdt-border); border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: var(--mdt-panel-2); }
+
+/* Organisation : arbre des services */
+.mdt-service { margin-bottom: 16px; }
+.mdt-service-head { font-size: 15px; font-weight: 700; color: var(--mdt-blue); margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--mdt-border); }
+.mdt-unit { padding: 10px 14px; background: var(--mdt-panel); border: 1px solid var(--mdt-border); border-radius: 8px; margin-bottom: 6px; }
+.mdt-unit-name { font-weight: 600; font-size: 14px; }
+.mdt-unit-desc { font-size: 12px; color: var(--mdt-text-dim); margin-top: 2px; }
+
+.mdt-grade-row td:first-child { font-weight: 700; color: var(--mdt-blue); }
+
+/* Effectifs (roster) */
+.mdt-dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.mdt-dot-on { background: var(--mdt-green); box-shadow: 0 0 7px var(--mdt-green); }
+.mdt-dot-off { background: var(--mdt-red); }
+.mdt-roster-item {
+    display: flex; align-items: center; gap: 14px;
+    padding: 11px 18px; border-bottom: 1px solid rgba(37, 57, 94, .5);
+}
+.mdt-roster-item:last-child { border-bottom: none; }
+.mdt-roster-item:hover { background: rgba(45, 108, 223, .06); }
+.mdt-roster-main { flex: 1; min-width: 0; }
+.mdt-roster-name { font-weight: 600; font-size: 14px; }
+.mdt-roster-grade { font-size: 12px; color: var(--mdt-blue); margin-top: 1px; }
+
+/* Autocomplete (recherche d'individu) */
+.mdt-autocomplete { position: relative; }
+/* Le conteneur doit être positionné, sinon la liste de résultats
+   (position: absolute) se cale sur la modale et non sur le champ. */
+.mdt-ac-wrap { position: relative; }
+.mdt-ac-results {
+    position: absolute; top: 100%; left: 0; right: 0; z-index: 20;
+    background: var(--mdt-panel-2); border: 1px solid var(--mdt-border);
+    border-radius: 9px; margin-top: 4px; max-height: 240px; overflow-y: auto;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, .45);
+}
+.mdt-ac-item {
+    display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    padding: 10px 14px; cursor: pointer; font-size: 14px;
+    border-bottom: 1px solid rgba(37, 57, 94, .5);
+}
+.mdt-ac-item:last-child { border-bottom: none; }
+.mdt-ac-item:hover { background: rgba(45, 108, 223, .15); }
+.mdt-ac-ddn { color: var(--mdt-text-dim); font-size: 12px; white-space: nowrap; }
+.mdt-ac-empty { color: var(--mdt-text-dim); cursor: default; }
+.mdt-ac-selected { font-size: 12px; color: var(--mdt-text-dim); margin-top: 6px; }
+.mdt-ac-selected.ok { color: var(--mdt-green); }
+
+/* ── Police Nationale — Investigation & Bodycam (ajouts) ─────────── */
+.mdt-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+.mdt-stat-card { background: var(--mdt-bg-card); border: 1px solid var(--mdt-border); border-radius: 8px; padding: 14px 16px; text-align: center; }
+.stat-label { color: var(--mdt-text-dim); font-size: 12px; margin-bottom: 6px; }
+.stat-value { color: var(--mdt-text-primary); font-size: 22px; font-weight: 700; }
+.mdt-row-gap { display: flex; gap: 10px; align-items: center; }
+
+/* Liste simple sans tableau (agents impliqués d'un rapport) */
+.mdt-plain-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.mdt-plain-list li {
+    background: var(--mdt-bg-2); border-radius: 6px;
+    padding: 7px 11px; font-size: 14px;
+}
+
+/* Case à cocher d'un formulaire (ex. intervention conjointe) */
+.mdt-check-row { display: flex; align-items: center; gap: 9px; }
+.mdt-check-row input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--mdt-blue); cursor: pointer; }
+.mdt-check-row label {
+    cursor: pointer; font-size: 14px; margin-bottom: 0;
+    text-transform: none; letter-spacing: normal; color: var(--mdt-text);
+}
+.mdt-alert { padding: 10px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; margin-top: 4px; }
+.mdt-alert-success { background: rgba(46,204,113,.15); border: 1px solid rgba(46,204,113,.3); color: #2ecc71; }
+.mdt-alert-warning { background: rgba(243,156,18,.12); border: 1px solid rgba(243,156,18,.3); color: #f39c12; }

@@ -1,0 +1,286 @@
+/* ════════════════════════════════════════════════════════════════
+   HEALTH INSPECTION — Thème SAMU (sombre, accents rouge/vert)
+   ════════════════════════════════════════════════════════════════ */
+
+:root {
+    --hi-bg:       #0a0e14;
+    --hi-panel:    #12181f;
+    --hi-panel-2:  #182029;
+    --hi-border:   #232d38;
+    --hi-text:     #e7eefc;
+    --hi-text-dim: #7c8aa0;
+    --hi-red:      #e74c3c;
+    --hi-red-dk:   #7a221b;
+    --hi-green:    #2ecc71;
+    --hi-orange:   #f39c12;
+    --hi-radius:   10px;
+    --hi-font:     'Segoe UI', 'Roboto', system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+    width: 100%; height: 100%;
+    background: transparent;
+    overflow: hidden;
+    font-family: var(--hi-font);
+    color: var(--hi-text);
+    user-select: none;
+}
+
+.hi-hidden { display: none !important; }
+
+#hi-root {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    background: radial-gradient(ellipse at 50% 0%, rgba(20,28,38,.85), rgba(6,9,13,.92));
+}
+
+/* ── Barre du haut ───────────────────────────────────────────── */
+.hi-topbar {
+    position: relative;
+    padding: 18px 60px 14px 26px;
+    border-bottom: 1px solid var(--hi-border);
+    background: linear-gradient(180deg, rgba(18,24,31,.9), rgba(18,24,31,.4));
+}
+.hi-topbar-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 22px;
+    letter-spacing: .04em;
+}
+.hi-topbar-title svg { width: 24px; height: 24px; color: var(--hi-red); }
+.hi-topbar-title b { font-weight: 800; }
+.hi-topbar-sub { margin-top: 4px; font-size: 13px; color: var(--hi-text-dim); }
+.hi-close {
+    position: absolute; top: 14px; right: 20px;
+    width: 34px; height: 34px;
+    border: 1px solid var(--hi-border);
+    border-radius: 8px;
+    background: var(--hi-panel-2);
+    color: var(--hi-text);
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+}
+.hi-close:hover { background: var(--hi-red-dk); border-color: var(--hi-red); }
+
+/* ── Layout principal ────────────────────────────────────────── */
+.hi-body {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 340px 1fr 300px;
+    gap: 18px;
+    padding: 18px 26px;
+    min-height: 0;
+}
+
+.hi-left { display: flex; flex-direction: column; gap: 16px; min-height: 0; }
+.hi-right { display: flex; flex-direction: column; }
+
+.hi-panel {
+    background: var(--hi-panel);
+    border: 1px solid var(--hi-border);
+    border-radius: var(--hi-radius);
+    padding: 14px;
+}
+.hi-panel-grow { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.hi-panel-title {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; font-weight: 700; letter-spacing: .05em;
+    color: var(--hi-text);
+}
+.hi-panel-title svg { width: 16px; height: 16px; color: var(--hi-green); }
+.hi-panel-sub { margin: 4px 0 12px; font-size: 11.5px; color: var(--hi-text-dim); }
+
+/* ── Grille des items de la trousse ──────────────────────────── */
+.hi-supplies {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+.hi-item {
+    position: relative;
+    background: var(--hi-panel-2);
+    border: 1px solid var(--hi-border);
+    border-radius: 8px;
+    padding: 10px 6px 8px;
+    text-align: center;
+    cursor: grab;
+}
+.hi-item.hi-item-empty { opacity: .35; cursor: not-allowed; }
+.hi-item-count {
+    position: absolute; top: 4px; right: 6px;
+    font-size: 10px; color: var(--hi-text-dim);
+}
+.hi-item-icon { width: 26px; height: 26px; margin: 0 auto 6px; color: var(--hi-green); }
+.hi-item-icon svg { width: 100%; height: 100%; }
+.hi-item-label { font-size: 10px; letter-spacing: .03em; color: var(--hi-text); text-transform: uppercase; }
+
+.hi-drag-helper {
+    width: 46px; height: 46px;
+    border-radius: 8px;
+    background: var(--hi-panel-2);
+    border: 1px solid var(--hi-green);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--hi-green);
+    z-index: 20000;
+}
+.hi-drag-helper svg { width: 24px; height: 24px; }
+
+/* ── Panneau des blessures ───────────────────────────────────── */
+.hi-injuries { overflow-y: auto; }
+.hi-injury-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 7px 2px;
+    border-bottom: 1px solid var(--hi-border);
+    font-size: 12.5px;
+}
+.hi-injury-row:last-child { border-bottom: none; }
+.hi-injury-badge {
+    min-width: 26px; text-align: center;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 11px; font-weight: 700;
+    background: var(--hi-panel-2);
+    color: var(--hi-text-dim);
+}
+.hi-injury-badge.hi-injury-active {
+    background: var(--hi-red-dk);
+    color: #ffd6d0;
+}
+
+/* ── Mannequin central ───────────────────────────────────────── */
+.hi-center { display: flex; align-items: center; justify-content: center; min-width: 0; }
+.hi-mannequin-wrap { position: relative; width: 100%; max-width: 380px; }
+.hi-mannequin { width: 100%; height: auto; display: block; }
+/* `path` inclus : le torse de la silhouette en est un (cf. ui.html) */
+.hi-mannequin ellipse, .hi-mannequin rect, .hi-mannequin path {
+    fill: rgba(46,204,113,.08);
+    stroke: var(--hi-green);
+    stroke-width: 2;
+    stroke-linejoin: round;
+}
+
+.hi-part {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    display: flex; align-items: center; gap: 4px;
+    background: var(--hi-panel);
+    border: 1px solid var(--hi-border);
+    border-radius: 20px;
+    padding: 4px 8px;
+    font-size: 11px;
+    white-space: nowrap;
+}
+.hi-part.hi-drop-hover { border-color: var(--hi-green); box-shadow: 0 0 0 2px rgba(46,204,113,.35); }
+.hi-part-pct { font-weight: 700; color: var(--hi-green); }
+.hi-part.hi-part-hurt .hi-part-pct { color: var(--hi-red); }
+.hi-part-name { color: var(--hi-text-dim); }
+.hi-part-arrow {
+    background: none; border: none; color: var(--hi-text-dim);
+    cursor: pointer; font-size: 12px; padding: 0 2px;
+}
+.hi-part-detail {
+    display: none;
+    position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+    margin-top: 6px;
+    background: var(--hi-panel-2);
+    border: 1px solid var(--hi-border);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 10.5px;
+    color: var(--hi-text-dim);
+    white-space: nowrap;
+    z-index: 10;
+}
+.hi-part.hi-part-expanded .hi-part-detail { display: block; }
+
+/* ── Moniteur cardiaque ──────────────────────────────────────── */
+.hi-heart-panel {
+    position: relative;
+    background: linear-gradient(180deg, rgba(122,34,27,.35), var(--hi-panel));
+    border: 1px solid var(--hi-red-dk);
+    border-radius: var(--hi-radius);
+    padding: 16px;
+    overflow: hidden;
+}
+
+/* ── Overlay "brancher le moniteur" (avant l'ECG) ─────────────────── */
+.hi-attach-overlay {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(8,11,15,.82);
+    backdrop-filter: blur(1px);
+}
+.hi-attach-overlay.hi-hidden { display: none; }
+.hi-attach-btn {
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    padding: 14px 18px;
+    border: 1px dashed var(--hi-text-dim);
+    border-radius: 10px;
+    background: var(--hi-panel-2);
+    color: var(--hi-text);
+    font-family: var(--hi-font);
+    font-size: 12px;
+    text-align: center;
+    cursor: pointer;
+}
+.hi-attach-btn svg { width: 26px; height: 26px; color: var(--hi-red); }
+.hi-attach-btn:hover { border-color: var(--hi-red); color: var(--hi-red); }
+.hi-attach-btn:hover svg { color: var(--hi-red); }
+.hi-attach-btn[disabled] { opacity: .5; cursor: wait; }
+.hi-heart-title {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; font-weight: 700; letter-spacing: .05em;
+    color: var(--hi-red);
+}
+.hi-heart-title svg { width: 16px; height: 16px; }
+.hi-heart-sub { margin: 4px 0 10px; font-size: 11.5px; color: var(--hi-text-dim); }
+.hi-ecg {
+    width: 100%; height: 60px;
+    display: block;
+}
+.hi-ecg polyline {
+    fill: none;
+    stroke: var(--hi-red);
+    stroke-width: 2;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+}
+.hi-bpm-row { display: flex; align-items: baseline; gap: 6px; margin-top: 8px; }
+#hi-bpm-value { font-size: 34px; font-weight: 800; color: var(--hi-red); }
+.hi-bpm-unit { font-size: 12px; color: var(--hi-text-dim); }
+.hi-status-badge {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 10.5px; font-weight: 700; letter-spacing: .06em;
+    background: rgba(46,204,113,.15);
+    color: var(--hi-green);
+}
+.hi-status-badge.hi-status-emergency {
+    background: rgba(231,76,60,.18);
+    color: var(--hi-red);
+}
+
+/* ── Toasts ──────────────────────────────────────────────────── */
+.hi-toasts {
+    position: fixed; top: 16px; right: 16px;
+    display: flex; flex-direction: column; gap: 8px;
+    z-index: 30000;
+}
+.hi-toast {
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    background: var(--hi-panel-2);
+    border: 1px solid var(--hi-border);
+}
+.hi-toast.ok { border-color: var(--hi-green); color: var(--hi-green); }
+.hi-toast.err { border-color: var(--hi-red); color: #ffb3ab; }
+.hi-toast.warn { border-color: var(--hi-orange); color: var(--hi-orange); }

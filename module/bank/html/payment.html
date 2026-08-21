@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paiement</title>
+    <link href="https://fonts.googleapis.com/css?family=Inter:400,500,600,700,800" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="css/themes.css">
+    <link rel="stylesheet" type="text/css" href="css/bank.css">
+    <link rel="stylesheet" type="text/css" href="css/payment.css">
+</head>
+
+<body>
+    <div id="pay-root" class="bank-hidden" data-theme="payment">
+        <div class="bank-panel pay-panel">
+            <header class="bank-header">
+                <div class="bank-brand">
+                    <span class="bank-logo-mark">$</span>
+                    <div class="bank-brand-text">
+                        <div class="bank-brand-name">LSLegacyBank Pay</div>
+                        <div class="bank-brand-sub" id="payTransactionLabel">—</div>
+                    </div>
+                </div>
+                <div class="bank-header-actions">
+                    <button class="bank-back-btn bank-hidden" id="payBackBtn" title="Retour">&#8592; Retour</button>
+                    <button class="bank-close-btn" id="payCloseBtn" title="Annuler">&#10005;</button>
+                </div>
+            </header>
+
+            <main class="bank-content" id="payContent"></main>
+        </div>
+
+        <div class="bank-toasts" id="payToasts"></div>
+    </div>
+
+    <script src="js/payment.js"></script>
+</body>
+
+</html>

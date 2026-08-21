@@ -1,0 +1,39 @@
+/* ════════════════════════════════════════════════════════════════
+   Banque — Jetons de thème par agence.
+   Chaque agence pose data-theme="mazebank"|"fleeca"|"payment" sur
+   #bank-root ou #pay-root ; tout le reste du CSS ne consomme que ces
+   custom properties, donc ajouter un 4e thème = un bloc copié-collé
+   ici, aucun autre fichier à toucher.
+   ════════════════════════════════════════════════════════════════ */
+
+#bank-root[data-theme="mazebank"], #pay-root[data-theme="mazebank"] {
+    --bank-accent: #0f9d58;
+    --bank-accent-dark: #0b7a43;
+    --bank-accent-darker: #08592f;
+    --bank-accent-soft: #e6f7ee;
+    --bank-accent-soft-2: #d1f0dd;
+    --bank-on-accent: #ffffff;
+    --bank-gradient: linear-gradient(135deg, #12a862 0%, #0b7a43 100%);
+}
+
+#bank-root[data-theme="fleeca"], #pay-root[data-theme="fleeca"] {
+    --bank-accent: #d1352c;
+    --bank-accent-dark: #a3241d;
+    --bank-accent-darker: #7a1a15;
+    --bank-accent-soft: #fdeceb;
+    --bank-accent-soft-2: #fad6d3;
+    --bank-on-accent: #ffffff;
+    --bank-gradient: linear-gradient(135deg, #e14238 0%, #a3241d 100%);
+}
+
+/* LSLegacyBank Pay — thème du terminal de paiement (bleu, cohérent avec
+   le logo imprimé sur le boîtier du TPE). */
+#bank-root[data-theme="payment"], #pay-root[data-theme="payment"] {
+    --bank-accent: #2563eb;
+    --bank-accent-dark: #1d4ed8;
+    --bank-accent-darker: #1e3a8a;
+    --bank-accent-soft: #e8efff;
+    --bank-accent-soft-2: #d3e0ff;
+    --bank-on-accent: #ffffff;
+    --bank-gradient: linear-gradient(135deg, #3b76f6 0%, #1d4ed8 100%);
+}

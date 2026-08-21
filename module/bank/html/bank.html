@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Banque</title>
+    <link href="https://fonts.googleapis.com/css?family=Inter:400,500,600,700,800" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="css/themes.css">
+    <link rel="stylesheet" type="text/css" href="css/bank.css">
+</head>
+
+<body>
+    <div id="bank-root" class="bank-hidden" data-theme="mazebank">
+        <div class="bank-panel">
+            <header class="bank-header">
+                <div class="bank-brand">
+                    <span class="bank-logo-mark" id="bankLogoMark">M</span>
+                    <div class="bank-brand-text">
+                        <div class="bank-brand-name" id="bankBrandName">Maze Bank</div>
+                        <div class="bank-brand-sub" id="bankBrandSub">Bienvenue</div>
+                    </div>
+                </div>
+                <div class="bank-header-actions">
+                    <button class="bank-back-btn bank-hidden" id="bankBackBtn" title="Retour">&#8592; Retour</button>
+                    <button class="bank-close-btn" id="bankCloseBtn" title="Fermer">&#10005;</button>
+                </div>
+            </header>
+
+            <main class="bank-content" id="bankContent"></main>
+        </div>
+
+        <div class="bank-toasts" id="bankToasts"></div>
+    </div>
+
+    <script src="js/bank.js"></script>
+    <script src="js/views/dashboard.js"></script>
+    <script src="js/views/accounts.js"></script>
+    <script src="js/views/livrets.js"></script>
+    <script src="js/views/transfer.js"></script>
+    <script src="js/views/card.js"></script>
+    <script src="js/views/admin.js"></script>
+    <script src="js/views/atm.js"></script>
+</body>
+
+</html>

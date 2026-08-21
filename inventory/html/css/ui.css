@@ -1,0 +1,779 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+* {
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+    font-family: 'Inter', sans-serif;
+    color: #fff;
+}
+
+body {
+    user-select: none;
+    position: fixed;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* ── Overlay principal ── */
+.ui {
+    position: fixed;
+    inset: 0;
+    display: none;
+    background: rgba(0, 0, 0, 0.18);
+}
+
+.ui.ui-visible {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+}
+
+/* ══════════════════════════════
+   SIDEBAR
+══════════════════════════════ */
+.inv-sidebar {
+    flex: 0 0 54px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 14px 0;
+    gap: 4px;
+    background: rgba(0, 0, 0, 0.45);
+    border-right: 1px solid rgba(255,255,255,0.05);
+    z-index: 10;
+}
+
+.cat-btn {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    color: rgba(255,255,255,0.35);
+    transition: background 0.13s, color 0.13s;
+    padding: 0;
+    outline: none;
+}
+
+.cat-btn svg {
+    width: 19px;
+    height: 19px;
+    fill: currentColor;
+}
+
+.cat-btn:hover {
+    background: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.72);
+}
+
+.cat-btn.active {
+    background: rgba(255,255,255,0.12);
+    color: rgba(255,255,255,0.92);
+}
+
+.sidebar-sep {
+    width: 30px;
+    height: 1px;
+    background: rgba(255,255,255,0.08);
+    margin: 6px 0;
+    flex-shrink: 0;
+}
+
+.sort-btn {
+    width: 40px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    color: rgba(255,255,255,0.30);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    transition: background 0.13s, color 0.13s;
+    font-family: 'Inter', sans-serif;
+    outline: none;
+}
+
+.sort-btn:hover {
+    background: rgba(255,255,255,0.07);
+    color: rgba(255,255,255,0.65);
+}
+
+.sort-btn.active {
+    background: rgba(255,255,255,0.11);
+    color: rgba(255,255,255,0.92);
+}
+
+/* ══════════════════════════════
+   PANNEAU PRINCIPAL (gauche)
+══════════════════════════════ */
+.inv-main {
+    flex: 0 0 34%;
+    max-width: 420px;
+    min-width: 240px;
+    display: flex;
+    flex-direction: column;
+    background: rgba(0, 0, 0, 0.38);
+    border-right: 1px solid rgba(255,255,255,0.05);
+    overflow: hidden;
+}
+
+.inv-header {
+    flex-shrink: 0;
+    padding: 11px 14px 9px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+.inv-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.40);
+    text-shadow: none;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.info-div2 {
+    font-size: 11px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.52);
+    text-shadow: none;
+    white-space: nowrap;
+}
+
+.weight-div { display: none; }
+
+/* ══════════════════════════════
+   GRILLE ITEMS
+══════════════════════════════ */
+#playerInventory,
+#otherInventory {
+    flex: 1;
+    padding: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 4px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* Slot */
+.slot {
+    position: relative;
+    width: calc(25% - 3px);
+    aspect-ratio: 1;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.slot:hover {
+    background: rgba(255,255,255,0.09);
+    border-color: rgba(255,255,255,0.14);
+}
+
+.item.hoverSlot {
+    outline: 2px solid rgba(255,255,255,0.45);
+    outline-offset: -2px;
+}
+
+/* Item dans le slot */
+.item,
+.item-other {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background-size: 66%;
+    background-repeat: no-repeat;
+    background-position: center 38%;
+}
+
+/* Badge quantité (ambre, coin haut-droit) */
+.item-count {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #fff;
+    background: rgba(200, 130, 20, 0.82);
+    border-radius: 4px;
+    padding: 1px 4px;
+    line-height: 1.3;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+/* Nom en bas du slot avec dégradé */
+.item-name {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 10px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.82);
+    padding: 2px 3px 3px;
+    background: linear-gradient(transparent, rgba(0,0,0,0.55));
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+    text-shadow: none;
+}
+
+.ui-draggable-dragging .item-count,
+.ui-draggable-dragging .item-name { display: none; }
+
+.item-name-bg { display: none; }
+
+/* Barre durabilité */
+.durability-bar {
+    position: absolute;
+    bottom: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    height: 3px;
+    width: 64%;
+    border-radius: 3px;
+    pointer-events: none;
+}
+
+/* Helper drag */
+.drag-helper {
+    width: 74px;
+    height: 74px;
+    background-size: 62%;
+    background-repeat: no-repeat;
+    background-position: center;
+    border-radius: 9px;
+    background-color: rgba(0, 0, 0, 0.72);
+    border: 1px solid rgba(255,255,255,0.20);
+    cursor: grabbing;
+    z-index: 99999;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.55);
+}
+
+.ammoIcon {
+    width: 8px;
+    height: 8px;
+    vertical-align: middle;
+}
+
+/* ══════════════════════════════
+   ZONE CENTRALE (ped + vêtements)
+══════════════════════════════ */
+#controls {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 240px;
+    padding-bottom: 70px;
+}
+
+/* ── Outfit slot (au-dessus du ped) ── */
+.outfit-area {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 8px 0 4px;
+    flex-shrink: 0;
+    /* Même décalage que .cloth-area pour que les colonnes restent alignées sur l'axe x */
+    margin-left: -27px;
+}
+
+.outfit-col {
+    width: 96px;
+    flex-shrink: 0;
+    display: flex;
+    justify-content: center;
+}
+
+.outfit-spacer {
+    flex: 0 0 200px;
+    min-width: 130px;
+}
+
+.outfit-slot {
+    position: relative;
+    width: 92px;
+    height: 92px;
+    background: rgba(108, 71, 255, 0.06);
+    border: 1.5px dashed rgba(108, 71, 255, 0.35);
+    border-radius: 14px;
+    overflow: hidden;
+    cursor: default;
+    transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+    flex-shrink: 0;
+}
+
+.outfit-slot::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -58%);
+    width: 26px;
+    height: 26px;
+    border: 1.5px dashed rgba(108, 71, 255, 0.3);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.outfit-slot.filled::before { display: none; }
+
+.outfit-slot.filled {
+    border-style: solid;
+    border-color: rgba(108, 71, 255, 0.7);
+    background: rgba(108, 71, 255, 0.12);
+    box-shadow: 0 0 18px rgba(108, 71, 255, 0.25), inset 0 0 18px rgba(108, 71, 255, 0.06);
+}
+
+.outfit-slot.outfit-slot-hover {
+    border-color: rgba(108, 71, 255, 0.8);
+    background: rgba(108, 71, 255, 0.18);
+}
+
+.outfit-slot-item {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    right: 6px;
+    bottom: 24px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+.outfit-slot-label {
+    position: absolute;
+    bottom: 5px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: rgba(108, 71, 255, 0.75);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    pointer-events: none;
+}
+
+.outfit-slot.filled .outfit-slot-label {
+    color: rgba(108, 71, 255, 0.95);
+}
+
+/* Lock badge overlay on outfit slot when equipped */
+.outfit-slot-lock {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 16px;
+    height: 16px;
+    background: rgba(108, 71, 255, 0.7);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+}
+
+.outfit-slot-lock:hover {
+    background: rgba(108, 71, 255, 1);
+    transform: scale(1.12);
+}
+
+/* Mode édition actif : cadenas vert (ouvert) */
+.outfit-slot-lock.outfit-lock-edit {
+    background: rgba(16, 185, 129, 0.85);
+}
+
+.outfit-slot-lock.outfit-lock-edit:hover {
+    background: rgba(16, 185, 129, 1);
+}
+
+.outfit-slot-lock svg {
+    width: 9px;
+    height: 9px;
+    fill: #fff;
+}
+
+/* Locked individual cloth slots when outfit is equipped */
+.cloth-slot.cloth-slot-outfit-locked {
+    opacity: 0.35;
+    pointer-events: none;
+    cursor: not-allowed;
+}
+
+.cloth-slot.cloth-slot-outfit-locked::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(108, 71, 255, 0.06);
+    border-radius: 8px;
+}
+
+/* Slots en mode édition de tenue : légère surbrillance verte */
+#controls.outfit-edit-active .cloth-slot {
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
+.cloth-area {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: stretch;
+    /* Compense le décalage de la sidebar pour centrer sur l'axe réel de l'écran */
+    margin-left: -27px;
+}
+
+.ped-center {
+    flex: 0 0 200px;
+    min-width: 130px;
+}
+
+/* ── Colonnes vêtements ── */
+.cloth-col {
+    width: 96px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    padding: 8px 8px;
+}
+
+/* Slot vêtement */
+.cloth-slot {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    background: rgba(0, 0, 0, 0.52);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 9px;
+    overflow: hidden;
+    cursor: default;
+    transition: background 0.12s, border-color 0.12s;
+    flex-shrink: 0;
+}
+
+/* Placeholder quand vide */
+.cloth-slot::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -58%);
+    width: 22px;
+    height: 22px;
+    border: 1.5px dashed rgba(255,255,255,0.18);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.cloth-slot.filled::before { display: none; }
+
+/* Image de l'item équipé */
+.cloth-slot-item {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    right: 4px;
+    bottom: 22px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+/* Label du slot */
+.cloth-slot-label {
+    position: absolute;
+    bottom: 4px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 10px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.85);
+    text-shadow: none;
+    pointer-events: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: 0.2px;
+}
+
+/* Hover valide (survol d'un item accepté) */
+.cloth-slot.cloth-slot-hover {
+    background: rgba(255,255,255,0.10);
+    border-color: rgba(255,255,255,0.28);
+}
+
+.cloth-slot.filled .cloth-slot-label {
+    color: rgba(255,255,255,0.45);
+}
+
+/* ── Badge quantité vide → caché ── */
+.item-count:empty { display: none; }
+
+/* ── Slots rapides ── */
+#playerInventoryFastItems {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 0 12px;
+    background: transparent;
+    align-self: stretch;
+}
+
+.slotFast {
+    position: relative;
+    width: 76px;
+    height: 76px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 9px;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.slotFast:hover {
+    background: rgba(255,255,255,0.08);
+    border-color: rgba(255,255,255,0.15);
+}
+
+.keybind {
+    position: absolute;
+    top: 4px;
+    left: 5px;
+    font-size: 9px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.45);
+    text-shadow: none;
+    background: rgba(0,0,0,0.38);
+    border-radius: 4px;
+    padding: 1px 4px;
+    line-height: 1.4;
+    z-index: 5;
+    pointer-events: none;
+}
+
+/* ══════════════════════════════
+   PANNEAU DROIT (second inventaire)
+══════════════════════════════ */
+.inv-panel {
+    flex: 0 0 34%;
+    max-width: 420px;
+    min-width: 240px;
+    display: flex;
+    flex-direction: column;
+    background: rgba(0, 0, 0, 0.38);
+    border-left: 1px solid rgba(255,255,255,0.05);
+    overflow: hidden;
+}
+
+.panel-hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.info-div {
+    font-size: 10px;
+    color: rgba(255,255,255,0.42);
+    text-shadow: none;
+    text-align: right;
+    white-space: normal;
+    word-break: break-word;
+}
+
+#noSecondInventoryMessage {
+    width: 100%;
+    padding-top: 60px;
+    text-align: center;
+    font-size: 12px;
+    color: rgba(255,255,255,0.20);
+    font-style: italic;
+    text-shadow: none;
+}
+
+/* ══════════════════════════════
+   BOUTONS D'ACTION
+══════════════════════════════ */
+.controls-div {
+    position: fixed;
+    bottom: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 6px;
+    z-index: 9999;
+    align-items: center;
+}
+
+.control {
+    height: 38px;
+    min-width: 106px;
+    padding: 0 14px;
+    background: rgba(0, 0, 0, 0.55);
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 10px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 38px;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
+    text-shadow: none;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+    color: rgba(255,255,255,0.68);
+}
+
+.control:hover,
+.hoverControl {
+    background: rgba(255,255,255,0.10);
+    border-color: rgba(255,255,255,0.18);
+    color: #fff;
+}
+
+.control.disabled {
+    opacity: 0.25;
+    pointer-events: none;
+}
+
+#count {
+    border: 1px solid rgba(255,255,255,0.09);
+    outline: 0;
+    font-size: 14px;
+    font-weight: 600;
+    background: rgba(0, 0, 0, 0.55);
+    color: rgba(255,255,255,0.85);
+    text-align: center;
+    min-width: 60px;
+    padding: 0 10px;
+    text-shadow: none;
+}
+
+#count:focus { border-color: rgba(255,255,255,0.22); }
+
+input::-webkit-inner-spin-button,
+input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number] { -moz-appearance: textfield; }
+
+/* ── Joueurs proches ── */
+.nearbyPlayerButton {
+    display: block;
+    width: 100%;
+    margin-top: 5px;
+    padding: 8px 12px;
+    text-decoration: none;
+    color: rgba(255,255,255,0.8);
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: center;
+    text-shadow: none;
+    transition: background 0.12s;
+}
+.nearbyPlayerButton:hover { background: rgba(255,255,255,0.12); }
+
+/* ══════════════════════════════
+   MENU CONTEXTUEL RAPIDE (clic droit sur un item)
+══════════════════════════════ */
+.item-context-menu {
+    position: fixed;
+    display: none;
+    min-width: 150px;
+    padding: 6px;
+    list-style: none;
+    background: rgba(20, 20, 20, 0.92);
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+    z-index: 100000;
+}
+
+.context-menu-option {
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    color: rgba(255,255,255,0.68);
+    border-radius: 7px;
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s;
+    white-space: nowrap;
+}
+
+.context-menu-option:hover {
+    background: rgba(255,255,255,0.10);
+    color: #fff;
+}
+
+/* ── Scrollbar fine ── */
+#playerInventory::-webkit-scrollbar,
+#otherInventory::-webkit-scrollbar { width: 3px; }
+#playerInventory::-webkit-scrollbar-track,
+#otherInventory::-webkit-scrollbar-track { background: transparent; }
+#playerInventory::-webkit-scrollbar-thumb,
+#otherInventory::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.10);
+    border-radius: 3px;
+}
+
+/* ════════ RESPONSIVE ════════ */
+@media (max-width: 1400px) {
+    .inv-main, .inv-panel { flex: 0 0 32%; max-width: 380px; }
+    .cloth-col, .outfit-col { width: 86px; }
+    .cloth-slot { width: 72px; height: 72px; }
+    .slotFast { width: 68px; height: 68px; }
+}
+
+@media (max-width: 1150px) {
+    .inv-sidebar { flex: 0 0 46px; }
+    .cat-btn, .sort-btn { width: 34px; }
+    .inv-main, .inv-panel { flex: 0 0 30%; min-width: 210px; }
+    .cloth-area, .outfit-area { margin-left: -23px; }
+    .cloth-col, .outfit-col { width: 76px; }
+    .cloth-slot { width: 64px; height: 64px; }
+    .cloth-slot-label { font-size: 9px; }
+    .control { min-width: 88px; font-size: 11px; height: 34px; line-height: 34px; }
+    .drag-helper { width: 64px; height: 64px; }
+    .slotFast { width: 62px; height: 62px; }
+}
+
+@media (max-width: 900px) {
+    .cloth-col, .outfit-col { width: 66px; }
+    .cloth-slot { width: 56px; height: 56px; }
+    .cloth-slot-label { font-size: 8px; }
+}

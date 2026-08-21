@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MDT</title>
+    <link rel="stylesheet" href="css/mdt.css">
+    <!-- Styles du MDT médical (SAMU) — additif, ne surcharge rien de mdt.css -->
+    <link rel="stylesheet" href="css/medical.css">
+    <!-- Styles de l'onglet Interventions (missions PNJ) — additif également -->
+    <link rel="stylesheet" href="css/interventions.css">
+    <!-- Styles du tableau de bord des forces de l'ordre — additif -->
+    <link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body>
+    <div id="mdt" class="mdt-hidden">
+        <div class="mdt-window">
+
+            <!-- ── En-tête ───────────────────────────────────── -->
+            <header class="mdt-header">
+                <div class="mdt-brand">
+                    <div class="mdt-logo">🛡️</div>
+                    <div class="mdt-title">
+                        <h1 id="mdt-dep-label">Police Nationale</h1>
+                        <span class="mdt-subtitle">Mobile Data Terminal</span>
+                    </div>
+                </div>
+                <div class="mdt-clock" id="mdt-clock">--:--</div>
+                <div class="mdt-officer">
+                    <div class="mdt-officer-name" id="mdt-officer-name">—</div>
+                    <div class="mdt-officer-grade" id="mdt-officer-grade">—</div>
+                </div>
+                <button class="mdt-close" id="mdt-close" title="Fermer (Échap)">✕</button>
+            </header>
+
+            <!-- ── Corps : sidebar + contenu ─────────────────── -->
+            <div class="mdt-body">
+                <nav class="mdt-sidebar" id="mdt-sidebar"></nav>
+                <main class="mdt-content" id="mdt-content"></main>
+            </div>
+        </div>
+
+        <!-- ── Conteneur de modale (formulaires) ─────────────── -->
+        <div class="mdt-modal-overlay mdt-hidden" id="mdt-modal-overlay">
+            <div class="mdt-modal" id="mdt-modal">
+                <div class="mdt-modal-header">
+                    <h3 id="mdt-modal-title">Titre</h3>
+                    <button class="mdt-modal-close" id="mdt-modal-close">✕</button>
+                </div>
+                <div class="mdt-modal-body" id="mdt-modal-body"></div>
+                <div class="mdt-modal-footer" id="mdt-modal-footer"></div>
+            </div>
+        </div>
+
+        <!-- ── Toasts ────────────────────────────────────────── -->
+        <div class="mdt-toasts" id="mdt-toasts"></div>
+    </div>
+
+    <script src="js/mdt.js"></script>
+    <!-- Vues du MDT médical (SAMU). Doit être chargé APRÈS mdt.js : il
+         réutilise ses helpers et s'enregistre dans ses points d'extension. -->
+    <script src="js/medical.js"></script>
+    <!-- Onglet Interventions (missions PNJ). Même contrainte : après mdt.js. -->
+    <script src="js/interventions.js"></script>
+    <!-- Tableau de bord des forces de l'ordre. Doit être chargé APRÈS
+         medical.js : il récupère le dashboard SAMU déjà enregistré pour le
+         laisser servir le département médical. -->
+    <script src="js/dashboard.js"></script>
+</body>
+</html>

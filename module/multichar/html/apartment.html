@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Sélection du personnage</title>
+    <link href="https://fonts.googleapis.com/css?family=Montserrat:300,400,500,600,700" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { width: 100%; height: 100%; font-family: 'Montserrat', sans-serif; background: transparent; overflow: hidden; }
+        #apartmentRoot { display: none; position: fixed; inset: 0; }
+
+        .hotspot {
+            position: absolute;
+            width: 110px; height: 220px;
+            margin-left: -55px; margin-top: -160px;
+            cursor: pointer;
+            background: transparent;
+        }
+        .hotspot.hidden { display: none; }
+        .hotspot.empty::after {
+            content: '+';
+            position: absolute; inset: 0;
+            display: flex; align-items: center; justify-content: center;
+            color: rgba(255,255,255,0.65);
+            font-size: 20px; font-weight: 600;
+            text-shadow: 0 0 6px rgba(0,0,0,0.8);
+        }
+
+        .tooltip {
+            position: absolute;
+            transform: translate(-50%, -100%);
+            margin-top: -10px;
+            background: rgba(18,20,26,0.94);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 12px 14px;
+            min-width: 190px;
+            display: none;
+            pointer-events: auto;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .tooltip.visible { display: block; }
+        .tooltip .name { color: #fff; font-size: 14.5px; font-weight: 600; margin-bottom: 6px; }
+        .tooltip .row { color: rgba(255,255,255,0.65); font-size: 12px; margin-top: 3px; display: flex; justify-content: space-between; gap: 10px; }
+        .tooltip .row span:last-child { color: #fff; font-weight: 500; }
+        .tooltip .hint { color: rgba(255,255,255,0.4); font-size: 11px; margin-top: 8px; }
+        .tooltip.empty-tip .hint { margin-top: 0; }
+
+        .tooltip .actions { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+        .tooltip .actions button {
+            pointer-events: auto;
+            width: 100%;
+            padding: 6px 0;
+            border-radius: 6px;
+            font-size: 11.5px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .tooltip .play-btn {
+            background: rgba(80,180,120,0.18);
+            border: 1px solid rgba(80,180,120,0.45);
+            color: #9af0bb;
+        }
+        .tooltip .play-btn:hover { background: rgba(80,180,120,0.32); }
+        .tooltip .delete-btn {
+            background: rgba(220,60,60,0.15);
+            border: 1px solid rgba(220,60,60,0.4);
+            color: #ff9a9a;
+        }
+        .tooltip .delete-btn:hover { background: rgba(220,60,60,0.3); }
+
+        .confirm {
+            position: fixed; inset: 0;
+            display: none;
+            align-items: center; justify-content: center;
+            background: rgba(0,0,0,0.5);
+            pointer-events: auto;
+        }
+        .confirm.visible { display: flex; }
+        .confirm-box {
+            background: rgba(24,26,32,0.98);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 20px;
+            width: 300px;
+        }
+        .confirm-box p { color: #fff; font-size: 13.5px; margin-bottom: 16px; }
+        .confirm-actions { display: flex; gap: 8px; }
+        .confirm-actions button {
+            flex: 1; padding: 9px 0; border-radius: 8px; border: none;
+            font-size: 12.5px; font-weight: 600; cursor: pointer;
+        }
+        .btn-cancel { background: rgba(255,255,255,0.08); color: #fff; }
+        .btn-confirm { background: #c94040; color: #fff; }
+    </style>
+</head>
+<body>
+    <div id="apartmentRoot">
+        <div id="hotspots"></div>
+        <div class="tooltip" id="tooltip"></div>
+
+        <div class="confirm" id="confirm">
+            <div class="confirm-box">
+                <p>Supprimer définitivement ce personnage ?</p>
+                <div class="confirm-actions">
+                    <button class="btn-cancel" id="confirmCancel">Annuler</button>
+                    <button class="btn-confirm" id="confirmDelete">Supprimer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const RES = 'lslegacy';
+        const root = document.getElementById('apartmentRoot');
+        const hotspotsEl = document.getElementById('hotspots');
+        const tooltipEl = document.getElementById('tooltip');
+        const confirmEl = document.getElementById('confirm');
+        const confirmCancel = document.getElementById('confirmCancel');
+        const confirmDelete = document.getElementById('confirmDelete');
+
+        let pendingDeleteId = null;
+        let slotsData = {};
+        let hotspotEls = {};
+        let hoveredIndex = null;
+        let hideTimer = null;
+
+        // Le hotspot est un petit rond et le tooltip s'ouvre juste au-dessus :
+        // en ligne droite le curseur quitte forcément le rond avant d'entrer
+        // dans le tooltip, ce qui déclenchait un mouseleave -> fermeture
+        // immédiate avant même d'atteindre les boutons. On garde le tooltip
+        // ouvert tant que le curseur est sur le hotspot OU sur le tooltip,
+        // avec un court délai pour couvrir le trajet entre les deux.
+        function cancelHide() {
+            if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+        }
+        function scheduleHide(index) {
+            cancelHide();
+            hideTimer = setTimeout(() => {
+                if (hoveredIndex === index) {
+                    hoveredIndex = null;
+                    tooltipEl.classList.remove('visible');
+                }
+            }, 150);
+        }
+
+        function postNui(name, data) {
+            fetch(`https://${RES}/${name}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+                body: JSON.stringify(data || {})
+            });
+        }
+
+        function money(n) {
+            return (n || 0).toLocaleString('fr-FR') + ' $';
+        }
+
+        function renderTooltip(index) {
+            const s = slotsData[index];
+            if (!s) { tooltipEl.classList.remove('visible'); return; }
+
+            if (s.empty) {
+                tooltipEl.className = 'tooltip visible empty-tip';
+                tooltipEl.innerHTML = `<div class="name">Nouveau personnage</div><div class="hint">Cliquer pour créer</div>`;
+            } else {
+                tooltipEl.className = 'tooltip visible';
+                tooltipEl.innerHTML = `
+                    <div class="name">${s.name}</div>
+                    <div class="row"><span>Position</span><span>${s.street || '?'}</span></div>
+                    <div class="row"><span>Espèces</span><span>${money(s.cash)}</span></div>
+                    ${s.bankBalance !== null && s.bankBalance !== undefined ? `<div class="row"><span>Compte courant</span><span>${money(s.bankBalance)}</span></div>` : ''}
+                    <div class="row"><span>Emploi</span><span>${s.jobLabel || 'Chômeur'}</span></div>
+                    <div class="actions">
+                        <button class="play-btn">Jouer ce personnage</button>
+                        <button class="delete-btn">Supprimer ce personnage</button>
+                    </div>
+                `;
+                tooltipEl.querySelector('.play-btn').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    postNui('apartment:click', { index: s.index });
+                });
+                tooltipEl.querySelector('.delete-btn').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    pendingDeleteId = s.id;
+                    confirmEl.classList.add('visible');
+                });
+            }
+        }
+
+        function buildHotspots() {
+            hotspotsEl.innerHTML = '';
+            hotspotEls = {};
+
+            Object.values(slotsData).forEach(s => {
+                const el = document.createElement('div');
+                el.className = 'hotspot hidden' + (s.empty ? ' empty' : '');
+                el.dataset.index = s.index;
+
+                el.addEventListener('mouseenter', () => {
+                    cancelHide();
+                    hoveredIndex = s.index;
+                    renderTooltip(s.index);
+                });
+                el.addEventListener('mouseleave', () => {
+                    scheduleHide(s.index);
+                });
+                el.addEventListener('click', () => {
+                    // Sièges vides : clic direct = création. Sièges occupés :
+                    // la sélection passe désormais uniquement par le bouton
+                    // "Jouer ce personnage" du tooltip (cf. renderTooltip).
+                    if (s.empty) {
+                        postNui('apartment:click', { index: s.index });
+                    }
+                });
+
+                hotspotsEl.appendChild(el);
+                hotspotEls[s.index] = el;
+            });
+        }
+
+        tooltipEl.addEventListener('mouseenter', cancelHide);
+        tooltipEl.addEventListener('mouseleave', () => {
+            if (hoveredIndex !== null) scheduleHide(hoveredIndex);
+        });
+
+        confirmCancel.addEventListener('click', () => {
+            confirmEl.classList.remove('visible');
+            pendingDeleteId = null;
+        });
+
+        confirmDelete.addEventListener('click', () => {
+            if (pendingDeleteId !== null) {
+                postNui('apartment:delete', { characterId: pendingDeleteId });
+            }
+            confirmEl.classList.remove('visible');
+            pendingDeleteId = null;
+        });
+
+        window.addEventListener('message', (event) => {
+            const msg = event.data;
+            if (!msg || !msg.action) return;
+
+            if (msg.action === 'apartment:show') {
+                slotsData = {};
+                (msg.data.slots || []).forEach(s => { slotsData[s.index] = s; });
+                root.style.display = 'block';
+                buildHotspots();
+            } else if (msg.action === 'apartment:hide') {
+                cancelHide();
+                root.style.display = 'none';
+                slotsData = {};
+                hoveredIndex = null;
+                tooltipEl.classList.remove('visible');
+                confirmEl.classList.remove('visible');
+                pendingDeleteId = null;
+            } else if (msg.action === 'apartment:positions') {
+                (msg.data || []).forEach(p => {
+                    const el = hotspotEls[p.index];
+                    if (!el) return;
+                    if (!p.onScreen) {
+                        el.classList.add('hidden');
+                        return;
+                    }
+                    el.classList.remove('hidden');
+                    el.style.left = (p.x * 100) + '%';
+                    el.style.top = (p.y * 100) + '%';
+
+                    if (hoveredIndex === p.index) {
+                        tooltipEl.style.left = (p.x * 100) + '%';
+                        tooltipEl.style.top = (p.y * 100) + '%';
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

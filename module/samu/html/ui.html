@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>lslegacy - inspection medicale</title>
+    <link rel="stylesheet" type="text/css" href="css/hi.css">
+</head>
+<body>
+    <script src="https://code.jquery.com/jquery-3.5.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+
+    <div id="hi-root" class="hi-hidden">
+        <div class="hi-toasts" id="hi-toasts"></div>
+
+        <div class="hi-topbar">
+            <div class="hi-topbar-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a5 5 0 0 0-5 5v2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-2V7a5 5 0 0 0-5-5z"/><path d="M9 12h6M12 9v6"/></svg>
+                <span>INSPECTION <b>MÉDICALE</b></span>
+            </div>
+            <div class="hi-topbar-sub">Examinez le patient pour évaluer son état de santé.</div>
+            <button id="hi-close" class="hi-close" title="Fermer (Échap)">&times;</button>
+        </div>
+
+        <div class="hi-body">
+            <div class="hi-left">
+                <div class="hi-panel">
+                    <div class="hi-panel-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18v13H3z"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        TROUSSE DE SOINS
+                    </div>
+                    <div class="hi-panel-sub">Glissez-déposez un item sur le patient pour l'utiliser.</div>
+                    <div id="hi-supplies" class="hi-supplies"></div>
+                </div>
+
+                <div class="hi-panel hi-panel-grow">
+                    <div class="hi-panel-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+                        BLESSURES TOTALES
+                    </div>
+                    <div class="hi-panel-sub">Cumulées sur les 6 membres.</div>
+                    <div id="hi-injuries" class="hi-injuries"></div>
+                </div>
+            </div>
+
+            <div class="hi-center">
+                <div class="hi-mannequin-wrap">
+                    <svg class="hi-mannequin" viewBox="0 0 200 405">
+                        <!-- Silhouette humaine : tête, cou, torse fuselé,
+                             bras (bras/avant-bras/main) et jambes
+                             (cuisse/mollet/pied). Purement décoratif — le JS
+                             ne cible que les étiquettes .hi-part. -->
+                        <ellipse cx="100" cy="40" rx="23" ry="27" />
+                        <rect x="91" y="60" width="18" height="18" rx="7" />
+
+                        <path d="M72 78
+                                 C60 82, 52 92, 50 106
+                                 L56 150
+                                 C58 168, 62 182, 63 200
+                                 L137 200
+                                 C138 182, 142 168, 144 150
+                                 L150 106
+                                 C148 92, 140 82, 128 78
+                                 Z" />
+
+                        <rect x="34" y="96" width="20" height="68" rx="10" transform="rotate(8 44 130)" />
+                        <rect x="30" y="160" width="18" height="64" rx="9" transform="rotate(6 39 192)" />
+                        <ellipse cx="36" cy="232" rx="10" ry="13" />
+
+                        <rect x="146" y="96" width="20" height="68" rx="10" transform="rotate(-8 156 130)" />
+                        <rect x="152" y="160" width="18" height="64" rx="9" transform="rotate(-6 161 192)" />
+                        <ellipse cx="164" cy="232" rx="10" ry="13" />
+
+                        <rect x="68" y="200" width="28" height="92" rx="14" />
+                        <rect x="70" y="288" width="24" height="86" rx="12" />
+                        <ellipse cx="82" cy="386" rx="14" ry="11" />
+
+                        <rect x="104" y="200" width="28" height="92" rx="14" />
+                        <rect x="106" y="288" width="24" height="86" rx="12" />
+                        <ellipse cx="118" cy="386" rx="14" ry="11" />
+                    </svg>
+
+                    <div class="hi-part" id="hi-part-head" data-part="head" style="top:2%; left:50%;">
+                        <button class="hi-part-arrow" data-dir="-1">&laquo;</button>
+                        <span class="hi-part-pct">100%</span>
+                        <span class="hi-part-name">Tête</span>
+                        <button class="hi-part-arrow" data-dir="1">&raquo;</button>
+                        <div class="hi-part-detail"></div>
+                    </div>
+                    <div class="hi-part" id="hi-part-arm_r" data-part="arm_r" style="top:30%; left:5%;">
+                        <button class="hi-part-arrow" data-dir="-1">&laquo;</button>
+                        <span class="hi-part-pct">100%</span>
+                        <span class="hi-part-name">Bras Droit</span>
+                        <button class="hi-part-arrow" data-dir="1">&raquo;</button>
+                        <div class="hi-part-detail"></div>
+                    </div>
+                    <div class="hi-part" id="hi-part-body" data-part="body" style="top:30%; left:50%;">
+                        <button class="hi-part-arrow" data-dir="-1">&laquo;</button>
+                        <span class="hi-part-pct">100%</span>
+                        <span class="hi-part-name">Torse</span>
+                        <button class="hi-part-arrow" data-dir="1">&raquo;</button>
+                        <div class="hi-part-detail"></div>
+                    </div>
+                    <div class="hi-part" id="hi-part-arm_l" data-part="arm_l" style="top:30%; left:95%;">
+                        <button class="hi-part-arrow" data-dir="-1">&laquo;</button>
+                        <span class="hi-part-pct">100%</span>
+                        <span class="hi-part-name">Bras Gauche</span>
+                        <button class="hi-part-arrow" data-dir="1">&raquo;</button>
+                        <div class="hi-part-detail"></div>
+                    </div>
+                    <div class="hi-part" id="hi-part-leg_r" data-part="leg_r" style="top:70%; left:22%;">
+                        <button class="hi-part-arrow" data-dir="-1">&laquo;</button>
+                        <span class="hi-part-pct">100%</span>
+                        <span class="hi-part-name">Jambe Droite</span>
+                        <button class="hi-part-arrow" data-dir="1">&raquo;</button>
+                        <div class="hi-part-detail"></div>
+                    </div>
+                    <div class="hi-part" id="hi-part-leg_l" data-part="leg_l" style="top:70%; left:78%;">
+                        <button class="hi-part-arrow" data-dir="-1">&laquo;</button>
+                        <span class="hi-part-pct">100%</span>
+                        <span class="hi-part-name">Jambe Gauche</span>
+                        <button class="hi-part-arrow" data-dir="1">&raquo;</button>
+                        <div class="hi-part-detail"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hi-right">
+                <div class="hi-heart-panel" id="hi-heart-panel">
+                    <div class="hi-heart-title">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7-4.5-9.5-9C.6 8.1 2.4 4 6.3 4c2 0 3.4 1.1 4.2 2.3.3.5 1 .5 1.3 0C12.6 5.1 14 4 16 4c3.9 0 5.7 4.1 3.8 8-2.5 4.5-9.5 9-9.5 9z"/></svg>
+                        RYTHME CARDIAQUE
+                    </div>
+                    <div class="hi-heart-sub">Vérifiez rapidement l'état du patient.</div>
+                    <svg class="hi-ecg" viewBox="0 0 300 60" preserveAspectRatio="none">
+                        <polyline id="hi-ecg-line" points="0,30 300,30" />
+                    </svg>
+                    <div class="hi-bpm-row">
+                        <span id="hi-bpm-value">--</span>
+                        <span class="hi-bpm-unit">BPM</span>
+                    </div>
+                    <div id="hi-status-badge" class="hi-status-badge">STABLE</div>
+
+                    <div id="hi-attach-overlay" class="hi-attach-overlay">
+                        <button id="hi-attach-btn" class="hi-attach-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h4l2-7 4 14 2-7h4"/></svg>
+                            Attacher le moniteur
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/hi.js"></script>
+</body>
+</html>

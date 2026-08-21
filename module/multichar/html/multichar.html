@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sélection du personnage</title>
+    <link href="https://fonts.googleapis.com/css?family=Montserrat:300,400,500,600,700" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body {
+            width: 100%; height: 100%;
+            font-family: 'Montserrat', sans-serif;
+            background: transparent;
+            overflow: hidden;
+        }
+
+        #root { display: none; }
+
+        .overlay {
+            position: fixed; inset: 0;
+            display: flex; align-items: center; justify-content: center;
+            background: radial-gradient(ellipse at center, rgba(10,12,16,0.55) 0%, rgba(6,7,10,0.85) 100%);
+        }
+
+        .panel {
+            width: 420px;
+            max-height: 80vh;
+            background: rgba(18,20,26,0.92);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 14px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            padding: 28px 24px 20px;
+            display: flex; flex-direction: column;
+        }
+
+        .panel h1 {
+            color: #fff;
+            font-size: 18px;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            margin-bottom: 4px;
+        }
+
+        .panel .subtitle {
+            color: rgba(255,255,255,0.45);
+            font-size: 12.5px;
+            margin-bottom: 20px;
+        }
+
+        .error {
+            display: none;
+            background: rgba(220,60,60,0.15);
+            border: 1px solid rgba(220,60,60,0.4);
+            color: #ff9a9a;
+            font-size: 12.5px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            margin-bottom: 14px;
+        }
+
+        .list {
+            display: flex; flex-direction: column;
+            gap: 10px;
+            overflow-y: auto;
+            padding-right: 2px;
+        }
+
+        .character {
+            display: flex; align-items: center; justify-content: space-between;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 10px;
+            padding: 14px 16px;
+            cursor: pointer;
+            transition: background 0.15s ease, border-color 0.15s ease;
+        }
+
+        .character:hover {
+            background: rgba(255,255,255,0.08);
+            border-color: rgba(255,255,255,0.16);
+        }
+
+        .character .name {
+            color: #fff;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .character .slot {
+            color: rgba(255,255,255,0.4);
+            font-size: 11px;
+            margin-top: 2px;
+        }
+
+        .character .delete-btn {
+            width: 28px; height: 28px;
+            border-radius: 6px;
+            background: rgba(220,60,60,0.12);
+            border: 1px solid rgba(220,60,60,0.3);
+            color: #ff9a9a;
+            font-size: 14px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+        }
+
+        .character .delete-btn:hover { background: rgba(220,60,60,0.25); }
+
+        .new-slot {
+            display: flex; align-items: center; justify-content: center;
+            gap: 8px;
+            border: 1px dashed rgba(255,255,255,0.2);
+            border-radius: 10px;
+            padding: 14px 16px;
+            color: rgba(255,255,255,0.55);
+            font-size: 13.5px;
+            cursor: pointer;
+            transition: border-color 0.15s ease, color 0.15s ease;
+        }
+
+        .new-slot:hover {
+            border-color: rgba(255,255,255,0.4);
+            color: #fff;
+        }
+
+        .confirm {
+            position: fixed; inset: 0;
+            display: none;
+            align-items: center; justify-content: center;
+            background: rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+
+        .confirm-box {
+            background: rgba(24,26,32,0.98);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 20px;
+            width: 300px;
+        }
+
+        .confirm-box p { color: #fff; font-size: 13.5px; margin-bottom: 16px; }
+
+        .confirm-actions { display: flex; gap: 8px; }
+
+        .confirm-actions button {
+            flex: 1;
+            padding: 9px 0;
+            border-radius: 8px;
+            border: none;
+            font-size: 12.5px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn-cancel { background: rgba(255,255,255,0.08); color: #fff; }
+        .btn-confirm { background: #c94040; color: #fff; }
+    </style>
+</head>
+<body>
+    <div id="root">
+        <div class="overlay">
+            <div class="panel">
+                <h1>Choisis ton personnage</h1>
+                <div class="subtitle" id="subtitle"></div>
+                <div class="error" id="error"></div>
+                <div class="list" id="list"></div>
+            </div>
+        </div>
+
+        <div class="confirm" id="confirm">
+            <div class="confirm-box">
+                <p>Supprimer définitivement ce personnage ?</p>
+                <div class="confirm-actions">
+                    <button class="btn-cancel" id="confirmCancel">Annuler</button>
+                    <button class="btn-confirm" id="confirmDelete">Supprimer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const root = document.getElementById('root');
+        const list = document.getElementById('list');
+        const subtitle = document.getElementById('subtitle');
+        const errorBox = document.getElementById('error');
+        const confirmBox = document.getElementById('confirm');
+        const confirmCancel = document.getElementById('confirmCancel');
+        const confirmDelete = document.getElementById('confirmDelete');
+
+        let pendingDeleteId = null;
+
+        const RES = 'lslegacy';
+
+        function postNui(name, data) {
+            fetch(`https://${RES}/${name}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+                body: JSON.stringify(data || {})
+            });
+        }
+
+        function render(state) {
+            const characters = state.characters || [];
+            const maxSlots = state.maxSlots || 1;
+
+            subtitle.textContent = `${characters.length} / ${maxSlots} personnage${maxSlots > 1 ? 's' : ''}`;
+            list.innerHTML = '';
+
+            characters.forEach(c => {
+                const row = document.createElement('div');
+                row.className = 'character';
+
+                const info = document.createElement('div');
+                const name = document.createElement('div');
+                name.className = 'name';
+                name.textContent = `${c.firstname} ${c.lastname}`;
+                const slot = document.createElement('div');
+                slot.className = 'slot';
+                slot.textContent = `Slot ${c.slot}`;
+                info.appendChild(name);
+                info.appendChild(slot);
+                row.appendChild(info);
+
+                const del = document.createElement('div');
+                del.className = 'delete-btn';
+                del.textContent = '✕';
+                del.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    pendingDeleteId = c.id;
+                    confirmBox.style.display = 'flex';
+                });
+                row.appendChild(del);
+
+                row.addEventListener('click', () => {
+                    postNui('multichar:select', { characterId: c.id });
+                });
+
+                list.appendChild(row);
+            });
+
+            if (characters.length < maxSlots) {
+                const add = document.createElement('div');
+                add.className = 'new-slot';
+                add.textContent = '+ Nouveau personnage';
+                add.addEventListener('click', () => {
+                    postNui('multichar:select', { characterId: 'new' });
+                });
+                list.appendChild(add);
+            }
+        }
+
+        confirmCancel.addEventListener('click', () => {
+            confirmBox.style.display = 'none';
+            pendingDeleteId = null;
+        });
+
+        confirmDelete.addEventListener('click', () => {
+            if (pendingDeleteId !== null) {
+                postNui('multichar:delete', { characterId: pendingDeleteId });
+            }
+            confirmBox.style.display = 'none';
+            pendingDeleteId = null;
+        });
+
+        window.addEventListener('message', (event) => {
+            const data = event.data;
+            if (!data || !data.action) return;
+
+            if (data.action === 'multichar:show') {
+                root.style.display = 'block';
+                errorBox.style.display = 'none';
+                render(data.data);
+            } else if (data.action === 'multichar:hide') {
+                root.style.display = 'none';
+            } else if (data.action === 'multichar:error') {
+                errorBox.style.display = 'block';
+                errorBox.textContent = data.data.message;
+            }
+        });
+    </script>
+</body>
+</html>

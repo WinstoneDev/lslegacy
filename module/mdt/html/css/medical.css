@@ -1,0 +1,465 @@
+/* ════════════════════════════════════════════════════════════════
+   MDT MÉDICAL (SAMU) — Styles
+   ────────────────────────────────────────────────────────────────
+   Additif à mdt.css : ce fichier ne redéfinit AUCUNE classe du MDT
+   police, il n'ajoute que des classes préfixées `med-` (plus deux
+   utilitaires de formulaire absents du thème : .mdt-label / .mdt-check).
+   Le thème (couleurs, rayons, police) est hérité des variables CSS
+   de mdt.css — `--mdt-blue-dk` est déjà écrasé à l'ouverture par la
+   couleur du département, donc le rouge SAMU s'applique tout seul.
+   ════════════════════════════════════════════════════════════════ */
+
+:root {
+    --med-radius: 16px;   /* angles arrondis des tuiles du dashboard */
+    --med-teal:   #16a085;
+}
+
+/* ── Utilitaires de formulaire (manquants dans mdt.css) ────────── */
+.mdt-label {
+    display: block;
+    font-size: 12px;
+    color: var(--mdt-text-dim);
+    margin: 14px 0 6px;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+}
+.mdt-label:first-child { margin-top: 0; }
+
+.mdt-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 14px;
+    font-size: 13px;
+    color: var(--mdt-text);
+    cursor: pointer;
+}
+.mdt-check input { width: 16px; height: 16px; cursor: pointer; accent-color: var(--mdt-red); }
+
+/* ── Divers ───────────────────────────────────────────────────── */
+.med-muted { color: var(--mdt-text-dim); font-size: 13px; line-height: 1.5; }
+.med-sub   { color: var(--mdt-text-dim); font-size: 12px; margin-top: 3px; }
+.med-scroll { overflow-y: auto; max-height: 230px; }
+.med-inline-btn { float: right; margin-top: -4px; }
+
+.med-code {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: var(--mdt-panel-2);
+    color: var(--mdt-text-dim);
+    font-size: 11px;
+    font-family: monospace;
+}
+
+/* ── Badges ───────────────────────────────────────────────────── */
+.med-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+.med-badge-ok      { background: rgba(46,204,113,.16); color: var(--mdt-green); }
+.med-badge-warn    { background: rgba(243,156,18,.16);  color: var(--mdt-orange); }
+.med-badge-err     { background: rgba(231,76,60,.16);   color: var(--mdt-red); }
+.med-badge-neutral { background: var(--mdt-panel-2);    color: var(--mdt-text-dim); }
+.med-badge-new     { background: rgba(45,108,223,.16);  color: var(--mdt-blue); }
+.med-badge-type    { background: rgba(22,160,133,.16);  color: var(--med-teal); }
+
+.med-flag-dnr {
+    display: inline-block;
+    margin-left: 10px;
+    padding: 3px 10px;
+    border-radius: 6px;
+    background: var(--mdt-red);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .5px;
+    vertical-align: middle;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   DASHBOARD — tuiles arrondies
+   ════════════════════════════════════════════════════════════════ */
+/* Trois bandes empilées : mot d'équipe, tuiles principales, chiffres.
+   `1fr` sur la bande du milieu lui fait absorber toute la hauteur
+   restante — plus de grand vide sous le tableau de bord. */
+.med-dash-grid {
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    gap: 18px;
+    min-height: calc(100vh - 300px);
+}
+
+.med-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    min-height: 0;
+}
+
+@media (max-width: 1200px) {
+    .med-cards { grid-template-columns: repeat(2, 1fr); }
+}
+
+.med-card {
+    background: var(--mdt-panel);
+    border: 1px solid var(--mdt-border);
+    border-radius: var(--med-radius);
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    transition: border-color .18s ease, transform .18s ease;
+}
+.med-card:hover { border-color: var(--mdt-blue-dk); transform: translateY(-2px); }
+
+/* Le mot d'équipe passe en tête, sur toute la largeur. */
+.med-card-board { max-height: 210px; }
+
+.med-card-head {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--mdt-border);
+    flex-shrink: 0;
+}
+.med-card-ico   { font-size: 18px; }
+.med-card-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .7px; }
+
+.med-card-count {
+    margin-left: auto;
+    background: var(--mdt-blue-dk);
+    color: #fff;
+    border-radius: 20px;
+    padding: 2px 10px;
+    font-size: 12px;
+    font-weight: 700;
+}
+.med-count-alert { background: var(--mdt-orange); color: #1a1200; }
+
+.med-card-head-btn { margin-left: auto; }
+/* Le corps prend toute la hauteur disponible et défile s'il déborde. */
+.med-card-body     { flex: 1; min-height: 0; overflow-y: auto; }
+.med-card-input    { margin: 10px 0 8px; }
+.med-card-btn      { width: 100%; margin-top: 8px; justify-content: center; }
+
+/* ── Raccourcis vers les autres onglets ────────────────────────── */
+.med-quick {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 7px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--mdt-border);
+}
+.med-quick-btn {
+    background: var(--mdt-bg-2);
+    border: 1px solid var(--mdt-border);
+    border-radius: 8px;
+    color: var(--mdt-text);
+    padding: 9px 6px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background .15s ease, border-color .15s ease;
+}
+.med-quick-btn:hover { background: var(--mdt-blue-dk); border-color: var(--mdt-blue); }
+
+/* ── Derniers appels ───────────────────────────────────────────── */
+.med-recent-call {
+    background: var(--mdt-bg-2);
+    border-radius: 9px;
+    padding: 9px 11px;
+    margin-bottom: 8px;
+}
+.med-recent-call:last-child { margin-bottom: 0; }
+.med-recent-head { display: flex; align-items: center; gap: 7px; font-size: 13px; }
+.med-recent-sub  { color: var(--mdt-text-dim); font-size: 11px; margin-top: 3px; }
+.med-recent-zone {
+    display: flex; align-items: center; gap: 8px;
+    color: var(--med-teal); font-size: 12px; font-weight: 600; margin-top: 5px;
+}
+.med-recent-gps {
+    margin-left: auto;
+    background: var(--mdt-panel-2);
+    border: 1px solid var(--mdt-border);
+    border-radius: 5px;
+    color: var(--mdt-text-dim);
+    font-size: 10px;
+    padding: 2px 7px;
+    cursor: pointer;
+}
+.med-recent-gps:hover { background: var(--mdt-blue-dk); color: #fff; }
+
+/* ── Bandeau de chiffres ───────────────────────────────────────── */
+.med-stats {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+}
+@media (max-width: 1200px) {
+    .med-stats { grid-template-columns: repeat(3, 1fr); }
+}
+
+.med-stat {
+    background: var(--mdt-panel);
+    border: 1px solid var(--mdt-border);
+    border-radius: var(--med-radius);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.med-stat-n { font-size: 24px; font-weight: 700; line-height: 1.1; }
+.med-stat-l { font-size: 11px; color: var(--mdt-text-dim); text-transform: uppercase; letter-spacing: .5px; }
+
+/* ── Bouton de prise / fin de service ─────────────────────────── */
+.med-duty-btn {
+    width: 100%;
+    justify-content: center;
+    margin-bottom: 12px;
+}
+/* En service : vert, pour lire l'état d'un coup d'œil sans lire le texte. */
+.med-duty-btn.med-duty-on {
+    background: rgba(46, 204, 113, .16);
+    border-color: var(--mdt-green);
+    color: var(--mdt-green);
+}
+.med-duty-btn.med-duty-on:hover {
+    background: rgba(46, 204, 113, .26);
+}
+.med-duty-btn:disabled { opacity: .55; cursor: default; }
+
+.med-duty-list {
+    border-top: 1px solid var(--mdt-border);
+    padding-top: 4px;
+}
+
+/* Ligne « agent en service » */
+.med-duty-row {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 7px 0;
+    border-bottom: 1px solid rgba(37, 57, 94, .4);
+    font-size: 13px;
+}
+.med-duty-row:last-child { border-bottom: none; }
+.med-duty-name  { font-weight: 600; }
+.med-duty-grade { margin-left: auto; color: var(--mdt-text-dim); font-size: 12px; }
+
+/* Pastille verte « en service » (pulsation discrète) */
+.med-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--mdt-green);
+    box-shadow: 0 0 0 0 rgba(46, 204, 113, .6);
+    animation: med-pulse 2.4s infinite;
+    flex-shrink: 0;
+}
+@keyframes med-pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(46, 204, 113, .55); }
+    70%  { box-shadow: 0 0 0 7px rgba(46, 204, 113, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
+}
+
+/* Paires clé/valeur des tuiles */
+.med-kv {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 0;
+    font-size: 13px;
+}
+.med-kv span { color: var(--mdt-text-dim); }
+
+/* Petits mots des cheffes d'équipe */
+.med-board-msg {
+    background: var(--mdt-bg-2);
+    border-left: 3px solid var(--mdt-blue-dk);
+    border-radius: 8px;
+    padding: 11px 13px;
+    margin-bottom: 10px;
+}
+.med-board-msg:last-child { margin-bottom: 0; }
+.med-board-head {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-bottom: 6px;
+    font-size: 13px;
+}
+.med-board-grade { color: var(--med-teal); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
+.med-board-date  { margin-left: auto; color: var(--mdt-text-dim); font-size: 11px; }
+.med-board-body  { font-size: 13px; line-height: 1.55; white-space: pre-wrap; }
+.med-board-del {
+    background: none; border: none;
+    color: var(--mdt-text-dim);
+    cursor: pointer; font-size: 13px; padding: 0 2px;
+}
+.med-board-del:hover { color: var(--mdt-red); }
+
+/* ════════════════════════════════════════════════════════════════
+   DOSSIER MÉDICAL
+   ════════════════════════════════════════════════════════════════ */
+.med-notes {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--mdt-border);
+    font-size: 13px;
+}
+.med-notes b { display: block; color: var(--mdt-text-dim); font-size: 12px; text-transform: uppercase; letter-spacing: .6px; margin-bottom: 5px; }
+.med-notes p { line-height: 1.55; white-space: pre-wrap; }
+
+.med-timeline { position: relative; padding-left: 4px; }
+
+.med-tl-item {
+    position: relative;
+    padding: 12px 0 12px 18px;
+    border-left: 2px solid var(--mdt-border);
+}
+.med-tl-item::before {
+    content: '';
+    position: absolute;
+    left: -6px; top: 18px;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--mdt-blue-dk);
+    border: 2px solid var(--mdt-panel);
+}
+.med-tl-item:last-child { border-left-color: transparent; }
+
+.med-tl-head { display: flex; align-items: center; gap: 9px; font-size: 13px; flex-wrap: wrap; }
+.med-tl-date { margin-left: auto; color: var(--mdt-text-dim); font-size: 12px; }
+.med-tl-body { margin-top: 7px; font-size: 13px; line-height: 1.55; white-space: pre-wrap; color: var(--mdt-text); }
+.med-tl-author { margin-top: 6px; font-size: 11px; color: var(--mdt-text-dim); font-style: italic; }
+.med-tl-del {
+    background: none; border: none;
+    color: var(--mdt-text-dim);
+    cursor: pointer; font-size: 13px; padding: 0 2px;
+}
+.med-tl-del:hover { color: var(--mdt-red); }
+
+/* ── Tableaux (traitements, historique d'appels) ───────────────── */
+.med-table td { vertical-align: top; }
+.med-actions { white-space: nowrap; }
+.med-actions .mdt-btn { margin-right: 5px; }
+
+/* ════════════════════════════════════════════════════════════════
+   DISPATCH — unités en service et appels
+   ════════════════════════════════════════════════════════════════ */
+.med-dispatch {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin-bottom: 18px;
+}
+@media (max-width: 1100px) {
+    .med-dispatch { grid-template-columns: 1fr; }
+}
+
+.med-units-panel {
+    background: var(--mdt-panel);
+    border: 1px solid var(--mdt-border);
+    border-radius: var(--med-radius);
+    padding: 16px 18px;
+    max-height: 560px;
+    overflow-y: auto;
+}
+
+/* ── Fiche d'une unité ─────────────────────────────────────────── */
+.med-unit {
+    background: var(--mdt-bg-2);
+    border-left: 3px solid var(--mdt-green);
+    border-radius: 10px;
+    padding: 11px 13px;
+    margin-bottom: 10px;
+}
+.med-unit:last-child { margin-bottom: 0; }
+
+/* En intervention : liseré rouge, pour repérer d'un coup d'œil qui est
+   déjà engagé et qui reste disponible. */
+.med-unit-inter { border-left-color: var(--mdt-red); }
+
+.med-unit-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+}
+.med-unit-sub  { color: var(--mdt-text-dim); font-size: 12px; margin-top: 3px; }
+
+.med-unit-zone {
+    color: var(--med-teal);
+    font-size: 13px;
+    font-weight: 600;
+    margin-top: 6px;
+}
+.med-unit-veh {
+    color: var(--mdt-text-dim);
+    font-weight: 400;
+    font-size: 12px;
+    margin-left: 8px;
+}
+
+.med-unit-call {
+    margin-top: 7px;
+    padding-top: 7px;
+    border-top: 1px solid var(--mdt-border);
+    color: var(--mdt-red);
+    font-size: 12px;
+}
+
+/* ── Liste des appels ─────────────────────────────────────────── */
+.med-calls {
+    background: var(--mdt-panel);
+    border: 1px solid var(--mdt-border);
+    border-radius: var(--med-radius);
+    padding: 16px 18px;
+    max-height: 620px;
+    overflow-y: auto;
+}
+
+.med-call {
+    background: var(--mdt-bg-2);
+    border-radius: 10px;
+    padding: 11px 13px;
+    margin-bottom: 10px;
+}
+.med-call:last-child { margin-bottom: 0; }
+.med-call-head { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.med-call-sub  { color: var(--mdt-text-dim); font-size: 12px; margin-top: 4px; }
+.med-call-zone { color: var(--med-teal); font-size: 12px; margin-top: 4px; font-weight: 600; }
+.med-call-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 9px; }
+
+/* ════════════════════════════════════════════════════════════════
+   DOCUMENTS INTERNES
+   ════════════════════════════════════════════════════════════════ */
+.med-pin { margin-right: 5px; }
+
+.med-doc-meta {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    color: var(--mdt-text-dim);
+    font-size: 12px;
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--mdt-border);
+}
+
+.med-doc-content {
+    font-size: 13px;
+    line-height: 1.65;
+    white-space: pre-wrap;
+    max-height: 50vh;
+    overflow-y: auto;
+    user-select: text;
+}

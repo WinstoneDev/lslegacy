@@ -1,0 +1,34 @@
+fx_version 'adamant'
+game 'gta5'
+
+author 'Bastien MAGAN'
+description 'MDT — Terminal de Données Police'
+version '1.0.0'
+
+dependencies {
+    'lslegacy',
+}
+
+ui_page 'html/mdt.html'
+
+files {
+    'html/mdt.html',
+    'html/css/*.css',
+    'html/js/*.js',
+}
+
+shared_scripts {
+    'config.lua',
+    'shared/permissions.lua',
+}
+
+client_scripts {
+    'client/bootstrap.lua',
+    'client/main.lua',
+}
+
+server_scripts {
+    '@oxmysql/lib/MySQL.lua',
+    'server/bootstrap.lua',
+    'server/main.lua',
+}

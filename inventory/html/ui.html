@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>lslegacy</title>
+    <link rel="stylesheet" type="text/css" href="css/ui.css">
+    <link rel="stylesheet" type="text/css" href="../../module/clothshop/html/css/clothshop.css">
+</head>
+<body>
+    <script src="locales/fr.js"></script>
+    <script src="https://code.jquery.com/jquery-3.5.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+    <script src="js/inventory.js"></script>
+
+    <div class="ui">
+
+        <!-- Barre latérale gauche : catégories + tri -->
+        <div class="inv-sidebar">
+            <button class="cat-btn active" data-cat="items" title="Inventaire">
+                <svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>
+            </button>
+            <button class="cat-btn" data-cat="clothes" title="Vêtements">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.36 2.27l.96 4.2 2.78-.93V21h12V9l2.78.93.96-4.2a2 2 0 00-1.36-2.27z"/></svg>
+            </button>
+            <button class="cat-btn" data-cat="weapons" title="Armes">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 9.5h-1V8a1 1 0 00-1-1H9.5V6a1 1 0 00-1-1h-2a1 1 0 00-1 1v1H4a1 1 0 00-1 1v5a1 1 0 001 1h1.5v1.5a1 1 0 001 1h2a1 1 0 001-1V13H13v.5h1V15h2v-1.5h1V12h3a1 1 0 001-1v-.5a1 1 0 00-1-1z"/></svg>
+            </button>
+
+            <div class="sidebar-sep"></div>
+
+            <button class="sort-btn" data-sort="az" title="Trier A→Z">A↓Z</button>
+            <button class="sort-btn" data-sort="count" title="Trier par quantité">9→1</button>
+        </div>
+
+        <!-- Panneau principal : inventaire joueur -->
+        <div class="inv-main">
+            <div class="inv-header">
+                <span class="inv-title">Votre Inventaire</span>
+                <span class="info-div2"></span>
+            </div>
+            <div id="playerInventory"></div>
+        </div>
+
+        <!-- Zone centrale : slots vêtements + ped + slots rapides -->
+        <div id="controls">
+            <!-- Slots tenue + gilet (au-dessus du ped, alignés sur l'axe des colonnes) -->
+            <div class="outfit-area">
+                <div class="outfit-col">
+                    <div class="outfit-slot" id="outfitSlot" data-slot-type="outfit">
+                        <div class="outfit-slot-item"></div>
+                        <span class="outfit-slot-label">Tenue</span>
+                        <div class="outfit-slot-lock" id="outfitLockBadge" style="display:none;">
+                            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+                        </div>
+                    </div>
+                </div>
+                <div class="outfit-spacer"></div>
+                <div class="outfit-col">
+                    <div class="cloth-slot" data-slot-type="bproof">
+                        <div class="cloth-slot-item"></div>
+                        <span class="cloth-slot-label">Gilet</span>
+                    </div>
+                </div>
+            </div>
+            <div class="cloth-area">
+                <!-- Colonne gauche vêtements -->
+                <div class="cloth-col" id="clothLeft">
+                    <div class="cloth-slot" data-slot-type="helmet">
+                        <div class="cloth-slot-item"></div>
+                        <span class="cloth-slot-label">Casque</span>
+                    </div>
+                    <div class="cloth-slot" data-slot-type="mask">
+                        <div class="cloth-slot-item"></div>
+                        <span class="cloth-slot-label">Masque</span>
+                    </div>
+                    <div class="cloth-slot" data-slot-type="torso">
+                        <div class="cloth-slot-item"></div>
+                        <span class="cloth-slot-label">Torse</span>
+                    </div>
+                    <div class="cloth-slot" data-slot-type="tshirt">
+                        <div class="cloth-slot-item"></div>
+                        <span class="cloth-slot-label">T-Shirt</span>
+                    </div>
+                    <div class="cloth-slot" data-slot-type="arms">
+                        <div class="cloth-slot-item"></div>
+                        <span class="cloth-slot-label">Bras</span>
+                    </div>
+                    <div class="cloth-slot" data-slot-type="chain">
+                        <div class="cloth-slot-item"></div>
+                        <span class="cloth-slot-label">Collier</span>
+                    </div>
+                    <div class="cloth-slot" data-slot-type="bracelet">
+                        <div class="cloth-slot-item"></div>
+                        <span class="cloth-slot-label">Bracelet</span>
+                    </div>
+                </div>
+
+                <!-- Ped rendu ici par Lua (transparent) -->
+                <div class="ped-center"></div>
+
+                <!-- Colonne droite vêtements -->
+                <div class="cloth-col" id="clothRight">
+                    <div class="cloth-slot" data-slot-type="glasses">
+                        <div class="cloth-slot-item"></div>
+                        <span class="cloth-slot-label">Lunettes</span>
+                    </div>
+                    <div class="cloth-slot" data-slot-type="ears">
+                        <div class="cloth-slot-item"></div>
+                        <span class="cloth-slot-label">Oreilles</span>
+                    </div>
+                    <div class="cloth-slot" data-slot-type="bags">
+                        <div class="cloth-slot-item"></div>
+                        <span class="cloth-slot-label">Sac</span>
+                    </div>
+                    <div class="cloth-slot" data-slot-type="pants">
+                        <div class="cloth-slot-item"></div>
+                        <span class="cloth-slot-label">Pantalon</span>
+                    </div>
+                    <div class="cloth-slot" data-slot-type="shoes">
+                        <div class="cloth-slot-item"></div>
+                        <span class="cloth-slot-label">Chaussures</span>
+                    </div>
+                    <div class="cloth-slot" data-slot-type="watches">
+                        <div class="cloth-slot-item"></div>
+                        <span class="cloth-slot-label">Montre</span>
+                    </div>
+                    <div class="cloth-slot" data-slot-type="decals">
+                        <div class="cloth-slot-item"></div>
+                        <span class="cloth-slot-label">Decals</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Slots rapides en bas du centre -->
+            <div id="playerInventoryFastItems"></div>
+        </div>
+
+        <!-- Panneau droit : second inventaire (caché par défaut) -->
+        <div class="inv-panel panel-hidden" id="rightPanel">
+            <div class="inv-header">
+                <span class="inv-title">Second Inventaire</span>
+                <span class="info-div" style="display:none;"></span>
+            </div>
+            <div id="otherInventory">
+                <div id="noSecondInventoryMessage"></div>
+            </div>
+        </div>
+
+        <!-- Poids (géré par setWeightText, caché) -->
+        <div class="weight-div" style="display:none;"></div>
+
+        <!-- Boutons d'action centrés en bas -->
+        <div class="controls-div">
+            <input type="number" class="control" id="count" value="1">
+            <div class="control" id="use"></div>
+            <div class="control" id="rename"></div>
+            <div class="control" id="give"></div>
+            <div class="control" id="drop"></div>
+            <div class="control" id="unload" style="display:none;"></div>
+        </div>
+    </div>
+
+    <!-- Dialog donner à un joueur -->
+    <div id="dialog" title="Donner à un joueur" style="display:none;">
+        <div id="nearPlayers"></div>
+    </div>
+
+    <!-- Menu contextuel rapide (clic droit sur un item de l'inventaire) -->
+    <ul class="item-context-menu" id="itemContextMenu">
+        <li class="context-menu-option" data-action="rename"></li>
+        <li class="context-menu-option" data-action="give"></li>
+        <li class="context-menu-option" data-action="drop"></li>
+        <li class="context-menu-option" data-action="unload" id="contextMenuUnload"></li>
+    </ul>
+
+<script>
+$(document).ready(function() {
+    $("#use").html(invLocale.useItem);
+    $("#rename").html(invLocale.renameItem);
+    $("#give").html(invLocale.giveItem);
+    $("#drop").html(invLocale.dropItem);
+    $("#unload").html(invLocale.unloadItem);
+
+    $("#itemContextMenu [data-action='rename']").text(invLocale.renameItem);
+    $("#itemContextMenu [data-action='give']").text(invLocale.giveItem);
+    $("#itemContextMenu [data-action='drop']").text(invLocale.dropItem);
+    $("#itemContextMenu [data-action='unload']").text(invLocale.unloadItem);
+
+    if ($.fn.dialog) {
+        $("#dialog").dialog({ autoOpen: false, modal: true, width: 300, resizable: false, draggable: false });
+    }
+});
+</script>
+
+<!-- ══ CLOTHSHOP UI (intégré dans l'iframe inventaire) ══ -->
+<div class="shop" id="shop">
+
+    <!-- ══ HEADER (pleine largeur) ══ -->
+    <div class="shop-header">
+        <div class="shop-brand">
+            <div class="shop-logo">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.36 2.27l.96 4.2 2.78-.93V21h12V9l2.78.93.96-4.2a2 2 0 00-1.36-2.27z"/></svg>
+            </div>
+            <div>
+                <div class="shop-name" id="shopName">Boutique</div>
+                <div class="shop-tagline">Collection disponible</div>
+            </div>
+        </div>
+        <div class="shop-tabs">
+            <button class="shop-tab active" id="tabBrowse" data-tab="browse">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg>
+                Boutique
+            </button>
+            <button class="shop-tab" id="tabOutfit" data-tab="outfit">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15v-4H7l5-8v4h4l-5 8z"/></svg>
+                Tenues
+            </button>
+        </div>
+        <button class="close-btn" id="closeBtn">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+    </div>
+
+    <!-- ══ LAYOUT 3 COLONNES ══ -->
+    <div class="shop-layout">
+
+        <!-- BROWSE : panneau gauche (catégories + produits) -->
+        <div class="shop-panel-left" id="browsePanelLeft">
+            <div class="cat-sidebar">
+                <button class="cat-item active" data-cat="tshirt" style="--cat-color:#818cf8"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.36 2.27l.96 4.2 2.78-.93V21h12V9l2.78.93.96-4.2a2 2 0 00-1.36-2.27z"/></svg><span>Hauts</span></button>
+                <button class="cat-item" data-cat="torso" style="--cat-color:#a78bfa"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l-5.5 9h11L12 2zm0 3.84L14.93 10H9.07L12 5.84zM17.5 13c-2.49 0-4.5 2.01-4.5 4.5S15.01 22 17.5 22s4.5-2.01 4.5-4.5-2.01-4.5-4.5-4.5zm0 7a2.5 2.5 0 010-5 2.5 2.5 0 010 5zM3 21.5h8v-8H3v8zm2-6h4v4H5v-4z"/></svg><span>Torses</span></button>
+                <button class="cat-item" data-cat="bproof" style="--cat-color:#4ade80"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg><span>Gilets</span></button>
+                <button class="cat-item" data-cat="arms" style="--cat-color:#c4b5fd"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 5h2v2h-2zm0 4h2v2h-2zm0 4h2v6h-2z"/></svg><span>Bras</span></button>
+                <button class="cat-item" data-cat="pants" style="--cat-color:#ec4899"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 3h14v4l-2 14H7L5 7V3zm2 2v1.4l1.8 12.6h6.4L17 8.4V5H7z"/></svg><span>Pantalons</span></button>
+                <button class="cat-item" data-cat="shoes" style="--cat-color:#f97316"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 16v2h16v-2l-4-9-3 6-3-3z"/></svg><span>Chaussures</span></button>
+                <div class="cat-sep"></div>
+                <button class="cat-item" data-cat="helmet" style="--cat-color:#22d3ee"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12c0 3.7 2.01 6.93 4.99 8.65L8 12h8l1.01 8.65C20.99 18.93 22 15.7 22 12c0-5.52-4.48-10-10-10z"/></svg><span>Chapeaux</span></button>
+                <button class="cat-item" data-cat="glasses" style="--cat-color:#34d399"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 8c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3z"/></svg><span>Lunettes</span></button>
+                <button class="cat-item" data-cat="ears" style="--cat-color:#f59e0b"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8z"/></svg><span>Oreilles</span></button>
+                <button class="cat-item" data-cat="watches" style="--cat-color:#94a3b8"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 12c0-2.54-1.19-4.81-3.04-6.27L16 2H8l-.95 3.73C5.19 7.19 4 9.46 4 12s1.19 4.81 3.05 6.27L8 22h8l.96-3.73A7.994 7.994 0 0020 12zm-8 5c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/></svg><span>Montres</span></button>
+                <button class="cat-item" data-cat="bracelet" style="--cat-color:#e879f9"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg><span>Bracelets</span></button>
+                <button class="cat-item" data-cat="chain" style="--cat-color:#64748b"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg><span>Chaînes</span></button>
+                <button class="cat-item" data-cat="bags" style="--cat-color:#facc15"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 6h-2c0-2.21-1.79-4-4-4S8 3.79 8 6H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6-2c1.1 0 2 .9 2 2h-4c0-1.1.9-2 2-2z"/></svg><span>Sacs</span></button>
+                <button class="cat-item" data-cat="decals" style="--cat-color:#3b82f6"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg><span>Badges</span></button>
+                <button class="cat-item" data-cat="mask" style="--cat-color:#ef4444"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 4c1.93 0 3.68.79 4.95 2.05L6.05 16.95A6.973 6.973 0 015 12c0-3.87 3.13-7 7-7zm0 14c-1.93 0-3.68-.79-4.95-2.05l10.9-10.9A6.973 6.973 0 0119 12c0 3.87-3.13 7-7 7z"/></svg><span>Masques</span></button>
+            </div>
+            <div class="product-area">
+                <div class="product-area-header">
+                    <span class="product-area-title" id="catTitle">Hauts</span>
+                    <span class="product-area-count" id="catCount">0 articles</span>
+                </div>
+                <div class="product-grid" id="productGrid"></div>
+            </div>
+        </div>
+
+        <!-- TENUES : panneau gauche (liste + builder) -->
+        <div class="shop-panel-left hidden" id="outfitPanelLeft">
+            <div class="outfit-list-panel">
+                <div class="outfit-list-header">Mes tenues</div>
+                <div class="outfit-list" id="outfitList">
+                    <div class="outfit-list-empty" id="outfitListEmpty">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.36 2.27l.96 4.2 2.78-.93V21h12V9l2.78.93.96-4.2a2 2 0 00-1.36-2.27z"/></svg>
+                        <p>Aucune tenue</p>
+                    </div>
+                </div>
+                <button class="new-outfit-btn" id="newOutfitBtn">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
+                    Nouvelle tenue
+                </button>
+            </div>
+            <div class="outfit-builder">
+                <div class="builder-header">
+                    <div class="builder-title-row">
+                        <input type="text" class="outfit-name-input" id="outfitNameInput" placeholder="Nom de la tenue..." maxlength="30">
+                        <div class="builder-mode-badge" id="builderMode">Nouvelle tenue</div>
+                    </div>
+                </div>
+                <div class="builder-slots-scroll">
+                    <!-- Groupe : Tête -->
+                    <div class="slot-group">
+                        <div class="slot-group-label">Tête</div>
+                        <div class="slot-group-row">
+                            <div class="builder-slot" data-slot="helmet" style="--slot-color:#22d3ee"><div class="builder-slot-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12c0 3.7 2.01 6.93 4.99 8.65L8 12h8l1.01 8.65C20.99 18.93 22 15.7 22 12c0-5.52-4.48-10-10-10z"/></svg></div><div class="builder-slot-img" style="display:none;"></div><span class="builder-slot-label">Chapeau</span><button class="builder-slot-remove" style="display:none;">×</button></div>
+                            <div class="builder-slot" data-slot="mask" style="--slot-color:#ef4444"><div class="builder-slot-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 4c1.93 0 3.68.79 4.95 2.05L6.05 16.95A6.973 6.973 0 015 12c0-3.87 3.13-7 7-7zm0 14c-1.93 0-3.68-.79-4.95-2.05l10.9-10.9A6.973 6.973 0 0119 12c0 3.87-3.13 7-7 7z"/></svg></div><div class="builder-slot-img" style="display:none;"></div><span class="builder-slot-label">Masque</span><button class="builder-slot-remove" style="display:none;">×</button></div>
+                            <div class="builder-slot" data-slot="glasses" style="--slot-color:#34d399"><div class="builder-slot-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 8c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3z"/></svg></div><div class="builder-slot-img" style="display:none;"></div><span class="builder-slot-label">Lunettes</span><button class="builder-slot-remove" style="display:none;">×</button></div>
+                            <div class="builder-slot" data-slot="ears" style="--slot-color:#f59e0b"><div class="builder-slot-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8z"/></svg></div><div class="builder-slot-img" style="display:none;"></div><span class="builder-slot-label">Oreilles</span><button class="builder-slot-remove" style="display:none;">×</button></div>
+                        </div>
+                    </div>
+                    <!-- Groupe : Buste -->
+                    <div class="slot-group">
+                        <div class="slot-group-label">Buste</div>
+                        <div class="slot-group-row">
+                            <div class="builder-slot" data-slot="torso" style="--slot-color:#a78bfa"><div class="builder-slot-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.36 2.27l.96 4.2 2.78-.93V21h12V9l2.78.93.96-4.2a2 2 0 00-1.36-2.27z"/></svg></div><div class="builder-slot-img" style="display:none;"></div><span class="builder-slot-label">Torse</span><button class="builder-slot-remove" style="display:none;">×</button></div>
+                            <div class="builder-slot" data-slot="tshirt" style="--slot-color:#818cf8"><div class="builder-slot-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.38 3.46L16 2a4 4 0 01-8 0L3.62 3.46a2 2 0 00-1.36 2.27l.96 4.2 2.78-.93V21h12V9l2.78.93.96-4.2a2 2 0 00-1.36-2.27z"/></svg></div><div class="builder-slot-img" style="display:none;"></div><span class="builder-slot-label">T-shirt</span><button class="builder-slot-remove" style="display:none;">×</button></div>
+                            <div class="builder-slot" data-slot="arms" style="--slot-color:#c4b5fd"><div class="builder-slot-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 5h2v2h-2zm0 4h2v2h-2zm0 4h2v6h-2z"/></svg></div><div class="builder-slot-img" style="display:none;"></div><span class="builder-slot-label">Bras</span><button class="builder-slot-remove" style="display:none;">×</button></div>
+                            <div class="builder-slot" data-slot="bproof" style="--slot-color:#4ade80"><div class="builder-slot-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg></div><div class="builder-slot-img" style="display:none;"></div><span class="builder-slot-label">Gilet</span><button class="builder-slot-remove" style="display:none;">×</button></div>
+                        </div>
+                    </div>
+                    <!-- Groupe : Accessoires -->
+                    <div class="slot-group">
+                        <div class="slot-group-label">Accessoires</div>
+                        <div class="slot-group-row">
+                            <div class="builder-slot" data-slot="chain" style="--slot-color:#64748b"><div class="builder-slot-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1z"/></svg></div><div class="builder-slot-img" style="display:none;"></div><span class="builder-slot-label">Chaîne</span><button class="builder-slot-remove" style="display:none;">×</button></div>
+                            <div class="builder-slot" data-slot="bracelet" style="--slot-color:#e879f9"><div class="builder-slot-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg></div><div class="builder-slot-img" style="display:none;"></div><span class="builder-slot-label">Bracelet</span><button class="builder-slot-remove" style="display:none;">×</button></div>
+                            <div class="builder-slot" data-slot="watches" style="--slot-color:#94a3b8"><div class="builder-slot-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 12c0-2.54-1.19-4.81-3.04-6.27L16 2H8l-.95 3.73C5.19 7.19 4 9.46 4 12s1.19 4.81 3.05 6.27L8 22h8l.96-3.73A7.994 7.994 0 0020 12zm-8 5c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/></svg></div><div class="builder-slot-img" style="display:none;"></div><span class="builder-slot-label">Montre</span><button class="builder-slot-remove" style="display:none;">×</button></div>
+                        </div>
+                    </div>
+                    <!-- Groupe : Bas & Divers -->
+                    <div class="slot-group">
+                        <div class="slot-group-label">Bas &amp; Divers</div>
+                        <div class="slot-group-row">
+                            <div class="builder-slot" data-slot="pants" style="--slot-color:#ec4899"><div class="builder-slot-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 3h14v4l-2 14H7L5 7V3zm2 2v1.4l1.8 12.6h6.4L17 8.4V5H7z"/></svg></div><div class="builder-slot-img" style="display:none;"></div><span class="builder-slot-label">Pantalon</span><button class="builder-slot-remove" style="display:none;">×</button></div>
+                            <div class="builder-slot" data-slot="shoes" style="--slot-color:#f97316"><div class="builder-slot-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 16v2h16v-2l-4-9-3 6-3-3z"/></svg></div><div class="builder-slot-img" style="display:none;"></div><span class="builder-slot-label">Chaussures</span><button class="builder-slot-remove" style="display:none;">×</button></div>
+                            <div class="builder-slot" data-slot="bags" style="--slot-color:#facc15"><div class="builder-slot-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 6h-2c0-2.21-1.79-4-4-4S8 3.79 8 6H6c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6-2c1.1 0 2 .9 2 2h-4c0-1.1.9-2 2-2z"/></svg></div><div class="builder-slot-img" style="display:none;"></div><span class="builder-slot-label">Sac</span><button class="builder-slot-remove" style="display:none;">×</button></div>
+                            <div class="builder-slot" data-slot="decals" style="--slot-color:#3b82f6"><div class="builder-slot-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div><div class="builder-slot-img" style="display:none;"></div><span class="builder-slot-label">Badge</span><button class="builder-slot-remove" style="display:none;">×</button></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="builder-actions">
+                    <button class="builder-btn btn-create" id="createOutfitBtn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>Créer la tenue</button>
+                    <button class="builder-btn btn-save hidden" id="saveOutfitBtn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>Sauvegarder</button>
+                    <button class="builder-btn btn-split hidden" id="splitOutfitBtn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 4l2.29 2.29-2.88 2.88 1.42 1.42 2.88-2.88L20 10V4h-6zm-4 0H4v6l2.29-2.29 4.71 4.7V20h2v-8.41l-5.29-5.3L10 4z"/></svg>Décomposer</button>
+                    <button class="builder-btn btn-cancel hidden" id="cancelEditBtn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>Annuler</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- CENTRE TRANSPARENT (ped visible) -->
+        <div class="shop-panel-center">
+            <div class="cam-bar-row">
+                <div class="cam-controls-bar" id="camControls">
+                    <button class="cam-btn cam-rotate-btn" id="camRotateLeft" title="Tourner à gauche">◄</button>
+                    <div class="cam-sep"></div>
+                    <button class="cam-btn cam-preset active" data-preset="full">Corps</button>
+                    <button class="cam-btn cam-preset" data-preset="head">Tête</button>
+                    <button class="cam-btn cam-preset" data-preset="torso">Buste</button>
+                    <button class="cam-btn cam-preset" data-preset="legs">Bas</button>
+                    <button class="cam-btn cam-preset" data-preset="feet">Pieds</button>
+                    <div class="cam-sep"></div>
+                    <button class="cam-btn cam-rotate-btn" id="camRotateRight" title="Tourner à droite">►</button>
+                </div>
+                <button class="cam-btn cam-vis-toggle" id="camToggle" title="Afficher/masquer les contrôles">👁</button>
+            </div>
+        </div>
+
+        <!-- BROWSE : panneau droit (panier) -->
+        <div class="shop-panel-right" id="browsePanelRight">
+            <div class="cart-panel">
+                <div class="cart-header">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96C5 16.1 6.9 18 9 18h12v-2H9.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63H19c.75 0 1.41-.41 1.75-1.03l3.58-6.49A1 1 0 0023.46 5H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/></svg>
+                    <span>Mon panier</span>
+                    <div class="cart-badge" id="cartBadge">0</div>
+                </div>
+                <div class="cart-items" id="cartItems">
+                    <div class="cart-empty" id="cartEmpty">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96C5 16.1 6.9 18 9 18h12v-2H9.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63H19c.75 0 1.41-.41 1.75-1.03l3.58-6.49A1 1 0 0023.46 5H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/></svg>
+                        <p>Panier vide</p>
+                    </div>
+                </div>
+                <div class="cart-footer">
+                    <div class="cart-total-row">
+                        <span class="cart-total-label">Total</span>
+                        <span class="cart-total-price" id="cartTotal">0$</span>
+                    </div>
+                    <button class="checkout-btn" id="checkoutBtn" disabled>
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+                        Passer à la caisse
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- TENUES : panneau droit (inventaire vêtements à glisser) -->
+        <div class="shop-panel-right hidden" id="outfitPanelRight">
+            <div class="outfit-inventory-panel">
+                <div class="outfit-inv-header">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg>
+                    Glissez vos vêtements
+                </div>
+                <div class="outfit-inv-grid" id="outfitInvGrid"></div>
+            </div>
+        </div>
+
+    </div><!-- fin .shop-layout -->
+
+    <div class="toast-container" id="toastContainer"></div>
+</div>
+
+<script src="../../module/clothshop/html/js/clothshop.js"></script>
+</body>
+</html>

@@ -1,0 +1,168 @@
+/* ════════════════════════════════════════════════════════════════
+   MDT POLICE — Onglet « Interventions » (missions PNJ / appels 17)
+   Additif : ne surcharge aucune règle de mdt.css, reprend sa palette.
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Bandeau de synthèse (30 derniers jours) ─────────────────── */
+.mdt-stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin: 14px 0 4px;
+}
+
+.mdt-stat {
+    background: var(--mdt-panel);
+    border: 1px solid var(--mdt-border);
+    border-radius: var(--mdt-radius);
+    padding: 14px 16px;
+}
+
+.mdt-stat-val {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--mdt-text);
+    line-height: 1.15;
+}
+
+.mdt-stat-lbl {
+    margin-top: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .6px;
+    text-transform: uppercase;
+    color: var(--mdt-text-dim);
+}
+
+/* ── Détail dépliable d'une intervention ─────────────────────── */
+.co-detail-wrap {
+    padding: 0 0 10px;
+}
+
+.mdt-detail {
+    background: var(--mdt-bg-2);
+    border: 1px solid var(--mdt-border);
+    border-top: none;
+    border-radius: 0 0 var(--mdt-radius) var(--mdt-radius);
+    padding: 12px 16px 6px;
+}
+
+.mdt-detail-row {
+    font-size: 13px;
+    color: var(--mdt-text-dim);
+    padding: 3px 0;
+}
+
+.mdt-detail-row b {
+    color: var(--mdt-text);
+    font-weight: 600;
+}
+
+.mdt-detail .mdt-table {
+    margin-top: 10px;
+}
+
+/* Ligne cliquable de l'historique */
+.co-row {
+    cursor: pointer;
+}
+
+/* Indicateur de page entre les deux flèches */
+.mdt-page-ind {
+    align-self: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--mdt-text-dim);
+    padding: 0 4px;
+}
+
+/* Bouton de suppression d'une ligne (commissaire) */
+.co-del {
+    padding: 4px 10px;
+    margin-left: 10px;
+    font-size: 12px;
+    line-height: 1;
+}
+
+/* Un bouton de pagination désactivé ne doit pas paraître cliquable */
+.mdt-btn[disabled] {
+    opacity: .35;
+    cursor: default;
+    pointer-events: none;
+}
+
+/* Saisine IGPN : la ligne doit sauter aux yeux dans le détail d'un
+   dossier, au même titre que le badge rouge de la liste. */
+.mdt-text-red {
+    color: var(--mdt-red);
+}
+
+/* ── Rapport d'intervention ────────────────────────────────────────
+   Encadré dans le détail du dossier, distinct du reste des lignes
+   d'information : c'est une pièce de procédure, pas une métadonnée. */
+.co-report {
+    margin: 12px 0;
+    padding: 12px 14px;
+    border-left: 3px solid var(--mdt-blue);
+    background: rgba(255, 255, 255, .03);
+    border-radius: 4px;
+}
+.co-report-head {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    color: var(--mdt-text-dim);
+    margin-bottom: 8px;
+}
+.co-report-sig {
+    text-transform: none;
+    letter-spacing: 0;
+    font-style: italic;
+}
+.co-report-body {
+    white-space: pre-wrap;
+    line-height: 1.5;
+    font-size: 14px;
+}
+.co-report-closure {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, .08);
+    font-size: 12px;
+    color: var(--mdt-text-dim);
+}
+
+/* Boutons du dossier */
+.co-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+/* Auteur du tir et motif de la bavure, sous la suite donnée */
+.co-killed-by {
+    font-size: 12px;
+    color: var(--mdt-text-dim);
+    margin-top: 3px;
+}
+.co-kill-reason {
+    font-size: 12px;
+    color: var(--mdt-red);
+    font-style: italic;
+}
+
+/* Déposition d'un mis en cause, sous sa ligne */
+.co-declaration td {
+    font-style: italic;
+    color: var(--mdt-text-dim);
+    font-size: 13px;
+    padding-top: 2px;
+    border-top: none;
+}
+
+/* Attitude du mis en cause à l'audition */
+.co-stance {
+    font-style: normal;
+    color: var(--mdt-text-dim);
+    opacity: .8;
+}

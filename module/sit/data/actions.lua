@@ -1,0 +1,37 @@
+-- =====================================================================
+--  MODULE SIT — Actions (scenarios GTA natifs)
+--  Repris tel quel de config/actions.lua de mnr_sitanywhere : ce sont de
+--  vraies scenarios PROP_HUMAN_SEAT_* du jeu (TaskStartScenarioAtPosition),
+--  pas des anims génériques. C'est ce qui garantit une pose stable et
+--  correctement calée sur l'objet.
+-- =====================================================================
+
+Sit = Sit or {}
+Sit.Actions = {
+    armchair = { scenario = 'PROP_HUMAN_SEAT_ARMCHAIR' },
+    bar = { scenario = 'PROP_HUMAN_SEAT_BAR' },
+    bench = { scenario = 'PROP_HUMAN_SEAT_BENCH' },
+    bench_drink = { scenario = 'PROP_HUMAN_SEAT_BENCH_DRINK' },
+    bench_drink_beer = { scenario = 'PROP_HUMAN_SEAT_BENCH_DRINK_BEER' },
+    bench_drink_facility = { scenario = 'PROP_HUMAN_SEAT_BENCH_DRINK_FACILITY' },
+    bench_facility = { scenario = 'PROP_HUMAN_SEAT_BENCH_FACILITY' },
+    bench_food = { scenario = 'PROP_HUMAN_SEAT_BENCH_FOOD' },
+    bench_food_facility = { scenario = 'PROP_HUMAN_SEAT_BENCH_FOOD_FACILITY' },
+    bus_stop = { scenario = 'PROP_HUMAN_SEAT_BUS_STOP_WAIT' },
+    chair = { scenario = 'PROP_HUMAN_SEAT_CHAIR' },
+    chair_drink = { scenario = 'PROP_HUMAN_SEAT_CHAIR_DRINK' },
+    chair_drink_beer = { scenario = 'PROP_HUMAN_SEAT_CHAIR_DRINK_BEER' },
+    chair_food = { scenario = 'PROP_HUMAN_SEAT_CHAIR_FOOD' },
+    chair_upright = { scenario = 'PROP_HUMAN_SEAT_CHAIR_UPRIGHT' },
+    chair_upright_showroom = { scenario = 'PROP_HUMAN_SEAT_CHAIR_UPRIGHT_SHOWROOM' },
+    chair_mp_player = { scenario = 'PROP_HUMAN_SEAT_CHAIR_MP_PLAYER' },
+    computer = { scenario = 'PROP_HUMAN_SEAT_COMPUTER' },
+    computer_low = { scenario = 'PROP_HUMAN_SEAT_COMPUTER_LOW' },
+    deckchair = { scenario = 'PROP_HUMAN_SEAT_DECKCHAIR' },
+    deckchair_drink = { scenario = 'PROP_HUMAN_SEAT_DECKCHAIR_DRINK' },
+    muscle_bench_press = { scenario = 'PROP_HUMAN_SEAT_MUSCLE_BENCH_PRESS' },
+    muscle_bench_press_prison = { scenario = 'PROP_HUMAN_SEAT_MUSCLE_BENCH_PRESS_PRISON' },
+    sewing = { scenario = 'PROP_HUMAN_SEAT_SEWING' },
+    strip_watch = { scenario = 'PROP_HUMAN_SEAT_STRIP_WATCH' },
+    sunlounger = { scenario = 'PROP_HUMAN_SEAT_SUNLOUNGER' },
+}

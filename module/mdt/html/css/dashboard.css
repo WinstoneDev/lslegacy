@@ -1,0 +1,131 @@
+/* ════════════════════════════════════════════════════════════════
+   MDT — Tableau de bord des forces de l'ordre
+   Additif à mdt.css : aucune règle existante n'est surchargée, tous
+   les sélecteurs sont préfixés `dash-`. Les couleurs viennent des
+   variables du thème, la teinte du département étant injectée dans
+   --mdt-blue-dk à l'ouverture (police bleu, gendarmerie vert).
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Bandeau de compteurs ────────────────────────────────────── */
+.dash-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.dash-stat {
+    background: var(--mdt-panel);
+    border: 1px solid var(--mdt-border);
+    border-radius: var(--mdt-radius);
+    padding: 14px 16px;
+    display: flex; flex-direction: column; gap: 4px;
+}
+
+.dash-stat-n { font-size: 26px; font-weight: 800; line-height: 1; }
+.dash-stat-l { font-size: 12px; color: var(--mdt-text-dim); }
+
+/* ── Grille de cartes ────────────────────────────────────────── */
+.dash-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 12px;
+    align-items: start;
+}
+
+/* Les listes (avis, dossiers, GAV) méritent toute la largeur quand la
+   fenêtre le permet : une ligne d'avis de recherche tient mal sur une
+   colonne étroite. */
+.dash-card-wide { grid-column: span 2; }
+@media (max-width: 1100px) { .dash-card-wide { grid-column: span 1; } }
+
+.dash-card {
+    background: var(--mdt-panel);
+    border: 1px solid var(--mdt-border);
+    border-radius: var(--mdt-radius);
+    overflow: hidden;
+}
+
+.dash-card-head {
+    display: flex; align-items: center; gap: 8px;
+    padding: 12px 16px;
+    background: var(--mdt-panel-2);
+    border-bottom: 1px solid var(--mdt-border);
+}
+
+.dash-card-ico   { font-size: 15px; }
+.dash-card-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
+.dash-card-count {
+    margin-left: auto;
+    background: var(--mdt-blue-dk); color: #fff;
+    padding: 2px 9px; border-radius: 20px;
+    font-size: 12px; font-weight: 700;
+}
+
+.dash-card-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+
+/* Une liste longue ne doit pas étirer la carte indéfiniment. */
+.dash-scroll { max-height: 320px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+.dash-scroll::-webkit-scrollbar { width: 6px; }
+.dash-scroll::-webkit-scrollbar-thumb { background: var(--mdt-border); border-radius: 3px; }
+
+.dash-muted { color: var(--mdt-text-dim); font-size: 13px; font-style: italic; }
+
+/* ── Effectif en service ─────────────────────────────────────── */
+.dash-duty-btn { width: 100%; justify-content: center; }
+.dash-duty-on  { background: rgba(46,204,113,.16); color: var(--mdt-green); }
+
+.dash-duty-row {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px;
+    padding: 6px 8px;
+    background: var(--mdt-bg-2);
+    border-radius: 6px;
+}
+
+.dash-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--mdt-green);
+    box-shadow: 0 0 6px var(--mdt-green);
+    flex: 0 0 auto;
+}
+
+.dash-duty-name  { font-weight: 600; }
+.dash-duty-grade { margin-left: auto; color: var(--mdt-text-dim); font-size: 12px; }
+
+/* ── Recherche rapide ────────────────────────────────────────── */
+.dash-label  { font-size: 12px; color: var(--mdt-text-dim); font-weight: 600; }
+.dash-inline { display: flex; gap: 8px; }
+.dash-inline .mdt-input { flex: 1; }
+
+.dash-quick { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+
+.dash-quick-btn {
+    background: var(--mdt-bg-2);
+    border: 1px solid var(--mdt-border);
+    color: var(--mdt-text);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 12px; font-family: var(--mdt-font);
+    cursor: pointer;
+    transition: background .15s, border-color .15s;
+}
+.dash-quick-btn:hover { background: var(--mdt-panel-2); border-color: var(--mdt-blue); }
+
+/* ── Lignes de liste (avis, dossiers, gardes à vue) ──────────── */
+.dash-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px;
+    background: var(--mdt-bg-2);
+    border: 1px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+}
+.dash-item:hover { border-color: var(--mdt-blue); background: var(--mdt-panel-2); }
+
+.dash-item-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.dash-item-name { font-size: 14px; font-weight: 700; }
+.dash-item-sub  { font-size: 13px; color: var(--mdt-text); opacity: .85;
+                  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dash-item-meta { font-size: 12px; color: var(--mdt-text-dim); }

@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Créateur de Personnage</title>
+    <link href="https://fonts.googleapis.com/css?family=Montserrat:300,400,500,600,700" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="css/ui.css">
+</head>
+
+<body>
+    <div class="creator-container" id="creatorContainer" style="display:none;">
+
+        <!-- ══ Sexe + statut (chip flottant, haut-centre) ══ -->
+        <div class="top-chip">
+            <div class="sex-toggle">
+                <button class="sex-btn active" data-sex="0">Homme</button>
+                <button class="sex-btn" data-sex="1">Femme</button>
+            </div>
+        </div>
+
+        <!-- ══ Sidebar de catégories (gauche, flottante) ══ -->
+        <div class="side-tabs">
+            <button class="tab-btn active" data-tab="appearance" title="Apparence">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path
+                        d="M12 2a5 5 0 015 5c0 1.68-.8 3.16-2.03 4.11l.53 2.14 3.36 1.06c.68.22 1.14.85 1.14 1.56V19a2 2 0 01-2 2H6a2 2 0 01-2-2v-3.13c0-.71.46-1.34 1.14-1.56l3.36-1.06.53-2.14A5.002 5.002 0 017 7a5 5 0 015-5z" />
+                </svg>
+                <span>Apparence</span>
+            </button>
+            <button class="tab-btn" data-tab="heritage" title="Héritage">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path
+                        d="M12 12a4 4 0 100-8 4 4 0 000 8zm-6 1a3 3 0 100-6 3 3 0 000 6zm12 0a3 3 0 100-6 3 3 0 000 6zM12 14c-3.31 0-8 1.66-8 4.5V21h16v-2.5c0-2.84-4.69-4.5-8-4.5zm-9-.28C1.24 14.32 0 15.71 0 17.5V21h4v-3.13c0-1.19.5-2.32 1.42-3.24A9.7 9.7 0 003 13.72zm18 0a9.7 9.7 0 00-2.42.91A5.02 5.02 0 0120 17.87V21h4v-3.5c0-1.79-1.24-3.18-3-3.78z" />
+                </svg>
+                <span>Héritage</span>
+            </button>
+            <button class="tab-btn" data-tab="visage" title="Visage">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path
+                        d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM8.5 9.5A1.5 1.5 0 1110 11a1.5 1.5 0 01-1.5-1.5zm7 0A1.5 1.5 0 1117 11a1.5 1.5 0 01-1.5-1.5zM12 18c-2.28 0-4.22-1.66-5-4h10c-.78 2.34-2.72 4-5 4z" />
+                </svg>
+                <span>Visage</span>
+            </button>
+            <button class="tab-btn" data-tab="makeup" title="Maquillage">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path
+                        d="M18.5 2c-1.5 0-3 1.5-3.5 3l-6 6-1 4 4-1 6-6c1.5-.5 3-2 3-3.5S20 2 18.5 2zM5 15c-1.66 0-3 1.79-3 4 0 1.66 1.34 3 3 3s3-1.34 3-3c0-2.21-1.34-4-3-4zm0 5.5a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" />
+                </svg>
+                <span>Maquillage</span>
+            </button>
+            <button class="tab-btn" data-tab="identity" title="Identité">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path
+                        d="M20 4H4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V6a2 2 0 00-2-2zM9 16H5v-1c0-1.33 2.67-2 4-2s4 .67 4 2v1zm-2-4a2 2 0 110-4 2 2 0 010 4zm10 3h-6v-2h6v2zm0-4h-6V9h6v2z" />
+                </svg>
+                <span>Identité</span>
+            </button>
+        </div>
+
+        <!-- ══ Panneau d'options (droite, flottant, compact) ══ -->
+        <div class="options-float">
+            <div class="options-float-header">
+                <span id="optionsTitle">Apparence</span>
+            </div>
+            <div class="options-float-body">
+
+                <!-- ===== APPARENCE ===== -->
+                <div class="tab-content active" id="appearance">
+                    <div class="section">
+                        <h3>Cheveux</h3>
+                        <div class="slider-grid">
+                            <div class="slider-group">
+                                <label>Style</label>
+                                <input type="range" id="hairStyle" min="0" max="72" value="0" class="slider">
+                                <span class="slider-value">0</span>
+                            </div>
+                            <div class="slider-group">
+                                <label>Couleur 1</label>
+                                <input type="range" id="hairColor1" min="0" max="62" value="0" class="slider">
+                                <span class="slider-value">0</span>
+                            </div>
+                            <div class="slider-group">
+                                <label>Couleur 2</label>
+                                <input type="range" id="hairColor2" min="0" max="62" value="0" class="slider">
+                                <span class="slider-value">0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h3>Barbe</h3>
+                        <div class="slider-grid">
+                            <div class="slider-group">
+                                <label>Style</label>
+                                <input type="range" id="beardStyle" min="0" max="28" value="0" class="slider">
+                                <span class="slider-value">0</span>
+                            </div>
+                            <div class="slider-group">
+                                <label>Opacité</label>
+                                <input type="range" id="beardOpacity" min="0" max="10" step="0.1" value="0"
+                                    class="slider">
+                                <span class="slider-value">0.0</span>
+                            </div>
+                            <div class="slider-group">
+                                <label>Couleur</label>
+                                <input type="range" id="beardColor" min="0" max="62" value="0" class="slider">
+                                <span class="slider-value">0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h3>Pilosité torse</h3>
+                        <div class="slider-grid">
+                            <div class="slider-group">
+                                <label>Style</label>
+                                <input type="range" id="chestHair" min="0" max="16" value="0" class="slider">
+                                <span class="slider-value">0</span>
+                            </div>
+                            <div class="slider-group">
+                                <label>Opacité</label>
+                                <input type="range" id="chestHairOpacity" min="0" max="10" step="0.1" value="0"
+                                    class="slider">
+                                <span class="slider-value">0.0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h3>Sourcils</h3>
+                        <div class="slider-grid">
+                            <div class="slider-group">
+                                <label>Style</label>
+                                <input type="range" id="eyebrows" min="0" max="33" value="0" class="slider">
+                                <span class="slider-value">0</span>
+                            </div>
+                            <div class="slider-group">
+                                <label>Opacité</label>
+                                <input type="range" id="eyebrowsOpacity" min="0" max="10" step="0.1" value="0"
+                                    class="slider">
+                                <span class="slider-value">0.0</span>
+                            </div>
+                            <div class="slider-group">
+                                <label>Couleur</label>
+                                <input type="range" id="eyebrowsColor" min="0" max="62" value="0" class="slider">
+                                <span class="slider-value">0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h3>Yeux</h3>
+                        <div class="slider-grid">
+                            <div class="slider-group">
+                                <label>Couleur</label>
+                                <input type="range" id="eyeColor" min="0" max="31" value="0" class="slider">
+                                <span class="slider-value">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== HÉRITAGE ===== -->
+                <div class="tab-content" id="heritage">
+                    <div class="section">
+                        <h3>Parents</h3>
+                        <div class="heritage-grid">
+                            <div class="parent-selector">
+                                <div class="parent-label">Mère</div>
+                                <div class="parent-photo-wrap">
+                                    <img id="motherPhoto" class="parent-photo" src="img/parents/mothers/0.png" alt=""
+                                        onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                                    <div class="parent-photo-placeholder" style="display:none;">?</div>
+                                </div>
+                                <div class="parent-nav">
+                                    <button class="parent-nav-btn" id="motherPrev">&#8249;</button>
+                                    <span class="parent-name" id="motherName">Hannah</span>
+                                    <button class="parent-nav-btn" id="motherNext">&#8250;</button>
+                                </div>
+                            </div>
+                            <div class="parent-selector">
+                                <div class="parent-label">Père</div>
+                                <div class="parent-photo-wrap">
+                                    <img id="fatherPhoto" class="parent-photo" src="img/parents/fathers/0.png" alt=""
+                                        onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                                    <div class="parent-photo-placeholder" style="display:none;">?</div>
+                                </div>
+                                <div class="parent-nav">
+                                    <button class="parent-nav-btn" id="fatherPrev">&#8249;</button>
+                                    <span class="parent-name" id="fatherName">Benjamin</span>
+                                    <button class="parent-nav-btn" id="fatherNext">&#8250;</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="section">
+                        <h3>Mix génétique</h3>
+                        <div class="slider-group">
+                            <label>Ressemblance (Mère ← 5 → Père)</label>
+                            <input type="range" id="resemblance" min="0" max="10" step="0.1" value="5" class="slider">
+                            <span class="slider-value">5.0</span>
+                        </div>
+                        <div class="slider-group">
+                            <label>Teint de peau (Mère ← 5 → Père)</label>
+                            <input type="range" id="skinTone" min="0" max="10" step="0.1" value="5" class="slider">
+                            <span class="slider-value">5.0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== VISAGE (Traits du visage) ===== -->
+                <div class="tab-content" id="visage">
+                    <div class="section">
+                        <h3>Nez</h3>
+                        <div class="slider-grid">
+                            <div class="slider-group">
+                                <label>Largeur</label>
+                                <input type="range" id="noseWidth" min="0" max="10" step="0.1" value="0" class="slider">
+                                <span class="slider-value">0.0</span>
+                            </div>
+                            <div class="slider-group">
+                                <label>Hauteur</label>
+                                <input type="range" id="noseHeight" min="0" max="10" step="0.1" value="0"
+                                    class="slider">
+                                <span class="slider-value">0.0</span>
+                            </div>
+                            <div class="slider-group">
+                                <label>Longueur</label>
+                                <input type="range" id="noseLength" min="0" max="10" step="0.1" value="0"
+                                    class="slider">
+                                <span class="slider-value">0.0</span>
+                            </div>
+                            <div class="slider-group">
+                                <label>Arête</label>
+                                <input type="range" id="noseBridge" min="0" max="10" step="0.1" value="0"
+                                    class="slider">
+                                <span class="slider-value">0.0</span>
+                            </div>
+                            <div class="slider-group">
+                                <label>Pointe</label>
+                                <input type="range" id="noseTip" min="0" max="10" step="0.1" value="0" class="slider">
+                                <span class="slider-value">0.0</span>
+                            </div>
+                            <div class="slider-group">
+                                <label>Torsion</label>
+                                <input type="range" id="noseTwist" min="-10" max="10" step="0.1" value="0"
+                                    class="slider">
+                                <span class="slider-value">0.0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h3>Sourcils (position)</h3>
+                        <div class="slider-grid">
+                            <div class="slider-group">
+                                <label>Hauteur</label>
+                                <input type="range" id="eyebrowHeight" min="0" max="10" step="0.1" value="0"
+                                    class="slider">
+                                <span class="slider-value">0.0</span>
+                            </div>
+                            <div class="slider-group">
+                                <label>Profondeur</label>
+                                <input type="range" id="eyebrowDepth" min="0" max="10" step="0.1" value="0"
+                                    class="slider">
+                                <span class="slider-value">0.0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h3>Pommettes &amp; joues</h3>
+                        <div class="slider-grid">
+                            <div class="slider-group">
+                                <label>Pommettes hauteur</label>
+                                <input type="range" id="cheekboneHeight" min="0" max="10" step="0.1" value="0"
+                                    class="slider">
+                                <span class="slider-value">0.0</span>
+                            </div>
+                            <div class="slider-group">
+                                <label>Pommettes largeur</label>
+                                <input type="range" id="cheekboneWidth" min="0" max="10" step="0.1" value="0"
+                                    class="slider">
+                                <span class="slider-value">0.0</span>
+                            </div>
+                            <div class="slider-group">
+                                <label>Joues largeur</label>
+                                <input type="range" id="cheekWidth" min="0" max="10" step="0.1" value="0"
+                                    class="slider">
+                                <span class="slider-value">0.0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h3>Yeux &amp; lèvres</h3>
+                        <div class="slider-grid">
+                            <div class="slider-group">
+                                <label>Ouverture des yeux</label>
+                                <input type="range" id="eyeOpening" min="0" max="10" step="0.1" value="0"
+                                    class="slider">
+                                <span class="slider-value">0.0</span>
+                            </div>
+                            <div class="slider-group">
+                                <label>Épaisseur des lèvres</label>
+                                <input type="range" id="lipThickness" min="0" max="10" step="0.1" value="0"
+                                    class="slider">
+                                <span class="slider-value">0.0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h3>Mâchoire &amp; menton</h3>
+                        <div class="slider-grid">
+                            <div class="slider-group">
+                                <label>Mâchoire largeur</label>
+                                <input type="range" id="jawWidth" min="0" max="10" step="0.1" value="0" class="slider">
+                                <span class="slider-value">0.0</span>
+                            </div>
+                            <div class="slider-group">
+                                <label>Mâchoire longueur</label>
+                                <input type="range" id="jawLength" min="0" max="10" step="0.1" value="0" class="slider">
+                                <span class="slider-value">0.0</span>
+                            </div>
+                            <div class="slider-group">
+                                <label>Menton abaissement</label>
+                                <input type="range" id="chinLowering" min="0" max="10" step="0.1" value="0"
+                                    class="slider">
+                                <span class="slider-value">0.0</span>
+                            </div>
+                            <div class="slider-group">
+                                <label>Menton longueur</label>
+                                <input type="range" id="chinLength" min="0" max="10" step="0.1" value="0"
+                                    class="slider">
+                                <span class="slider-value">0.0</span>
+                            </div>
+                            <div class="slider-group">
+                                <label>Menton largeur</label>
+                                <input type="range" id="chinWidth" min="0" max="10" step="0.1" value="0" class="slider">
+                                <span class="slider-value">0.0</span>
+                            </div>
+                            <div class="slider-group">
+                                <label>Menton fossette</label>
+                                <input type="range" id="chinDimple" min="0" max="10" step="0.1" value="0"
+                                    class="slider">
+                                <span class="slider-value">0.0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h3>Cou</h3>
+                        <div class="slider-grid">
+                            <div class="slider-group">
+                                <label>Épaisseur</label>
+                                <input type="range" id="neckThickness" min="0" max="10" step="0.1" value="0"
+                                    class="slider">
+                                <span class="slider-value">0.0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== MAQUILLAGE ===== -->
+                <div class="tab-content" id="makeup">
+                    <div class="section">
+                        <h3>Maquillage visage</h3>
+                        <div class="slider-grid">
+                            <div class="slider-group">
+                                <label>Style</label>
+                                <input type="range" id="makeupStyle" min="0" max="74" value="0" class="slider">
+                                <span class="slider-value">0</span>
+                            </div>
+                            <div class="slider-group">
+                                <label>Opacité</label>
+                                <input type="range" id="makeupOpacity" min="0" max="10" step="0.1" value="0"
+                                    class="slider">
+                                <span class="slider-value">0.0</span>
+                            </div>
+                            <div class="slider-group">
+                                <label>Couleur</label>
+                                <input type="range" id="makeupColor" min="0" max="62" value="0" class="slider">
+                                <span class="slider-value">0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h3>Rouge à lèvres</h3>
+                        <div class="slider-grid">
+                            <div class="slider-group">
+                                <label>Style</label>
+                                <input type="range" id="lipstickStyle" min="0" max="9" value="0" class="slider">
+                                <span class="slider-value">0</span>
+                            </div>
+                            <div class="slider-group">
+                                <label>Opacité</label>
+                                <input type="range" id="lipstickOpacity" min="0" max="10" step="0.1" value="0"
+                                    class="slider">
+                                <span class="slider-value">0.0</span>
+                            </div>
+                            <div class="slider-group">
+                                <label>Couleur</label>
+                                <input type="range" id="lipstickColor" min="0" max="62" value="0" class="slider">
+                                <span class="slider-value">0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h3>Teint</h3>
+                        <div class="slider-grid">
+                            <div class="slider-group">
+                                <label>Style</label>
+                                <input type="range" id="complexionStyle" min="0" max="11" value="0" class="slider">
+                                <span class="slider-value">0</span>
+                            </div>
+                            <div class="slider-group">
+                                <label>Opacité</label>
+                                <input type="range" id="complexionOpacity" min="0" max="10" step="0.1" value="0"
+                                    class="slider">
+                                <span class="slider-value">0.0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h3>Rides &amp; taches</h3>
+                        <div class="slider-grid">
+                            <div class="slider-group">
+                                <label>Rides style</label>
+                                <input type="range" id="wrinkles" min="0" max="14" value="0" class="slider">
+                                <span class="slider-value">0</span>
+                            </div>
+                            <div class="slider-group">
+                                <label>Rides opacité</label>
+                                <input type="range" id="wrinklesOpacity" min="0" max="10" step="0.1" value="0"
+                                    class="slider">
+                                <span class="slider-value">0.0</span>
+                            </div>
+                            <div class="slider-group">
+                                <label>Taches corps</label>
+                                <input type="range" id="bodyBlemishes" min="0" max="11" value="0" class="slider">
+                                <span class="slider-value">0</span>
+                            </div>
+                            <div class="slider-group">
+                                <label>Taches corps opacité</label>
+                                <input type="range" id="bodyBlemishesOpacity" min="0" max="10" step="0.1" value="0"
+                                    class="slider">
+                                <span class="slider-value">0.0</span>
+                            </div>
+                            <div class="slider-group">
+                                <label>Taches de rousseur</label>
+                                <input type="range" id="moles" min="0" max="17" value="0" class="slider">
+                                <span class="slider-value">0</span>
+                            </div>
+                            <div class="slider-group">
+                                <label>Taches de rousseur opacité</label>
+                                <input type="range" id="molesOpacity" min="0" max="10" step="0.1" value="0"
+                                    class="slider">
+                                <span class="slider-value">0.0</span>
+                            </div>
+                            <div class="slider-group">
+                                <label>Dommage solaire</label>
+                                <input type="range" id="sunDamage" min="0" max="10" value="0" class="slider">
+                                <span class="slider-value">0</span>
+                            </div>
+                            <div class="slider-group">
+                                <label>Dommage solaire opacité</label>
+                                <input type="range" id="sunDamageOpacity" min="0" max="10" step="0.1" value="0"
+                                    class="slider">
+                                <span class="slider-value">0.0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== IDENTITÉ ===== -->
+                <div class="tab-content" id="identity">
+                    <div class="section">
+                        <h3>Identité</h3>
+                        <div class="form-group">
+                            <label for="firstName">Prénom</label>
+                            <input type="text" id="firstName" placeholder="Entrez votre prénom" maxlength="50">
+                        </div>
+                        <div class="form-group">
+                            <label for="lastName">Nom de famille</label>
+                            <input type="text" id="lastName" placeholder="Entrez votre nom" maxlength="50">
+                        </div>
+                        <div class="form-group">
+                            <label for="dateOfBirthInput">Date de naissance</label>
+                            <div class="date-picker" id="dateOfBirthPicker">
+                                <button type="button" class="date-picker-toggle" id="dateOfBirthInput">
+                                    <span id="dateOfBirthText">JJ/MM/AAAA</span>
+                                    <svg viewBox="0 0 24 24" fill="currentColor">
+                                        <path
+                                            d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM5 8V6h14v2H5z" />
+                                    </svg>
+                                </button>
+                                <div class="date-picker-popup" id="dateOfBirthPopup">
+                                    <div class="date-picker-nav">
+                                        <select id="dobMonthSelect" class="date-picker-select"></select>
+                                        <select id="dobYearSelect" class="date-picker-select"></select>
+                                    </div>
+                                    <div class="date-picker-weekdays">
+                                        <span>Lu</span><span>Ma</span><span>Me</span><span>Je</span><span>Ve</span><span>Sa</span><span>Di</span>
+                                    </div>
+                                    <div class="date-picker-days" id="dobDaysGrid"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="height">Taille (cm)</label>
+                            <input type="number" id="height" placeholder="Ex: 180" min="140" max="220">
+                        </div>
+                        <div class="form-group">
+                            <label for="birthPlace">Lieu de naissance</label>
+                            <input type="text" id="birthPlace" placeholder="Lieu de naissance" maxlength="100">
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ══ Barre du bas (flottante, compacte) : rotation + actions ══ -->
+        <div class="bottom-bar">
+            <div class="bottom-bar-group">
+                <button class="bar-btn" id="rotateLeft" title="Tourner à gauche">&#8592;</button>
+                <button class="bar-btn" id="rotateRight" title="Tourner à droite">&#8594;</button>
+            </div>
+            <div class="bar-sep"></div>
+            <div class="bottom-bar-group">
+                <button class="bar-btn bar-btn-reset" id="resetBtn" title="Réinitialiser">
+                    <span class="icon">&#8635;</span>
+                </button>
+                <button class="bar-btn bar-btn-confirm" id="confirmBtn" title="Confirmer">
+                    <span class="icon">&#10003;</span>
+                    Confirmer
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/ui.js"></script>
+
+    <!-- Inventaire en iframe -->
+    <iframe id="inventoryFrame" src="../../../inventory/html/ui.html" allowtransparency="true"
+        style="position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:8888;pointer-events:none;background:transparent;display:none;"></iframe>
+
+    <!-- MDT en iframe (z-index au-dessus ; affiché/activable seulement quand ouvert) -->
+    <iframe id="mdtFrame" src="../../mdt/html/mdt.html" allowtransparency="true"
+        style="position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:9000;pointer-events:none;background:transparent;display:none;"></iframe>
+
+    <!-- Sélection de personnage (multicharacter) en iframe ; s'affiche avant
+         tout le reste, à la connexion, donc au-dessus de tout. -->
+    <iframe id="multicharFrame" src="../../multichar/html/multichar.html" allowtransparency="true"
+        style="position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:9500;pointer-events:none;background:transparent;display:none;"></iframe>
+
+    <!-- Scène "appartement" de sélection de personnage (tooltip + hotspots) -->
+    <iframe id="apartmentFrame" src="../../multichar/html/apartment.html" allowtransparency="true"
+        style="position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:9500;pointer-events:none;background:transparent;display:none;"></iframe>
+
+    <!-- Health Inspection SAMU en iframe (outil de terrain, pas un onglet MDT) -->
+    <iframe id="hiFrame" src="../../samu/html/ui.html" allowtransparency="true"
+        style="position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:9000;pointer-events:none;background:transparent;display:none;"></iframe>
+
+    <!-- Menu Admin en iframe (dashboard staff, indépendant de l'inventaire) -->
+    <iframe id="adminFrame" src="../../adminmenu/html/admin.html" allowtransparency="true"
+        style="position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:9000;pointer-events:none;background:transparent;display:none;"></iframe>
+
+    <!-- Banque (Maze Bank / Fleeca) en iframe -->
+    <iframe id="bankFrame" src="../../bank/html/bank.html" allowtransparency="true"
+        style="position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:9000;pointer-events:none;background:transparent;display:none;"></iframe>
+
+    <!-- LSLegacyBank Pay (menu de paiement, TPE) en iframe — z-index au-dessus
+         des frames boutique/inventaire puisqu'il peut s'ouvrir par-dessus. -->
+    <iframe id="paymentFrame" src="../../bank/html/payment.html" allowtransparency="true"
+        style="position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:9200;pointer-events:none;background:transparent;display:none;"></iframe>
+
+    <script>
+        var inventoryFrame = document.getElementById('inventoryFrame');
+        var mdtFrame = document.getElementById('mdtFrame');
+        var multicharFrame = document.getElementById('multicharFrame');
+        var apartmentFrame = document.getElementById('apartmentFrame');
+        var hiFrame = document.getElementById('hiFrame');
+        var adminFrame = document.getElementById('adminFrame');
+        var bankFrame = document.getElementById('bankFrame');
+        var paymentFrame = document.getElementById('paymentFrame');
+
+        var ALL_ACTIONS = [
+            'display', 'hide', 'setItems', 'setSecondInventoryItems',
+            'setShopInventoryItems', 'setInfoText', 'setWeightText',
+            'nearPlayers', 'setEquippedSlots', 'setEquippedOutfit',
+            'clothshop:open', 'clothshop:hide', 'clothshop:cartSuccess',
+            'clothshop:cartFailed', 'clothshop:refreshInventory',
+            'clothshop:outfitCreated', 'clothshop:outfitSplit'
+        ];
+
+        window.addEventListener('message', function (event) {
+            var data = event.data;
+            if (!data || !data.action) return;
+
+            // Messages multichar → routés vers le multicharFrame
+            if (data.action.indexOf('multichar:') === 0) {
+                if (data.action === 'multichar:show') {
+                    multicharFrame.style.display = 'block';
+                    multicharFrame.style.pointerEvents = 'auto';
+                } else if (data.action === 'multichar:hide') {
+                    multicharFrame.style.display = 'none';
+                    multicharFrame.style.pointerEvents = 'none';
+                }
+                multicharFrame.contentWindow.postMessage(data, '*');
+                return;
+            }
+
+            // Messages scène appartement (sélection multichar en 3D) → routés
+            // vers l'apartmentFrame
+            if (data.action.indexOf('apartment:') === 0) {
+                if (data.action === 'apartment:show') {
+                    apartmentFrame.style.display = 'block';
+                    apartmentFrame.style.pointerEvents = 'auto';
+                } else if (data.action === 'apartment:hide') {
+                    apartmentFrame.style.display = 'none';
+                    apartmentFrame.style.pointerEvents = 'none';
+                }
+                apartmentFrame.contentWindow.postMessage(data, '*');
+                return;
+            }
+
+            // Messages MDT → routés vers le mdtFrame (affichage + pointer-events)
+            if (data.action.indexOf('mdt:') === 0) {
+                if (data.action === 'mdt:open') {
+                    mdtFrame.style.display = 'block';
+                    mdtFrame.style.pointerEvents = 'auto';
+                } else if (data.action === 'mdt:hide') {
+                    mdtFrame.style.display = 'none';
+                    mdtFrame.style.pointerEvents = 'none';
+                }
+                mdtFrame.contentWindow.postMessage(data, '*');
+                return;
+            }
+
+            // Messages Health Inspection SAMU → routés vers le hiFrame
+            if (data.action.indexOf('hi:') === 0) {
+                if (data.action === 'hi:open') {
+                    hiFrame.style.display = 'block';
+                    hiFrame.style.pointerEvents = 'auto';
+                } else if (data.action === 'hi:hide') {
+                    hiFrame.style.display = 'none';
+                    hiFrame.style.pointerEvents = 'none';
+                }
+                hiFrame.contentWindow.postMessage(data, '*');
+                return;
+            }
+
+            // Messages Menu Admin → routés vers l'adminFrame
+            if (data.action.indexOf('admin:') === 0) {
+                if (data.action === 'admin:open') {
+                    adminFrame.style.display = 'block';
+                    adminFrame.style.pointerEvents = 'auto';
+                } else if (data.action === 'admin:hide') {
+                    adminFrame.style.display = 'none';
+                    adminFrame.style.pointerEvents = 'none';
+                }
+                adminFrame.contentWindow.postMessage(data, '*');
+                return;
+            }
+
+            // Messages Banque → routés vers le bankFrame
+            if (data.action.indexOf('bank:') === 0) {
+                if (data.action === 'bank:open') {
+                    bankFrame.style.display = 'block';
+                    bankFrame.style.pointerEvents = 'auto';
+                } else if (data.action === 'bank:hide') {
+                    bankFrame.style.display = 'none';
+                    bankFrame.style.pointerEvents = 'none';
+                }
+                bankFrame.contentWindow.postMessage(data, '*');
+                return;
+            }
+
+            // Messages LSLegacyBank Pay → routés vers le paymentFrame
+            if (data.action.indexOf('payment:') === 0) {
+                if (data.action === 'payment:open') {
+                    paymentFrame.style.display = 'block';
+                    paymentFrame.style.pointerEvents = 'auto';
+                } else if (data.action === 'payment:hide') {
+                    paymentFrame.style.display = 'none';
+                    paymentFrame.style.pointerEvents = 'none';
+                }
+                paymentFrame.contentWindow.postMessage(data, '*');
+                return;
+            }
+
+            if (ALL_ACTIONS.indexOf(data.action) !== -1) {
+                var creatorContainer = document.getElementById('creatorContainer');
+                var creatorOpen = creatorContainer && creatorContainer.style.display !== 'none';
+                if ((data.action === 'display' || data.action === 'clothshop:open') && !creatorOpen) {
+                    inventoryFrame.style.display = 'block';
+                    inventoryFrame.style.pointerEvents = 'auto';
+                } else if (data.action === 'hide' || data.action === 'clothshop:hide') {
+                    inventoryFrame.style.display = 'none';
+                    inventoryFrame.style.pointerEvents = 'none';
+                }
+                inventoryFrame.contentWindow.postMessage(data, '*');
+            }
+        });
+    </script>
+</body>
+
+</html>

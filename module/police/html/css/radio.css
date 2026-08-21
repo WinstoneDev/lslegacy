@@ -1,0 +1,222 @@
+* {
+    margin: 0; padding: 0; box-sizing: border-box;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+}
+body { background: transparent; overflow: hidden; }
+
+.hidden { display: none !important; }
+
+#radio-panel {
+    position: fixed;
+    top: 50%;
+    right: 2%;
+    transform: translateY(-50%);
+    width: 340px;
+    pointer-events: all;
+    animation: slideIn 0.25s ease;
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(-50%) translateX(20px); }
+    to   { opacity: 1; transform: translateY(-50%) translateX(0); }
+}
+
+.radio-window {
+    background: linear-gradient(145deg, #0a1a2e 0%, #0d2040 100%);
+    border: 1px solid #1e4080;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(30,64,128,0.3);
+    overflow: hidden;
+}
+
+.radio-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px 12px;
+    background: rgba(27, 58, 107, 0.5);
+    border-bottom: 1px solid rgba(30,64,128,0.4);
+}
+
+.radio-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.radio-icon { font-size: 22px; }
+
+.radio-brand h2 {
+    color: #e8eaf0;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}
+
+.radio-sub {
+    color: #6b82a8;
+    font-size: 11px;
+    display: block;
+    margin-top: 2px;
+}
+
+.radio-close {
+    background: rgba(220,50,50,0.15);
+    border: 1px solid rgba(220,50,50,0.3);
+    color: #e05050;
+    border-radius: 6px;
+    width: 28px; height: 28px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center;
+}
+.radio-close:hover { background: rgba(220,50,50,0.3); }
+
+.radio-body { padding: 16px; }
+
+.radio-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 8px;
+    margin-bottom: 14px;
+    border: 1px solid rgba(255,255,255,0.05);
+}
+
+.status-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: #666;
+    transition: all 0.3s;
+    flex-shrink: 0;
+}
+.status-dot.online  { background: #2ecc71; box-shadow: 0 0 6px #2ecc71; }
+.status-dot.offline { background: #e74c3c; }
+
+#status-text {
+    color: #8a9ab8;
+    font-size: 13px;
+    flex: 1;
+}
+
+.channel-badge {
+    background: rgba(52,152,219,0.25);
+    border: 1px solid rgba(52,152,219,0.4);
+    color: #5dade2;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.radio-ptt {
+    text-align: center;
+    padding: 8px;
+    background: rgba(220,50,50,0.2);
+    border: 1px solid rgba(220,50,50,0.4);
+    border-radius: 8px;
+    color: #e05050;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin-bottom: 14px;
+}
+
+.ptt-pulse { animation: pulse 0.8s infinite; display: inline-block; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.2; } }
+
+.channels-title {
+    color: #4a6fa5;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(74,111,165,0.2);
+}
+
+.channels-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 320px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.channels-list::-webkit-scrollbar { width: 4px; }
+.channels-list::-webkit-scrollbar-track { background: transparent; }
+.channels-list::-webkit-scrollbar-thumb { background: rgba(74,111,165,0.4); border-radius: 2px; }
+
+.channel-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.channel-item:hover {
+    background: rgba(52,152,219,0.12);
+    border-color: rgba(52,152,219,0.3);
+}
+.channel-item.active {
+    background: rgba(52,152,219,0.2);
+    border-color: rgba(52,152,219,0.5);
+    box-shadow: 0 0 0 1px rgba(52,152,219,0.2) inset;
+}
+
+.ch-icon { font-size: 16px; min-width: 20px; text-align: center; }
+.ch-info  { flex: 1; }
+.ch-label { color: #d0d8e8; font-size: 13px; font-weight: 500; }
+.ch-freq  { color: #5d7a9e; font-size: 11px; margin-top: 1px; font-family: monospace; }
+.ch-active-badge {
+    background: #2ecc71;
+    border-radius: 4px;
+    padding: 2px 7px;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.radio-actions {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+}
+
+.btn-disable {
+    width: 100%;
+    padding: 10px;
+    background: rgba(220,50,50,0.15);
+    border: 1px solid rgba(220,50,50,0.3);
+    border-radius: 8px;
+    color: #e05050;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.btn-disable:hover { background: rgba(220,50,50,0.28); }
+
+.ptt-hint {
+    text-align: center;
+    color: #4a6fa5;
+    font-size: 11px;
+    margin-top: 10px;
+}
+.ptt-hint kbd {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 11px;
+    color: #8a9ab8;
+}

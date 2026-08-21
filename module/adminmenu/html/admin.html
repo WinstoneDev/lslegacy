@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administration</title>
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+    <div id="admin" class="am-hidden">
+        <div class="am-window">
+
+            <!-- ── En-tête ───────────────────────────────────── -->
+            <header class="am-header">
+                <div class="am-brand">
+                    <div class="am-logo">
+                        <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+                    </div>
+                    <div class="am-title">
+                        <h1>Administration</h1>
+                        <span class="am-subtitle">LSLegacy</span>
+                    </div>
+                </div>
+                <div class="am-duty-flag" id="am-duty-flag">Hors service</div>
+                <button class="am-close" id="am-close" title="Fermer (Échap)">✕</button>
+            </header>
+
+            <!-- ── Corps : sidebar + contenu ─────────────────── -->
+            <div class="am-body">
+                <nav class="am-sidebar" id="am-sidebar"></nav>
+                <main class="am-content" id="am-content"></main>
+            </div>
+        </div>
+
+        <!-- ── Conteneur de modale (confirmations) ───────────── -->
+        <div class="am-modal-overlay am-hidden" id="am-modal-overlay">
+            <div class="am-modal" id="am-modal">
+                <div class="am-modal-header">
+                    <h3 id="am-modal-title">Titre</h3>
+                    <button class="am-modal-close" id="am-modal-close">✕</button>
+                </div>
+                <div class="am-modal-body" id="am-modal-body"></div>
+                <div class="am-modal-footer" id="am-modal-footer"></div>
+            </div>
+        </div>
+
+        <!-- ── Toasts ────────────────────────────────────────── -->
+        <div class="am-toasts" id="am-toasts"></div>
+    </div>
+
+    <script src="js/admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Radio Police</title>
+    <link rel="stylesheet" href="css/radio.css">
+</head>
+<body>
+    <div id="radio-panel" class="hidden">
+        <div class="radio-window">
+            <div class="radio-header">
+                <div class="radio-brand">
+                    <span class="radio-icon">📡</span>
+                    <div>
+                        <h2>Radio Police Nationale</h2>
+                        <span class="radio-sub">Réseau Sécurisé PN — ver. 4.2</span>
+                    </div>
+                </div>
+                <button class="radio-close" id="radio-close">✕</button>
+            </div>
+
+            <div class="radio-body">
+                <!-- Status actif -->
+                <div class="radio-status" id="radio-status">
+                    <div class="status-dot" id="status-dot"></div>
+                    <span id="status-text">Hors ligne</span>
+                    <span id="current-channel" class="channel-badge hidden">— Canal —</span>
+                </div>
+
+                <!-- Indicateur PTT -->
+                <div class="radio-ptt" id="radio-ptt-indicator" style="display:none">
+                    <span class="ptt-pulse">🔴</span> EN PAROLE
+                </div>
+
+                <!-- Liste des canaux -->
+                <div class="radio-channels">
+                    <div class="channels-title">Canaux disponibles</div>
+                    <div id="channels-list" class="channels-list">
+                        <!-- Généré dynamiquement -->
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="radio-actions">
+                    <button class="btn-disable" id="btn-disable">
+                        Désactiver la radio
+                    </button>
+                    <div class="ptt-hint">
+                        Maintenir <kbd>CAPS LOCK</kbd> pour parler
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/radio.js"></script>
+</body>
+</html>
