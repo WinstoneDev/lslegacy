@@ -163,7 +163,7 @@ CreateThread(function()
     end
 end)
 
-LSLegacy.Events.Register('keyhanger:sync:all', function(boards)
+LSLegacy.Events.Register('keyhanger:syncAll', function(boards)
     KeyHanger.Boards = boards or {}
     local n = 0 ; for _ in pairs(KeyHanger.Boards) do n = n + 1 end
     dbg("sync:all -> " .. n .. " support(s)")
@@ -172,7 +172,7 @@ LSLegacy.Events.Register('keyhanger:sync:all', function(boards)
     end
 end)
 
-LSLegacy.Events.Register('keyhanger:sync:board', function(board)
+LSLegacy.Events.Register('keyhanger:syncBoard', function(board)
     if not board or not board.id then return end
     dbg("sync:board #" .. tostring(board.id))
     KeyHanger.Boards[board.id] = board
@@ -185,7 +185,7 @@ LSLegacy.Events.Register('keyhanger:sync:board', function(board)
     end
 end)
 
-LSLegacy.Events.Register('keyhanger:sync:remove', function(id)
+LSLegacy.Events.Register('keyhanger:syncRemove', function(id)
     KeyHanger.Boards[id] = nil
     despawn(id)
 end)

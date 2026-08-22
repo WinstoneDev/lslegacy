@@ -705,7 +705,7 @@ Actions.returnToCharSelect = function()
     if GetMyLevel() < 1 then return { error = 'Action refusée.' } end
     AM.opened = false
     AM:HideAllMenus()
-    LSLegacy.Events.SendToServer('admin:multichar:returnToSelection')
+    LSLegacy.Events.SendToServer('admin:multicharReturnToSelection')
     return { ok = true }
 end
 

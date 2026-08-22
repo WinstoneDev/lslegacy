@@ -287,7 +287,7 @@ TriggerClientEvent('chat:addSuggestion', -1, '/multichar', "Revenir à la sélec
 -- Bouton du menu admin (module/adminmenu/client/main.lua) : passe par le système
 -- de jetons sécurisé, puisqu'il n'est utilisable qu'une fois le personnage
 -- déjà chargé (contrairement à /multichar, utilisable dès la connexion).
-LSLegacy.Events.Register('admin:multichar:returnToSelection', function()
+LSLegacy.Events.Register('admin:multicharReturnToSelection', function()
     local source = source
     LSLegacy.Multichar.ReturnToSelection(source)
 end)

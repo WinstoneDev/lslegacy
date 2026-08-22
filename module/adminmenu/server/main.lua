@@ -11,7 +11,7 @@ local rateLimits = {
     ['admin:takeTicket'] = 10, ['admin:closeTicket'] = 10, ['admin:createTicket'] = 8,
     ['admin:tpToTicket'] = 10, ['admin:bringTicketPlayer'] = 10, ['admin:setGodmode'] = 10,
     ['admin:cleanVehicleDB'] = 10, ['admin:deleteWarn'] = 10,
-    ['admin:multichar:returnToSelection'] = 5, ['admin:logIdentifiers'] = 5,
+    ['admin:multicharReturnToSelection'] = 5, ['admin:logIdentifiers'] = 5,
     ['admin:getTicketStats'] = 20, ['admin:setWorldTime'] = 15,
 }
 for eventName, limit in pairs(rateLimits) do

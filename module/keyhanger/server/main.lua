@@ -133,17 +133,17 @@ local function saveBoardDB(board)
 end
 
 local function syncBoardToAll(board)
-    LSLegacy.Events.SendToClient('keyhanger:sync:board', -1, serializeBoard(board))
+    LSLegacy.Events.SendToClient('keyhanger:syncBoard', -1, serializeBoard(board))
 end
 
 local function syncRemoveToAll(id)
-    LSLegacy.Events.SendToClient('keyhanger:sync:remove', -1, id)
+    LSLegacy.Events.SendToClient('keyhanger:syncRemove', -1, id)
 end
 
 local function syncAllTo(src)
     local list = {}
     for id, board in pairs(KeyHanger.Boards) do list[id] = serializeBoard(board) end
-    LSLegacy.Events.SendToClient('keyhanger:sync:all', src, list)
+    LSLegacy.Events.SendToClient('keyhanger:syncAll', src, list)
 end
 
 local prevGuard = LSLegacy.DataStoreGuard
@@ -442,7 +442,7 @@ exports('createBoard', function(data)
 end)
 
 LSLegacy.RegisterCommand(C.Placement.command, C.Placement.group, function(player)
-    LSLegacy.Events.SendToClient('keyhanger:placement:start', player.source)
+    LSLegacy.Events.SendToClient('keyhanger:placementStart', player.source)
 end, { help = "Installer un porte-clés mural" })
 
 if C.Key.createCommand.enabled then

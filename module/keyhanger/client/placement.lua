@@ -215,7 +215,7 @@ local function openPMenu()
     end)
 end
 
-LSLegacy.Events.Register('keyhanger:placement:start', function()
+LSLegacy.Events.Register('keyhanger:placementStart', function()
     if placing then return end
     openPMenu()
 end)
