@@ -36,7 +36,7 @@ function Sleeping:new(data)
     setmetatable(data, self)
     self.__index = self
     if IsDuplicityVersion() then
-        LSLegacy.Events.SendToClient('pedOffline:client:sync', -1, "new", data.citizenId, data)
+        LSLegacy.Events.SendToClient('pedoffline:clientSync', -1, "new", data.citizenId, data)
         if not data.isOld then
             MySQL.insert.await(
                 'INSERT INTO `exit_sleeping` (citizenid, sleepData) VALUES (?, ?)',
@@ -53,7 +53,7 @@ function Sleeping:delete(citizenId)
     citizenId = self.citizenId or citizenId
     if pedOfflineSleepingList[citizenId] then
         if IsDuplicityVersion() then
-            LSLegacy.Events.SendToClient('pedOffline:client:sync', -1, "delete", citizenId)
+            LSLegacy.Events.SendToClient('pedoffline:clientSync', -1, "delete", citizenId)
             MySQL.query.await('DELETE FROM `exit_sleeping` WHERE citizenid = ?', { citizenId })
         else
             local sp = Sleeping.get(citizenId)
@@ -68,7 +68,7 @@ function Sleeping:setCoords(newCoords)
     self.playerCoords = newCoords
     self.carrying = false
     if IsDuplicityVersion() then
-        LSLegacy.Events.SendToClient('pedOffline:client:sync', -1, "setCoords", self.citizenId, newCoords)
+        LSLegacy.Events.SendToClient('pedoffline:clientSync', -1, "setCoords", self.citizenId, newCoords)
         -- self.identifier/self.slot (absents sur les peds créés avant ce
         -- correctif, chargés depuis exit_sleeping) : on ignore alors la sync
         -- vers `players` plutôt que de mettre à jour tous les personnages du
@@ -88,7 +88,7 @@ function Sleeping:setCarrying(src, netId)
     self.carrying = true
     self.netId = netId
     if IsDuplicityVersion() then
-        LSLegacy.Events.SendToClient('pedOffline:client:sync', -1, "setCarrying", self.citizenId, {
+        LSLegacy.Events.SendToClient('pedoffline:clientSync', -1, "setCarrying", self.citizenId, {
             carryPlayer = self.carryPlayer,
             netId       = self.netId,
         })
@@ -101,7 +101,7 @@ function Sleeping:stopCarrying()
     self.carrying = false
     self.carryPlayer = nil
     if IsDuplicityVersion() then
-        LSLegacy.Events.SendToClient('pedOffline:client:sync', -1, "stopCarrying", self.citizenId)
+        LSLegacy.Events.SendToClient('pedoffline:clientSync', -1, "stopCarrying", self.citizenId)
     end
     pedOfflineDebug("stopCarrying", self.citizenId)
 end
@@ -115,7 +115,7 @@ function Sleeping:putInVehicle(vehicleNetId, seatIndex)
 
     if IsDuplicityVersion() then
         -- Ordonne au porteur de lacher le ped puis attend qu'il soit detache
-        LSLegacy.Events.SendToClient("pedOffline:client:forceStopCarrying", self.carryPlayer)
+        LSLegacy.Events.SendToClient("pedoffline:clientForceStopCarrying", self.carryPlayer)
         Wait(500)
 
         local ped = NetworkGetEntityFromNetworkId(self.netId)
@@ -126,7 +126,7 @@ function Sleeping:putInVehicle(vehicleNetId, seatIndex)
         if not DoesEntityExist(vehicle) then
             return pedOfflineDebug("putInVehicle: vehicle introuvable")
         end
-        LSLegacy.Events.SendToClient('pedOffline:client:sync', -1, "putInVehicle", self.citizenId, self.vehicle)
+        LSLegacy.Events.SendToClient('pedoffline:clientSync', -1, "putInVehicle", self.citizenId, self.vehicle)
         SetPedIntoVehicle(ped, vehicle, seatIndex)
         Entity(ped).state:set('pedOfflineAnim', false, true)
     else
@@ -138,7 +138,7 @@ function Sleeping:putInVehicle(vehicleNetId, seatIndex)
                 distance = 2.5,
                 canInteract = function() return not pedOfflineCarrying end,
                 onSelect = function()
-                    LSLegacy.Events.SendToServer("pedOffline:server:outVehicle", self.citizenId)
+                    LSLegacy.Events.SendToServer("pedoffline:serverOutVehicle", self.citizenId)
                 end
             },
         })
@@ -152,7 +152,7 @@ function Sleeping:outVehicle()
         if not ped or not DoesEntityExist(ped) then
             return pedOfflineDebug("outVehicle: ped introuvable")
         end
-        LSLegacy.Events.SendToClient('pedOffline:client:sync', -1, "outVehicle", self.citizenId)
+        LSLegacy.Events.SendToClient('pedoffline:clientSync', -1, "outVehicle", self.citizenId)
         DeleteEntity(ped)
     else
         ox_target:removeEntity(self.vehicle.vehicleNetId, "pedOffline-out-vehicle-" .. self.vehicle.seat)
@@ -360,7 +360,7 @@ if not IsDuplicityVersion() then
             pedOfflineCarryData.netId = NetworkGetNetworkIdFromEntity(pedOfflineCarryData.serverPed)
             Wait(100)
         end
-        LSLegacy.Events.SendToServer("pedOffline:server:startCarrying", pedOfflineCarryData.citizenId, pedOfflineCarryData.netId)
+        LSLegacy.Events.SendToServer("pedoffline:serverStartCarrying", pedOfflineCarryData.citizenId, pedOfflineCarryData.netId)
 
         local p1Anim    = pedOfflineCfg.carryAnimation.player1
         local attach    = pedOfflineCfg.carryAnimation.attach
@@ -386,7 +386,7 @@ if not IsDuplicityVersion() then
                     local seatIndex = Sleeping.GetFreeSeatIndex(vehicle)
                     if not seatIndex then return end
                     LSLegacy.Events.SendToServer(
-                        "pedOffline:server:putInVehicle",
+                        "pedoffline:serverPutInVehicle",
                         pedOfflineCarryData.citizenId,
                         NetworkGetNetworkIdFromEntity(vehicle),
                         seatIndex
@@ -426,7 +426,7 @@ if not IsDuplicityVersion() then
             end
             if updateServer then
                 LSLegacy.Events.SendToServer(
-                    "pedOffline:server:stopCarrying",
+                    "pedoffline:serverStopCarrying",
                     pedOfflineCarryData.citizenId,
                     pedOfflineCarryData.netId
                 )

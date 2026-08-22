@@ -7,9 +7,9 @@ local skinCache  = {}   -- source -> { identifier, skin }
 
 -- Rate limiting pour les events du module
 local rateLimits = {
-    ['pedOffline:request:sleepingList'] = 5, ['pedOffline:server:startCarrying'] = 15,
-    ['pedOffline:server:stopCarrying'] = 15, ['pedOffline:server:putInVehicle'] = 10,
-    ['pedOffline:server:outVehicle'] = 10,
+    ['pedoffline:requestSleepingList'] = 5, ['pedoffline:serverStartCarrying'] = 15,
+    ['pedoffline:serverStopCarrying'] = 15, ['pedoffline:serverPutInVehicle'] = 10,
+    ['pedoffline:serverOutVehicle'] = 10,
 }
 for eventName, limit in pairs(rateLimits) do
     LSLegacy.Security.RegisterRateLimit(eventName, limit)
@@ -108,7 +108,7 @@ end
 
 -- Requete client : envoyer la liste des peds endormis + supprimer son propre ped
 
-LSLegacy.Events.Register("pedOffline:request:sleepingList", function()
+LSLegacy.Events.Register("pedoffline:requestSleepingList", function()
     local src = source
     Citizen.CreateThread(function()
         if not dataLoaded then while not dataLoaded do Wait(100) end end
@@ -127,7 +127,7 @@ LSLegacy.Events.Register("pedOffline:request:sleepingList", function()
             pedOfflineDebug("response:sleepingList -> includes", k)
         end
         pedOfflineDebug("response:sleepingList: envoi de", count, "ped(s) a", src)
-        LSLegacy.Events.SendToClient("pedOffline:response:sleepingList", src, pedOfflineSleepingList)
+        LSLegacy.Events.SendToClient("pedoffline:responseSleepingList", src, pedOfflineSleepingList)
     end)
 end)
 
@@ -184,7 +184,7 @@ LSLegacy.RegisterCommand(pedOfflineCfg.testCommand.name, pedOfflineCfg.testComma
 
 -- Porter un ped
 
-LSLegacy.Events.Register('pedOffline:server:startCarrying', function(identifier, netId)
+LSLegacy.Events.Register('pedoffline:serverStartCarrying', function(identifier, netId)
     local src = source
     local sp  = Sleeping.get(identifier)
     if not sp then return end
@@ -197,7 +197,7 @@ LSLegacy.Events.Register('pedOffline:server:startCarrying', function(identifier,
     pedOfflineDebug("startCarrying", identifier, netId)
 end)
 
-LSLegacy.Events.Register('pedOffline:server:stopCarrying', function(identifier, netId)
+LSLegacy.Events.Register('pedoffline:serverStopCarrying', function(identifier, netId)
     local src    = source
     local entity = NetworkGetEntityFromNetworkId(netId)
     if entity and DoesEntityExist(entity) then
@@ -222,18 +222,18 @@ end)
 
 -- Mettre dans un vehicule
 
-LSLegacy.Events.Register('pedOffline:server:putInVehicle', function(identifier, vehicleNetId, seatIndex)
+LSLegacy.Events.Register('pedoffline:serverPutInVehicle', function(identifier, vehicleNetId, seatIndex)
     local sp = Sleeping.get(identifier)
     if not sp then return end
     sp:putInVehicle(vehicleNetId, seatIndex)
 end)
 
-LSLegacy.Events.Register('pedOffline:server:outVehicle', function(identifier)
+LSLegacy.Events.Register('pedoffline:serverOutVehicle', function(identifier)
     local src = source
     local sp  = Sleeping.get(identifier)
     if not sp then return end
     sp:outVehicle()
-    LSLegacy.Events.SendToClient("pedOffline:client:TargetCarryAction", src, identifier)
+    LSLegacy.Events.SendToClient("pedoffline:clientTargetCarryAction", src, identifier)
 end)
 
 -- Chargement initial depuis MySQL

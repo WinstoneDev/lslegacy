@@ -23,7 +23,7 @@ local function pedOfflineLoadSleepingList()
     -- Creer une promesse locale et envoyer la requete au serveur
     local prom = promise:new()
     pedOfflineLoadPromise = prom
-    LSLegacy.Events.SendToServer("pedOffline:request:sleepingList")
+    LSLegacy.Events.SendToServer("pedoffline:requestSleepingList")
 
     -- Timeout de securite : 10 secondes
     SetTimeout(10000, function()
@@ -53,12 +53,12 @@ LSLegacy.Events.AddHandler('lslegacy:initPlayer', pedOfflineLoadSleepingList)
 -- (InitPlayer ne se redeclenche pas dans ce cas)
 Citizen.CreateThread(function()
     while not NetworkIsPlayerActive(PlayerId()) do Wait(250) end
-    while not LSLegacy.Token or not LSLegacy.Token["pedOffline:request:sleepingList"] do Wait(250) end
+    while not LSLegacy.Token or not LSLegacy.Token["pedoffline:requestSleepingList"] do Wait(250) end
     pedOfflineLoadSleepingList()
 end)
 
 -- Reponse du serveur avec la liste des peds endormis
-LSLegacy.Events.Register("pedOffline:response:sleepingList", function(list)
+LSLegacy.Events.Register("pedoffline:responseSleepingList", function(list)
     local count = 0
     if list then for _ in pairs(list) do count = count + 1 end end
     pedOfflineDebug("response:sleepingList recue, taille =", count)
@@ -69,7 +69,7 @@ LSLegacy.Events.Register("pedOffline:response:sleepingList", function(list)
 end)
 
 -- Synchronisation des actions depuis le serveur
-LSLegacy.Events.Register("pedOffline:client:sync", function(action, identifier, data)
+LSLegacy.Events.Register("pedoffline:clientSync", function(action, identifier, data)
     pedOfflineDebug("sync", action, identifier)
     if action == "new" then
         Sleeping:new(data)
@@ -99,12 +99,12 @@ LSLegacy.Events.Register("pedOffline:client:sync", function(action, identifier, 
 end)
 
 -- Ordre du serveur de lacher le ped (lors d'un putInVehicle)
-LSLegacy.Events.Register("pedOffline:client:forceStopCarrying", function()
+LSLegacy.Events.Register("pedoffline:clientForceStopCarrying", function()
     Sleeping.StopCarrying(false)
 end)
 
 -- Declenche par le serveur apres outVehicle
-LSLegacy.Events.Register("pedOffline:client:TargetCarryAction", function(identifier)
+LSLegacy.Events.Register("pedoffline:clientTargetCarryAction", function(identifier)
     local sp = Sleeping.get(identifier)
     if not sp then return end
     Sleeping.TargetCarryAction(sp)
