@@ -18,14 +18,14 @@ MySQL.Async.execute([[
     )
 ]])
 
-local function getCharacterId(src)
+local function GetCharacterId(src)
     local player = LSLegacy.Players.Get(src)
     return player and player["boutique-id"] or nil
 end
 
 LSLegacy.Events.Register('lslegacy_emotes:getFavorites', function()
     local src = source
-    local characterId = getCharacterId(src)
+    local characterId = GetCharacterId(src)
     if not characterId then return end
 
     MySQL.Async.fetchAll('SELECT emote_key FROM emotes_favorites WHERE character_id = @id', {
@@ -41,7 +41,7 @@ end)
 
 LSLegacy.Events.Register('lslegacy_emotes:toggleFavorite', function(emoteKey)
     local src = source
-    local characterId = getCharacterId(src)
+    local characterId = GetCharacterId(src)
     if not characterId or type(emoteKey) ~= 'string' or #emoteKey == 0 or #emoteKey > 80 then return end
 
     MySQL.Async.fetchAll('SELECT 1 FROM emotes_favorites WHERE character_id = @id AND emote_key = @key', {
@@ -64,7 +64,7 @@ end)
 
 local MAX_DISTANCE = 3.0
 
-local function playerDistance(a, b)
+local function PlayerDistance(a, b)
     local pedA, pedB = GetPlayerPed(a), GetPlayerPed(b)
     if pedA == 0 or pedB == 0 then return 999.0 end
     return #(GetEntityCoords(pedA) - GetEntityCoords(pedB))
@@ -74,7 +74,7 @@ LSLegacy.Events.Register('lslegacy_emotes:requestShared', function(targetServerI
     local src = source
     local target = tonumber(targetServerId)
     if not target or GetPlayerName(target) == nil then return end
-    if playerDistance(src, target) > MAX_DISTANCE then return end
+    if PlayerDistance(src, target) > MAX_DISTANCE then return end
 
     TriggerClientEvent('lslegacy_emotes:clientRequestShared', target, emoteId, src)
 end)
@@ -83,7 +83,7 @@ LSLegacy.Events.Register('lslegacy_emotes:confirmShared', function(requesterServ
     local src = source
     local requester = tonumber(requesterServerId)
     if not requester or GetPlayerName(requester) == nil then return end
-    if playerDistance(src, requester) > MAX_DISTANCE then return end
+    if PlayerDistance(src, requester) > MAX_DISTANCE then return end
 
     TriggerClientEvent('lslegacy_emotes:clientPlayShared', requester, emoteId, src)
     TriggerClientEvent('lslegacy_emotes:clientPlaySharedTarget', src, targetEmoteId, requester)

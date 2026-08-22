@@ -9,7 +9,7 @@ local title  = "VOTRE TITRE ICI"
 local bottom = "VOTRE SOUS-TITRE ICI"
 local msg    = "VOTRE MESSAGE ICI"
 
-local function buildScaleform()
+local function BuildScaleform()
     if scaleform then
         SetScaleformMovieAsNoLongerNeeded(scaleform)
     end
@@ -37,7 +37,7 @@ local function buildScaleform()
     EndScaleformMovieMethod()
 end
 
-local function editNewscamText()
+local function EditNewscamText()
     local newTitle = LSLegacy.KeyboardInput("Titre défilant en haut", 100)
     if newTitle and #newTitle > 0 then title = newTitle end
 
@@ -47,10 +47,10 @@ local function editNewscamText()
     local newMsg = LSLegacy.KeyboardInput("Message principal", 100)
     if newMsg and #newMsg > 0 then msg = newMsg end
 
-    buildScaleform()
+    BuildScaleform()
 end
 
-local function cleanupNewscam()
+local function CleanupNewscam()
     ClearPedTasksImmediately(PlayerPedId())
     RenderScriptCams(false, false, 0, true, false)
     if scaleform then
@@ -63,7 +63,7 @@ local function cleanupNewscam()
     end
 end
 
-local function handleZoom()
+local function HandleZoom()
     if IsControlPressed(0, 241) then
         fov = math.max(5.0, fov - 1.0)
         SetCamFov(cam, fov)
@@ -79,14 +79,14 @@ function ToggleNewscam()
 
     usingNewscam = not usingNewscam
     if not usingNewscam then
-        cleanupNewscam()
+        CleanupNewscam()
         return
     end
 
     fov = 40.0
     -- On demande le texte avant d'afficher quoi que ce soit : la caméra et
     -- le bandeau n'apparaissent qu'une fois la saisie terminée.
-    editNewscamText()
+    EditNewscamText()
 
     if not usingNewscam then return end -- le joueur a pu quitter pendant la saisie
 
@@ -107,7 +107,7 @@ function ToggleNewscam()
             DisableControlAction(0, 37, true)
             DisablePlayerFiring(ped, true)
 
-            handleZoom()
+            HandleZoom()
 
             if IsControlJustPressed(0, 202) then -- Échap
                 usingNewscam = false
@@ -116,7 +116,7 @@ function ToggleNewscam()
             DrawScaleformMovieFullscreen(scaleform, 255, 255, 255, 255)
         end
         usingNewscam = false
-        cleanupNewscam()
+        CleanupNewscam()
     end)
 end
 
@@ -126,13 +126,13 @@ end, false)
 RegisterKeyMapping('lslegacy_newscam', 'Utiliser la caméra news', 'keyboard', 'I')
 
 RegisterCommand('lslegacy_newscam_edit', function()
-    if usingNewscam then editNewscamText() end
+    if usingNewscam then EditNewscamText() end
 end, false)
 RegisterKeyMapping('lslegacy_newscam_edit', "Éditer le texte de la caméra news", 'keyboard', 'G')
 
 AddEventHandler('onResourceStop', function(resource)
     if resource == GetCurrentResourceName() then
         usingNewscam = false
-        cleanupNewscam()
+        CleanupNewscam()
     end
 end)

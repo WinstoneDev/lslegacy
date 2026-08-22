@@ -6,7 +6,7 @@ local cam = nil
 local prop = nil
 local scaleform = nil
 
-local function loadPropModel(model)
+local function LoadPropModel(model)
     local hash = GetHashKey(model)
     RequestModel(hash)
     local timeout = GetGameTimer() + 3000
@@ -15,7 +15,7 @@ local function loadPropModel(model)
     return hash
 end
 
-local function cleanupBinoculars()
+local function CleanupBinoculars()
     ClearPedTasksImmediately(PlayerPedId())
     RenderScriptCams(false, false, 0, true, false)
     if scaleform then
@@ -32,7 +32,7 @@ local function cleanupBinoculars()
     prop = nil
 end
 
-local function handleZoom()
+local function HandleZoom()
     if IsControlPressed(0, 241) then -- molette avant
         fov = math.max(5.0, fov - 1.0)
         SetCamFov(cam, fov)
@@ -48,7 +48,7 @@ function ToggleBinoculars()
 
     usingBinoculars = not usingBinoculars
     if not usingBinoculars then
-        cleanupBinoculars()
+        CleanupBinoculars()
         return
     end
 
@@ -57,7 +57,7 @@ function ToggleBinoculars()
     local timeout = GetGameTimer() + 3000
     while not HasScaleformMovieLoaded(scaleform) and GetGameTimer() < timeout do Wait(0) end
 
-    local hash = loadPropModel('prop_binoc_01')
+    local hash = LoadPropModel('prop_binoc_01')
     if hash then
         prop = CreateObject(hash, GetEntityCoords(ped), true, true, false)
         AttachEntityToEntity(prop, ped, GetPedBoneIndex(ped, 28422), 0.13, 0.05, 0.0, 90.0, 0.0, 0.0, true, true, false, true, 1, true)
@@ -81,7 +81,7 @@ function ToggleBinoculars()
             DisableControlAction(0, 37, true) -- roue d'armes
             DisablePlayerFiring(ped, true)
 
-            handleZoom()
+            HandleZoom()
 
             if IsControlJustPressed(0, 202) then -- Échap
                 usingBinoculars = false
@@ -90,7 +90,7 @@ function ToggleBinoculars()
             DrawScaleformMovieFullscreen(scaleform, 255, 255, 255, 255)
         end
         usingBinoculars = false
-        cleanupBinoculars()
+        CleanupBinoculars()
     end)
 end
 
@@ -103,6 +103,6 @@ RegisterKeyMapping('lslegacy_binoculars', 'Utiliser les jumelles', 'keyboard', '
 AddEventHandler('onResourceStop', function(resource)
     if resource == GetCurrentResourceName() then
         usingBinoculars = false
-        cleanupBinoculars()
+        CleanupBinoculars()
     end
 end)

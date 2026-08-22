@@ -23,7 +23,7 @@ end
 
 -- Chargement des ressources
 
-local function loadAnimDict(dict)
+local function LoadAnimDict(dict)
     if HasAnimDictLoaded(dict) then return true end
     RequestAnimDict(dict)
     local timeout = GetGameTimer() + 3000
@@ -31,7 +31,7 @@ local function loadAnimDict(dict)
     return HasAnimDictLoaded(dict)
 end
 
-local function loadPropModel(model)
+local function LoadPropModel(model)
     local hash = GetHashKey(model)
     if not IsModelValid(hash) then return nil end
     RequestModel(hash)
@@ -43,7 +43,7 @@ end
 
 -- Démarrage / arrêt
 
-local function stopEmote()
+local function StopEmote()
     local ped = PlayerPedId()
     if Emotes.prop and DoesEntityExist(Emotes.prop) then
         DeleteEntity(Emotes.prop)
@@ -56,14 +56,14 @@ local function stopEmote()
     Emotes.currentId = nil
 end
 
-local function startEmote(item)
+local function StartEmote(item)
     local ped = PlayerPedId()
     if IsPedInAnyVehicle(ped, false) or IsEntityDead(ped) or IsPedRagdoll(ped) or not IsPedOnFoot(ped) then
         LSLegacy.ShowNotification("Emotes", "Impossible de faire cette animation dans cet état.", "error")
         return
     end
 
-    stopEmote()
+    StopEmote()
     Emotes.currentId = item.id
 
     if item.scenario then
@@ -71,7 +71,7 @@ local function startEmote(item)
         return
     end
 
-    if not loadAnimDict(item.dict) then
+    if not LoadAnimDict(item.dict) then
         Emotes.currentId = nil
         return
     end
@@ -80,7 +80,7 @@ local function startEmote(item)
     RemoveAnimDict(item.dict)
 
     if item.prop then
-        local hash = loadPropModel(item.prop)
+        local hash = LoadPropModel(item.prop)
         if hash then
             local coords = GetEntityCoords(ped)
             local obj = CreateObject(hash, coords.x, coords.y, coords.z + 0.2, true, true, false)
@@ -104,7 +104,7 @@ end
 
 local PtfxHandles = {} -- [serverId] = handle de particule en cours
 
-local function stopPtfxFor(serverId)
+local function StopPtfxFor(serverId)
     if PtfxHandles[serverId] then
         StopParticleFxLooped(PtfxHandles[serverId], false)
         PtfxHandles[serverId] = nil
@@ -116,7 +116,7 @@ AddStateBagChangeHandler('lslegacy_emotes_ptfx', '', function(bagName, _key, val
     if not serverIdStr then return end
     local serverId = tonumber(serverIdStr)
 
-    stopPtfxFor(serverId)
+    StopPtfxFor(serverId)
     if not value then return end
 
     local player = GetPlayerFromServerId(serverId)
@@ -148,7 +148,7 @@ local AnimalGroupModels = {
     coyote    = { `a_c_coyote` },
 }
 
-local function isAnimalCompatible(item)
+local function IsAnimalCompatible(item)
     if not item.animalGroup then return true end
     local models = AnimalGroupModels[item.animalGroup]
     if not models then return true end
@@ -159,12 +159,12 @@ local function isAnimalCompatible(item)
     return false
 end
 
-local function startAnimalEmote(item)
-    if not isAnimalCompatible(item) then
+local function StartAnimalEmote(item)
+    if not IsAnimalCompatible(item) then
         LSLegacy.ShowNotification("Emotes", "Vous devez être un animal compatible pour faire cette animation.", "error")
         return
     end
-    startEmote(item)
+    StartEmote(item)
 end
 
 -- Surveillance : coupe l'émote si le joueur monte en véhicule, meurt, ou si
@@ -177,7 +177,7 @@ CreateThread(function()
             local item = Emotes.byId[Emotes.currentId]
 
             if IsPedInAnyVehicle(ped, false) or IsEntityDead(ped) or IsPedRagdoll(ped) then
-                stopEmote()
+                StopEmote()
             elseif item and not item.loop and item.dict and not IsEntityPlayingAnim(ped, item.dict, item.clip, 3) then
                 Emotes.currentId = nil
             end
@@ -189,9 +189,9 @@ end)
 
 AddEventHandler('onResourceStop', function(resource)
     if resource == GetCurrentResourceName() then
-        stopEmote()
+        StopEmote()
         for serverId in pairs(PtfxHandles) do
-            stopPtfxFor(serverId)
+            StopPtfxFor(serverId)
         end
     end
 end)
@@ -201,7 +201,7 @@ end)
 local Walks = { current = nil, byId = {} }
 for _, w in ipairs(EmotesData.walks) do Walks.byId[w.id] = w end
 
-local function applyWalk(item, persist)
+local function ApplyWalk(item, persist)
     local ped = PlayerPedId()
     RequestClipSet(item.anim)
     local timeout = GetGameTimer() + 3000
@@ -212,7 +212,7 @@ local function applyWalk(item, persist)
     if persist then SetResourceKvp("lslegacy_emotes_walk", item.id) end
 end
 
-local function resetWalk()
+local function ResetWalk()
     ResetPedMovementClipset(PlayerPedId(), 0.0)
     Walks.current = nil
     DeleteResourceKvp("lslegacy_emotes_walk")
@@ -222,7 +222,7 @@ CreateThread(function()
     Wait(2000)
     local saved = GetResourceKvpString("lslegacy_emotes_walk")
     if saved and Walks.byId[saved] then
-        applyWalk(Walks.byId[saved], false)
+        ApplyWalk(Walks.byId[saved], false)
     end
 end)
 
@@ -231,13 +231,13 @@ end)
 local Expressions = { current = nil, byId = {} }
 for _, e in ipairs(EmotesData.expressions) do Expressions.byId[e.id] = e end
 
-local function applyExpression(item, persist)
+local function ApplyExpression(item, persist)
     SetFacialIdleAnimOverride(PlayerPedId(), item.anim, 0)
     Expressions.current = item.id
     if persist then SetResourceKvp("lslegacy_emotes_expression", item.id) end
 end
 
-local function resetExpression()
+local function ResetExpression()
     ClearFacialIdleAnimOverride(PlayerPedId())
     Expressions.current = nil
     DeleteResourceKvp("lslegacy_emotes_expression")
@@ -247,7 +247,7 @@ CreateThread(function()
     Wait(2000)
     local saved = GetResourceKvpString("lslegacy_emotes_expression")
     if saved and Expressions.byId[saved] then
-        applyExpression(Expressions.byId[saved], false)
+        ApplyExpression(Expressions.byId[saved], false)
     end
 end)
 
@@ -256,7 +256,7 @@ end)
 local Shared = { byId = {}, partner = nil, active = nil, awaitingResponse = false }
 for _, s in ipairs(EmotesData.shared) do Shared.byId[s.id] = s end
 
-local function getClosestPlayer(maxDistance)
+local function GetClosestPlayer(maxDistance)
     local myPed = PlayerPedId()
     local myCoords = GetEntityCoords(myPed)
     local closest, closestDist = nil, maxDistance
@@ -272,7 +272,7 @@ local function getClosestPlayer(maxDistance)
     return closest
 end
 
-local function stopShared()
+local function StopShared()
     local ped = PlayerPedId()
     if Shared.active then
         ClearPedTasksImmediately(ped)
@@ -280,21 +280,21 @@ local function stopShared()
     Shared.partner, Shared.active = nil, nil
 end
 
-local function cancelSharedByUser()
+local function CancelSharedByUser()
     if Shared.partner then
         LSLegacy.Events.SendToServer('lslegacy_emotes:cancelShared', Shared.partner)
     end
-    stopShared()
+    StopShared()
 end
 
-local function requestSharedEmote(item)
+local function RequestSharedEmote(item)
     local ped = PlayerPedId()
     if IsPedInAnyVehicle(ped, false) or IsEntityDead(ped) or IsPedRagdoll(ped) or not IsPedOnFoot(ped) then
         LSLegacy.ShowNotification("Emotes", "Impossible de faire cette animation dans cet état.", "error")
         return
     end
 
-    local closest = getClosestPlayer(3.0)
+    local closest = GetClosestPlayer(3.0)
     if not closest then
         LSLegacy.ShowNotification("Emotes", "Personne n'est assez proche.", "error")
         return
@@ -304,18 +304,18 @@ local function requestSharedEmote(item)
     LSLegacy.ShowNotification("Emotes", ("Demande envoyée à %s (%s)."):format(GetPlayerName(closest), item.label), 'info')
 end
 
-local function playSharedLocal(emoteId, otherServerId)
+local function PlaySharedLocal(emoteId, otherServerId)
     local item = Shared.byId[emoteId]
     if not item then return end
     local ped = PlayerPedId()
     local otherPlayer = GetPlayerFromServerId(otherServerId)
     local otherPed = otherPlayer and otherPlayer ~= -1 and GetPlayerPed(otherPlayer) or nil
 
-    stopShared()
+    StopShared()
     Shared.partner = otherServerId
     Shared.active  = emoteId
 
-    if not loadAnimDict(item.dict) then
+    if not LoadAnimDict(item.dict) then
         Shared.active = nil
         return
     end
@@ -337,16 +337,16 @@ local function playSharedLocal(emoteId, otherServerId)
 end
 
 LSLegacy.Events.Register('lslegacy_emotes:clientPlayShared', function(emoteId, otherServerId)
-    playSharedLocal(emoteId, otherServerId)
+    PlaySharedLocal(emoteId, otherServerId)
 end)
 
 LSLegacy.Events.Register('lslegacy_emotes:clientPlaySharedTarget', function(emoteId, otherServerId)
-    playSharedLocal(emoteId, otherServerId)
+    PlaySharedLocal(emoteId, otherServerId)
 end)
 
 LSLegacy.Events.Register('lslegacy_emotes:clientCancelShared', function(otherServerId)
     if Shared.partner and Shared.partner == otherServerId then
-        stopShared()
+        StopShared()
     end
 end)
 
@@ -384,7 +384,7 @@ CreateThread(function()
             local otherPlayer = Shared.partner and GetPlayerFromServerId(Shared.partner)
             if IsPedInAnyVehicle(ped, false) or IsEntityDead(ped) or IsPedRagdoll(ped)
                 or not otherPlayer or otherPlayer == -1 then
-                cancelSharedByUser()
+                CancelSharedByUser()
             end
         else
             Wait(500)
@@ -401,8 +401,8 @@ LSLegacy.Emotes.HasActiveAnimation = function()
 end
 
 LSLegacy.Emotes.CancelActiveAnimation = function()
-    if Emotes.currentId then stopEmote() end
-    if Shared.active then cancelSharedByUser() end
+    if Emotes.currentId then StopEmote() end
+    if Shared.active then CancelSharedByUser() end
 end
 
 -- Changement de personnage (multichar) : on coupe tout avant que le ped
@@ -421,7 +421,7 @@ local ACCENT_TO_BASE = {
     ["\195\153"] = "U", ["\195\155"] = "U", ["\195\156"] = "U", -- Ù Û Ü
 }
 
-local function sortedData(data)
+local function SortedData(data)
     local sorted = {}
     for _, item in ipairs(data) do table.insert(sorted, item) end
     table.sort(sorted, function(a, b)
@@ -439,38 +439,38 @@ end
 
 local Favorites = { keys = {} }
 
-local function favoriteKey(category, item)
+local function FavoriteKey(category, item)
     return category.key .. ":" .. item.id
 end
 
 local FavoritesCategory -- déclaré plus bas, une fois toutes les catégories connues
 
-local function rebuildFavoritesData()
+local function RebuildFavoritesData()
     if not FavoritesCategory then return end
     local list = {}
     for _, category in ipairs(Categories) do
         if category ~= FavoritesCategory then
             for _, item in ipairs(category.data) do
-                if Favorites.keys[favoriteKey(category, item)] then
-                    list[#list + 1] = { id = favoriteKey(category, item), label = item.label, __cat = category, __item = item }
+                if Favorites.keys[FavoriteKey(category, item)] then
+                    list[#list + 1] = { id = FavoriteKey(category, item), label = item.label, __cat = category, __item = item }
                 end
             end
         end
     end
     FavoritesCategory.data = list
-    FavoritesCategory.sortedData = sortedData(list)
+    FavoritesCategory.sortedData = SortedData(list)
 end
 
-local function isFavorite(category, item)
-    return Favorites.keys[favoriteKey(category, item)] == true
+local function IsFavorite(category, item)
+    return Favorites.keys[FavoriteKey(category, item)] == true
 end
 
-local function toggleFavorite(category, item)
-    local key = favoriteKey(category, item)
+local function ToggleFavorite(category, item)
+    local key = FavoriteKey(category, item)
     local nowFavorite = not Favorites.keys[key]
     Favorites.keys[key] = nowFavorite or nil
     LSLegacy.Events.SendToServer('lslegacy_emotes:toggleFavorite', key)
-    rebuildFavoritesData()
+    RebuildFavoritesData()
     LSLegacy.ShowNotification("Emotes", (nowFavorite and "Ajouté aux favoris : " or "Retiré des favoris : ") .. item.label, 'info')
 end
 
@@ -479,7 +479,7 @@ LSLegacy.Events.Register('lslegacy_emotes:clientSetFavorites', function(keys)
     for _, key in ipairs(keys) do
         Favorites.keys[key] = true
     end
-    rebuildFavoritesData()
+    RebuildFavoritesData()
 end)
 
 -- Redemande les favoris à chaque fois que le personnage actif change
@@ -507,25 +507,25 @@ RegisterCommand('e', function(_source, args)
 
     local item = Emotes.byId[id]
     if item then
-        startEmote(item)
+        StartEmote(item)
         return
     end
 
     item = Walks.byId[id]
     if item then
-        applyWalk(item, true)
+        ApplyWalk(item, true)
         return
     end
 
     item = Expressions.byId[id]
     if item then
-        applyExpression(item, true)
+        ApplyExpression(item, true)
         return
     end
 
     item = Shared.byId[id]
     if item then
-        requestSharedEmote(item)
+        RequestSharedEmote(item)
         return
     end
 
@@ -544,23 +544,23 @@ EmotesMenu.mainMenu.Display.Header = true
 
 -- Comportement par défaut des catégories emotes/dances/props/animals
 for _, category in ipairs(Categories) do
-    category.onSelect = category.onSelect or function(item) startEmote(item) end
+    category.onSelect = category.onSelect or function(item) StartEmote(item) end
     category.isActive = category.isActive or function(item) return Emotes.currentId == item.id end
 end
 
 -- Les émotes animaux passent par une vérification de modèle avant de jouer
 for _, category in ipairs(Categories) do
     if category.key == "animals" then
-        category.onSelect = function(item) startAnimalEmote(item) end
+        category.onSelect = function(item) StartAnimalEmote(item) end
     end
 end
 
 table.insert(Categories, {
     key = "walks", name = "Styles de marche", desc = "Change ta démarche",
     data = EmotesData.walks,
-    onSelect    = function(item) applyWalk(item, true) end,
+    onSelect    = function(item) ApplyWalk(item, true) end,
     isActive    = function(item) return Walks.current == item.id end,
-    onReset     = resetWalk,
+    onReset     = ResetWalk,
     resetLabel  = "Réinitialiser la démarche",
     resetActive = function() return Walks.current ~= nil end,
 })
@@ -568,9 +568,9 @@ table.insert(Categories, {
 table.insert(Categories, {
     key = "expressions", name = "Expressions", desc = "Change ton humeur",
     data = EmotesData.expressions,
-    onSelect    = function(item) applyExpression(item, true) end,
+    onSelect    = function(item) ApplyExpression(item, true) end,
     isActive    = function(item) return Expressions.current == item.id end,
-    onReset     = resetExpression,
+    onReset     = ResetExpression,
     resetLabel  = "Réinitialiser l'expression",
     resetActive = function() return Expressions.current ~= nil end,
 })
@@ -578,9 +578,9 @@ table.insert(Categories, {
 table.insert(Categories, {
     key = "shared", name = "Émotes à deux", desc = "Avec le joueur le plus proche (3m)",
     data = EmotesData.shared,
-    onSelect    = function(item) requestSharedEmote(item) end,
+    onSelect    = function(item) RequestSharedEmote(item) end,
     isActive    = function(item) return Shared.active == item.id end,
-    onReset     = cancelSharedByUser,
+    onReset     = CancelSharedByUser,
     resetLabel  = "Annuler l'émote partagée",
     resetActive = function() return Shared.active ~= nil end,
 })
@@ -592,13 +592,13 @@ FavoritesCategory = {
     isActive = function(wrapper) return wrapper.__cat.isActive(wrapper.__item) end,
 }
 table.insert(Categories, 1, FavoritesCategory)
-rebuildFavoritesData()
+RebuildFavoritesData()
 
 -- Création des sous-menus et tri des données une seule fois au chargement
 for _, category in ipairs(Categories) do
     category.catMenu    = RageUI.CreateSubMenu(EmotesMenu.mainMenu, category.name, category.desc)
     category.catMenu:AcceptFilter(true)
-    category.sortedData = sortedData(category.data)
+    category.sortedData = SortedData(category.data)
 end
 
 EmotesMenu.mainMenu.Closed = function()
@@ -634,7 +634,7 @@ function EmotesMenu:Toggle()
                     RageUI.Button("Arrêter l'animation", nil, {
                         RightLabel = item and item.label or "En cours",
                     }, true, {
-                        onSelected = function() stopEmote() end,
+                        onSelected = function() StopEmote() end,
                     })
                     RageUI.Line()
                 end
@@ -668,7 +668,7 @@ function EmotesMenu:Toggle()
                         if category.key == "favorites" then
                             realCat, realItem = item.__cat, item.__item
                         end
-                        local star = isFavorite(realCat, realItem) and "* " or ""
+                        local star = IsFavorite(realCat, realItem) and "* " or ""
                         if isAcceptByFiltre(star .. item.label) then
                             table.insert(visible, item)
                         end
@@ -708,9 +708,9 @@ RegisterCommand('lslegacy_emotes_favorite', function()
     if entry == nil or entry == "__RESET__" or entry == "__LINE__" then return end
 
     if category.key == "favorites" then
-        toggleFavorite(entry.__cat, entry.__item)
+        ToggleFavorite(entry.__cat, entry.__item)
     else
-        toggleFavorite(category, entry)
+        ToggleFavorite(category, entry)
     end
 end, false)
 
