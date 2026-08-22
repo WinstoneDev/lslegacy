@@ -18,7 +18,7 @@ LSLegacy.PedsZones = {}
 LSLegacy.ActiveZones = {}
 LSLegacy.ZoneDynamicState = LSLegacy.ZoneDynamicState or {}
 
-LSLegacy.Events.Register('SpawnPedZone', function(hash, coords, zone)
+LSLegacy.Events.Register('lslegacy:spawnPedZone', function(hash, coords, zone)
     if not hash or not coords or not zone then return end
 
     if not LSLegacy.PedsZones[zone] then

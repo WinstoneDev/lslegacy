@@ -30,7 +30,7 @@ LSLegacy.DataStoreGuard = function(src, name, action, item)
     return true
 end
 
-LSLegacy.Events.Register('PutIntoTrunk', function(data, name)
+LSLegacy.Events.Register('lslegacy:putIntoTrunk', function(data, name)
     if not data or not name then return end
     local source = source
     local datastore = LSLegacy.DataStore.GetDataStore(name)
@@ -81,7 +81,7 @@ LSLegacy.Events.Register('PutIntoTrunk', function(data, name)
     end
 end)
 
-LSLegacy.Events.Register('TakeFromTrunk', function(data, name)
+LSLegacy.Events.Register('lslegacy:takeFromTrunk', function(data, name)
     if not data or not name then return end
     local source = source
     local datastore = LSLegacy.DataStore.GetDataStore(name)
@@ -159,7 +159,7 @@ LSLegacy.Events.Register('updateWeaponAmmo', function(weaponName, ammoCount)
             v.data.ammo = tonumber(ammoCount) or 0
             local weight = LSLegacy.Inventory.GetInventoryWeight(player.inventory)
             player.weight = weight
-            LSLegacy.Events.SendToClient('UpdatePlayer', player.source, player)
+            LSLegacy.Events.SendToClient('lslegacy:updatePlayer', player.source, player)
             break
         end
     end

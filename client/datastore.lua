@@ -1,14 +1,14 @@
 LSLegacy.DataStore = {}
 LSLegacy.DataStores= {}
 
-LSLegacy.Events.Register('UpdateDatastore', function(data)
+LSLegacy.Events.Register('lslegacy:updateDatastore', function(data)
     if not data then return end
     LSLegacy.DataStores = data
 end)
 
 LSLegacy.DataStore.RegisterDataStore = function(name, data)
     if not name or not data then return end
-    LSLegacy.Events.SendToServer('RegisterDataStore', name, data)
+    LSLegacy.Events.SendToServer('lslegacy:registerDataStore', name, data)
 end
 
 LSLegacy.DataStore.RegisterTrunk = function(vehicle)
@@ -22,7 +22,7 @@ LSLegacy.DataStore.RegisterTrunk = function(vehicle)
         dirty = 0,
         maxWeight = Config.VehicleTrunks[GetVehicleClass(vehicle)]
     }
-    LSLegacy.Events.SendToServer('RegisterDataStore', data.name, data)
+    LSLegacy.Events.SendToServer('lslegacy:registerDataStore', data.name, data)
 end
 
 LSLegacy.DataStore.RegisterBAG = function(vehicle)
@@ -36,7 +36,7 @@ LSLegacy.DataStore.RegisterBAG = function(vehicle)
         dirty = 0,
         maxWeight = Config.VehicleGloveboxes[GetVehicleClass(vehicle)]
     }
-    LSLegacy.Events.SendToServer('RegisterDataStore', data.name, data)
+    LSLegacy.Events.SendToServer('lslegacy:registerDataStore', data.name, data)
 end
 
 LSLegacy.DataStore.GetInventoryWeight = function(inventory)

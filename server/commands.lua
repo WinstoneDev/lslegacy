@@ -175,10 +175,10 @@ LSLegacy.RegisterCommand('sync', 0, function(player, args, showError, rawCommand
 		['@faction'] = LSLegacy.ServerPlayers[source].faction,
 		['@faction_grade'] = LSLegacy.ServerPlayers[source].faction_grade
     })
-	LSLegacy.Events.SendToClient('UpdateServerPlayer', source)
-	LSLegacy.Events.SendToClient('UpdateDatastore', source, LSLegacy.DataStore)
+	LSLegacy.Events.SendToClient('lslegacy:updateServerPlayer', source)
+	LSLegacy.Events.SendToClient('lslegacy:updateDatastore', source, LSLegacy.DataStore)
 	Wait(500)
-	LSLegacy.Events.SendToClient('UpdatePlayer', source, LSLegacy.ServerPlayers[source])
+	LSLegacy.Events.SendToClient('lslegacy:updatePlayer', source, LSLegacy.ServerPlayers[source])
 	LSLegacy.Events.SendToClient('notify', source, 'Sync', 'Vous avez bien synchronisé votre personnage.', 'success')
 end, {help = "Permet de synchroniser son joueur"}, false)
 

@@ -35,7 +35,7 @@ LSLegacy.Money.SetPlayerMoney = function(player, amount)
     if not amount then return false end
     player.cash = amount
     player:MarkDirty('money')
-    LSLegacy.Events.SendToClient('UpdatePlayer', player.source, player)
+    LSLegacy.Events.SendToClient('lslegacy:updatePlayer', player.source, player)
     return true
 end
 
@@ -51,7 +51,7 @@ LSLegacy.Money.AddPlayerMoney = function(player, amount)
     if not amount then return false end
     player.cash = player.cash + amount
     player:MarkDirty('money')
-    LSLegacy.Events.SendToClient('UpdatePlayer', player.source, player)
+    LSLegacy.Events.SendToClient('lslegacy:updatePlayer', player.source, player)
     return true
 end
 
@@ -68,7 +68,7 @@ LSLegacy.Money.RemovePlayerMoney = function(player, amount)
     if player.cash < amount then return false end
     player.cash = player.cash - amount
     player:MarkDirty('money')
-    LSLegacy.Events.SendToClient('UpdatePlayer', player.source, player)
+    LSLegacy.Events.SendToClient('lslegacy:updatePlayer', player.source, player)
     return true
 end
 
@@ -84,7 +84,7 @@ LSLegacy.Money.SetPlayerDirtyMoney = function(player, amount)
     if not amount then return false end
     player.dirty = amount
     player:MarkDirty('money')
-    LSLegacy.Events.SendToClient('UpdatePlayer', player.source, player)
+    LSLegacy.Events.SendToClient('lslegacy:updatePlayer', player.source, player)
     return true
 end
 
@@ -100,7 +100,7 @@ LSLegacy.Money.AddPlayerDirtyMoney = function(player, amount)
     if not amount then return false end
     player.dirty = player.dirty + amount
     player:MarkDirty('money')
-    LSLegacy.Events.SendToClient('UpdatePlayer', player.source, player)
+    LSLegacy.Events.SendToClient('lslegacy:updatePlayer', player.source, player)
     return true
 end
 
@@ -117,7 +117,7 @@ LSLegacy.Money.RemovePlayerDirtyMoney = function(player, amount)
     if player.dirty < amount then return false end
     player.dirty = player.dirty - amount
     player:MarkDirty('money')
-    LSLegacy.Events.SendToClient('UpdatePlayer', player.source, player)
+    LSLegacy.Events.SendToClient('lslegacy:updatePlayer', player.source, player)
     return true
 end
 

@@ -21,7 +21,7 @@ local function RemoveItemByUniqueId(player, uniqueId)
     player.inventory = inventory
     player:MarkDirty('inventory')
     player.weight    = LSLegacy.Inventory.GetInventoryWeight(player.inventory)
-    LSLegacy.Events.SendToClient('UpdatePlayer', player.source, player)
+    LSLegacy.Events.SendToClient('lslegacy:updatePlayer', player.source, player)
 end
 
 -- ── Add single clothing item after purchase ───────
@@ -163,7 +163,7 @@ LSLegacy.Events.Register('inventory:updateOutfitFromInventory', function(updateD
     if (not updateData.consumedItems or #updateData.consumedItems == 0) and
        (not updateData.removedSlots  or not next(updateData.removedSlots)) then
         player.weight = LSLegacy.Inventory.GetInventoryWeight(player.inventory)
-        LSLegacy.Events.SendToClient('UpdatePlayer', player.source, player)
+        LSLegacy.Events.SendToClient('lslegacy:updatePlayer', player.source, player)
     end
 end)
 

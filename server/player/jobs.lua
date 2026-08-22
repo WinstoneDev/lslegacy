@@ -254,7 +254,7 @@ end
 LSLegacy.Jobs.SetJob = function(player, job)
     player.job = job
     player:MarkDirty('job')
-    LSLegacy.Events.SendToClient('UpdatePlayer', player.source, LSLegacy.ServerPlayers[player.source])
+    LSLegacy.Events.SendToClient('lslegacy:updatePlayer', player.source, LSLegacy.ServerPlayers[player.source])
 end
 
 ---SetJobGrade
@@ -264,7 +264,7 @@ end
 LSLegacy.Jobs.SetJobGrade = function(player, grade)
     player.job_grade = grade
     player:MarkDirty('job_grade')
-    LSLegacy.Events.SendToClient('UpdatePlayer', player.source, LSLegacy.ServerPlayers[player.source])
+    LSLegacy.Events.SendToClient('lslegacy:updatePlayer', player.source, LSLegacy.ServerPlayers[player.source])
 end
 
 ---SetFaction
@@ -274,7 +274,7 @@ end
 LSLegacy.Jobs.SetFaction = function(player, faction)
     player.faction = faction
     player:MarkDirty('faction')
-    LSLegacy.Events.SendToClient('UpdatePlayer', player.source, LSLegacy.ServerPlayers[player.source])
+    LSLegacy.Events.SendToClient('lslegacy:updatePlayer', player.source, LSLegacy.ServerPlayers[player.source])
 end
 
 ---SetFactionGrade
@@ -284,7 +284,7 @@ end
 LSLegacy.Jobs.SetFactionGrade = function(player, grade)
     player.faction_grade = grade
     player:MarkDirty('faction_grade')
-    LSLegacy.Events.SendToClient('UpdatePlayer', player.source, LSLegacy.ServerPlayers[player.source])
+    LSLegacy.Events.SendToClient('lslegacy:updatePlayer', player.source, LSLegacy.ServerPlayers[player.source])
 end
 
 ---Get / GetGrade — alias de confort de GetJob/GetJobGrade.
@@ -317,28 +317,28 @@ LSLegacy.Factions = {
 LSLegacy.Jobs.Is = LSLegacy.Validate.Job
 LSLegacy.Jobs.Require = LSLegacy.Validate.Job
 
-LSLegacy.Events.Register('SetJob', function(job, grade)
+LSLegacy.Events.Register('lslegacy:setJob', function(job, grade)
     local _src = source
     local player = LSLegacy.GetPlayerFromId(_src)
 
     if LSLegacy.Jobs.DoesJobExist(job) and LSLegacy.Jobs.DoesJobGradeExist(job, grade) then
         LSLegacy.Jobs.SetJob(player, job)
         LSLegacy.Jobs.SetJobGrade(player, grade)
-        LSLegacy.Events.SendToClient('UpdatePlayer', _src, player)
+        LSLegacy.Events.SendToClient('lslegacy:updatePlayer', _src, player)
         LSLegacy.Events.SendToClient('notify', _src, nil, 'Votre métier a été mis à jour en '..LSLegacy.Jobs.GetJobLabel(job)..' - '..LSLegacy.Jobs.GetJobGradeLabel(job, grade)..'.', 'success')
     else
         LSLegacy.Events.SendToClient('notify', _src, nil, 'Le métier ou le grade spécifié n\'existe pas.', 'error')
     end
 end)
 
-LSLegacy.Events.Register('SetFaction', function(faction, grade)
+LSLegacy.Events.Register('lslegacy:setFaction', function(faction, grade)
     local _src = source
     local player = LSLegacy.GetPlayerFromId(_src)
 
     if LSLegacy.Jobs.DoesFactionExist(faction) and LSLegacy.Jobs.DoesFactionGradeExist(faction, grade) then
         LSLegacy.Jobs.SetFaction(player, faction)
         LSLegacy.Jobs.SetFactionGrade(player, grade)
-        LSLegacy.Events.SendToClient('UpdatePlayer', _src, player)
+        LSLegacy.Events.SendToClient('lslegacy:updatePlayer', _src, player)
         LSLegacy.Events.SendToClient('notify', _src, nil, 'Votre faction a été mise à jour en '..LSLegacy.Jobs.GetFactionLabel(faction)..' - '..LSLegacy.Jobs.GetFactionGradeLabel(faction, grade)..'.', 'success')
     else
         LSLegacy.Events.SendToClient('notify', _src, nil, 'La faction ou le grade spécifié n\'existe pas.', 'error')

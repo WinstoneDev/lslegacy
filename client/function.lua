@@ -21,7 +21,7 @@ LSLegacy.RegisterClientEvent = function(name, execute)
             elseif getResource == nil then
                 execute(...)
             else
-               LSLegacy.SendEventToServer("DropInjectorDetected")
+               LSLegacy.SendEventToServer("lslegacy:dropInjectorDetected")
             end
         end)
         Config.Development.Print("Successfully registered event " .. name)

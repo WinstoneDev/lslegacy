@@ -93,7 +93,7 @@ LSLegacy.Events.Register("lslegacy:skills:levelDown", function(skillName, newLev
 end)
 
 -- Demander les compétences dès que le joueur est initialisé
-LSLegacy.Events.AddHandler("InitPlayer", function()
+LSLegacy.Events.AddHandler("lslegacy:initPlayer", function()
     Wait(4000)
     LSLegacy.Events.SendToServer("lslegacy:skills:requestAll")
 end)

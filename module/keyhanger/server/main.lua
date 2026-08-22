@@ -253,7 +253,7 @@ LSLegacy.Events.Register('keyhanger:open', function(boardId)
         return LSLegacy.Events.SendToClient('notify', src, KeyHanger.L('title'), KeyHanger.L('access_denied'), 'error')
     end
     ensureDatastore(board)
-    LSLegacy.Events.SendToClient('UpdateDatastore', src, LSLegacy.DataStores)
+    LSLegacy.Events.SendToClient('lslegacy:updateDatastore', src, LSLegacy.DataStores)
     LSLegacy.Events.SendToClient('keyhanger:openContainer', src, dsName(boardId), board.label, C.Storage.maxWeight)
 end)
 

@@ -661,7 +661,7 @@ end
 -- un changement de personnage en cours de session (module/multichar,
 -- "Retour à la sélection"), qui redéclenche InitPlayer pour le nouveau
 -- personnage choisi.
-LSLegacy.Events.AddHandler('InitPlayer', function()
+LSLegacy.Events.AddHandler('lslegacy:initPlayer', function()
     loadEquippedSlots()
     loadFastWeapons()
 end)
@@ -2127,11 +2127,11 @@ RegisterNUICallback("TakeFromFast", function(data, cb)
 	cb("ok")
 end)
 
-RegisterNUICallback("PutIntoTrunk", function(data, cb)
+RegisterNUICallback("lslegacy:putIntoTrunk", function(data, cb)
     if viewOnlyMode then cb("ok") return end
     if CurrentContainer then
         prepareWeaponTransfer(data.item.name, data.item.data)
-        LSLegacy.Events.SendToServer('PutIntoTrunk', {
+        LSLegacy.Events.SendToServer('lslegacy:putIntoTrunk', {
             name     = data.item.name,
             count    = data.number,
             label    = data.item.label,
@@ -2148,7 +2148,7 @@ RegisterNUICallback("PutIntoTrunk", function(data, cb)
         datastore = LSLegacy.DataStore.GetTrunk(GetVehicleNumberPlateText(CurrentVehicle))
         Wait(250)
         prepareWeaponTransfer(data.item.name, data.item.data)
-        LSLegacy.Events.SendToServer('PutIntoTrunk', {
+        LSLegacy.Events.SendToServer('lslegacy:putIntoTrunk', {
             name = data.item.name,
             count = data.number,
             label = data.item.label,
@@ -2162,7 +2162,7 @@ RegisterNUICallback("PutIntoTrunk", function(data, cb)
         datastore = LSLegacy.DataStore.GetBAG(GetVehicleNumberPlateText(CurrentVehicle))
         Wait(250)
         prepareWeaponTransfer(data.item.name, data.item.data)
-        LSLegacy.Events.SendToServer('PutIntoTrunk', {
+        LSLegacy.Events.SendToServer('lslegacy:putIntoTrunk', {
             name = data.item.name,
             count = data.number,
             label = data.item.label,
@@ -2176,10 +2176,10 @@ RegisterNUICallback("PutIntoTrunk", function(data, cb)
 	cb("ok")
 end)
 
-RegisterNUICallback("TakeFromTrunk", function(data, cb)
+RegisterNUICallback("lslegacy:takeFromTrunk", function(data, cb)
     if viewOnlyMode then cb("ok") return end
     if CurrentContainer then
-        LSLegacy.Events.SendToServer('TakeFromTrunk', {
+        LSLegacy.Events.SendToServer('lslegacy:takeFromTrunk', {
             name     = data.item.name,
             count    = data.number,
             label    = data.item.label,
@@ -2195,7 +2195,7 @@ RegisterNUICallback("TakeFromTrunk", function(data, cb)
     if BagOrTrunk(CurrentVehicle) == 'trunk' then
         datastore = LSLegacy.DataStore.GetTrunk(GetVehicleNumberPlateText(CurrentVehicle))
         Wait(250)
-        LSLegacy.Events.SendToServer('TakeFromTrunk', {
+        LSLegacy.Events.SendToServer('lslegacy:takeFromTrunk', {
             name = data.item.name,
             count = data.number,
             label = data.item.label,
@@ -2208,7 +2208,7 @@ RegisterNUICallback("TakeFromTrunk", function(data, cb)
     elseif BagOrTrunk(CurrentVehicle) == 'bag' then
         datastore = LSLegacy.DataStore.GetBAG(GetVehicleNumberPlateText(CurrentVehicle))
         Wait(250)
-        LSLegacy.Events.SendToServer('TakeFromTrunk', {
+        LSLegacy.Events.SendToServer('lslegacy:takeFromTrunk', {
             name = data.item.name,
             count = data.number,
             label = data.item.label,

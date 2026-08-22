@@ -12,7 +12,7 @@ function UpdateInventoryItem(player, name, uniqueId, durability)
     for i, item in pairs(inventory) do
         if item.name == name and item.uniqueId == uniqueId then
             item.data.durability = durability
-            LSLegacy.Events.SendToClient("UpdatePlayer", player.source, LSLegacy.Players.Get(player.source))
+            LSLegacy.Events.SendToClient("lslegacy:updatePlayer", player.source, LSLegacy.Players.Get(player.source))
             break
         end
     end

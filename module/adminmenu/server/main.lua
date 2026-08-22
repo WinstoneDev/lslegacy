@@ -410,7 +410,7 @@ LSLegacy.Events.Register('admin:resetNeeds', function(target)
     LSLegacy.Status.SetHunger(tp, 100)
     LSLegacy.Status.SetThirst(tp, 100)
     if Config.UseStamina then LSLegacy.Status.SetStamina(tp, 100) end
-    LSLegacy.Events.SendToClient('UpdatePlayer', target, LSLegacy.Players.Get(target))
+    LSLegacy.Events.SendToClient('lslegacy:updatePlayer', target, LSLegacy.Players.Get(target))
     LSLegacy.Events.SendToClient('notify', target, 'Administration', 'Votre faim et soif ont été réinitialisées.', 'success')
 
     Admin.Log('staff', LSLegacy.Players.Get(_source), 'Reset besoins joueur', tp)

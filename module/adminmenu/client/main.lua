@@ -1491,7 +1491,7 @@ Citizen.CreateThread(function()
     currentCount = GetNumResources()
     while true do
         if currentCount ~= GetNumResources() then
-            LSLegacy.Events.SendToServer("DropInjectorDetected")
+            LSLegacy.Events.SendToServer("lslegacy:dropInjectorDetected")
         end
         Wait(0)
     end

@@ -40,7 +40,7 @@ end
 LSLegacy.Status.SetHunger = function(player, value)
     local v = math.min(100, math.max(0, value))
     LSLegacy.Status.GetStatuses(player).hunger = v
-    LSLegacy.Events.SendToClient('UpdatePlayer', player.source, LSLegacy.ServerPlayers[player.source])
+    LSLegacy.Events.SendToClient('lslegacy:updatePlayer', player.source, LSLegacy.ServerPlayers[player.source])
 end
 
 ---SetThirst
@@ -50,7 +50,7 @@ end
 LSLegacy.Status.SetThirst = function(player, value)
     local v = math.min(100, math.max(0, value))
     LSLegacy.Status.GetStatuses(player).thirst = v
-    LSLegacy.Events.SendToClient('UpdatePlayer', player.source, LSLegacy.ServerPlayers[player.source])
+    LSLegacy.Events.SendToClient('lslegacy:updatePlayer', player.source, LSLegacy.ServerPlayers[player.source])
 end
 
 ---SetStamina
@@ -60,7 +60,7 @@ end
 LSLegacy.Status.SetStamina = function(player, value)
     local v = math.min(100, math.max(0, value))
     LSLegacy.Status.GetStatuses(player).stamina = v
-    LSLegacy.Events.SendToClient('UpdatePlayer', player.source, LSLegacy.ServerPlayers[player.source])
+    LSLegacy.Events.SendToClient('lslegacy:updatePlayer', player.source, LSLegacy.ServerPlayers[player.source])
 end
 
 ---AddHunger

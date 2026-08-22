@@ -14,7 +14,7 @@ local ClientWritableFields = {
     'skin',
 }
 
-LSLegacy.Events.Register('ReceiveUpdateServerPlayer', function(data)
+LSLegacy.Events.Register('lslegacy:receiveUpdateServerPlayer', function(data)
     local source = source
     if not LSLegacy.ServerPlayers[source] then return end
     for _, field in ipairs(ClientWritableFields) do
@@ -178,7 +178,7 @@ AddEventHandler("registerPlayer", function(characterId)
         LSLegacy.Injury.InitWounds(source)
         Wait(250)
         Config.Development.Print("[registerPlayer] " .. source .. ": envoi InitPlayer (LoadCharacter)")
-        LSLegacy.Events.SendToClient('InitPlayer', source, LSLegacy.ServerPlayers[source])
+        LSLegacy.Events.SendToClient('lslegacy:initPlayer', source, LSLegacy.ServerPlayers[source])
         TriggerClientEvent('lslegacy:phone:playerReady', source)
         LSLegacy.RegisterPeds(LSLegacy.RegisteredZones, source)
         for k, v in pairs(LSLegacy.Commands) do
@@ -191,7 +191,7 @@ AddEventHandler("registerPlayer", function(characterId)
         end
         Config.Development.Print("Successfully registered player " .. GetPlayerName(source))
         LSLegacy.Events.SendToClient('zones:registerBlips', source, LSLegacy.RegisteredZones)
-        LSLegacy.Events.SendToClient('UpdateDatastore', source, LSLegacy.DataStores)
+        LSLegacy.Events.SendToClient('lslegacy:updateDatastore', source, LSLegacy.DataStores)
         LSLegacy.Events.TriggerLocal('ap:clientsetonSpawn', source)
 
         -- Vérification coma persistant après reconnexion
@@ -271,7 +271,7 @@ AddEventHandler("registerPlayer", function(characterId)
         LSLegacy.ServerPlayers[source]["boutique-id"] = insertId
         LSLegacy.Injury.InitWounds(source)
         Config.Development.Print("[registerPlayer] " .. source .. ": envoi InitPlayer (CreateCharacter), id=" .. tostring(LSLegacy.ServerPlayers[source]["boutique-id"]))
-        LSLegacy.Events.SendToClient('InitPlayer', source, LSLegacy.ServerPlayers[source])
+        LSLegacy.Events.SendToClient('lslegacy:initPlayer', source, LSLegacy.ServerPlayers[source])
         TriggerClientEvent('lslegacy:phone:playerReady', source)
         LSLegacy.RegisterPeds(LSLegacy.RegisteredZones, source)
         for k, v in pairs(LSLegacy.Commands) do
@@ -283,7 +283,7 @@ AddEventHandler("registerPlayer", function(characterId)
         end
         Config.Development.Print("Successfully registered player " .. GetPlayerName(source))
         LSLegacy.Events.SendToClient('zones:registerBlips', source, LSLegacy.RegisteredZones)
-        LSLegacy.Events.SendToClient('UpdateDatastore', source, LSLegacy.DataStores)
+        LSLegacy.Events.SendToClient('lslegacy:updateDatastore', source, LSLegacy.DataStores)
         LSLegacy.Events.TriggerLocal('ap:clientsetonSpawn', source)
     end
 
@@ -356,11 +356,11 @@ Citizen.CreateThread(function()
             LSLegacy.ServerPlayers[_source]:MarkDirty('status')
             LSLegacy.ServerPlayers[_source]:MarkDirty('skills')
             LSLegacy.ServerPlayers[_source]:SaveDirty()
-            LSLegacy.Events.SendToClient('UpdateServerPlayer', _source)
-            LSLegacy.Events.SendToClient('UpdateDatastore', _source, LSLegacy.DataStores)
+            LSLegacy.Events.SendToClient('lslegacy:updateServerPlayer', _source)
+            LSLegacy.Events.SendToClient('lslegacy:updateDatastore', _source, LSLegacy.DataStores)
             Wait(500)
             if LSLegacy.ServerPlayers[_source] then
-                LSLegacy.Events.SendToClient('UpdatePlayer', _source, LSLegacy.ServerPlayers[_source])
+                LSLegacy.Events.SendToClient('lslegacy:updatePlayer', _source, LSLegacy.ServerPlayers[_source])
             end
             ::continue::
         end

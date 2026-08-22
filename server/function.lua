@@ -13,10 +13,10 @@ LSLegacy.RateLimit = {
     ['addItemPickup'] = 20,
     ['removeItemPickup'] = 30,
     ['haveExitedZone'] = 30,
-    ['ReceiveUpdateServerPlayer'] = 20,
-    ['RegisterDataStore'] = 20,
-    ['PutIntoTrunk'] = 20,
-    ['TakeFromTrunk'] = 20,
+    ['lslegacy:receiveUpdateServerPlayer'] = 20,
+    ['lslegacy:registerDataStore'] = 20,
+    ['lslegacy:putIntoTrunk'] = 20,
+    ['lslegacy:takeFromTrunk'] = 20,
     ['giveItem'] = 20,
     ['removeItem'] = 20,
     ['removeAmmo'] = 20,
@@ -35,8 +35,8 @@ LSLegacy.RateLimit = {
     ['lslegacy:injury:exitKO']     = 5,
     ['lslegacy:injury:syncWound']  = 10,
     -- Jobs / Factions
-    ['SetJob']                     = 10,
-    ['SetFaction']                 = 10,
+    ['lslegacy:setJob']                     = 10,
+    ['lslegacy:setFaction']                 = 10,
     -- Inventaire (complement)
     ['updateWeaponAmmo']           = 25,
 }
@@ -219,7 +219,7 @@ end
 ---@public
 LSLegacy.UseServerEvent = function(eventName, src, ...)
     if LSLegacy.Event[eventName] then
-        if eventName ~= "DropInjectorDetected" then
+        if eventName ~= "lslegacy:dropInjectorDetected" then
             if not LSLegacy.PlayersLimit[eventName] then
                 LSLegacy.PlayersLimit[eventName] = {}
             end
@@ -380,7 +380,7 @@ LSLegacy.RegisterServerEvent('updateNumberPlayer', function()
     LSLegacy.SendEventToClient('receiveNumberPlayers', _source, number)
 end)
 
-LSLegacy.RegisterServerEvent('DropInjectorDetected', function()
+LSLegacy.RegisterServerEvent('lslegacy:dropInjectorDetected', function()
     local _src = source
     DropPlayer(_src, 'Injector detected ╭∩╮（︶_︶）╭∩╮')
 end)
@@ -435,7 +435,7 @@ end
 ---@return any
 ---@public
 LSLegacy.SpawnPedZone = function(hash, coords, zone, source)
-    LSLegacy.SendEventToClient("SpawnPedZone", source, hash, coords, zone)
+    LSLegacy.SendEventToClient("lslegacy:spawnPedZone", source, hash, coords, zone)
 end
 
 ---StringSplit

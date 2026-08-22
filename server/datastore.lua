@@ -148,7 +148,7 @@ LSLegacy.DataStore.AddMoney = function(datastore, amount)
     if not datastore.money then datastore.money = 0 end
     datastore.money = datastore.money + amount
     datastore:MarkDirty()
-    LSLegacy.Events.SendToClient('UpdateDatastore', source, LSLegacy.DataStores)
+    LSLegacy.Events.SendToClient('lslegacy:updateDatastore', source, LSLegacy.DataStores)
     return true
 end
 
@@ -165,7 +165,7 @@ LSLegacy.DataStore.AddDirtyMoney = function(datastore, amount)
     if not datastore.dirty then datastore.dirty = 0 end
     datastore.dirty = datastore.dirty + amount
     datastore:MarkDirty()
-    LSLegacy.Events.SendToClient('UpdateDatastore', source, LSLegacy.DataStores)
+    LSLegacy.Events.SendToClient('lslegacy:updateDatastore', source, LSLegacy.DataStores)
     return true
 end
 
@@ -183,7 +183,7 @@ LSLegacy.DataStore.RemoveMoney = function(datastore, amount)
     if datastore.money >= amount then
         datastore.money = datastore.money - amount
         datastore:MarkDirty()
-        LSLegacy.Events.SendToClient('UpdateDatastore', source, LSLegacy.DataStores)
+        LSLegacy.Events.SendToClient('lslegacy:updateDatastore', source, LSLegacy.DataStores)
         return true
     end
     return false
@@ -203,7 +203,7 @@ LSLegacy.DataStore.RemoveDirtyMoney = function(datastore, amount)
     if datastore.dirty >= amount then
         datastore.dirty = datastore.dirty - amount
         datastore:MarkDirty()
-        LSLegacy.Events.SendToClient('UpdateDatastore', source, LSLegacy.DataStores)
+        LSLegacy.Events.SendToClient('lslegacy:updateDatastore', source, LSLegacy.DataStores)
         return true
     end
     return false
@@ -301,7 +301,7 @@ LSLegacy.DataStore.AddItemInInventory = function(datastore, item, quantity, newL
             end
             datastore.inventory = inventory
             datastore:MarkDirty()
-            LSLegacy.Events.SendToClient('UpdateDatastore', source, LSLegacy.DataStores)
+            LSLegacy.Events.SendToClient('lslegacy:updateDatastore', source, LSLegacy.DataStores)
         end
     end
 end
@@ -356,7 +356,7 @@ LSLegacy.DataStore.RemoveItemInInventory = function(datastore, item, quantity, i
     end
     datastore.inventory = inventory
     datastore:MarkDirty()
-    LSLegacy.Events.SendToClient('UpdateDatastore', source, LSLegacy.DataStores)
+    LSLegacy.Events.SendToClient('lslegacy:updateDatastore', source, LSLegacy.DataStores)
 end
 
 ---RegisterDataStore
@@ -373,11 +373,11 @@ LSLegacy.DataStore.RegisterDataStore = function(name, data)
     end
     setmetatable(data, LSLegacy.DataStoreMeta)
     LSLegacy.DataStores[name] = data
-    LSLegacy.Events.SendToClient('UpdateDatastore', source, LSLegacy.DataStores)
+    LSLegacy.Events.SendToClient('lslegacy:updateDatastore', source, LSLegacy.DataStores)
 end
 
 -- Event réseau : contenu toujours forcé vide côté serveur, jamais celui du client.
-LSLegacy.Events.Register('RegisterDataStore', function(name, data)
+LSLegacy.Events.Register('lslegacy:registerDataStore', function(name, data)
     local player = LSLegacy.Validate.Player(source)
     if not player then return end
     if type(name) ~= "string" or type(data) ~= "table" then return end

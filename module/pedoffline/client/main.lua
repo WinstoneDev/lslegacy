@@ -47,7 +47,7 @@ local function pedOfflineLoadSleepingList()
 end
 
 -- InitPlayer est deja enregistre dans player.lua -> LSLegacy.Events.AddHandler pour un 2e handler
-LSLegacy.Events.AddHandler('InitPlayer', pedOfflineLoadSleepingList)
+LSLegacy.Events.AddHandler('lslegacy:initPlayer', pedOfflineLoadSleepingList)
 
 -- Couvre le cas d'un (re)demarrage de la resource alors que le joueur est deja connecte
 -- (InitPlayer ne se redeclenche pas dans ce cas)

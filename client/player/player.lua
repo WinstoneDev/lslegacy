@@ -1,7 +1,7 @@
 local playerLoaded = false
 LSLegacy.PlayerData = {}
 
-LSLegacy.Events.Register('InitPlayer', function(data)
+LSLegacy.Events.Register('lslegacy:initPlayer', function(data)
     Config.Development.Print("[client] InitPlayer reçu, id=" .. tostring(data and data.id) .. " slot=" .. tostring(data and data.slot))
     LSLegacy.PlayerData = data
     playerLoaded = true
@@ -17,13 +17,13 @@ LSLegacy.Events.Register('InitPlayer', function(data)
     end
 end)
 
-LSLegacy.Events.Register('UpdatePlayer', function(data)
+LSLegacy.Events.Register('lslegacy:updatePlayer', function(data)
     LSLegacy.PlayerData = data
 end)
 
-LSLegacy.Events.Register('UpdateServerPlayer', function()
+LSLegacy.Events.Register('lslegacy:updateServerPlayer', function()
     local data = LSLegacy.PlayerData
-    LSLegacy.Events.SendToServer('ReceiveUpdateServerPlayer', data)
+    LSLegacy.Events.SendToServer('lslegacy:receiveUpdateServerPlayer', data)
 end)
 
 function GetPlayerInventoryItems()
