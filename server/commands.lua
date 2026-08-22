@@ -221,16 +221,6 @@ LSLegacy.RegisterCommand('giveitem', 3, function(player, args, showError, rawCom
 	local targetPlayer = args.playerId
 
 	if item and targetPlayer then
-		if item == 'money' or item == 'dirty' then
-			if item == 'money' then
-				LSLegacy.Money.AddPlayerMoney(targetPlayer, quantity)
-				LSLegacy.SendEventToClient('notify', targetPlayer.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. '$', 'success')
-			elseif item == 'dirty' then
-				LSLegacy.Money.AddPlayerDirtyMoney(targetPlayer, quantity)
-				LSLegacy.SendEventToClient('notify', targetPlayer.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. '$', 'success')
-			end
-			return
-		end
 
 		if string.match(item, 'food_') then
 			if LSLegacy.Inventory.CanCarryItem(targetPlayer, item, quantity) then
