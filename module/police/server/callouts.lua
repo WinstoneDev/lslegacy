@@ -1733,7 +1733,7 @@ local function PayRewards(co, success)
         a.reward = amount
 
         if amount > 0 then
-            local player = LSLegacy.GetPlayerFromId(src)
+            local player = LSLegacy.Players.Get(src)
             if player then
                 LSLegacy.Bank.PaySalary(player, amount, 'Prime d\'intervention')
                 Notify(src, 'Intervention terminée — prime de ' .. amount .. ' $.', 'success')

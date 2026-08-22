@@ -121,7 +121,7 @@ garagemenu.openMainMenu = function()
                         onSelected = function()
                             local closestPlayer = GetNearbyPlayer(3.0)
                             if closestPlayer then
-                                LSLegacy.TriggerServerCallback('garageCreator:getPlayerName', function(playerName)
+                                LSLegacy.Callbacks.TriggerServer('garageCreator:getPlayerName', function(playerName)
                                     if playerName then
                                         garagemenu.playerNameSelected = playerName
                                     else
@@ -130,7 +130,7 @@ garagemenu.openMainMenu = function()
                                 end, GetPlayerServerId(closestPlayer))  
                             else
                                 LSLegacy.ShowNotification('Garage Creator', 'Aucun joueur à proximité !', 'error')
-                                LSLegacy.TriggerServerCallback('garageCreator:getPlayerName', function(playerName)
+                                LSLegacy.Callbacks.TriggerServer('garageCreator:getPlayerName', function(playerName)
                                     if playerName then
                                         garagemenu.playerNameSelected = playerName
                                     else

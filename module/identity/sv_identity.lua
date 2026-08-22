@@ -1,5 +1,5 @@
 LSLegacy.RegisterZone('Pièce d\'identité', vector3(-1093.411, -809.2663, 19.2816), function(source)
-    local player = LSLegacy.GetPlayerFromId(source)
+    local player = LSLegacy.Players.Get(source)
     local identity = LSLegacy.Inventory.GetInventoryItem(player, 'idcard')
     if identity == nil then
         LSLegacy.Inventory.AddItemInInventory(player, 'idcard', 1, player.characterInfos.Prenom.." "..player.characterInfos.NDF, nil, player.characterInfos)

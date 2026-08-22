@@ -35,7 +35,7 @@ end
 -- Cache du skin (mis a jour a chaque spawn et periodiquement)
 
 LSLegacy.AddEventHandler('ap:clientsetonSpawn', function(src)
-    local player = LSLegacy.GetPlayerFromId(src)
+    local player = LSLegacy.Players.Get(src)
     if not player then return end
     local identifier = player.identifier
     if not identifier or not player.skin then return end
@@ -112,7 +112,7 @@ LSLegacy.RegisterServerEvent("pedOffline:request:sleepingList", function()
     local src = source
     Citizen.CreateThread(function()
         if not dataLoaded then while not dataLoaded do Wait(100) end end
-        local player = LSLegacy.GetPlayerFromId(src)
+        local player = LSLegacy.Players.Get(src)
         if player and player.identifier then
             local citizenId = buildCitizenId(player.identifier, player.slot or 1)
             local sp = Sleeping.get(citizenId)

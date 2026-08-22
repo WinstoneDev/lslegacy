@@ -7,7 +7,7 @@
 --  donc identique et sûr dans les deux contextes.
 --
 --  RÈGLE D'OR (sécurité) : côté serveur, toujours résoudre job/grade
---  depuis LSLegacy.GetPlayerFromId(src) — jamais depuis le client.
+--  depuis LSLegacy.Players.Get(src) — jamais depuis le client.
 
 LSLegacy = LSLegacy or {}
 LSLegacy.MDT = LSLegacy.MDT or {}

@@ -155,7 +155,7 @@ LSLegacy.DataStoreGuard = function(src, name, action, item)
     if name and name:sub(1, 10) == "keyhanger_" then
         local id = tonumber(name:sub(11))
         local board = KeyHanger.Boards[id]
-        local player = LSLegacy.GetPlayerFromId(src)
+        local player = LSLegacy.Players.Get(src)
         if not board or not player then return false end
         if not canAccess(player, board) then return false end
         if C.Storage.onlyKeys and item ~= C.Item then return false end
@@ -250,7 +250,7 @@ end)
 -- Ouverture du support comme un coffre (DataStore)
 LSLegacy.RegisterServerEvent('keyhanger:open', function(boardId)
     local src = source
-    local player = LSLegacy.GetPlayerFromId(src)
+    local player = LSLegacy.Players.Get(src)
     local board = KeyHanger.Boards[boardId]
     if not player or not board then return end
     if not canAccess(player, board) then
@@ -263,7 +263,7 @@ end)
 
 LSLegacy.RegisterServerEvent('keyhanger:create', function(data)
     local src = source
-    local player = LSLegacy.GetPlayerFromId(src)
+    local player = LSLegacy.Players.Get(src)
     if not player or not data then return end
     if not isStaff(player) then
         return LSLegacy.SendEventToClient('notify', src, KeyHanger.L('title'), KeyHanger.L('manage_no_perm'), 'error')
@@ -309,7 +309,7 @@ end)
 -- Retrait d'un support (le contenu/DataStore est supprimé aussi)
 LSLegacy.RegisterServerEvent('keyhanger:remove', function(boardId)
     local src = source
-    local player = LSLegacy.GetPlayerFromId(src)
+    local player = LSLegacy.Players.Get(src)
     local board = KeyHanger.Boards[boardId]
     if not player or not board then return end
     if not canManage(player, board) then
@@ -330,7 +330,7 @@ end)
 
 LSLegacy.RegisterServerEvent('keyhanger:rename', function(boardId, newLabel)
     local src = source
-    local player = LSLegacy.GetPlayerFromId(src)
+    local player = LSLegacy.Players.Get(src)
     local board = KeyHanger.Boards[boardId]
     if not player or not board or not newLabel then return end
     if not canManage(player, board) then
@@ -345,9 +345,9 @@ end)
 
 LSLegacy.RegisterServerEvent('keyhanger:share', function(boardId, targetSrc)
     local src = source
-    local player = LSLegacy.GetPlayerFromId(src)
+    local player = LSLegacy.Players.Get(src)
     local board = KeyHanger.Boards[boardId]
-    local target = LSLegacy.GetPlayerFromId(tonumber(targetSrc))
+    local target = LSLegacy.Players.Get(tonumber(targetSrc))
     if not player or not board then return end
     if not canManage(player, board) then
         return LSLegacy.SendEventToClient('notify', src, KeyHanger.L('title'), KeyHanger.L('manage_no_perm'), 'error')
@@ -377,7 +377,7 @@ end)
 
 LSLegacy.RegisterServerEvent('keyhanger:unshare', function(boardId, identifier)
     local src = source
-    local player = LSLegacy.GetPlayerFromId(src)
+    local player = LSLegacy.Players.Get(src)
     local board = KeyHanger.Boards[boardId]
     if not player or not board or not identifier then return end
     if not canManage(player, board) then
@@ -400,7 +400,7 @@ end)
 
 --- Donne une clé de véhicule à un joueur. Réutilisable (concession, garage...).
 local function giveVehicleKey(src, plate, vehModel, display, label)
-    local player = LSLegacy.GetPlayerFromId(src)
+    local player = LSLegacy.Players.Get(src)
     if not player or not plate then return false end
     plate = tostring(plate):gsub("%s+$", "")
     if not LSLegacy.Inventory.CanCarryItem(player, C.Item, 1) then

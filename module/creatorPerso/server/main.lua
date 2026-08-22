@@ -46,7 +46,7 @@ end
 
 LSLegacy.RegisterServerEvent('saveskin', function(skin)
     local _src = source
-    local player = LSLegacy.GetPlayerFromId(_src)
+    local player = LSLegacy.Players.Get(_src)
 
     if not player then
         Config.Development.Print("Joueur non trouvé: " .. _src)
@@ -107,7 +107,7 @@ end
 
 LSLegacy.RegisterServerEvent("SetIdentity", function(lastName, firstName, dateOfBirth, sex, height, birthPlace)
     local _src = source
-    local player = LSLegacy.GetPlayerFromId(_src)
+    local player = LSLegacy.Players.Get(_src)
 
     if not player then
         Config.Development.Print("Joueur non trouvé: " .. _src)

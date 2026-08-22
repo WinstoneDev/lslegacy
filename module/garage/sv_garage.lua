@@ -9,8 +9,8 @@ end, false, {
     },
 })
 
-LSLegacy.RegisterServerCallback('garageCreator:getPlayerName', function(source, cb, id)
-    local xPlayer = LSLegacy.GetPlayerFromId(id)
+LSLegacy.Callbacks.RegisterServer('garageCreator:getPlayerName', function(source, cb, id)
+    local xPlayer = LSLegacy.Players.Get(id)
     if xPlayer then
         cb(xPlayer.characterInfos.Prenom.." "..xPlayer.characterInfos.Nom)
     else

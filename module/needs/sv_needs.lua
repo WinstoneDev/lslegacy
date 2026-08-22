@@ -20,7 +20,7 @@ end
 
 LSLegacy.RegisterServerEvent('applyNeedEffect', function(name, data, uniqueId)
     local src = source
-    local xPlayer = LSLegacy.GetPlayerFromId(src)
+    local xPlayer = LSLegacy.Players.Get(src)
     local itemCfg = Config.NeedsItems[name]
     if not (xPlayer and itemCfg and data) then return end
 

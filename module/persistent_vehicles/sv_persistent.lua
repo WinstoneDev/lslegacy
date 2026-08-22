@@ -249,7 +249,7 @@ end
 
 LSLegacy.RegisterServerEvent("ap:requestVehicleDeletion", function(netId, plate)
     local source = source
-    local player = LSLegacy.GetPlayerFromId(source)
+    local player = LSLegacy.Players.Get(source)
     
     if not player then return end
 

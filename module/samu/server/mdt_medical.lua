@@ -6,7 +6,7 @@
 --  propres events d'écriture, sur le modèle du MDT police.
 --
 --  SÉCURITÉ — invariants respectés partout ci-dessous :
---    • job/grade TOUJOURS résolus via LSLegacy.GetPlayerFromId(src),
+--    • job/grade TOUJOURS résolus via LSLegacy.Players.Get(src),
 --      jamais depuis le client ;
 --    • seul le département `samu` peut appeler ces handlers ;
 --    • chaque lecture ET chaque écriture revérifie sa permission ;
@@ -155,7 +155,7 @@ end
 -- Contexte médical : (player, grade) si le joueur est bien du département
 -- SAMU, nil sinon. Un policier qui déclencherait ces events est rejeté ici.
 local function medCtx(src)
-    local player = LSLegacy.GetPlayerFromId(src)
+    local player = LSLegacy.Players.Get(src)
     if not player then return nil end
     local depName = LSLegacy.MDT.GetDepartmentForJob(player.job)
     if depName ~= DEPARTMENT then return nil end
@@ -353,7 +353,7 @@ readHandlers.getDashboard = function(player, grade, data, reply)
     if type(GetSamuAgents) == 'function' then
         for src, agent in pairs(GetSamuAgents() or {}) do
             if agent and agent.onDuty then
-                local p = LSLegacy.GetPlayerFromId(src)
+                local p = LSLegacy.Players.Get(src)
                 onDuty[#onDuty + 1] = {
                     name       = agent.name or (p and charName(p)) or '?',
                     grade      = agent.grade or 0,
@@ -460,7 +460,7 @@ readHandlers.getDispatch = function(player, grade, data, reply)
                 if agent and agent.onDuty then
                     local ped = GetPlayerPed(src)
                     local coords = ped and ped ~= 0 and GetEntityCoords(ped) or nil
-                    local up = LSLegacy.GetPlayerFromId(src)
+                    local up = LSLegacy.Players.Get(src)
                     local ident = up and up.identifier or nil
                     local onCall = ident and assignedTo[ident] or nil
 

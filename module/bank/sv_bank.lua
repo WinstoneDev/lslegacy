@@ -167,7 +167,7 @@ LSLegacy.RegisterServerEvent('GetBankAccounts', function()
 end)
 
 LSLegacy.RegisterServerEvent('BankCreateAccount', function()
-    local player = LSLegacy.GetPlayerFromId(source)
+    local player = LSLegacy.Players.Get(source)
     local account = {
         owner = player.identifier,
         character_id = player["boutique-id"],
@@ -193,7 +193,7 @@ LSLegacy.RegisterServerEvent('BankCreateAccount', function()
 end)
 
 LSLegacy.RegisterServerEvent('BankChangeAccountStatus', function(id, state)
-    local player = LSLegacy.GetPlayerFromId(source)
+    local player = LSLegacy.Players.Get(source)
     local account = LSLegacy.Bank.GetAccount(id)
     if not account or account.character_id ~= player["boutique-id"] then return end
 
@@ -216,7 +216,7 @@ LSLegacy.RegisterServerEvent('BankChangeAccountStatus', function(id, state)
 end)
 
 LSLegacy.RegisterServerEvent('BankDeleteAccount', function(id)
-    local player = LSLegacy.GetPlayerFromId(source)
+    local player = LSLegacy.Players.Get(source)
     local account = LSLegacy.Bank.GetAccount(id)
     if not account or account.character_id ~= player["boutique-id"] then return end
     MySQL.Async.execute('DELETE FROM bankaccounts WHERE id = @id', {
@@ -235,7 +235,7 @@ end)
 
 
 LSLegacy.RegisterServerEvent('BankCreateCard', function(id, tier)
-    local player = LSLegacy.GetPlayerFromId(source)
+    local player = LSLegacy.Players.Get(source)
     local account = LSLegacy.Bank.GetAccount(id)
     if not account or account.character_id ~= player["boutique-id"] then return end
 
@@ -276,7 +276,7 @@ LSLegacy.RegisterServerEvent('BankCreateCard', function(id, tier)
 end)
 
 LSLegacy.RegisterServerEvent('BankSetCardTier', function(id, tier)
-    local player = LSLegacy.GetPlayerFromId(source)
+    local player = LSLegacy.Players.Get(source)
     local account = LSLegacy.Bank.GetAccount(id)
     if not account or account.character_id ~= player["boutique-id"] then return end
     if not LSLegacy.Bank.CardTiers[tier] then
@@ -373,7 +373,7 @@ LSLegacy.RegisterServerEvent('BankAddMoney', function(amount, id)
 end)
 
 LSLegacy.RegisterServerEvent('BankwithdrawMoney', function(amount, id)
-    local player = LSLegacy.GetPlayerFromId(source)
+    local player = LSLegacy.Players.Get(source)
     local account = LSLegacy.Bank.GetAccount(id)
     if not account then return end
     amount = tonumber(amount)
@@ -454,7 +454,7 @@ end
 -- Admin.CanDo/GetLevel du module adminmenu sont locaux à leur fichier : helper dupliqué ici, synchronisé via Config.StaffGroups
 
 local function BankAdminLevel(source)
-    local player = LSLegacy.GetPlayerFromId(source)
+    local player = LSLegacy.Players.Get(source)
     if not player then return 0 end
     for k, v in pairs(Config.StaffGroups) do
         if player.group == v then return k end
@@ -543,7 +543,7 @@ LSLegacy.RegisterServerEvent('BankAdminGetCardTiers', function()
 end)
 
 LSLegacy.RegisterServerEvent('BankAdminSetCardTier', function(tier, data)
-    local player = LSLegacy.GetPlayerFromId(source)
+    local player = LSLegacy.Players.Get(source)
     if not BankAdminCanDo(source) then
         LSLegacy.SendEventToClient('notify', player.source, 'Maze Bank', 'Action non autorisée.', 'error')
         return
@@ -598,7 +598,7 @@ LSLegacy.RegisterServerEvent('BankAdminGetRates', function()
 end)
 
 LSLegacy.RegisterServerEvent('BankAdminSetRate', function(livretType, data)
-    local player = LSLegacy.GetPlayerFromId(source)
+    local player = LSLegacy.Players.Get(source)
     if not BankAdminCanDo(source) then
         LSLegacy.SendEventToClient('notify', player.source, 'Maze Bank', 'Action non autorisée.', 'error')
         return
@@ -670,12 +670,12 @@ LSLegacy.Bank.GetPersonnalLivrets = function(characterId)
 end
 
 LSLegacy.RegisterServerEvent('BankGetLivrets', function()
-    local player = LSLegacy.GetPlayerFromId(source)
+    local player = LSLegacy.Players.Get(source)
     LSLegacy.SendEventToClient('receiveBankLivrets', source, LSLegacy.Bank.GetPersonnalLivrets(player["boutique-id"]))
 end)
 
 LSLegacy.RegisterServerEvent('BankOpenLivret', function(linkedAccountId, livretType, initialDeposit)
-    local player = LSLegacy.GetPlayerFromId(source)
+    local player = LSLegacy.Players.Get(source)
     local account = LSLegacy.Bank.GetAccount(linkedAccountId)
     if not account or account.character_id ~= player["boutique-id"] then return end
     if not (livretType == 'livret_a' or livretType == 'ldds' or livretType == 'compte_terme') then return end
@@ -734,7 +734,7 @@ LSLegacy.RegisterServerEvent('BankOpenLivret', function(linkedAccountId, livretT
 end)
 
 LSLegacy.RegisterServerEvent('BankDepositLivret', function(livretId, amount)
-    local player = LSLegacy.GetPlayerFromId(source)
+    local player = LSLegacy.Players.Get(source)
     local livret = LSLegacy.Bank.GetLivret(livretId)
     if not livret or livret.character_id ~= player["boutique-id"] or livret.status ~= 'active' then return end
     if livret.livret_type == 'compte_terme' then
@@ -790,7 +790,7 @@ local function ComputeLivretWithdrawal(livret, amount)
 end
 
 LSLegacy.RegisterServerEvent('BankWithdrawLivret', function(livretId, amount)
-    local player = LSLegacy.GetPlayerFromId(source)
+    local player = LSLegacy.Players.Get(source)
     local livret = LSLegacy.Bank.GetLivret(livretId)
     if not livret or livret.character_id ~= player["boutique-id"] or livret.status ~= 'active' then return end
 
@@ -829,7 +829,7 @@ LSLegacy.RegisterServerEvent('BankWithdrawLivret', function(livretId, amount)
 end)
 
 LSLegacy.RegisterServerEvent('BankCloseLivret', function(livretId)
-    local player = LSLegacy.GetPlayerFromId(source)
+    local player = LSLegacy.Players.Get(source)
     local livret = LSLegacy.Bank.GetLivret(livretId)
     if not livret or livret.character_id ~= player["boutique-id"] or livret.status ~= 'active' then return end
 
@@ -863,7 +863,7 @@ end)
 -- virements par IBAN
 
 LSLegacy.RegisterServerEvent('BankTransferByIban', function(fromAccountId, toIban, amount, message)
-    local player = LSLegacy.GetPlayerFromId(source)
+    local player = LSLegacy.Players.Get(source)
     local fromAccount = LSLegacy.Bank.GetAccount(fromAccountId)
     if not fromAccount or fromAccount.character_id ~= player["boutique-id"] then return end
 
@@ -1062,7 +1062,7 @@ end)
 
 LSLegacy.RegisterUsableItem('carte', function(data)
     local _src = source
-    local player = LSLegacy.GetPlayerFromId(source)
+    local player = LSLegacy.Players.Get(source)
     LSLegacy.SendEventToClient('useCarteBank', player.source, data)
 end)
 
@@ -1118,7 +1118,7 @@ end
 -- Permet à lb-phone de demander son solde au chargement
 LSLegacy.RegisterServerEvent("lslegacy:requestBankBalance", function()
     local src    = source
-    local player = LSLegacy.GetPlayerFromId(src)
+    local player = LSLegacy.Players.Get(src)
     if not player then return end
 
     local phoneNumber = GetPhoneNumberFromInventory(player)

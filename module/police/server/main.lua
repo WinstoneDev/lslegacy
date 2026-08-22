@@ -45,7 +45,7 @@ local PoliceOfficers = {}   -- { [source] = { onDuty, service, unit, grade } }
 -- Helpers partagés (globaux — utilisés par actions/prison/investigation)
 
 function GetPlayer(src)
-    return LSLegacy.GetPlayerFromId(src)
+    return LSLegacy.Players.Get(src)
 end
 
 local function IsPoliceOfficer(src)

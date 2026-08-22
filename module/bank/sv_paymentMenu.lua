@@ -6,7 +6,7 @@ end
 
 -- ouvre le menu de paiement sur n'importe quel joueur connecté (achat initié par lui, ou paiement imposé par un tiers)
 LSLegacy.Bank.OpenPaymentMenu = function(targetSrc, transactionMessage, price, options)
-    local player = LSLegacy.GetPlayerFromId(targetSrc)
+    local player = LSLegacy.Players.Get(targetSrc)
     if not player then return false end
     options = options or {}
     local allowCash = options.allowCash ~= false
@@ -41,7 +41,7 @@ end
 
 LSLegacy.RegisterServerEvent('pay', function(codePin, price, type, cardInfos, transactionMessage, contactless, meta)
     local _src = source
-    local player = LSLegacy.GetPlayerFromId(_src)
+    local player = LSLegacy.Players.Get(_src)
 
     -- empêche un client modifié de payer en espèces un flux "carte uniquement"
     if meta and meta.cardOnly and type ~= "bank" then

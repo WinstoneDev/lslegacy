@@ -27,7 +27,7 @@ LSLegacy.Bank.RegisterPaymentResultHandler('metro', function(token, success)
         return
     end
 
-    local player = LSLegacy.GetPlayerFromId(src)
+    local player = LSLegacy.Players.Get(src)
     if not player then
         dbg('résultat paiement : joueur introuvable pour src ' .. tostring(src))
         return

@@ -25,13 +25,13 @@ end
 
 -- ── Add single clothing item after purchase ───────
 LSLegacy.RegisterServerEvent('AddClothesInInventory', function(item, label, data)
-    local player = LSLegacy.GetPlayerFromId(source)
+    local player = LSLegacy.Players.Get(source)
     LSLegacy.Inventory.AddItemInInventory(player, item, 1, label, nil, data)
 end)
 
 -- ── Create outfit from individual clothing items ──
 LSLegacy.RegisterServerEvent('clothshop:createOutfit', function(name, itemsData, itemIds)
-    local player = LSLegacy.GetPlayerFromId(source)
+    local player = LSLegacy.Players.Get(source)
     if not player then return end
 
     -- Remove each consumed clothing item from inventory
@@ -53,7 +53,7 @@ end)
 
 -- ── Split outfit back into individual items ───────
 LSLegacy.RegisterServerEvent('clothshop:splitOutfit', function(outfitItem)
-    local player = LSLegacy.GetPlayerFromId(source)
+    local player = LSLegacy.Players.Get(source)
     if not player then return end
 
     -- Remove the outfit item
@@ -82,7 +82,7 @@ end)
 
 -- ── Modify an existing outfit ─────────────────────
 LSLegacy.RegisterServerEvent('clothshop:modifyOutfit', function(modData)
-    local player = LSLegacy.GetPlayerFromId(source)
+    local player = LSLegacy.Players.Get(source)
     if not player then return end
 
     -- Remove the old outfit item
@@ -124,7 +124,7 @@ end)
 
 -- ── Modifier une tenue depuis l'inventaire (drag & drop) ──
 LSLegacy.RegisterServerEvent('inventory:updateOutfitFromInventory', function(updateData)
-    local player = LSLegacy.GetPlayerFromId(source)
+    local player = LSLegacy.Players.Get(source)
     if not player or not updateData.outfitUniqueId then return end
 
     local clothLabels = {

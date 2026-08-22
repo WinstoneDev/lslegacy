@@ -486,7 +486,7 @@ end
 
 -- Contexte MDT d'un joueur : (player, department, grade) ou nil.
 local function ctx(src)
-    local player = LSLegacy.GetPlayerFromId(src)
+    local player = LSLegacy.Players.Get(src)
     if not player then return nil end
     local depName = LSLegacy.MDT.GetDepartmentForJob(player.job)
     if not depName then return nil end
@@ -694,7 +694,7 @@ LSLegacy.RegisterCommand('givemdt', 3, function(player, args, showError, rawComm
     local parts = LSLegacy.StringSplit(rawCommand or '', ' ')
     local id = tonumber(parts[2])
     if id then
-        local tp = LSLegacy.GetPlayerFromId(id)
+        local tp = LSLegacy.Players.Get(id)
         if tp then target = tp end
     end
     if not target then return end
@@ -1096,7 +1096,7 @@ LSLegacy.RegisterServerEvent('mdt:createFine', function(data)
     -- source numérique — jamais un identifier client-fourni, revérifié ici).
     local identifier = type(data.identifier) == 'string' and data.identifier or nil
     if not identifier and data.target then
-        local targetPlayer = LSLegacy.GetPlayerFromId(tonumber(data.target))
+        local targetPlayer = LSLegacy.Players.Get(tonumber(data.target))
         identifier = targetPlayer and targetPlayer.identifier or nil
     end
     if not identifier then return result(src, false, 'Citoyen invalide.') end

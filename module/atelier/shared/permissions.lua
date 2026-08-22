@@ -1,4 +1,4 @@
--- RÈGLE D'OR (sécurité) : côté serveur, toujours résoudre job/grade depuis LSLegacy.GetPlayerFromId(src), jamais depuis le client.
+-- RÈGLE D'OR (sécurité) : côté serveur, toujours résoudre job/grade depuis LSLegacy.Players.Get(src), jamais depuis le client.
 
 LSLegacy = LSLegacy or {}
 LSLegacy.Atelier = LSLegacy.Atelier or {}
