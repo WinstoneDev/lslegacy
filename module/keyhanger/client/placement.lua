@@ -18,26 +18,26 @@ local boardKeys = {}
 for k in pairs(C.Boards) do boardKeys[#boardKeys + 1] = k end
 table.sort(boardKeys)
 
-local function rotToDir(rot)
+local function RotToDir(rot)
     local z = math.rad(rot.z)
     local x = math.rad(rot.x)
     local num = math.abs(math.cos(x))
     return vector3(-math.sin(z) * num, math.cos(z) * num, math.sin(x))
 end
 
-local function headingFromNormal(nx, ny)
+local function HeadingFromNormal(nx, ny)
     -- Oriente le support pour qu'il "regarde" vers la pièce (le long de la normale).
     local len = math.sqrt(nx * nx + ny * ny)
     if len < 0.001 then return GetEntityHeading(PlayerPedId()) end
     return math.deg(math.atan(-nx / len, ny / len))
 end
 
-local function destroyPreview()
+local function DestroyPreview()
     if previewObj and DoesEntityExist(previewObj) then DeleteEntity(previewObj) end
     previewObj = nil
 end
 
-local function runPreview()
+local function RunPreview()
     placing = true
     local model = KeyHanger.GetBoardDef(cfg.boardKey).model
     local hash = KeyHanger.LoadModel(model)
@@ -83,7 +83,7 @@ local function runPreview()
 
             -- Raycast depuis la caméra (poll jusqu'à obtention du résultat)
             local cam = GetGameplayCamCoord()
-            local dir = rotToDir(GetGameplayCamRot(2))
+            local dir = RotToDir(GetGameplayCamRot(2))
             local dest = cam + dir * C.Placement.maxDistance
             local ray = StartShapeTestLosProbe(cam.x, cam.y, cam.z, dest.x, dest.y, dest.z, 1 + 16, PlayerPedId(), 4)
             local retval, hit, endCoords, normal
@@ -97,7 +97,7 @@ local function runPreview()
 
             local px, py, pz, heading
             if didHit and C.Placement.snapToWall then
-                heading = headingFromNormal(normal.x, normal.y) + yawOffset
+                heading = HeadingFromNormal(normal.x, normal.y) + yawOffset
                 -- léger décollement du mur le long de la normale + réglages
                 local nlen = math.sqrt(normal.x * normal.x + normal.y * normal.y)
                 local fx = (nlen > 0.001) and (normal.x / nlen) or 0.0
@@ -136,7 +136,7 @@ local function runPreview()
             -- Validation
             if IsControlJustPressed(0, 191) or IsDisabledControlJustPressed(0, 24) then -- Entrée / clic gauche
                 placing = false
-                destroyPreview()
+                DestroyPreview()
 
                 -- Demande le nom du support
                 local label = LSLegacy.KeyboardInput(KeyHanger.L('placement_label_input'), 48)
@@ -162,7 +162,7 @@ local function runPreview()
             -- Annulation
             if IsControlJustPressed(0, 177) or IsControlJustPressed(0, 200) then -- Retour / Échap
                 placing = false
-                destroyPreview()
+                DestroyPreview()
                 LSLegacy.ShowNotification(KeyHanger.L('title'), KeyHanger.L('placement_cancelled'), 'error')
                 break
             end
@@ -176,18 +176,18 @@ PMenu:DisplayGlare(true)
 local boardIndex  = 1
 local accessIndex = 1
 
-local function boardLabels()
+local function BoardLabels()
     local t = {}
     for _, k in ipairs(boardKeys) do t[#t + 1] = C.Boards[k].label end
     return t
 end
-local function accessLabels()
+local function AccessLabels()
     local t = {}
     for _, a in ipairs(C.AccessTypes) do t[#t + 1] = a.label end
     return t
 end
 
-local function openPMenu()
+local function OpenPMenu()
     if RageUI.GetInMenu() then RageUI.CloseAll() end
     RageUI.Visible(PMenu, true)
     CreateThread(function()
@@ -195,10 +195,10 @@ local function openPMenu()
             Wait(0)
             RageUI.IsVisible(PMenu, function()
                 RageUI.Separator("↓ Nouveau porte-clés ↓")
-                RageUI.List(KeyHanger.L('placement_choose_board'), boardLabels(), boardIndex, nil, {}, true, {
+                RageUI.List(KeyHanger.L('placement_choose_board'), BoardLabels(), boardIndex, nil, {}, true, {
                     onListChange = function(Index) boardIndex = Index end,
                 })
-                RageUI.List(KeyHanger.L('placement_access_input'), accessLabels(), accessIndex, nil, {}, true, {
+                RageUI.List(KeyHanger.L('placement_access_input'), AccessLabels(), accessIndex, nil, {}, true, {
                     onListChange = function(Index) accessIndex = Index end,
                 })
                 RageUI.Line()
@@ -207,7 +207,7 @@ local function openPMenu()
                         cfg.boardKey  = boardKeys[boardIndex]
                         cfg.ownerType = C.AccessTypes[accessIndex].value
                         RageUI.CloseAll()
-                        runPreview()
+                        RunPreview()
                     end,
                 })
             end)
@@ -217,10 +217,10 @@ end
 
 LSLegacy.Events.Register('keyhanger:placementStart', function()
     if placing then return end
-    openPMenu()
+    OpenPMenu()
 end)
 
 AddEventHandler('onResourceStop', function(resource)
     if resource ~= GetCurrentResourceName() then return end
-    destroyPreview()
+    DestroyPreview()
 end)

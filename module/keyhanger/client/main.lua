@@ -6,9 +6,9 @@ local ox_target = exports['ox_target']
 KeyHanger.Boards = {}     -- [id] = board (synchronisé serveur, contient .keys pour les props)
 local spawned   = {}      -- [id] = { board = handle, keys = {handle...}, sig = string }
 
-local function dbg(...) if C.Debug then print("[keyhanger]", ...) end end
+local function Dbg(...) if C.Debug then print("[keyhanger]", ...) end end
 
-local function loadModel(model)
+local function LoadModel(model)
     local hash = type(model) == "number" and model or GetHashKey(model)
     if not IsModelValid(hash) then return nil end
     if not HasModelLoaded(hash) then
@@ -19,11 +19,11 @@ local function loadModel(model)
     if not HasModelLoaded(hash) then return nil end
     return hash
 end
-KeyHanger.LoadModel = loadModel
+KeyHanger.LoadModel = LoadModel
 
 -- noCollision=true uniquement pour les clés décoratives. Le support garde sa collision, ox_target en a besoin (le raycast doit s'arrêter dessus).
-local function makeProp(model, x, y, z, heading, noCollision)
-    local hash = loadModel(model)
+local function MakeProp(model, x, y, z, heading, noCollision)
+    local hash = LoadModel(model)
     if not hash then return nil end
     local obj = CreateObjectNoOffset(hash, x, y, z, false, false, false)
     SetEntityHeading(obj, heading or 0.0)
@@ -34,7 +34,7 @@ local function makeProp(model, x, y, z, heading, noCollision)
     return obj
 end
 
-local function canManageLocal(board)
+local function CanManageLocal(board)
     local pd = LSLegacy.PlayerData
     if not pd or not board then return false end
     if board.ownerType == "job" then return pd.job == board.ownerId end
@@ -43,7 +43,7 @@ local function canManageLocal(board)
 end
 
 -- Ciblage sur l'entité du support (le prop a sa collision, le raycast s'arrête dessus) : une zone sphère serait inutile ici.
-local function addBoardTarget(id, handle)
+local function AddBoardTarget(id, handle)
     ox_target:addLocalEntity(handle, {
         {
             name     = "keyhanger:open:" .. id,
@@ -57,37 +57,37 @@ local function addBoardTarget(id, handle)
             label       = KeyHanger.L('target_manage'),
             icon        = "fa-solid fa-gear",
             distance    = C.Target.distance,
-            canInteract = function() return canManageLocal(KeyHanger.Boards[id]) end,
+            canInteract = function() return CanManageLocal(KeyHanger.Boards[id]) end,
             onSelect    = function() KeyHanger.OpenManage(id) end,
         },
     })
 end
 
-local function removeBoardTarget(id, handle)
+local function RemoveBoardTarget(id, handle)
     if handle and DoesEntityExist(handle) then
         ox_target:removeLocalEntity(handle, { "keyhanger:open:" .. id, "keyhanger:manage:" .. id })
     end
 end
 
-local function keysSignature(board)
+local function KeysSignature(board)
     local t = {}
     for i, k in ipairs(board.keys or {}) do t[i] = k.prop end
     return table.concat(t, "|")
 end
 
-local function clearKeys(s)
+local function ClearKeys(s)
     for _, h in ipairs(s.keys) do
         if DoesEntityExist(h) then DeleteEntity(h) end
     end
     s.keys = {}
 end
 
-local function buildKeys(id, board, showKeys)
+local function BuildKeys(id, board, showKeys)
     local s = spawned[id]
     if not s or not DoesEntityExist(s.board) then return end
-    clearKeys(s)
-    s.sig = keysSignature(board)
-    dbg(("buildKeys #%s show=%s keys=%d"):format(id, tostring(showKeys), #(board.keys or {})))
+    ClearKeys(s)
+    s.sig = KeysSignature(board)
+    Dbg(("buildKeys #%s show=%s keys=%d"):format(id, tostring(showKeys), #(board.keys or {})))
     if not showKeys then return end
 
     -- Placement en coordonnées monde depuis l'orientation du support, pour que les clés apparaissent toujours devant la planche.
@@ -103,8 +103,8 @@ local function buildKeys(id, board, showKeys)
             local kx = bc.x + rightX * slot.x + fwdX * slot.y
             local ky = bc.y + rightY * slot.x + fwdY * slot.y
             local kz = bc.z + slot.z
-            local keyObj = makeProp(key.prop, kx, ky, kz, board.heading, true)
-            dbg(("  key %d prop=%s obj=%s @ %.2f %.2f %.2f"):format(i, tostring(key.prop), tostring(keyObj), kx, ky, kz))
+            local keyObj = MakeProp(key.prop, kx, ky, kz, board.heading, true)
+            Dbg(("  key %d prop=%s obj=%s @ %.2f %.2f %.2f"):format(i, tostring(key.prop), tostring(keyObj), kx, ky, kz))
             if keyObj then
                 SetEntityRotation(keyObj, C.KeyRotation.pitch, C.KeyRotation.roll, board.heading, 2, true)
                 s.keys[i] = keyObj
@@ -113,27 +113,27 @@ local function buildKeys(id, board, showKeys)
     end
 end
 
-local function spawnBoard(id, board)
+local function SpawnBoard(id, board)
     if spawned[id] then return end
     local c = board.coords
     local model = KeyHanger.GetBoardDef(board.board).model
-    local handle = makeProp(model, c.x, c.y, c.z, board.heading)
-    dbg(("spawnBoard #%s model=%s handle=%s @ %.2f %.2f %.2f"):format(id, tostring(model), tostring(handle), c.x, c.y, c.z))
+    local handle = MakeProp(model, c.x, c.y, c.z, board.heading)
+    Dbg(("spawnBoard #%s model=%s handle=%s @ %.2f %.2f %.2f"):format(id, tostring(model), tostring(handle), c.x, c.y, c.z))
     if not handle then return end   -- modèle pas (encore) chargé : réessai au prochain passage
     spawned[id] = { board = handle, keys = {}, sig = "" }
-    addBoardTarget(id, handle)
-    buildKeys(id, board, not C.Render.lod)
+    AddBoardTarget(id, handle)
+    BuildKeys(id, board, not C.Render.lod)
 end
 
-local function despawn(id)
+local function Despawn(id)
     local s = spawned[id]
     if not s then return end
-    if s.board and DoesEntityExist(s.board) then removeBoardTarget(id, s.board) end
-    clearKeys(s)
+    if s.board and DoesEntityExist(s.board) then RemoveBoardTarget(id, s.board) end
+    ClearKeys(s)
     if s.board and DoesEntityExist(s.board) then DeleteEntity(s.board) end
     spawned[id] = nil
 end
-KeyHanger.Despawn = despawn
+KeyHanger.Despawn = Despawn
 
 CreateThread(function()
     while true do
@@ -142,22 +142,22 @@ CreateThread(function()
             local c = board.coords
             local dist = #(pc - vector3(c.x, c.y, c.z))
             if dist <= C.Render.spawnDistance then
-                if not spawned[id] then spawnBoard(id, board) end
+                if not spawned[id] then SpawnBoard(id, board) end
                 local s = spawned[id]
                 if s then
                     local showKeys = (not C.Render.lod) or dist <= C.Render.keyLodDistance
-                    local sigNow = keysSignature(board)
+                    local sigNow = KeysSignature(board)
                     local haveKeys = #s.keys > 0
                     if s.sig ~= sigNow or (showKeys and not haveKeys and #(board.keys or {}) > 0) or (not showKeys and haveKeys) then
-                        buildKeys(id, board, showKeys)
+                        BuildKeys(id, board, showKeys)
                     end
                 end
             else
-                if spawned[id] then despawn(id) end
+                if spawned[id] then Despawn(id) end
             end
         end
         for id in pairs(spawned) do
-            if not KeyHanger.Boards[id] then despawn(id) end
+            if not KeyHanger.Boards[id] then Despawn(id) end
         end
         Wait(800)
     end
@@ -166,28 +166,28 @@ end)
 LSLegacy.Events.Register('keyhanger:syncAll', function(boards)
     KeyHanger.Boards = boards or {}
     local n = 0 ; for _ in pairs(KeyHanger.Boards) do n = n + 1 end
-    dbg("sync:all -> " .. n .. " support(s)")
+    Dbg("sync:all -> " .. n .. " support(s)")
     for id in pairs(spawned) do
-        if not KeyHanger.Boards[id] then despawn(id) end
+        if not KeyHanger.Boards[id] then Despawn(id) end
     end
 end)
 
 LSLegacy.Events.Register('keyhanger:syncBoard', function(board)
     if not board or not board.id then return end
-    dbg("sync:board #" .. tostring(board.id))
+    Dbg("sync:board #" .. tostring(board.id))
     KeyHanger.Boards[board.id] = board
     local s = spawned[board.id]
     if s then
         local pc = GetEntityCoords(PlayerPedId())
         local dist = #(pc - vector3(board.coords.x, board.coords.y, board.coords.z))
         local showKeys = (not C.Render.lod) or dist <= C.Render.keyLodDistance
-        buildKeys(board.id, board, showKeys)
+        BuildKeys(board.id, board, showKeys)
     end
 end)
 
 LSLegacy.Events.Register('keyhanger:syncRemove', function(id)
     KeyHanger.Boards[id] = nil
-    despawn(id)
+    Despawn(id)
 end)
 
 CreateThread(function()
@@ -196,7 +196,7 @@ CreateThread(function()
     LSLegacy.Events.SendToServer('keyhanger:requestBoards')
 end)
 
-local function reachAnim()
+local function ReachAnim()
     LSLegacy.RequestAnimDict("anim@heists@keycard@", function()
         TaskPlayAnim(PlayerPedId(), "anim@heists@keycard@", "exit", 8.0, -8.0, 600, 48, 0, false, false, false)
     end)
@@ -206,7 +206,7 @@ end
 
 function KeyHanger.OpenBoard(id)
     if not KeyHanger.Boards[id] then return end
-    reachAnim()
+    ReachAnim()
     LSLegacy.Events.SendToServer('keyhanger:open', id)
 end
 
@@ -220,10 +220,10 @@ MG.menu   = RageUI.CreateMenu("Porte-clés", "Gestion du support")
 MG.shares = RageUI.CreateSubMenu(MG.menu, "Porte-clés", "Personnes autorisées")
 MG.menu:DisplayGlare(true)
 
-local function getBoard() return KeyHanger.Boards[KeyHanger.CurrentBoard] end
+local function GetBoard() return KeyHanger.Boards[KeyHanger.CurrentBoard] end
 
-local function renderManage()
-    local board = getBoard()
+local function RenderManage()
+    local board = GetBoard()
     if not board then return RageUI.CloseAll() end
     RageUI.Separator("↓ " .. board.label .. " ↓")
     RageUI.Button(KeyHanger.L('manage_rename'), KeyHanger.L('manage_rename_desc', board.label), {}, true, {
@@ -259,8 +259,8 @@ local function renderManage()
     })
 end
 
-local function renderShares()
-    local board = getBoard()
+local function RenderShares()
+    local board = GetBoard()
     if not board then return RageUI.CloseAll() end
     RageUI.Separator(KeyHanger.L('manage_shares', 0))
     local any = false
@@ -285,8 +285,8 @@ function KeyHanger.OpenManage(id)
     CreateThread(function()
         while MG.rendering do
             Wait(0)
-            RageUI.IsVisible(MG.menu, function() renderManage() end)
-            RageUI.IsVisible(MG.shares, function() renderShares() end)
+            RageUI.IsVisible(MG.menu, function() RenderManage() end)
+            RageUI.IsVisible(MG.shares, function() RenderShares() end)
             if not RageUI.Visible(MG.menu) and not RageUI.Visible(MG.shares) then
                 MG.rendering = false
                 KeyHanger.CurrentBoard = nil
@@ -295,17 +295,17 @@ function KeyHanger.OpenManage(id)
     end)
 end
 
-local function trim(s) return (s and s:gsub("%s+$", "")) or "" end
+local function Trim(s) return (s and s:gsub("%s+$", "")) or "" end
 
 LSLegacy.Events.Register('keyhanger:useKey', function(data)
     if not data or not data.plate then return end
-    local target = trim(data.plate)
+    local target = Trim(data.plate)
     local ped = PlayerPedId()
     local coords = GetEntityCoords(ped)
 
     local veh, best = nil, C.Key.useDistance
     for _, v in ipairs(GetGamePool('CVehicle')) do
-        if trim(GetVehicleNumberPlateText(v)) == target then
+        if Trim(GetVehicleNumberPlateText(v)) == target then
             local d = #(coords - GetEntityCoords(v))
             if d <= best then best = d ; veh = v end
         end
@@ -344,7 +344,7 @@ LSLegacy.Events.Register('keyhanger:createKeyForNearest', function()
     if not veh or veh == 0 or not DoesEntityExist(veh) then
         return LSLegacy.ShowNotification(KeyHanger.L('title'), KeyHanger.L('key_no_vehicle'), 'error')
     end
-    local plate = trim(GetVehicleNumberPlateText(veh))
+    local plate = Trim(GetVehicleNumberPlateText(veh))
     local modelHash = GetEntityModel(veh)
     local display = GetLabelText(GetDisplayNameFromVehicleModel(modelHash))
     if not display or display == "NULL" then display = GetDisplayNameFromVehicleModel(modelHash) end
@@ -353,5 +353,5 @@ end)
 
 AddEventHandler('onResourceStop', function(resource)
     if resource ~= GetCurrentResourceName() then return end
-    for id in pairs(spawned) do despawn(id) end
+    for id in pairs(spawned) do Despawn(id) end
 end)

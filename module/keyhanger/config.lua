@@ -81,7 +81,7 @@ C.KeyProps = {
 C.KeyRotation = { pitch = 12.0, roll = 0.0 }
 
 -- Position de chaque clé relative au support : x = latéral (droite +), y = profondeur (avant +), z = vertical (haut +), en mètres. Réglez finement avec C.Debug = true (gizmo affichant les index de slot).
-local function buildGrid(cols, rows, opt)
+local function BuildGrid(cols, rows, opt)
     opt = opt or {}
     local startX  = opt.startX  or -((cols - 1) * (opt.stepX or 0.11)) / 2
     local startZ  = opt.startZ  or ((rows - 1) * (opt.stepZ or 0.13)) / 2
@@ -102,9 +102,9 @@ local function buildGrid(cols, rows, opt)
 end
 
 C.SlotLayouts = {
-    grid_4x2 = buildGrid(4, 2, { stepX = 0.12, stepZ = 0.16, depth = 0.06, startZ = 0.10 }),
-    grid_5x2 = buildGrid(5, 2, { stepX = 0.11, stepZ = 0.16, depth = 0.04, startZ = 0.12 }),
-    grid_6x3 = buildGrid(6, 3, { stepX = 0.10, stepZ = 0.14, depth = 0.05, startZ = 0.16 }),
+    grid_4x2 = BuildGrid(4, 2, { stepX = 0.12, stepZ = 0.16, depth = 0.06, startZ = 0.10 }),
+    grid_5x2 = BuildGrid(5, 2, { stepX = 0.11, stepZ = 0.16, depth = 0.04, startZ = 0.12 }),
+    grid_6x3 = BuildGrid(6, 3, { stepX = 0.10, stepZ = 0.14, depth = 0.05, startZ = 0.16 }),
 }
 
 -- Qui peut accrocher / récupérer des clés sur le support :
