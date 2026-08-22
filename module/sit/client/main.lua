@@ -40,7 +40,7 @@ end
 
 local function PlaySit(entity, seatIndex)
     local netId = NetworkGetNetworkIdFromEntity(entity)
-    local taken = lib.callback.await('sit:server:occupy', false, netId, seatIndex)
+    local taken = LSLegacy.Callbacks.AwaitServer('sit:server:occupy', netId, seatIndex)
     if not taken then
         Notify("Cette place est déjà occupée", "error")
         return
@@ -96,7 +96,7 @@ local function TrySit(entity)
 
     local hash = GetEntityModel(entity)
     local netId = NetworkGetNetworkIdFromEntity(entity)
-    local seatIndex = lib.callback.await('sit:server:getFree', 200, netId, hash)
+    local seatIndex = LSLegacy.Callbacks.AwaitServer('sit:server:getFree', netId, hash)
     if not seatIndex then
         Notify("Cette place est déjà occupée", "error")
         return
