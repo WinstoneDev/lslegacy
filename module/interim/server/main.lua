@@ -56,7 +56,7 @@ local function Notify(src, msg, t)
     LSLegacy.Events.SendToClient('notify', src, 'Intérimaire', msg, t or 'info', 5000)
 end
 
-local function findStation(id)
+local function FindStation(id)
     for _, s in ipairs(CFG.Stations) do
         if s.id == id then return s end
     end
@@ -179,7 +179,7 @@ LSLegacy.Events.Register('interim:stationFillComplete', function(data)
     local session = Interim.Sessions[src]
     if not session or not session.attached then return end
 
-    local station = findStation(data.stationId)
+    local station = FindStation(data.stationId)
     if not station then return end
     local cache = Interim.StationCache[station.id]
     if not cache then return end

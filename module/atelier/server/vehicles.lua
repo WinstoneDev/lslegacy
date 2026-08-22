@@ -15,7 +15,7 @@ MySQL.Async.execute([[
 -- [plate] = { components = {mechanical={},tyres={},body={}}, maintenance = {}, dirty = bool }
 LSLegacy.Atelier.VehicleState = LSLegacy.Atelier.VehicleState or {}
 
-local function clampPercent(v)
+local function ClampPercent(v)
     v = tonumber(v) or 0
     if v < 0 then return 0 end
     if v > 100 then return 100 end
@@ -102,7 +102,7 @@ function LSLegacy.Atelier.ReconcileVehicleState(plate, snapshot)
         local changed = false
 
         if snapshot.engineHealth then
-            local pct = clampPercent(snapshot.engineHealth / 10)
+            local pct = ClampPercent(snapshot.engineHealth / 10)
             if pct < state.components.mechanical.moteur then
                 state.components.mechanical.moteur = pct
                 changed = true
@@ -110,7 +110,7 @@ function LSLegacy.Atelier.ReconcileVehicleState(plate, snapshot)
         end
 
         if snapshot.bodyHealth then
-            local pct = clampPercent(snapshot.bodyHealth / 10)
+            local pct = ClampPercent(snapshot.bodyHealth / 10)
             if pct < state.components.body.carrosserie_generale then
                 state.components.body.carrosserie_generale = pct
                 changed = true
@@ -121,7 +121,7 @@ function LSLegacy.Atelier.ReconcileVehicleState(plate, snapshot)
             for id, def in pairs(LSLegacy.Atelier.Components.tyres) do
                 local health = snapshot.tyres[def.wheelIndex]
                 if health then
-                    local pct = clampPercent(health / 10)
+                    local pct = ClampPercent(health / 10)
                     if pct < state.components.tyres[id] then
                         state.components.tyres[id] = pct
                         changed = true

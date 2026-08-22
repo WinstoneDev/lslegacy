@@ -75,23 +75,23 @@ local PropMap = {
     bracelets_1 = { pid = 7, tex = 'bracelets_2' },
 }
 
-local function clamp(v, lo, hi)
+local function Clamp(v, lo, hi)
     if v < lo then return lo elseif v > hi then return hi else return v end
 end
 
-local function normalizeFaceFeature(v)
+local function NormalizeFaceFeature(v)
     if v == nil then return 0.0 end
-    return clamp(v / 10.0, -1.0, 1.0)
+    return Clamp(v / 10.0, -1.0, 1.0)
 end
 
-local function normalizeOpacity(v)
+local function NormalizeOpacity(v)
     if v == nil then return 0.0 end
-    return clamp(v / 10.0, 0.0, 1.0)
+    return Clamp(v / 10.0, 0.0, 1.0)
 end
 
-local function normalizeBlend(v, def)
+local function NormalizeBlend(v, def)
     if v == nil then return def or 0.5 end
-    return clamp(v / 100.0, 0.0, 1.0)
+    return Clamp(v / 100.0, 0.0, 1.0)
 end
 
 local function ApplyPedSkin(ped, s)
@@ -101,8 +101,8 @@ local function ApplyPedSkin(ped, s)
     -- reste doit être réappliqué après (même contrainte que skinchanger).
     local mom = tonumber(s.mom) or 0
     local dad = tonumber(s.dad) or 0
-    local faceMix = normalizeBlend(tonumber(s.face_md_weight), 0.5)
-    local skinMix = normalizeBlend(tonumber(s.skin_md_weight), 0.5)
+    local faceMix = NormalizeBlend(tonumber(s.face_md_weight), 0.5)
+    local skinMix = NormalizeBlend(tonumber(s.skin_md_weight), 0.5)
     SetPedHeadBlendData(ped, mom, dad, 0, mom, dad, 0, faceMix, skinMix, 0.0, false)
 
     if s.hair_1 ~= nil then
@@ -111,7 +111,7 @@ local function ApplyPedSkin(ped, s)
     SetPedHairColor(ped, tonumber(s.hair_color_1) or 0, tonumber(s.hair_color_2) or 0)
 
     if s.eye_color ~= nil then
-        SetPedEyeColor(ped, clamp(tonumber(s.eye_color) or 0, 0, 31), 0, 1)
+        SetPedEyeColor(ped, Clamp(tonumber(s.eye_color) or 0, 0, 31), 0, 1)
     end
 
     for drawField, def in pairs(OverlayMap) do
@@ -119,7 +119,7 @@ local function ApplyPedSkin(ped, s)
         if drawVal ~= nil then
             drawVal = tonumber(drawVal)
             if drawVal < 0 then drawVal = 255 end
-            local opaVal = normalizeOpacity(tonumber(s[def.opa]) or 0)
+            local opaVal = NormalizeOpacity(tonumber(s[def.opa]) or 0)
             SetPedHeadOverlay(ped, def.id, drawVal, opaVal)
             if def.colorType and (s[def.c1] ~= nil or (def.c2 and s[def.c2] ~= nil)) then
                 SetPedHeadOverlayColor(ped, def.id, def.colorType, tonumber(s[def.c1]) or 0, tonumber(s[def.c2]) or 0)
@@ -129,7 +129,7 @@ local function ApplyPedSkin(ped, s)
 
     for name, id in pairs(FaceFeatureMap) do
         if s[name] ~= nil then
-            SetPedFaceFeature(ped, id, normalizeFaceFeature(tonumber(s[name])))
+            SetPedFaceFeature(ped, id, NormalizeFaceFeature(tonumber(s[name])))
         end
     end
 

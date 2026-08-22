@@ -17,7 +17,7 @@ local PROP_MAP = { helmet = 0, glasses = 1, ears = 2, watches = 6, bracelet = 7 
 
 -- 'bracelet' (singulier, nom d'item) vs 'bracelets_1/2' (champs skinchanger, pluriel)
 local SKIN_FIELD_ALIAS = { bracelet = 'bracelets' }
-local function skinField(name) return SKIN_FIELD_ALIAS[name] or name end
+local function SkinField(name) return SKIN_FIELD_ALIAS[name] or name end
 
 -- ── Component index map (for texture variation queries) ─
 local COMP_MAP = { tshirt = 8, torso = 11, arms = 3, pants = 4, shoes = 6, chain = 7, bags = 5, decals = 10, mask = 1, bproof = 9 }
@@ -47,7 +47,7 @@ local shopZoomOffset    = 0.0
 local shopPitchOffset   = 0.0
 
 -- ── Helpers ───────────────────────────────────────
-local function getPlayerClothingItems()
+local function GetPlayerClothingItems()
     local items = {}
     if LSLegacy.PlayerData and LSLegacy.PlayerData.inventory then
         for _, v in pairs(LSLegacy.PlayerData.inventory) do
@@ -70,7 +70,7 @@ local function getPlayerClothingItems()
     return items
 end
 
-local function getPlayerOutfitItems()
+local function GetPlayerOutfitItems()
     local items = {}
     if LSLegacy.PlayerData and LSLegacy.PlayerData.inventory then
         for _, v in pairs(LSLegacy.PlayerData.inventory) do
@@ -88,7 +88,7 @@ local function getPlayerOutfitItems()
     return items
 end
 
-local function stripPedClothes()
+local function StripPedClothes()
     local def = getDefaultClothes()
     if def then
         for slot, values in pairs(def) do
@@ -107,7 +107,7 @@ local function stripPedClothes()
 end
 
 -- ── Camera functions ──────────────────────────────
-local function applyShopCamera()
+local function ApplyShopCamera()
     if not shopCam or not pedBaseCoords then return end
     local p = CAM_PRESETS[shopCamPreset] or CAM_PRESETS.full
     local dist = math.max(0.3, p.dist + shopZoomOffset)
@@ -126,26 +126,26 @@ local function applyShopCamera()
 end
 
 -- Molette : ajuste la distance caméra (zoom) sans changer le preset actif.
-local function adjustShopZoom(delta)
+local function AdjustShopZoom(delta)
     if not delta or delta == 0 then return end
     shopZoomOffset = math.max(MIN_ZOOM_OFFSET, math.min(MAX_ZOOM_OFFSET, shopZoomOffset + delta))
-    applyShopCamera()
+    ApplyShopCamera()
 end
 
 -- Clic gauche maintenu + déplacement souris : la caméra ne se déplace pas,
 -- seul son angle change (dx tourne le personnage, dy incline la caméra).
-local function adjustShopLook(dx, dy)
+local function AdjustShopLook(dx, dy)
     if dx and dx ~= 0 then
         shopPedHeading = (shopPedHeading + dx) % 360.0
         SetEntityHeading(PlayerPedId(), shopPedHeading)
     end
     if dy and dy ~= 0 then
         shopPitchOffset = math.max(MIN_PITCH_OFFSET, math.min(MAX_PITCH_OFFSET, shopPitchOffset + dy))
-        applyShopCamera()
+        ApplyShopCamera()
     end
 end
 
-local function createShopCamera()
+local function CreateShopCamera()
     local ped = PlayerPedId()
     pedBaseCoords = GetEntityCoords(ped)
     shopPedHeading  = 180.0
@@ -157,18 +157,18 @@ local function createShopCamera()
     SetEntityHeading(ped, shopPedHeading)
 
     shopCam = CreateCam('DEFAULT_SCRIPTED_CAMERA', true)
-    applyShopCamera()
+    ApplyShopCamera()
     SetCamActive(shopCam, true)
     RenderScriptCams(true, true, 500, true, true)
 end
 
-local function destroyShopCamera()
+local function DestroyShopCamera()
     -- Snap to full preset so blend back to gameplay cam starts from a sane position
     -- (avoids jarring transition when closing from head/feet presets)
     shopCamPreset   = 'full'
     shopZoomOffset  = 0.0
     shopPitchOffset = 0.0
-    applyShopCamera()
+    ApplyShopCamera()
 
     FreezeEntityPosition(PlayerPedId(), false)
     if shopCam then SetCamActive(shopCam, false) end
@@ -210,12 +210,12 @@ function OpenClothShopNUI(header, type, coords)
         end)
         Wait(50)
 
-        local clothingItems = getPlayerClothingItems()
-        local outfitItems   = getPlayerOutfitItems()
+        local clothingItems = GetPlayerClothingItems()
+        local outfitItems   = GetPlayerOutfitItems()
 
         SetNuiFocus(true, true)
         DisableClothShopControls()
-        createShopCamera()
+        CreateShopCamera()
 
         Wait(100)
         SendNUIMessage({
@@ -248,7 +248,7 @@ function CloseClothShopNUI()
     shopState.isOpen = false
     SetNuiFocus(false, false)
     SendNUIMessage({ action = 'clothshop:hide' })
-    destroyShopCamera()
+    DestroyShopCamera()
     -- Revert previewed clothes: fire after camera blend starts to avoid conflicts
     local savedSkin = shopState.lastSkin
     shopState.lastSkin = nil
@@ -298,7 +298,7 @@ RegisterNUICallback('clothshop:revertSlot', function(data, cb)
 
     local propId = PROP_MAP[slot]
     if propId ~= nil then
-        local field = skinField(slot)
+        local field = SkinField(slot)
         local origDraw = shopState.lastSkin[field..'_1']
         if not origDraw or origDraw <= 0 then
             ClearPedProp(PlayerPedId(), propId)
@@ -321,11 +321,11 @@ RegisterNUICallback('clothshop:camera', function(data, cb)
         shopCamPreset   = data.preset or 'full'
         shopZoomOffset  = 0.0
         shopPitchOffset = 0.0
-        applyShopCamera()
+        ApplyShopCamera()
     elseif data.action == 'zoom' then
-        adjustShopZoom(tonumber(data.delta) or 0)
+        AdjustShopZoom(tonumber(data.delta) or 0)
     elseif data.action == 'look' then
-        adjustShopLook(tonumber(data.dx) or 0, tonumber(data.dy) or 0)
+        AdjustShopLook(tonumber(data.dx) or 0, tonumber(data.dy) or 0)
     end
     cb('ok')
 end)
@@ -371,7 +371,7 @@ RegisterNUICallback('clothshop:createOutfit', function(data, cb)
 
     Citizen.CreateThread(function()
         Wait(150)
-        stripPedClothes()
+        StripPedClothes()
     end)
 
     LSLegacy.Events.SendToServer('clothshop:createOutfit', data.name, data.items, data.itemIds)
@@ -393,8 +393,8 @@ end)
 
 LSLegacy.Events.Register('clothshop:outfitCreated', function()
     Wait(300)
-    local clothingItems = getPlayerClothingItems()
-    local outfitItems   = getPlayerOutfitItems()
+    local clothingItems = GetPlayerClothingItems()
+    local outfitItems   = GetPlayerOutfitItems()
     SendNUIMessage({
         action          = 'clothshop:outfitCreated',
         playerInventory = clothingItems,
@@ -404,8 +404,8 @@ end)
 
 LSLegacy.Events.Register('clothshop:outfitSplit', function()
     Wait(300)
-    local clothingItems = getPlayerClothingItems()
-    local outfitItems   = getPlayerOutfitItems()
+    local clothingItems = GetPlayerClothingItems()
+    local outfitItems   = GetPlayerOutfitItems()
     SendNUIMessage({
         action          = 'clothshop:outfitSplit',
         playerInventory = clothingItems,

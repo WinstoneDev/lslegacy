@@ -11,8 +11,8 @@ local function Notify(msg, type)
 end
 
 -- Retire les espaces de tête ET de fin (le jeu centre les plaques courtes)
-local function trim(s) return (tostring(s or ''):gsub('^%s+', ''):gsub('%s+$', '')) end
-local function clamp(v) return math.max(0, math.min(100, math.floor(v + 0.5))) end
+local function Trim(s) return (tostring(s or ''):gsub('^%s+', ''):gsub('%s+$', '')) end
+local function Clamp(v) return math.max(0, math.min(100, math.floor(v + 0.5))) end
 
 -- Sélection en cours (véhicule affiché en aperçu)
 local sel = nil   -- { model, label, price, primary, secondary, plate, stats, back }
@@ -41,10 +41,10 @@ Concessionnaire.ClearPreview = ClearPreview
 local function ComputeStats(veh, hash)
     local kmh = GetVehicleEstimatedMaxSpeed(veh) * 3.6
     return {
-        speed    = clamp(kmh / 300.0 * 100.0),
+        speed    = Clamp(kmh / 300.0 * 100.0),
         speedKmh = math.floor(kmh + 0.5),
-        accel    = clamp((GetVehicleModelAcceleration(hash) or 0.0) / 0.5 * 100.0),
-        braking  = clamp((GetVehicleModelMaxBraking(hash) or 0.0) / 1.2 * 100.0),
+        accel    = Clamp((GetVehicleModelAcceleration(hash) or 0.0) / 0.5 * 100.0),
+        braking  = Clamp((GetVehicleModelMaxBraking(hash) or 0.0) / 1.2 * 100.0),
     }
 end
 
@@ -153,9 +153,9 @@ local function AskCustomPlate()
             max = C.CustomPlate.maxLength,
         },
     })
-    if input and input[1] and trim(input[1]) ~= '' then
+    if input and input[1] and Trim(input[1]) ~= '' then
         -- Cap à 8 (max GTA) + nettoyage A-Z 0-9
-        local p = string.upper(trim(input[1])):gsub('[^A-Z0-9 ]', ''):sub(1, 8)
+        local p = string.upper(Trim(input[1])):gsub('[^A-Z0-9 ]', ''):sub(1, 8)
         sel.plate = (p ~= '') and p or nil
     else
         sel.plate = nil
@@ -298,7 +298,7 @@ local function OpenSearch()
     })
     if not input then Concessionnaire.OpenCatalog() return end
 
-    local query  = string.lower(trim(input[1]))
+    local query  = string.lower(Trim(input[1]))
     local budget = tonumber(input[2])
 
     local results = {}
@@ -453,7 +453,7 @@ function Concessionnaire.OpenResale()
     local veh = GetVehiclePedIsIn(PlayerPedId(), false)
     if veh == 0 then Notify(Lang.Concessionnaire.resale_need_vehicle, 'error') return end
 
-    local plate = trim(GetVehicleNumberPlateText(veh))
+    local plate = Trim(GetVehicleNumberPlateText(veh))
     Citizen.CreateThread(function()
         local confirm = lib.alertDialog({
             header   = Lang.Concessionnaire.resale_confirm_title,
