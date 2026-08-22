@@ -1,9 +1,0 @@
-- [/samudebug est permanent](samu-diagnostic-samudebug.md) — commande de diagnostic du job SAMU à conserver, pas à nettoyer.
-- [Cutscene intro creatorPerso](creatorperso-intro-cutscene.md) — les 7 PNJ passagers crashent le jeu (build b3407), désactivés volontairement (SKIP_PASSENGERS).
-- [Sync PlayerData client/serveur](playerdata-client-sync.md) — seul skin est écrit côté client ; ReceiveUpdateServerPlayer merge via whitelist, ne jamais repasser en remplacement complet.
-- [Pointer-events caméra NUI](nui-pointer-events-camera-controls.md) — molette/drag caméra bloqués si le conteneur racine NUI est en pointer-events:none.
-- [LS Legacy passé public](lslegacy-public-release.md) — secrets rotés en convars, licence CC BY-NC, historique git réinitialisé, nettoyage commentaires terminé, SQL complété, DEVELOPMENT.md créé.
-- [Limite de dépenses agents parallèles](background-agent-spend-limit.md) — une rafale d'agents en arrière-plan peut tous échouer d'un coup en pleine tâche, vérifier git status plutôt que de faire confiance aux rapports.
-- [Commentaires de code concis](concise-code-comments.md) — toujours écrire des commentaires courts, jamais de bannières décoratives ni de paragraphes explicatifs, même hors tâche de nettoyage dédiée.
-- [Refactor LSLegacy par lots](lslegacy-refactor-progress.md) — travail exclusif dans lslegacy-dev/branche dev, jamais lslegacy/master ; état des 20 lots, dernier terminé = LOT 14.
-- [Migration complète par lot](lslegacy-lot-full-migration.md) — chaque lot Core doit migrer TOUS les modules impactés, pas un échantillon.
