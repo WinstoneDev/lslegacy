@@ -248,7 +248,7 @@ local function SaveAndReleaseCharacter(source)
         LSLegacy.PedOffline.PutToSleep(source)
     end
 
-    LSLegacy.ServerPlayers[source] = nil
+    LSLegacy.Players.Remove(source)
 
     -- LSLegacy.GeneratorTokenConnecting (appelée par `registerPlayer`) ne
     -- s'exécute qu'une fois par valeur de `addTokenClient[source]` : sans ce

@@ -358,6 +358,15 @@ LSLegacy.Players.Get = function(source)
     return LSLegacy.GetPlayerFromId(source)
 end
 
+---Remove — retire un joueur de la table live (déconnexion, ou changement de personnage sans déconnexion via multichar).
+---@type function
+---@param source any
+---@return nil
+---@public
+LSLegacy.Players.Remove = function(source)
+    LSLegacy.ServerPlayers[source] = nil
+end
+
 ---GetByIdentifier
 ---@type function
 ---@param identifier string
