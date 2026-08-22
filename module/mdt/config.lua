@@ -1,7 +1,7 @@
 --  MDT — Configuration GÉNÉRIQUE (cœur multi-jobs)
 --  Ce fichier ne contient RIEN de spécifique à la police.
 --  Chaque métier (police, ems, …) déclare son département dans son
---  propre fichier (ex: config_police.lua) via Config.MDT.Departments.
+--  propre fichier (ex: config_mdt.lua) via Config.MDT.Departments.
 
 Config.MDT = Config.MDT or {}
 

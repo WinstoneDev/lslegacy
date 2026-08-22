@@ -20,7 +20,7 @@ files {
 
 shared_scripts {
     'config.lua',
-    'config_police.lua',
+    'config_mdt.lua',
     'languages/fr.lua',
 }
 

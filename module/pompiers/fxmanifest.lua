@@ -12,7 +12,7 @@ dependencies {
 
 shared_scripts {
     'config.lua',
-    'config_pompiers.lua',
+    'config_mdt.lua',
     'languages/fr.lua',
 }
 

@@ -7,7 +7,7 @@
 --
 --  Le point 2 mérite une explication : le cœur MDT construit la barre
 --  latérale en parcourant Config.MDT.Tabs et en ne gardant que les
---  onglets que le département a activés (champ `tabs` de config_samu).
+--  onglets que le département a activés (champ `tabs` de config_mdt).
 --  On ajoute donc nos onglets à ce registre depuis ICI, plutôt que
 --  d'éditer module/mdt/config.lua — la police n'active aucun de ces
 --  onglets, elle ne voit donc strictement aucun changement.

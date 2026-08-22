@@ -13,7 +13,7 @@ dependencies {
 
 shared_scripts {
     'config.lua',
-    'config_samu.lua',
+    'config_mdt.lua',
     'languages/fr.lua',
 }
 
