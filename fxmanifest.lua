@@ -230,6 +230,7 @@ server_scripts {
     '@oxmysql/lib/MySQL.lua',
     'shared/sv_config.lua',
     'server/function.lua',
+    'server/validate.lua',
     'server/callbacks.lua',
     'server/commands.lua',
     'server/zones.lua',
