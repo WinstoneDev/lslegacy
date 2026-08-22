@@ -173,6 +173,7 @@ LSLegacy.GeneratorTokenConnecting = function(_source)
             LSLegacy.SendEventToClient("addTokenEvent", _source, chunk, not first)
         end
     else
+        LSLegacy.Security.Log(_source, 'connecting', 'duplicate token init (injector)')
         DropPlayer(_source, 'Injector detected ╭∩╮（︶_︶）╭∩╮')
     end
 end
@@ -227,6 +228,7 @@ LSLegacy.UseServerEvent = function(eventName, src, ...)
             end
             LSLegacy.PlayersLimit[eventName][src] = LSLegacy.PlayersLimit[eventName][src] + 1
             if LSLegacy.RateLimit[eventName] and LSLegacy.PlayersLimit[eventName][src] >= LSLegacy.RateLimit[eventName] then
+                LSLegacy.Security.Log(src, eventName, 'rate limit exceeded')
                 DropPlayer(src, 'Spam trigger detected ╭∩╮（︶_︶）╭∩╮ ('..eventName..')')
             else
                 LSLegacy.Event[eventName](...)
@@ -237,19 +239,51 @@ LSLegacy.UseServerEvent = function(eventName, src, ...)
     end
 end
 
+---LSLegacy.Security — point d'entrée unique pour les mécanismes de sécurité
+---du Core (rate limit, tokens anti-injecteur, contrôle des events, logs).
+---LSLegacy.Validate (server/validate.lua) s'y ajoute en alias une fois chargé.
+---
+---Un token valide ou un event non spammé ne prouvent qu'une chose : que
+---l'appel vient bien du client attendu, pas qu'il est autorisé. Toute
+---action métier doit revalider dans cet ordre, en s'arrêtant au premier
+---échec, avant de s'exécuter :
+---  Token -> RateLimit -> Player -> Target -> Distance -> Ownership -> Job -> Permission -> Arguments -> Action
+LSLegacy.Security = LSLegacy.Security or {}
+
 ---RegisterRateLimit — permet à un module de déclarer sa propre limite (par fenêtre de 15s) sans que le Core connaisse ses events.
 ---@type function
 ---@param eventName string
 ---@param limit number
 ---@return nil
 ---@public
-LSLegacy.Security = LSLegacy.Security or {}
 LSLegacy.Security.RegisterRateLimit = function(eventName, limit)
     if type(eventName) ~= "string" then return end
     limit = LSLegacy.Validate.PositiveInteger(limit)
     if not limit then return end
     LSLegacy.RateLimit[eventName] = limit
 end
+
+---Log — point unique pour les évènements de sécurité (injecteur, spam, jeton invalide).
+---@type function
+---@param src number
+---@param eventName string
+---@param reason string
+---@return nil
+---@public
+LSLegacy.Security.Log = function(src, eventName, reason)
+    Config.Development.Print(('[security] %s by %s (%s)'):format(reason, tostring(src), tostring(eventName)))
+end
+
+-- Contrôle des events : mêmes fonctions que celles utilisées ailleurs dans le Core, exposées sous Security pour un point d'entrée unique.
+LSLegacy.Security.RegisterEvent = LSLegacy.RegisterServerEvent
+LSLegacy.Security.UseEvent = LSLegacy.UseServerEvent
+
+-- Tokens anti-injecteur, mêmes fonctions internes exposées sous Security.
+LSLegacy.Security.Token = {
+    New = LSLegacy.GeneratorToken,
+    NewForConnecting = LSLegacy.GeneratorTokenConnecting,
+    Renew = LSLegacy.GeneratorNewToken,
+}
 
 RegisterNetEvent("useEvent")
 AddEventHandler("useEvent", function(eventName, token, ...)
@@ -280,7 +314,7 @@ AddEventHandler("useEvent", function(eventName, token, ...)
         LSLegacy.UseServerEvent(eventName, _src, ...)
         Config.Development.Print("Successfully triggered server event " .. eventName)
     else
-        Config.Development.Print("Injector detected ╭∩╮（︶_︶）╭∩╮ " .. eventName.." by ".._src)
+        LSLegacy.Security.Log(_src, eventName, 'invalid token (injector)')
     end
 end)
 

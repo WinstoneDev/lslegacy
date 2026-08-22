@@ -132,3 +132,7 @@ LSLegacy.Validate.DataStore = function(name)
     if type(name) ~= "string" then return nil end
     return LSLegacy.DataStores[name]
 end
+
+-- Alias sous Security : point d'entrée unique pour les mécanismes de sécurité du Core.
+LSLegacy.Security = LSLegacy.Security or {}
+LSLegacy.Security.Validate = LSLegacy.Validate

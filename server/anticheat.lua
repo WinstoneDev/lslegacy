@@ -826,38 +826,6 @@ if Shared.Anticheat.EventsDetect then
     end
 end
 
-if Shared.Anticheat.ProtectPoliceEvent then
-    for k, v in pairs(Shared.Anticheat.PoliceEvents) do
-        RegisterServerEvent(v)
-        AddEventHandler(v, function()
-            local _src = source
-            local xPlayer = ESX.GetPlayerFromId(_src)
-            if xPlayer then
-                local job = xPlayer.getJob().name
-                if job ~= "police" and job ~= "sheriff" then
-                    kickorbancheater(_src, "Événements police détectés", "Événements police détectés. Event : "..v, true, true)
-                end
-            end
-        end)
-    end
-end
-
-if Shared.Anticheat.ProtectAmbulanceEvent then
-    for k, v in pairs(Shared.Anticheat.AmbulanceEvents) do
-        RegisterServerEvent(v)
-        AddEventHandler(v, function()
-            local _src = source
-            local xPlayer = ESX.GetPlayerFromId(_src)
-            if xPlayer then
-                local job = xPlayer.getJob().name
-                if job ~= "ambulance" and job ~= "doctor" then
-                    kickorbancheater(_src, "Événements ambulance détectés", "Événements ambulance détectés. Event : "..v, true, true)
-                end
-            end
-        end)
-    end
-end
-
 AddEventHandler('chatMessage', function(source, color, message)
     local _src = source
     if not message then return end
@@ -938,18 +906,6 @@ RandomLetter = function(length)
         return RandomLetter(length - 1) .. Charset[math.random(1, #Charset)]
     end
     return ""
-end
-
-if Shared.Anticheat.ProtectAmbulanceEvent then
-    for k, v in pairs(Shared.Anticheat.AmbulanceEvents) do
-        RegisterServerEvent(v)
-        AddEventHandler(v, function()
-            local _src = source
-            if ESX.GetPlayerFromId(_src).getJob().name ~= "ambulance" or "doctor" then
-                kickorbancheater(_src,"Événements ambulance détectés", "Événements ambulance détectés. Event : "..v,true,true)
-            end
-        end)
-    end
 end
 
 AddEventHandler('chatMessage', function(source, color, message)
