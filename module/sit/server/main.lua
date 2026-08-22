@@ -1,6 +1,8 @@
 -- Suit qui occupe quelle place, pour éviter deux joueurs sur la même place d'un banc/canapé multi-places. Port de server/server.lua de mnr_sitanywhere.
 local occupied = {} -- [entity] = { [seatIndex] = source }
 
+LSLegacy.Security.RegisterRateLimit('sit:serverOccupy', 50)
+LSLegacy.Security.RegisterRateLimit('sit:serverGetFree', 50)
 LSLegacy.Callbacks.RegisterServer('sit:serverOccupy', function(source, cb, netId, seatIndex)
     local entity = NetworkGetEntityFromNetworkId(netId)
     if not DoesEntityExist(entity) then return cb(false) end

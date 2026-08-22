@@ -6,6 +6,7 @@ local rateLimits = {
     ['samu:onDuty'] = 10, ['samu:offDuty'] = 10, ['samu:spawnVehicle'] = 15,
     ['samu:restock'] = 15, ['samu:revive'] = 15,
     ['samu:hiOpen'] = 15, ['samu:hiUseItem'] = 20, ['samu:hiPoll'] = 40, ['samu:hiDamage'] = 40,
+    ['samu:requestDutyState'] = 50,
 }
 for eventName, limit in pairs(rateLimits) do
     LSLegacy.Security.RegisterRateLimit(eventName, limit)

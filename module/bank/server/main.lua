@@ -3,6 +3,10 @@ local rateLimits = {
     ['bank:deleteAccount'] = 20, ['bank:createCard'] = 20, ['bank:withdrawMoney'] = 20,
     ['bank:addMoney'] = 20, ['lslegacy:requestBankBalance'] = 20, ['attemptToPayMenu'] = 20,
     ['pay'] = 20,
+    ['bank:adminGetCardTiers'] = 50, ['bank:adminGetRates'] = 50, ['bank:adminSetCardTier'] = 50,
+    ['bank:adminSetRate'] = 50, ['bank:closeLivret'] = 50, ['bank:depositLivret'] = 50,
+    ['bank:getLivrets'] = 50, ['bank:openLivret'] = 50, ['bank:setCardTier'] = 50,
+    ['bank:transferByIban'] = 50, ['bank:withdrawLivret'] = 50,
 }
 for eventName, limit in pairs(rateLimits) do
     LSLegacy.Security.RegisterRateLimit(eventName, limit)

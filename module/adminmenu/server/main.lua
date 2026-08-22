@@ -13,6 +13,9 @@ local rateLimits = {
     ['admin:cleanVehicleDB'] = 10, ['admin:deleteWarn'] = 10,
     ['admin:multicharReturnToSelection'] = 5, ['admin:logIdentifiers'] = 5,
     ['admin:getTicketStats'] = 20, ['admin:setWorldTime'] = 15,
+    ['admin:getBankInfo'] = 50, ['admin:getJobsFactions'] = 50, ['admin:getOnlineStaff'] = 50,
+    ['admin:setDuty'] = 50, ['admin:setPlayerFaction'] = 50, ['admin:setPlayerJob'] = 50,
+    ['admin:setTimeFrozen'] = 50, ['admin:trackPlayers'] = 50,
 }
 for eventName, limit in pairs(rateLimits) do
     LSLegacy.Security.RegisterRateLimit(eventName, limit)

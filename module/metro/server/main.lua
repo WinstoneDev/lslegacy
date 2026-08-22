@@ -51,6 +51,7 @@ end)
 -- Le ticket n'est associé à aucune station : achetable sur n'importe
 -- quelle borne (voir le ciblage global côté client), donc rien à
 -- vérifier ici hormis le paiement.
+LSLegacy.Security.RegisterRateLimit('metro:buyTicket', 50)
 LSLegacy.Events.Register('metro:buyTicket', function(hour, minute)
     local src = source
 

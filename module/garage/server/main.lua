@@ -9,6 +9,7 @@ end, false, {
     },
 })
 
+LSLegacy.Security.RegisterRateLimit('garageCreator:getPlayerName', 50)
 LSLegacy.Callbacks.RegisterServer('garageCreator:getPlayerName', function(source, cb, id)
     local xPlayer = LSLegacy.Players.Get(id)
     if xPlayer then
