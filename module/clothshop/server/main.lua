@@ -2,7 +2,7 @@
 --  LSLegacy – ClothShop Server
 -- ════════════════════════════════════════════════
 
-LSLegacy.Security.RegisterRateLimit('AddClothesInInventory', 20)
+LSLegacy.Security.RegisterRateLimit('clothshop:addClothesInInventory', 20)
 LSLegacy.Security.RegisterRateLimit('clothshop:createOutfit', 20)
 LSLegacy.Security.RegisterRateLimit('clothshop:splitOutfit', 20)
 LSLegacy.Security.RegisterRateLimit('clothshop:modifyOutfit', 20)
@@ -25,7 +25,7 @@ local function RemoveItemByUniqueId(player, uniqueId)
 end
 
 -- ── Add single clothing item after purchase ───────
-LSLegacy.Events.Register('AddClothesInInventory', function(item, label, data)
+LSLegacy.Events.Register('clothshop:addClothesInInventory', function(item, label, data)
     local player = LSLegacy.Players.Get(source)
     LSLegacy.Inventory.AddItemInInventory(player, item, 1, label, nil, data)
 end)

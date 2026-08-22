@@ -211,7 +211,7 @@ local Actions = {}
 
 -- Entrée d'onglet (mêmes effets de bord que les anciens boutons du menu principal)
 Actions.enterPlayers = function()
-    LSLegacy.Events.SendToServer('AdminServerPlayers')
+    LSLegacy.Events.SendToServer('admin:serverPlayers')
     AM.WarnsList = {}
     return { ok = true }
 end
@@ -271,14 +271,14 @@ end
 
 Actions.tpToPlayer = function()
     if GetMyLevel() < 2 or not AM.IdSelected then return { error = 'Action refusée.' } end
-    LSLegacy.Events.SendToServer('TeleportPlayers', 'tp', AM.IdSelected)
+    LSLegacy.Events.SendToServer('admin:teleportPlayers', 'tp', AM.IdSelected)
     LSLegacy.ShowNotification("Administration", "Téléportation vers le joueur.", "success")
     return { ok = true }
 end
 
 Actions.bringPlayer = function()
     if GetMyLevel() < 2 or not AM.IdSelected then return { error = 'Action refusée.' } end
-    LSLegacy.Events.SendToServer('TeleportPlayers', 'bring', AM.IdSelected)
+    LSLegacy.Events.SendToServer('admin:teleportPlayers', 'bring', AM.IdSelected)
     LSLegacy.ShowNotification("Administration", "Joueur téléporté vers vous.", "success")
     return { ok = true }
 end
@@ -455,7 +455,7 @@ Actions.messageTicketPlayer = function(data)
     if GetMyLevel() < 1 or not playerId then return { error = 'Action refusée.' } end
     local msg = tostring(data.msg or '')
     if msg == '' then return { error = 'Message requis.' } end
-    LSLegacy.Events.SendToServer('MessageAdmin', playerId, msg)
+    LSLegacy.Events.SendToServer('admin:message', playerId, msg)
     return { ok = true }
 end
 
@@ -513,7 +513,7 @@ end
 
 Actions.ecoSelectTarget = function()
     AM.EcoSelect = true
-    LSLegacy.Events.SendToServer('AdminServerPlayers')
+    LSLegacy.Events.SendToServer('admin:serverPlayers')
     return { ok = true }
 end
 
@@ -857,7 +857,7 @@ function Administration:StartSpectate(player)
     RenderScriptCams(false, false, 0, false, false)
     SetScaleformParams(Administration.Scalform, Administration:ActiveScalform(true))
     ClearFocus()
-    LSLegacy.Events.SendToServer('AdminServerPlayers')
+    LSLegacy.Events.SendToServer('admin:serverPlayers')
 end
 
 function Administration:StartSpectateList(ped)
@@ -885,7 +885,7 @@ end
 function Administration:ScalformSpectate()
     if IsControlJustPressed(0, Administration.DetailsInSpec.exit.control) then
         Administration:ExitSpectate()
-        LSLegacy.Events.SendToServer('AdminServerPlayers')
+        LSLegacy.Events.SendToServer('admin:serverPlayers')
     end
     if IsControlJustPressed(0, Administration.DetailsInSpec.openmenu.control) then
         local serverId = Administration.CamTarget.id and GetPlayerServerId(Administration.CamTarget.id) or 0
@@ -1046,7 +1046,7 @@ end
 
 --   EVENTS REÇUS DU SERVEUR
 
-LSLegacy.Events.Register('AdminServerPlayers', function(data)
+LSLegacy.Events.Register('admin:serverPlayers', function(data)
     AM.AllPlayers = data
     SendNUIMessage({ action = 'admin:state', key = 'players', data = data })
 end)
@@ -1325,7 +1325,7 @@ local function AM_OpenPlayerActionsFor(targetId)
     -- referme aussitôt (toggle) au lieu de l'ouvrir. C'est ce qui rendait
     -- "Ouvrir la fiche" muet depuis ox_target.
     AM:HideAllMenus()
-    LSLegacy.Events.SendToServer('AdminServerPlayers')
+    LSLegacy.Events.SendToServer('admin:serverPlayers')
 
     local timeout = GetGameTimer()
     while AM.AllPlayers == nil do
@@ -1369,7 +1369,7 @@ exports.ox_target:addGlobalPlayer({
             local sid = AM_GetServerIdFromPed(data.entity)
             if not sid then return end
             local msg = LSLegacy.KeyboardInput('Message', 100)
-            if msg and msg ~= '' then LSLegacy.Events.SendToServer('MessageAdmin', sid, msg) end
+            if msg and msg ~= '' then LSLegacy.Events.SendToServer('admin:message', sid, msg) end
         end,
     },
     {
@@ -1409,7 +1409,7 @@ exports.ox_target:addGlobalPlayer({
         distance = 100, canInteract = AM_CanTarget(2),
         onSelect = function(data)
             local sid = AM_GetServerIdFromPed(data.entity)
-            if sid then LSLegacy.Events.SendToServer('TeleportPlayers', 'bring', sid) end
+            if sid then LSLegacy.Events.SendToServer('admin:teleportPlayers', 'bring', sid) end
         end,
     },
     {
@@ -1417,7 +1417,7 @@ exports.ox_target:addGlobalPlayer({
         distance = 100, canInteract = AM_CanTarget(2),
         onSelect = function(data)
             local sid = AM_GetServerIdFromPed(data.entity)
-            if sid then LSLegacy.Events.SendToServer('TeleportPlayers', 'tp', sid) end
+            if sid then LSLegacy.Events.SendToServer('admin:teleportPlayers', 'tp', sid) end
         end,
     },
     {
@@ -1482,7 +1482,7 @@ Keys.Register("O", "O", "Mode NoClip / Spectate", function()
         return
     end
     Administration:Spectate()
-    LSLegacy.Events.SendToServer('AdminServerPlayers')
+    LSLegacy.Events.SendToServer('admin:serverPlayers')
 end)
 
 --   ANTI-INJECTOR

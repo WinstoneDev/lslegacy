@@ -1,5 +1,5 @@
 local rateLimits = {
-    ['AdminServerPlayers'] = 25, ['MessageAdmin'] = 15, ['TeleportPlayers'] = 25,
+    ['admin:serverPlayers'] = 25, ['admin:message'] = 15, ['admin:teleportPlayers'] = 25,
     ['admin:tpm'] = 30, ['admin:pos'] = 30, ['admin:freeze'] = 10, ['admin:heal'] = 10,
     ['admin:revive'] = 10, ['admin:resetNeeds'] = 10, ['admin:resetSkin'] = 5,
     ['admin:kick'] = 5, ['admin:tempban'] = 5, ['admin:permaban'] = 3, ['admin:warn'] = 10,
@@ -123,7 +123,7 @@ end
 
 -- Joueurs
 
-LSLegacy.Events.Register('AdminServerPlayers', function()
+LSLegacy.Events.Register('admin:serverPlayers', function()
     local _source = source
     if not Admin.CanDo(_source, 1) then return end
 
@@ -140,7 +140,7 @@ LSLegacy.Events.Register('AdminServerPlayers', function()
         snapshot[src] = copy
     end
 
-    LSLegacy.Events.SendToClient('AdminServerPlayers', _source, snapshot)
+    LSLegacy.Events.SendToClient('admin:serverPlayers', _source, snapshot)
 end)
 
 -- Jobs / Factions (fiche joueur + changement depuis le menu Économie)
@@ -279,14 +279,14 @@ CreateThread(function()
     end
 end)
 
-LSLegacy.Events.Register('MessageAdmin', function(target, msg)
+LSLegacy.Events.Register('admin:message', function(target, msg)
     local _source = source
     if not Admin.CanDo(_source, 1) then return end
     if not LSLegacy.Players.Get(target) then return end
     LSLegacy.Events.SendToClient('notify', target, 'Administration', msg, 'warning')
 end)
 
-LSLegacy.Events.Register('TeleportPlayers', function(tpType, target)
+LSLegacy.Events.Register('admin:teleportPlayers', function(tpType, target)
     local _source = source
     if not Admin.CanDo(_source, 2) then return end
     if not LSLegacy.Players.Get(target) then return end

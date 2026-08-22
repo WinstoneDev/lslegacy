@@ -350,7 +350,7 @@ RegisterNUICallback('clothshop:checkout', function(data, cb)
         onSucess = function()
             Citizen.CreateThread(function()
                 for _, item in ipairs(shopState.pendingCart) do
-                    LSLegacy.Events.SendToServer('AddClothesInInventory', item.name, item.label, {item.drawable, item.texture})
+                    LSLegacy.Events.SendToServer('clothshop:addClothesInInventory', item.name, item.label, {item.drawable, item.texture})
                     Wait(100)
                 end
                 shopState.pendingCart = nil

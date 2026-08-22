@@ -610,7 +610,7 @@ Shared.Anticheat.WhitelistedEvents = {
     "fuckyourself",
 
     -- Events client LSLegacy enregistrés via LSLegacy.RegisterClientEvent (système sécurisé par token)
-    "AdminServerPlayers",
+    "admin:serverPlayers",
     "CreatePerso",
     "lslegacy:initPlayer",
     "lslegacy:client:respawn",
