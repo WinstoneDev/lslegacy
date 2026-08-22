@@ -5,7 +5,7 @@ local function Notify(msg, t)
     TriggerEvent('notify', 'Fourrière', msg, t or 'info', 5000)
 end
 
-local function modelLabel(hash)
+local function ModelLabel(hash)
     local name = GetDisplayNameFromVehicleModel(hash + 0)
     if name and name ~= '' and name ~= 'CARNOTFOUND' then
         local lbl = GetLabelText(name)
@@ -61,7 +61,7 @@ LSLegacy.Events.Register('fourriere:list', function(rows)
     end
     local options = {}
     for _, v in ipairs(rows) do
-        local name = modelLabel(math.floor(tonumber(v.model) or 0))
+        local name = ModelLabel(math.floor(tonumber(v.model) or 0))
         local fee = math.floor(tonumber(v.fee) or 0)
         local remaining = math.floor(tonumber(v.remaining_sec) or 0)
         local locked = remaining > 0

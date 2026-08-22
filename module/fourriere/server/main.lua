@@ -36,7 +36,7 @@ local function Notify(src, msg, t)
     LSLegacy.Events.SendToClient('notify', src, 'Fourrière', msg, t or 'info', 5000)
 end
 
-local function charName(player)
+local function CharName(player)
     if player and player.characterInfos then
         return ((player.characterInfos.Prenom or '') .. ' ' .. (player.characterInfos.NDF or ''))
             :gsub('^%s+', ''):gsub('%s+$', '')
@@ -44,21 +44,21 @@ local function charName(player)
     return '?'
 end
 
-local function normPlate(p)
+local function NormPlate(p)
     return (tostring(p or ''):upper():gsub('^%s+', ''):gsub('%s+$', '')):sub(1, 8)
 end
 
-local function isCop(player)
+local function IsCop(player)
     return LSLegacy.Jobs.Is(player, CFG.Job)
 end
 
-local function isOnDuty(src)
+local function IsOnDuty(src)
     if not CFG.RequireOnDuty then return true end
     local ok, st = pcall(function() return Player(src).state.policeOnDuty end)
     return ok and st == true
 end
 
-local function reasonInfo(label)
+local function ReasonInfo(label)
     for _, r in ipairs(CFG.Reasons) do
         if r.label == label then
             return math.floor(r.fee or CFG.BaseFee), math.floor(r.duration or CFG.BaseDuration)
@@ -67,7 +67,7 @@ local function reasonInfo(label)
     return CFG.BaseFee, CFG.BaseDuration
 end
 
-local function setMdtLocation(plate, location, officer)
+local function SetMdtLocation(plate, location, officer)
     MySQL.Async.execute([[
         INSERT INTO mdt_vehicle_flags (plate, department, location, officer_identifier)
         VALUES (@plate, @dep, @loc, @oid)
@@ -79,10 +79,10 @@ LSLegacy.Events.Register('fourriere:impound', function(data)
     local src = source
     local player = GetPlayer(src)
     if not player or type(data) ~= 'table' then return end
-    if not isCop(player) then return Notify(src, 'Action réservée à la police.', 'error') end
-    if not isOnDuty(src) then return Notify(src, 'Vous devez être en service.', 'error') end
+    if not IsCop(player) then return Notify(src, 'Action réservée à la police.', 'error') end
+    if not IsOnDuty(src) then return Notify(src, 'Vous devez être en service.', 'error') end
 
-    local plate = normPlate(data.plate)
+    local plate = NormPlate(data.plate)
     if plate == '' then return Notify(src, 'Plaque introuvable.', 'error') end
     local reason = tostring(data.reason or 'Autre'):gsub('^%s+', ''):gsub('%s+$', ''):sub(1, 255)
     if reason == '' then reason = 'Motif personnalisé' end
@@ -92,7 +92,7 @@ LSLegacy.Events.Register('fourriere:impound', function(data)
         fee      = math.max(0, math.min(CFG.MaxFee, math.floor(tonumber(data.fee) or CFG.BaseFee)))
         duration = math.max(0, math.min(CFG.MaxDuration, math.floor(tonumber(data.duration) or CFG.BaseDuration)))
     else
-        fee, duration = reasonInfo(reason)
+        fee, duration = ReasonInfo(reason)
     end
     -- LSLegacy.AP.Active[plate] doit être nettoyé ici : sinon l'entrée obsolète bloque
     -- tout respawn ultérieur (SpawnPersistedRow la croit active, diffuse un netId mort).
@@ -138,9 +138,9 @@ LSLegacy.Events.Register('fourriere:impound', function(data)
                     ['@plate'] = plate, ['@owner'] = owner, ['@charId'] = charId, ['@model'] = model,
                     ['@props'] = json.encode(snapshot),
                     ['@reason'] = reason, ['@fee'] = fee, ['@dur'] = duration,
-                    ['@officer'] = player.identifier, ['@oname'] = charName(player),
+                    ['@officer'] = player.identifier, ['@oname'] = CharName(player),
                 }, function()
-                    setMdtLocation(plate, 'fourriere', player.identifier)
+                    SetMdtLocation(plate, 'fourriere', player.identifier)
                     despawn()
                     Notify(src, ('Véhicule %s mis en fourrière (%d $ · %d min).'):format(plate, fee, duration), 'success')
                 end)
@@ -171,7 +171,7 @@ local PendingRetrievals = {}
 
 local function ReleaseVehicle(src, player, plate, rec)
     MySQL.Async.execute('DELETE FROM fourriere WHERE plate=@p', { ['@p'] = plate })
-    setMdtLocation(plate, 'circulation', player.identifier)
+    SetMdtLocation(plate, 'circulation', player.identifier)
 
     local snap = nil
     if rec.props then
@@ -217,7 +217,7 @@ LSLegacy.Events.Register('fourriere:retrieve', function(data)
     local src = source
     local player = GetPlayer(src)
     if not player or type(data) ~= 'table' then return end
-    local plate = normPlate(data.plate)
+    local plate = NormPlate(data.plate)
 
     MySQL.Async.fetchAll([[
         SELECT owner, character_id, model, props, fee,

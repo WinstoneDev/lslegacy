@@ -1,6 +1,6 @@
 local CFG = Config.Fourriere
 
-local function canImpound()
+local function CanImpound()
     if not (LSLegacy and LSLegacy.PlayerData and LSLegacy.PlayerData.job == CFG.Job) then return false end
     if CFG.RequireOnDuty and LocalPlayer.state.policeOnDuty ~= true then return false end
     return true
@@ -54,7 +54,7 @@ exports.ox_target:addGlobalVehicle({
         label = 'Mettre en fourrière',
         distance = 3.0,
         canInteract = function(entity)
-            return canImpound() and entity and entity ~= 0
+            return CanImpound() and entity and entity ~= 0
         end,
         onSelect = function(data)
             OpenImpound(data.entity)
