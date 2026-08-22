@@ -1,4 +1,4 @@
--- Réutilise interim_stations (job intérimaire) comme unique source de vérité du stock. Flux event-driven : LSLegacy.AwaitServerCallback est cassé dans ce projet (events "esx:*" bruts non tokenisés).
+-- Réutilise interim_stations (job intérimaire) comme unique source de vérité du stock.
 
 local CFG = Config.Pompe
 

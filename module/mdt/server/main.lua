@@ -5,8 +5,7 @@
 --     jamais depuis le payload client.
 --   • Communication client→serveur via le SEUL mécanisme fiable du
 --     framework : events tokenisés (LSLegacy.RegisterServerEvent +
---     SendEventToServer). Le système de callbacks "esx:*" du framework
---     n'est pas câblé (aucun RegisterNetEvent) → on ne l'utilise pas.
+--     SendEventToServer), plutôt que LSLegacy.Callbacks (aller-retour).
 --   • Lectures  : event 'mdt:query' (dispatcher) → réponse 'mdt:queryResult'.
 --   • Écritures : un event par action → réponse 'mdt:result'.
 --   • Tous ces events sont déclarés dans LSLegacy.RateLimit (server/function.lua).

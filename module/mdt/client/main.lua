@@ -4,8 +4,7 @@
 --    permissions, onglets, services…). Aucune donnée sensible n'est
 --    décidée côté client.
 --  • Lectures NUI  → pont requête/réponse via events tokenisés
---    (mdt:query → mdt:queryResult). Le système de callbacks "esx:*" du
---    framework n'est pas câblé, on ne l'utilise donc pas.
+--    (mdt:query → mdt:queryResult), plutôt que LSLegacy.Callbacks.
 --  • Écritures NUI → LSLegacy.SendEventToServer (events tokenisés).
 
 local mdtOpen = false

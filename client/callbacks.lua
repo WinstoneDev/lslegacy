@@ -28,7 +28,7 @@ function Callbacks:Trigger(event, cb, invoker, ...)
     }
     local table = self.requests[self.id]
 
-    TriggerServerEvent("esx:triggerServerCallback", event, self.id, invoker, ...)
+    LSLegacy.SendEventToServer("triggerServerCallback", event, self.id, invoker, ...)
 
     self.id += 1
 
@@ -57,7 +57,7 @@ function Callbacks:ClientRecieve(eventName, requestId, invoker, ...)
     end
 
     local returnCb = function(...)
-        TriggerServerEvent("esx:clientCallback", requestId, invoker, ...)
+        LSLegacy.SendEventToServer("clientCallback", requestId, invoker, ...)
     end
     local callback = self.storage[eventName].cb
 
@@ -125,3 +125,9 @@ LSLegacy.AddEventHandler("onResourceStop", function(resource)
         end
     end
 end)
+
+LSLegacy.Callbacks = {
+    RegisterClient = LSLegacy.RegisterClientCallback,
+    TriggerServer = LSLegacy.TriggerServerCallback,
+    AwaitServer = LSLegacy.AwaitServerCallback,
+}
