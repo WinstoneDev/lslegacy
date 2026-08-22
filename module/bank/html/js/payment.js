@@ -1,9 +1,9 @@
 /* ════════════════════════════════════════════════════════════════
    LSLegacyBank Pay — NUI du menu de paiement (remplace l'ancien menu
    RageUI). Toute la logique métier (vérif PIN, plafonds, découvert)
-   reste côté serveur (sv_paymentMenu.lua) ; ce fichier ne fait que du
+   reste côté serveur (payment_menu.lua) ; ce fichier ne fait que du
    rendu + relais des actions vers 'payment:xxx' (RegisterNUICallback
-   dans cl_paymentMenu.lua).
+   dans payment_menu.lua).
    ════════════════════════════════════════════════════════════════ */
 
 const PAY_RES = 'lslegacy';

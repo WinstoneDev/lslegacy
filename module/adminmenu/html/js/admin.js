@@ -1,7 +1,7 @@
 /* ════════════════════════════════════════════════════════════════
    Menu Admin — Logique NUI
    Toute la logique métier (permissions, appels serveur) reste côté
-   Lua (cl_admin.lua) ; ce fichier ne fait que du rendu + relais des
+   Lua (client/main.lua) ; ce fichier ne fait que du rendu + relais des
    clics vers 'admin:action' (voir fetchNui/act ci-dessous).
    ════════════════════════════════════════════════════════════════ */
 

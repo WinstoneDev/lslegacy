@@ -64,11 +64,13 @@ Le dossier `stream/` (77 Mo, à la racine de la ressource) contient les animatio
 
 ```
 module/emotes/
-├── cl_emotes.lua          -- moteur principal : menu RageUI, favoris, /e, sync 2 joueurs, PTFX
-├── cl_idlecam.lua         -- /idlecamon /idlecamoff
-├── cl_binoculars.lua      -- touche J
-├── cl_newscam.lua         -- touche H / T
-├── sv_emotes.lua          -- relais serveur (sync 2 joueurs + favoris en BDD)
+├── client/
+│   ├── main.lua           -- moteur principal : menu RageUI, favoris, /e, sync 2 joueurs, PTFX
+│   ├── idlecam.lua        -- /idlecamon /idlecamoff
+│   ├── binoculars.lua     -- touche J
+│   └── newscam.lua        -- touche H / T
+├── server/
+│   └── main.lua           -- relais serveur (sync 2 joueurs + favoris en BDD)
 └── data/
     ├── emotes_emotes.lua
     ├── emotes_dances.lua

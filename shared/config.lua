@@ -33,7 +33,7 @@ Config.AP.Blacklist = {
 }
 
 -- Autonomie réelle (plein -> vide) = 100 / (LossRateByClass × 4.8) km, à
--- vitesse de croisière (cl_persistent.lua) — INDÉPENDANTE de la capacité du
+-- vitesse de croisière (persistent_vehicles/client/main.lua) — INDÉPENDANTE de la capacité du
 -- réservoir (TankCapacityByClass plus bas), qui n'est qu'un habillage
 -- d'affichage. Valeurs recalibrées pour une autonomie cohérente par palier
 -- (~450 km citadines/berlines → ~150 km monoplaces), au lieu de l'ancien
@@ -199,7 +199,7 @@ Config.StaffGroups = {
 Config.Bank = {
     -- Intervalle entre deux versements d'intérêts sur les livrets, UNE FOIS
     -- que le premier versement s'est calé sur minuit (heure serveur, voir
-    -- sv_bank.lua). Le taux admin (bank_interest_rates.rate_percent) est un
+    -- bank/server/main.lua). Le taux admin (bank_interest_rates.rate_percent) est un
     -- taux JOURNALIER : versé chaque jour à 00h, calculé sur le solde
     -- courant du livret (donc composé sur les intérêts déjà versés).
     InterestIntervalMs = 86400000,
@@ -218,7 +218,7 @@ Config.Bank = {
     -- de 50$ et que 40$ ont déjà été dépensés, il ne reste que 10$ jusqu'à
     -- la remise à zéro. Cette période suit la PÉRIODICITÉ DE LA CARTE
     -- (bank_card_tiers.cost_period, hebdo ou mensuelle) — voir
-    -- LSLegacy.Bank.CheckAndConsumeCeiling dans sv_bank.lua.
+    -- LSLegacy.Bank.CheckAndConsumeCeiling dans bank/server/main.lua.
 }
 
 Config.Items = {

@@ -99,7 +99,7 @@ CREATE TABLE IF NOT EXISTS `banlist` (
 -- -------------------------------------------------------------
 --  TABLE : bankaccounts
 --  Comptes bancaires des joueurs (système Maze Bank).
---  Créée/chargée dans : module/bank/sv_bank.lua
+--  Créée/chargée dans : module/bank/server/main.lua
 -- -------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `bankaccounts` (
     `id`           INT(11)       NOT NULL AUTO_INCREMENT,
@@ -153,7 +153,7 @@ CREATE TABLE IF NOT EXISTS `bankaccounts` (
 -- -------------------------------------------------------------
 --  TABLE : bank_livrets
 --  Livrets d'épargne (Livret A, LDDS, Compte à terme) rattachés
---  à un compte bancaire. Créée/chargée dans : module/bank/sv_bank.lua
+--  à un compte bancaire. Créée/chargée dans : module/bank/server/main.lua
 -- -------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `bank_livrets` (
     `id`                     INT(11)      NOT NULL AUTO_INCREMENT,
@@ -177,7 +177,7 @@ CREATE TABLE IF NOT EXISTS `bank_livrets` (
 -- -------------------------------------------------------------
 --  TABLE : bank_interest_rates
 --  Taux d'intérêt par type de livret, éditables en direct par le
---  panneau admin de la banque. Créée/chargée dans : module/bank/sv_bank.lua
+--  panneau admin de la banque. Créée/chargée dans : module/bank/server/main.lua
 -- -------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `bank_interest_rates` (
     `livret_type`                       VARCHAR(20) NOT NULL,
@@ -195,7 +195,7 @@ CREATE TABLE IF NOT EXISTS `bank_interest_rates` (
 --  TABLE : bank_card_tiers
 --  Paliers de carte (Standard/Premier/Platinum) : coût, plafonds,
 --  découvert autorisé, agios. Éditables en direct par le panneau
---  admin. Créée/chargée dans : module/bank/sv_bank.lua
+--  admin. Créée/chargée dans : module/bank/server/main.lua
 -- -------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `bank_card_tiers` (
     `tier`                   VARCHAR(20) NOT NULL,
@@ -215,7 +215,7 @@ CREATE TABLE IF NOT EXISTS `bank_card_tiers` (
 -- -------------------------------------------------------------
 --  TABLE : persistent_vehicles
 --  Véhicules persistants sauvegardés dans le monde.
---  Créée/chargée dans : module/persistent_vehicles/sv_persistent.lua
+--  Créée/chargée dans : module/persistent_vehicles/server/main.lua
 -- -------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `persistent_vehicles` (
     `id`            INT(11)      NOT NULL AUTO_INCREMENT,
@@ -288,7 +288,7 @@ CREATE TABLE IF NOT EXISTS `datastore` (
 -- -------------------------------------------------------------
 --  TABLE : admin_warns
 --  Historique des avertissements donnés par le staff.
---  Créée/chargée dans : module/adminmenu/sv_admin.lua
+--  Créée/chargée dans : module/adminmenu/server/main.lua
 -- -------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `admin_warns` (
     `id`                INT(11)      NOT NULL AUTO_INCREMENT,
@@ -305,7 +305,7 @@ CREATE TABLE IF NOT EXISTS `admin_warns` (
 -- -------------------------------------------------------------
 --  TABLE : support_tickets
 --  Tickets d'aide ouverts par les joueurs (/report) et suivis par le staff.
---  Créée/chargée dans : module/adminmenu/sv_admin.lua
+--  Créée/chargée dans : module/adminmenu/server/main.lua
 -- -------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `support_tickets` (
     `id`                 INT(11) NOT NULL AUTO_INCREMENT,

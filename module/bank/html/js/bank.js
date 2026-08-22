@@ -2,7 +2,7 @@
    Banque — Noyau NUI : état global, communication Lua, routeur de
    vues. Les fichiers js/views/*.js ne font que du rendu ; toute la
    logique métier (validations, calculs, BDD) vit côté serveur
-   (module/bank/sv_bank.lua), comme le reste de ce module.
+   (module/bank/server/main.lua), comme le reste de ce module.
    ════════════════════════════════════════════════════════════════ */
 
 const RES = 'lslegacy';

@@ -86,7 +86,7 @@ ALTER TABLE `mdt_med_records` ADD UNIQUE KEY `uniq_patient` (`character_id`);
 -- bankaccounts — rôle unique (owner), mais devient VRAIMENT per-personnage
 -- (plus seulement pour la cascade) : le menu banque et les 3 exports
 -- lb-phone (getBankBalanceByIdentifier / addBankMoneyByIdentifier /
--- removeBankMoneyByIdentifier / addBankMoneyOffline, module/bank/sv_bank.lua)
+-- removeBankMoneyByIdentifier / addBankMoneyOffline, module/bank/server/main.lua)
 -- matchent désormais sur character_id, résolu via
 -- LSLegacy.ResolveCharacterIdSync (personnage en ligne, sinon repli slot 1).
 -- -------------------------------------------------------------------
