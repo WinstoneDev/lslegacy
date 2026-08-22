@@ -33,7 +33,7 @@ Config.AP.Blacklist = {
 }
 
 -- Autonomie réelle (plein -> vide) = 100 / (LossRateByClass × 4.8) km, à
--- vitesse de croisière (persistent_vehicles/client/main.lua) — INDÉPENDANTE de la capacité du
+-- vitesse de croisière (persistentvehicles/client/main.lua) — INDÉPENDANTE de la capacité du
 -- réservoir (TankCapacityByClass plus bas), qui n'est qu'un habillage
 -- d'affichage. Valeurs recalibrées pour une autonomie cohérente par palier
 -- (~450 km citadines/berlines → ~150 km monoplaces), au lieu de l'ancien

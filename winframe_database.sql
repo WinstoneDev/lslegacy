@@ -215,7 +215,7 @@ CREATE TABLE IF NOT EXISTS `bank_card_tiers` (
 -- -------------------------------------------------------------
 --  TABLE : persistent_vehicles
 --  Véhicules persistants sauvegardés dans le monde.
---  Créée/chargée dans : module/persistent_vehicles/server/main.lua
+--  Créée/chargée dans : module/persistentvehicles/server/main.lua
 -- -------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `persistent_vehicles` (
     `id`            INT(11)      NOT NULL AUTO_INCREMENT,
