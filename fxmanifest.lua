@@ -228,7 +228,7 @@ shared_scripts {
 
 server_scripts {
     '@oxmysql/lib/MySQL.lua',
-    'shared/sv_config.lua',
+    'shared/shared.lua',
     'server/function.lua',
     'server/validate.lua',
     'server/callbacks.lua',
