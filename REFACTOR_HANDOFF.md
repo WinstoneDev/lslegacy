@@ -7,8 +7,11 @@ besoin d'aller chercher ailleurs. Il sera remplacé par un document final propre
 (+ mise à jour DEVELOPMENT.md/README.md) une fois le refactor terminé — ne pas le
 considérer comme la doc définitive du projet.
 
-**Dernière mise à jour :** 2026-08-22, après LOT 15bis (commit `dbb8afd`).
-**Prochaine étape à faire : LOT 16bis**, puis l'audit final + doc.
+**Dernière mise à jour :** 2026-08-23, après LOT 16bis (commit `201427b`).
+**Prochaine étape à faire : l'audit final + la doc récapitulative** (voir section
+"Ce qu'il reste à faire" plus bas). LOT 16bis a été fait sur une nouvelle machine
+(remote `origin` pointe directement sur GitHub désormais, plus de remote `github`
+séparé — voir "Repères utiles" en bas de fichier).
 
 ## Contexte général
 
@@ -293,7 +296,7 @@ syntaxiquement au pattern.
 
 ---
 
-## LOT 16 — Convention de nommage (analyse faite, PAS encore appliquée — c'est le LOT 16bis à faire)
+## LOT 16 — Convention de nommage (analyse faite, appliquée en LOT 16bis)
 
 Audit complet du nommage réel utilisé dans tout le repo (177 fichiers). Convention retenue à
 chaque fois = le pattern déjà majoritaire dans le repo, pour minimiser le renommage :
@@ -347,26 +350,110 @@ chaque fois = le pattern déjà majoritaire dans le repo, pour minimiser le reno
    Pas d'action spécifique au-delà du point 1 — `shared/` ne doit être créé que s'il y a
    vraiment du code partagé à extraire, pas systématiquement.
 
-**Avant tout renommage en LOT 16bis : rechercher exhaustivement toutes les références**
-(grep sur le nom de fichier/fonction/event AVANT de renommer/déplacer quoi que ce soit),
-exactement comme demandé par l'utilisateur pour ce lot. Ne pas renommer massivement sans
-bénéfice concret (ex. ne pas forcer une casse cosmétique sur des acronymes métier lisibles).
+---
 
-**LOT 16bis n'a pas encore été commencé — c'est la prochaine étape.**
+## LOT 16bis — Application des corrections de nommage (30 commits, poussés sur `origin dev`)
+
+Fait sur une nouvelle machine (reprise du refactor via ce fichier + les mémoires exportées
+dans `claude-memory-export/`). Chaque point du LOT 16 traité en un ou plusieurs commits,
+recherche exhaustive de références avant chaque renommage (grep sur tout le repo, y compris
+`fxmanifest.lua` racine et les éventuels manifests de module).
+
+**Point 7 (configs redondants)** : `shared/sv_config.lua` → `shared/shared.lua` (table
+`Shared`, chargée client+serveur via le glob `shared/*.lua`, le `sv_` était trompeur).
+`gendarmerie|police|pompiers|samu/config_<module>.lua` → `config_mdt.lua` dans chacun de ces 4
+modules (ces fichiers déclarent en réalité `Config.MDT.Departments.<module>`, pas une "config
+du module" — le vrai `config.lua` de chaque module existait déjà séparément, donc renommer en
+`config.lua` tout court aurait collisionné).
+
+**Point 1 (fichiers plats → client/server)** : les 8 modules identifiés (`bank`, `adminmenu`,
+`clothshop`, `garage`, `identity`, `needs`, `emotes`, `persistent_vehicles`) réorganisés en un
+commit. Convention suivie (déjà majoritaire ailleurs dans le repo) : fichier principal →
+`client/main.lua`/`server/main.lua`, fichiers secondaires → nom descriptif sans préfixe
+`cl_`/`sv_` (ex. `cl_paymentMenu.lua` → `client/payment_menu.lua`, casse corrigée au passage —
+seul nom de fichier camelCase du repo).
+
+**Trouvaille hors-scope signalée par l'utilisateur en cours de route** : 7 modules
+(`farm`, `ltd`, `mdt`, `mecanicien`, `police`, `pompiers`, `samu`) avaient chacun leur propre
+`fxmanifest.lua` résiduel d'une ancienne architecture en ressources séparées — le chargement
+réel passe uniquement par le `fxmanifest.lua` racine (ressource monolithique unique). Ces 7
+fichiers étaient morts (aucun effet), supprimés dans un commit dédié après validation.
+
+**Point 2 (casse des dossiers)** : `creatorPerso` → `creatorperso`, `pedOffline` → `pedoffline`,
+`persistent_vehicles` → `persistentvehicles`, chacun en un commit (rename impossible en une
+seule étape `git mv` sous Windows à cause de l'insensibilité à la casse du filesystem — passage
+par un nom temporaire intermédiaire). **Important** : la table SQL `persistent_vehicles`
+(dans `winframe_database.sql` et toutes les requêtes qui la référencent) n'a volontairement
+**pas** été renommée — c'est un nom de colonne/table, un espace de nommage totalement différent
+du nom de dossier, migrer un schéma SQL en prod n'apporte aucun bénéfice ici.
+
+**Point 5 (callbacks `sit`)** : migré de `lib.callback` (ox_lib) vers `LSLegacy.Callbacks`
+(`RegisterServer`/`AwaitServer`). Nuance de comportement : le système maison a un timeout fixe
+de 15s (rejette la promesse), contre un timeout par appel côté ox_lib (`false`/`200ms`) — sans
+conséquence en usage normal (aller-retour same-process quasi instantané), seul le pire cas
+(serveur qui bloque réellement) change de comportement.
+
+**Point 4 (events)** — le plus gros morceau, traité en plusieurs passes :
+- Casse `LSLegacy:*` → `lslegacy:*` (skills/injury/status, 1 commit, whitelist anticheat
+  `Shared.Anticheat.WhitelistedEvents` synchronisée).
+- Events PascalCase sans préfixe → `module:action` : Core (`InitPlayer`, `UpdatePlayer`,
+  `SetJob`, `SetFaction`, `RegisterDataStore`, etc. → `lslegacy:xxx`), `bank` (17 events, dont
+  un bug de casse latent corrigé au passage : `BankwithdrawMoney` → `bank:withdrawMoney`),
+  `adminmenu` (3 events → préfixe `admin:` déjà établi ailleurs dans ce module, pas
+  `adminmenu:`), `clothshop`, `creatorperso` (+ correction de casse des events déjà préfixés
+  `creatorPerso:*` → `creatorperso:*`). RateLimit tables et whitelist anticheat resynchronisées
+  à chaque commit.
+- Events `module:sub:action` aplatis en `module:action` (segment intermédiaire fusionné en
+  camelCase dans l'action) : `admin:multichar:returnToSelection`, `keyhanger:*:*`,
+  `lslegacy_carry|hostage|emotes:client:*` (le `client` était un pur marqueur de direction,
+  toujours le même donc supprimé), `lslegacy:injury|skills|status|client:*`, `samu:hi:*`, tous
+  les `pedOffline:*:*` (casse + aplatissement en même temps), et les callbacks `sit:server:*`
+  (les callbacks suivent la même convention `module:action`, cf. point 5 du LOT 16).
+- **Exclusions volontaires, décidées avec l'utilisateur** :
+  - `police:callouts:*` (~90 events) et `police:inv:*`/`police:radio:*` (~17 events) : système
+    de ~7000 lignes où `callouts`/`inv` sont de vraies sous-catégories utiles, pas un excès
+    accidentel — aplatir aurait un risque élevé de casse pour un bénéfice cosmétique faible.
+  - `lslegacy:phone:playerReady`/`lslegacy:phone:updateBalance` (2 events) : probable contrat
+    avec une resource téléphone externe (`winframe-phone` ?) non présente dans ce repo — les
+    renommer sans pouvoir mettre à jour l'autre côté casserait l'intégration en prod.
+  - `chat:server:ServerPSA` (`server/anticheat.lua`) : **pas un event à nous** — c'est une
+    signature de détection anti-triche (nom d'event d'un mod/menu de triche à bannir), comme
+    les autres entrées de `Shared.Anticheat.Events`. Repéré grâce au filtre par fonction
+    d'enregistrement (raw `RegisterNetEvent` dans `anticheat.lua`, pas `LSLegacy.Events.*`).
+
+**Point 3 (fonctions locales camelCase → PascalCase)** : 213 fonctions trouvées (nombre qui
+correspondait exactement à l'audit LOT 16), toutes des `local function` donc portée limitée à
+leur propre fichier (pas de recherche cross-fichier nécessaire, contrairement aux events).
+Renommage mécanique par script (déclaration + tout appel direct `nom(`), avec **vérification
+préalable, pour chaque fonction, que le nombre d'occurrences du mot nu correspond au nombre
+d'appels** — les écarts (~22 fonctions) ont été inspectés un par un pour distinguer les vraies
+références indirectes à renommer (`onReset = resetWalk` → `= ResetWalk`, `exports('x', name)` où
+seule la référence change pas le nom d'export public, `AddHandler('evt', name)`) des collisions
+purement textuelles à ne pas toucher (mentions dans des chaînes d'event, clés de table comme
+`{ result = res }`, texte de log `dbg("buildKeys ...")`). 10 commits, un par module/zone.
+
+**Point 6 (variables snake_case)** : seulement 4 trouvées (`time_val`, `board_model`,
+`overlay_model`, l'alias local `ox_target` dans `keyhanger` — seul fichier du repo à aliaser
+`ox_target` en variable locale au lieu de l'appeler inline comme partout ailleurs) → camelCase.
+
+**Point 8** : aucune action au-delà du point 1 (confirmé par l'audit LOT 16, rien de plus à
+faire).
+
+**Pas d'interpréteur Lua disponible** — vérification systématique par `git diff --stat`
+(équilibre strict insertions/suppressions à chaque commit mécanique) + relecture ciblée des cas
+particuliers avant chaque renommage, jamais de remplacement aveugle sans grep préalable.
 
 ---
 
-## Ce qu'il reste à faire après LOT 16bis (dans l'ordre annoncé par l'utilisateur)
+## Ce qu'il reste à faire (dans l'ordre annoncé par l'utilisateur)
 
-1. **LOT 16bis** (prochaine étape immédiate) : appliquer les corrections de nommage listées
-   ci-dessus, en cherchant toutes les références avant chaque renommage/déplacement.
-2. **Audit final** du refactor complet (pas encore défini dans le détail — à cadrer avec
+1. **Audit final** du refactor complet (pas encore défini dans le détail — à cadrer avec
    l'utilisateur au moment de le faire).
-3. **Écriture d'un fichier markdown récapitulatif du refactor** (document final propre,
+2. **Écriture d'un fichier markdown récapitulatif du refactor** (document final propre,
    remplaçant ce fichier `REFACTOR_HANDOFF.md` qui n'est qu'un doc de transfert temporaire).
-4. **Mise à jour de `DEVELOPMENT.md` et `README.md`** à la racine du repo pour refléter l'état
+3. **Mise à jour de `DEVELOPMENT.md` et `README.md`** à la racine du repo pour refléter l'état
    final du framework après refactor.
-5. Ensuite seulement : fusion de `dev` dans `master`, sortie du serveur, puis passage à
+4. Ensuite seulement : fusion de `dev` dans `master`, sortie du serveur, puis passage à
    l'organisation cible à deux VPS décrite en haut de ce fichier (plus de Claude Code / git
    sur la prod, uniquement sur le VPS dev).
 
@@ -385,7 +472,7 @@ bénéfice concret (ex. ne pas forcer une casse cosmétique sur des acronymes m�
 - **`LSLegacy.Database`** (LOT 14/15) : 35 fichiers font des appels `MySQL.Async.*` directs,
   aucun wrapper Core. Nécessite une vraie conception d'API avant extraction.
 - **`LSLegacy.Vehicles`** (LOT 14/15) : logique de spawn/delete éclatée entre
-  `garage`/`persistent_vehicles`/`concessionnaire`/`mecanicien`/services d'urgence, dupliquée
+  `garage`/`persistentvehicles`/`concessionnaire`/`mecanicien`/services d'urgence, dupliquée
   à 100% entre 4 modules services (samu/mecanicien/pompiers/police). Nécessite conception
   d'API (`Spawn`, `Delete`) avant extraction — identifié comme candidat A dans le rapport
   LOT 15 mais pas encore fait (nécessite créer une nouvelle fonction Core, pas juste migrer
@@ -397,24 +484,33 @@ bénéfice concret (ex. ne pas forcer une casse cosmétique sur des acronymes m�
   équivalent) avant migration — pas encore fait.
 - **Lint Lua** : pas d'outil disponible (luacheck absent des machines de travail), prévu pour
   un lot dédié si besoin (mentionné dès LOT 1, jamais traité).
-- **`shared/sv_config.lua`** a des références résiduelles ESX dans les listes de détection
-  anticheat (`Shared.Anticheat.BlacklistWords`/`Events`) — ce sont des signatures à bannir,
-  pas de vraies dépendances, donc pas un bug, juste à garder en tête si un futur audit tombe
-  dessus et se demande pourquoi "ESX" apparaît encore dans le code.
+- **`shared/shared.lua`** (ex-`sv_config.lua`) a des références résiduelles ESX dans les listes
+  de détection anticheat (`Shared.Anticheat.BlacklistWords`/`Events`) — ce sont des signatures à
+  bannir, pas de vraies dépendances, donc pas un bug, juste à garder en tête si un futur audit
+  tombe dessus et se demande pourquoi "ESX" apparaît encore dans le code.
+- **Events volontairement non uniformisés** (voir détail LOT 16bis) : `police:callouts:*`,
+  `police:inv:*`, `police:radio:*` (vraie sous-catégorisation dans un système volumineux) et
+  `lslegacy:phone:playerReady`/`lslegacy:phone:updateBalance` (contrat probable avec une
+  resource téléphone externe non présente dans ce repo). `chat:server:ServerPSA` dans
+  `server/anticheat.lua` n'est PAS un event à nous — signature anti-triche, ne jamais y toucher.
 
 ## Repères utiles pour reprendre vite
-- Dernier commit sur `dev` : `dbb8afd` (poussé sur `github dev`).
+- Dernier commit sur `dev` : `201427b` (poussé sur `origin dev`).
+- **Setup git a changé depuis LOT 15bis** : cette machine n'a qu'un seul remote `origin` qui
+  pointe directement sur `https://github.com/WinstoneDev/lslegacy.git` (branche `dev`) — plus de
+  remote `github` séparé ni de clone local intermédiaire type `lslegacy-dev`/`lslegacy`. Vérifier
+  `git remote -v` et `git branch -a` en début de session pour confirmer la config réelle avant de
+  push, au cas où une future machine reprenne encore différemment.
 - Fichiers Core principaux : `server/function.lua`, `server/validate.lua`,
   `server/callbacks.lua`, `server/commands.lua`, `server/anticheat.lua`, `server/datastore.lua`,
   `server/player/*.lua` (money, inventory, jobs, player, skills, status, injury, carry,
   hostage, pickup), `client/function.lua` (miroir client, a maintenant aussi
   `LSLegacy.Validate.Distance`).
-- 29 modules dans `module/*`, liste : adminmenu, atelier, bank, clothshop, concessionnaire,
-  creatorPerso, emotes, farm, fourriere, garage, gendarmerie, identity, interim, keyhanger,
-  ltd, mdt, mecanicien, metro, multichar, needs, pedOffline, persistent_vehicles, police,
-  pompe, pompiers, samu, sit, weather, wildlife.
-- Pas de mémoire persistante partagée entre comptes Claude — ce fichier EST la mémoire pour
-  la machine qui reprend. Le compte Claude utilisé sur cette machine (déplacement) a aussi
-  une mémoire locale détaillée (`lslegacy-refactor-progress.md` + `lslegacy-lot-full-migration.md`
-  dans son propre système de mémoire), mais elle n'est pas accessible depuis l'autre compte —
-  d'où ce fichier versionné dans le repo.
+- 29 modules dans `module/*`, liste (noms à jour post-LOT 16bis) : adminmenu, atelier, bank,
+  clothshop, concessionnaire, creatorperso, emotes, farm, fourriere, garage, gendarmerie,
+  identity, interim, keyhanger, ltd, mdt, mecanicien, metro, multichar, needs, pedoffline,
+  persistentvehicles, police, pompe, pompiers, samu, sit, weather, wildlife.
+- Pas de mémoire persistante partagée entre comptes/machines Claude — ce fichier EST la mémoire
+  pour la machine qui reprend. Les mémoires détaillées correspondantes ont été recréées dans le
+  système de mémoire propre à chaque compte à partir de `claude-memory-export/` (snapshot figé au
+  moment du transfert, ne pas s'y fier pour l'état courant — se fier à ce fichier et au code).
