@@ -876,11 +876,12 @@ AddEventHandler("weaponDamageEvent", function(sender, data)
     end
 end)
 
-AddEventHandler("giveWeaponEvent", function(sender,data)
-    if Shared.Anticheat.AntiGiveWeaponEvent then
+AddEventHandler("giveWeaponEvent", function(sender, data)
+    if Shared.Anticheat.AntiGiveWeapon or Shared.Anticheat.AntiGiveWeaponEvent then
         local _src = sender
+        -- givenAsPickup == false : arme injectée directement (script/menu), pas un pickup légitime.
         if data.givenAsPickup == false then
-            kickorbancheater(_src, "Anti Give Weapon (event)", "A tenté de donner des armes à un Ped", true, true)
+            kickorbancheater(_src, "Anti Give Weapon", "A tenté de donner des armes à un Ped (Script/Menu)", true, true)
             CancelEvent()
         end
     end
@@ -896,61 +897,6 @@ if Shared.Anticheat.AntiCrash then
         end
     end)
 end
-
-local Charset = {}
-for i = 65, 90 do table.insert(Charset, string.char(i)) end
-for i = 97, 122 do table.insert(Charset, string.char(i)) end
-
-RandomLetter = function(length)
-    if length > 0 then
-        return RandomLetter(length - 1) .. Charset[math.random(1, #Charset)]
-    end
-    return ""
-end
-
-AddEventHandler('chatMessage', function(source, color, message)
-    local _src = source
-    if not message then
-        return
-    end
-
-    if Shared.Anticheat.AntiBlacklistedWords then
-        for k, v in pairs(Shared.Anticheat.BlacklistWords) do
-            if string.match(message, v) then
-                Citizen.Wait(1500)
-                kickorbancheater(_src,"Mots blacklistés détectés", "Mots blacklistés détectés. Mots : "..v,true,true)
-                CancelEvent()
-            end
-            return
-        end
-    end
-end)
-
-RegisterServerEvent('_chat:messageEntered')
-AddEventHandler('_chat:messageEntered', function(author, color, message)
-    if not message then
-        return
-    end
-    local src = source
-
-    for k, v in pairs(Shared.Anticheat.BlacklistWords) do
-        if string.match(message, v) then
-            Citizen.Wait(1500)
-            kickorbancheater(src,"Mots blacklistés détectés", "Mots blacklistés détectés. Mots : "..v,true,true)
-            CancelEvent()
-        end
-      return
-    end
-end)
-
-Citizen.CreateThread(function()
-    for i=1, #Shared.Anticheat.BlacklistedCommands, 1 do
-        RegisterCommand(Shared.Anticheat.BlacklistedCommands[i], function(source)
-            local _src = source
-            kickorbancheater(_src,"Commande blacklistée détectée", "Commande blacklistée détectée.",true,true)
-        end)
-    end
-end)
 
 RegisterNetEvent('rwdeletevehiclesc', function(playerId)
 	local coords = GetEntityCoords(GetPlayerPed(playerId))
@@ -1036,28 +982,6 @@ AddEventHandler('entityCreated', function(entity)
     end
 end)
 
-AddEventHandler("weaponDamageEvent", function(sender, data)
-    if Shared.Anticheat.AntiTaze then
-        local _src = sender
-        if data.weaponType == 911657153 or data.weaponType == GetHashKey("WEAPON_STUNGUN") then
-            kickorbancheater(_src,"Anti Taser", "A tenté de tirer avec un taser",true,true)
-            CancelEvent()
-        end
-    end
-end)
-
-AddEventHandler("giveWeaponEvent", function(sender, data)
-    if Shared.Anticheat.AntiGiveWeapon or Shared.Anticheat.AntiGiveWeaponEvent then
-        local _src = sender
-        -- If givenAsPickup is false, it means it was likely script/menu injected directly into inventory
-        -- Legitimate pickups usually have this as true, or are handled server-side without this event
-        if data.givenAsPickup == false then
-            kickorbancheater(_src, "Anti Give Weapon", "A tenté de donner des armes à un Ped (Script/Menu)", true, true)
-            CancelEvent()
-        end
-    end
-end)
-
 AddEventHandler("removeWeaponEvent", function(sender, data)
     if Shared.Anticheat.AntiRemoveWeapon then
         local _src = sender
@@ -1065,18 +989,3 @@ AddEventHandler("removeWeaponEvent", function(sender, data)
         CancelEvent()
     end
 end)
-
-local Charset = {}
-for i = 65, 90 do
-    table.insert(Charset, string.char(i))
-end
-for i = 97, 122 do
-    table.insert(Charset, string.char(i))
-end
-
-RandomLetter = function(length)
-    if length > 0 then
-        return RandomLetter(length - 1) .. Charset[math.random(1, #Charset)]
-    end
-    return ""
-end
