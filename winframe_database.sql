@@ -864,7 +864,7 @@ CREATE TABLE IF NOT EXISTS `police_blood_traces` (
 --  TABLE : exit_sleeping
 --  État des PNJ « ped hors-ligne » laissés endormis à la déconnexion.
 --  Aucun CREATE TABLE explicite dans le module (table attendue pré-existante) —
---  lue/écrite dans : module/pedOffline/server/main.lua, module/pedOffline/class/main.lua
+--  lue/écrite dans : module/pedoffline/server/main.lua, module/pedoffline/class/main.lua
 -- -------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `exit_sleeping` (
     -- Identifiant du joueur endormi (clé naturelle)

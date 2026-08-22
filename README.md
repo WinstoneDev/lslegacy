@@ -87,7 +87,7 @@ Le framework est organisé en un socle central (`client/`, `server/`, `shared/`,
 | `metro` | Métro et rames ambiantes |
 | `multichar` | Sélection de personnages et appartements |
 | `needs` | Faim et soif |
-| `pedOffline` | PNJ représentant un joueur déconnecté |
+| `pedoffline` | PNJ représentant un joueur déconnecté |
 | `persistent_vehicles` | Persistance des véhicules (état, dégâts, stabilité) |
 | `police` | Job Police Nationale (actions, radio, enquêtes, prison, callouts) |
 | `pompe` | Pompes à essence publiques |

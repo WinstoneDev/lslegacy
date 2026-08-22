@@ -163,7 +163,7 @@ AddEventHandler('multichar:deleteCharacter', function(characterId)
     -- tables "agent de service" à un seul rôle identifier). Volontairement
     -- PAS de cascade pour interim_stations / police_blood_traces /
     -- police_crime_scenes : ces tables deviennent per-personnage mais
-    -- restent en base (preuves/scènes), voir module/pedOffline pour le
+    -- restent en base (preuves/scènes), voir module/pedoffline pour le
     -- même principe déjà appliqué aux peds endormis.
     local CASCADE_TABLES = {
         'police_officers', 'pompiers_agents', 'mecanicien_agents', 'atelier_agents',
@@ -242,7 +242,7 @@ local function SaveAndReleaseCharacter(source)
     })
 
     -- Le joueur reste connecté (seul le personnage change), donc `playerDropped`
-    -- ne se déclenche jamais : sans cet appel explicite, module/pedOffline ne
+    -- ne se déclenche jamais : sans cet appel explicite, module/pedoffline ne
     -- mettrait jamais "au lit" le personnage laissé derrière.
     if LSLegacy.PedOffline and LSLegacy.PedOffline.PutToSleep then
         LSLegacy.PedOffline.PutToSleep(source)

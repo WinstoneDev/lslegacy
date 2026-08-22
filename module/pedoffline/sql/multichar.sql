@@ -1,5 +1,5 @@
 -- =============================================================
---  pedOffline — migration multicharacter
+--  pedoffline — migration multicharacter
 --  À exécuter une seule fois. Faire un dump de sauvegarde avant.
 -- =============================================================
 
@@ -14,4 +14,4 @@ ALTER TABLE `exit_sleeping` MODIFY COLUMN `citizenid` VARCHAR(70) NOT NULL;
 -- de la migration restent indexés sous l'ancien format (identifier seul) et
 -- ne seront pas automatiquement supprimés à la reconnexion de leur
 -- personnage — ils resteront simplement sur place jusqu'à la purge
--- automatique (Config pedOfflineCfg.purgeDay, module/pedOffline/config.lua).
+-- automatique (Config pedOfflineCfg.purgeDay, module/pedoffline/config.lua).
