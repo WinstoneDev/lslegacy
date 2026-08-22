@@ -1,7 +1,7 @@
 local crouchClipset = "move_ped_crouched"
 local crouched = false
 
-local function setCrouched(ped, state)
+local function SetCrouched(ped, state)
     crouched = state
     if state then
         RequestClipSet(crouchClipset)
@@ -25,7 +25,7 @@ RegisterCommand('lslegacy_crouch', function()
 
     local ped = PlayerPedId()
     if IsPedInAnyVehicle(ped, false) or IsEntityDead(ped) or IsPedRagdoll(ped) or not IsPedOnFoot(ped) then return end
-    setCrouched(ped, not crouched)
+    SetCrouched(ped, not crouched)
 end, false)
 
 RegisterKeyMapping('lslegacy_crouch', "S'accroupir", 'keyboard', 'X')
@@ -35,7 +35,7 @@ CreateThread(function()
         if crouched then
             local ped = PlayerPedId()
             if IsPedInAnyVehicle(ped, false) or IsEntityDead(ped) or IsPedRagdoll(ped) or not IsPedOnFoot(ped) then
-                setCrouched(ped, false)
+                SetCrouched(ped, false)
             else
                 DisableControlAction(0, 21, true) -- sprint
                 DisableControlAction(0, 22, true) -- jump

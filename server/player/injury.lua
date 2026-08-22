@@ -69,7 +69,7 @@ LSLegacy.Injury = {}
 LSLegacy.Injury.BodyParts   = { 'head', 'body', 'arm_l', 'arm_r', 'leg_l', 'leg_r' }
 LSLegacy.Injury.InjuryTypes = { 'blunt', 'broken', 'bruising', 'burns', 'gunshot', 'laceration', 'taser' }
 
-local function freshWounds()
+local function FreshWounds()
     local wounds = {}
     for _, part in ipairs(LSLegacy.Injury.BodyParts) do
         local injuries = {}
@@ -84,7 +84,7 @@ end
 LSLegacy.Injury.InitWounds = function(src)
     local player = LSLegacy.ServerPlayers[src]
     if not player then return end
-    player.wounds = freshWounds()
+    player.wounds = FreshWounds()
 end
 
 LSLegacy.Injury.ResetWounds = LSLegacy.Injury.InitWounds

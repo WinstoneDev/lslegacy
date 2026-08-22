@@ -144,7 +144,7 @@ local function DrawCenteredText(text, x, y, scale, font, r, g, b, a)
     DrawText(x, y)
 end
 
-local function startLimp(ped)
+local function StartLimp(ped)
     if isLimping then return end
     isLimping = true
     RequestAnimSet("move_m@injured")
@@ -153,13 +153,13 @@ local function startLimp(ped)
     SetPedMovementClipset(ped, "move_m@injured", 0.3)
 end
 
-local function stopLimp(ped)
+local function StopLimp(ped)
     if not isLimping then return end
     isLimping = false
     ResetPedMovementClipset(ped, 0.3)
 end
 
-local function updateSpeedModifier(health)
+local function UpdateSpeedModifier(health)
     if isKO or isComa then return end
     local ped            = PlayerPedId()
     local enduranceBonus = GetSkillLevel("endurance") / 20.0  -- 0 à 0.5
@@ -167,19 +167,19 @@ local function updateSpeedModifier(health)
     if health < Config.Injury.LimpThreshold then
         -- Le clipset move_m@injured gère visuellement le ralentissement, pas besoin de MoveRateOverride
         SetPedMoveRateOverride(ped, 1.0)
-        startLimp(ped)
+        StartLimp(ped)
     elseif health < Config.Injury.SlowThreshold then
         local severity = 1.0 - ((health - Config.Injury.LimpThreshold) / (Config.Injury.SlowThreshold - Config.Injury.LimpThreshold))
         local rate     = math.max(0.55, 1.0 - (severity * 0.4) + enduranceBonus)
         SetPedMoveRateOverride(ped, rate)
-        stopLimp(ped)
+        StopLimp(ped)
     else
         SetPedMoveRateOverride(ped, 1.0)
-        stopLimp(ped)
+        StopLimp(ped)
     end
 end
 
-local function getPainMsg(health)
+local function GetPainMsg(health)
     local isHeavy = health < 115
     local w       = lastDmgWeapon
     local b       = lastDamageBone
@@ -216,17 +216,17 @@ local function getPainMsg(health)
     end
 end
 
-local function checkPainNotif(health)
+local function CheckPainNotif(health)
     if isKO or isComa then return end
     local now = GetGameTimer()
     if health < Config.Injury.LimpThreshold and (now - lastPainNotif) > 45000 then
         lastPainNotif = now
-        LSLegacy.ShowNotification("Douleur", getPainMsg(health), "error")
+        LSLegacy.ShowNotification("Douleur", GetPainMsg(health), "error")
     end
 end
 
 -- Catégorie + zone de la blessure, utilisée par le SAMU/Pompiers pour proposer la trousse de soins adaptée.
-local function getWoundCategory()
+local function GetWoundCategory()
     local w = lastDmgWeapon
     local b = lastDamageBone
 
@@ -245,9 +245,9 @@ local function getWoundCategory()
 end
 
 -- Membre du mannequin Health Inspection (SAMU) touché par le dernier coup —
--- indépendant de getWoundCategory()/syncWound() ci-dessus, qui gardent leur
+-- indépendant de GetWoundCategory()/SyncWound() ci-dessus, qui gardent leur
 -- rôle existant (messages de douleur, ancien système de trousse).
-local function getWoundPart(bone)
+local function GetWoundPart(bone)
     if BONE_HEAD[bone] then return 'head' end
     if BONE_ARM_L[bone] then return 'arm_l' end
     if BONE_ARM_R[bone] then return 'arm_r' end
@@ -257,21 +257,21 @@ local function getWoundPart(bone)
 end
 
 local lastWoundSync = 0
-local function syncWound(force)
+local function SyncWound(force)
     local now = GetGameTimer()
     if not force and (now - lastWoundSync) < 8000 then return end
     lastWoundSync = now
-    local category, zone = getWoundCategory()
+    local category, zone = GetWoundCategory()
     LSLegacy.Events.SendToServer("lslegacy:injurySyncWound", { category = category, zone = zone })
 end
 
-local function enterKO(ped)
+local function EnterKO(ped)
     if isKO or isComa then return end
     isKO      = true
     koEndTime = GetGameTimer() + Config.Injury.KODuration * 1000
-    syncWound(true)
+    SyncWound(true)
     LSLegacy.Events.SendToServer("lslegacy:injuryEnterKO")
-    stopLimp(ped)
+    StopLimp(ped)
     SetPedMoveRateOverride(ped, 1.0)
     SetPedToRagdoll(ped, Config.Injury.KODuration * 1000, Config.Injury.KODuration * 1000, 0, false, false, false)
 
@@ -320,8 +320,8 @@ local function enterKO(ped)
     end)
 end
 
--- Boucle d'affichage coma, partagée entre enterComa et resumeComa.
-local function runComaScreen(totalSeconds)
+-- Boucle d'affichage coma, partagée entre EnterComa et resumeComa.
+local function RunComaScreen(totalSeconds)
     local endTime = GetGameTimer() + totalSeconds * 1000
 
     CreateThread(function()
@@ -377,7 +377,7 @@ local function runComaScreen(totalSeconds)
     end)
 end
 
-local function enterComa()
+local function EnterComa()
     if isComa then return end
     isComa     = true
     isKO       = false
@@ -385,17 +385,17 @@ local function enterComa()
     local ped  = PlayerPedId()
     SetEntityInvincible(ped, true)
     SetPedMoveRateOverride(ped, 1.0)
-    stopLimp(ped)
-    syncWound(true)
+    StopLimp(ped)
+    SyncWound(true)
     LSLegacy.Events.SendToServer("lslegacy:injuryEnterComa")
     -- Mettre explicitement au sol : on ne peut pas compter sur la ragdoll
     -- laissée par les dégâts (elle a pu se terminer, ou n'avoir jamais eu
     -- lieu sur un dégât non projetant). L'ancien code figeait la position
     -- 1,5 s plus tard sans vérifier la posture — un ped déjà relevé se
     -- retrouvait donc figé DEBOUT pendant tout le coma. La boucle
-    -- runComaScreen entretient ensuite cette ragdoll.
+    -- RunComaScreen entretient ensuite cette ragdoll.
     SetPedToRagdoll(ped, 10000, 10000, 0, false, false, false)
-    runComaScreen(Config.Injury.ComaDuration)
+    RunComaScreen(Config.Injury.ComaDuration)
 end
 
 -- Reprise du coma après reconnexion : le serveur envoie le temps restant.
@@ -407,11 +407,11 @@ LSLegacy.Events.Register("lslegacy:injuryResumeComa", function(remaining)
     local ped  = PlayerPedId()
     SetEntityInvincible(ped, true)
     SetPedMoveRateOverride(ped, 1.0)
-    stopLimp(ped)
-    -- Au sol plutôt que figé debout, cf. enterComa
+    StopLimp(ped)
+    -- Au sol plutôt que figé debout, cf. EnterComa
     SetPedToRagdoll(ped, 10000, 10000, 0, false, false, false)
-    -- enterComa déjà enregistré côté serveur avant la déco, on ne le renvoie pas
-    runComaScreen(remaining)
+    -- EnterComa déjà enregistré côté serveur avant la déco, on ne le renvoie pas
+    RunComaScreen(remaining)
 end)
 
 LSLegacy.Events.Register("lslegacy:injuryAdminRevive", function(health)
@@ -433,7 +433,7 @@ LSLegacy.Events.Register("lslegacy:injuryAdminRevive", function(health)
         SetPedCanRagdoll(p, true)
         TaskGetUp(p) -- se relève avec une animation naturelle, pas un snap instantané
         SetPedMoveRateOverride(p, 1.0)
-        stopLimp(p)
+        StopLimp(p)
     end)
 end)
 
@@ -444,7 +444,7 @@ LSLegacy.Events.Register("lslegacy:clientRespawn", function()
     local points = Config.Injury.RespawnCoords
     local coords = points[math.random(#points)]
     -- Rester figé/invincible jusqu'à la téléportation + santé restaurée
-    -- (voir commentaire dans runComaScreen) : évite de retomber en coma
+    -- (voir commentaire dans RunComaScreen) : évite de retomber en coma
     -- pendant la fenêtre du fade-out.
     DoScreenFadeOut(500)
     Wait(600)
@@ -459,7 +459,7 @@ LSLegacy.Events.Register("lslegacy:clientRespawn", function()
     ClearPedTasksImmediately(ped)
     SetPedCanRagdoll(ped, true)
     SetPedMoveRateOverride(ped, 1.0)
-    stopLimp(ped)
+    StopLimp(ped)
     FreezeEntityPosition(ped, false)
     SetEntityInvincible(ped, false)
     DoScreenFadeIn(1200)
@@ -497,12 +497,12 @@ LSLegacy.Events.AddHandler("gameEventTriggered", function(name, args)
 
     -- Anti-mort-native (bis) : on ne peut pas attendre le prochain tick de la
     -- boucle Wait(0) plus bas, ce délai d'une frame suffit à laisser GTA
-    -- déclencher son "wasted" natif avant qu'enterKO/enterComa n'ait la main
+    -- déclencher son "wasted" natif avant qu'EnterKO/EnterComa n'ait la main
     -- (mort en un seul coup : rafale, explosion, chute). gameEventTriggered
     -- se déclenche au moment exact du coup, donc on intercepte ici.
     if isKO or isComa then return end
     if GetEntityHealth(victim) <= 100 then
-        -- Remonter la vie AVANT d'appeler enterKO/enterComa : ces fonctions
+        -- Remonter la vie AVANT d'appeler EnterKO/EnterComa : ces fonctions
         -- ne touchent pas la santé tout de suite (seule la boucle du thread
         -- qu'elles lancent le fait, une frame plus tard). Sur un gros burst
         -- de dégâts, le moteur peut avoir déjà marqué le ped mort en interne
@@ -512,9 +512,9 @@ LSLegacy.Events.AddHandler("gameEventTriggered", function(name, args)
         -- orphelin/dupliqué observé en test).
         SetEntityHealth(victim, 101)
         if wHash == UNARMED_HASH then
-            enterKO(victim)
+            EnterKO(victim)
         else
-            enterComa()
+            EnterComa()
         end
     end
 end)
@@ -542,7 +542,7 @@ end)
 -- (membre, catégorie) et on les envoie groupés une fois par seconde.
 local woundDamageBuffer = {}
 
-local function queueWoundDamage(part, category, amount)
+local function QueueWoundDamage(part, category, amount)
     if not part or not category or amount <= 0 then return end
     local key = part .. '|' .. category
     local entry = woundDamageBuffer[key]
@@ -608,15 +608,15 @@ CreateThread(function()
                 SetEntityHealth(p, 101)
                 lastHealth = 101
                 -- Garder le joueur au sol : la résurrection remet le ped
-                -- debout, ce qui trahirait le rattrapage. enterComa() gèle
+                -- debout, ce qui trahirait le rattrapage. EnterComa() gèle
                 -- ensuite la position une fois la ragdoll posée.
                 SetPedToRagdoll(p, 5000, 5000, 0, false, false, false)
 
                 if not isKO and not isComa then
                     if causeHash == UNARMED_HASH then
-                        enterKO(p)
+                        EnterKO(p)
                     else
-                        enterComa()
+                        EnterComa()
                     end
                 end
             end
@@ -637,7 +637,7 @@ CreateThread(function()
         -- Anti-mort-native : sans ça, un headshot applique un multiplicateur
         -- de dégâts critiques qui peut faire passer la vie de >100 à ≤0 en un
         -- seul coup, avant même que cette boucle (Wait(0), donc à la frame
-        -- suivante) ait la main pour planchonner la vie via enterKO/enterComa
+        -- suivante) ait la main pour planchonner la vie via EnterKO/EnterComa
         -- — le jeu déclenche alors sa propre mort/respawn natif, en dehors du
         -- système KO/coma (c'est ce qui provoque le ped dupliqué ailleurs).
         -- Réappliqué en boucle car un changement de skin peut réinitialiser
@@ -651,9 +651,9 @@ CreateThread(function()
 
         local health = GetEntityHealth(ped)
 
-        updateSpeedModifier(health)
-        checkPainNotif(health)
-        if health < Config.Injury.SlowThreshold then syncWound() end
+        UpdateSpeedModifier(health)
+        CheckPainNotif(health)
+        if health < Config.Injury.SlowThreshold then SyncWound() end
 
         if health <= 100 and lastHealth > 100 then
             local causeHash  = GetPedCauseOfDeath(ped)
@@ -666,20 +666,20 @@ CreateThread(function()
                 end
             end
             if weaponHash == UNARMED_HASH then
-                enterKO(ped)
+                EnterKO(ped)
             else
-                enterComa()
+                EnterComa()
             end
         end
 
         -- Health Inspection (SAMU) : attribution du dégât constaté au membre
         -- touché. Chaque perte de vie réelle est comptabilisée, mais mise en
-        -- tampon plutôt qu'envoyée immédiatement (cf. queueWoundDamage) —
+        -- tampon plutôt qu'envoyée immédiatement (cf. QueueWoundDamage) —
         -- l'envoi par frame déconnectait le joueur pour spam d'events.
         if health < lastHealth then
-            local category = getWoundCategory()
-            local part = getWoundPart(lastDamageBone)
-            queueWoundDamage(part, category, lastHealth - health)
+            local category = GetWoundCategory()
+            local part = GetWoundPart(lastDamageBone)
+            QueueWoundDamage(part, category, lastHealth - health)
         end
 
         lastHealth = health

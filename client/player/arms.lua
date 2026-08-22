@@ -2,7 +2,7 @@ local armsDict = "random@mugging3"
 local armsClip = "handsup_standing_base"
 local armsUp = false
 
-local function startArms(ped)
+local function StartArms(ped)
     RequestAnimDict(armsDict)
     while not HasAnimDictLoaded(armsDict) do Wait(0) end
     SetPedCurrentWeaponVisible(ped, false, true, true, true)
@@ -10,7 +10,7 @@ local function startArms(ped)
     RemoveAnimDict(armsDict)
 end
 
-local function stopArms(ped)
+local function StopArms(ped)
     if IsEntityPlayingAnim(ped, armsDict, armsClip, 3) then
         StopAnimTask(ped, armsDict, armsClip, -4.0)
     end
@@ -23,13 +23,13 @@ RegisterCommand('+lslegacy_arms', function()
     local ped = PlayerPedId()
     if IsPedInAnyVehicle(ped, false) or IsEntityDead(ped) or IsPedRagdoll(ped) or not IsPedOnFoot(ped) then return end
     armsUp = true
-    startArms(ped)
+    StartArms(ped)
 end, false)
 
 RegisterCommand('-lslegacy_arms', function()
     if not armsUp then return end
     armsUp = false
-    stopArms(PlayerPedId())
+    StopArms(PlayerPedId())
 end, false)
 
 RegisterKeyMapping('+lslegacy_arms', 'Lever les mains', 'keyboard', 'U')
@@ -40,7 +40,7 @@ CreateThread(function()
             local ped = PlayerPedId()
             if IsPedInAnyVehicle(ped, false) or IsEntityDead(ped) or IsPedRagdoll(ped) or not IsPedOnFoot(ped) then
                 armsUp = false
-                stopArms(ped)
+                StopArms(ped)
             else
                 DisableControlAction(0, 24, true) -- attack
                 DisableControlAction(0, 25, true) -- aim

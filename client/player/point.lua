@@ -1,7 +1,7 @@
 local pointDict = "anim@mp_point"
 local pointing = false
 
-local function startPointing(ped)
+local function StartPointing(ped)
     RequestAnimDict(pointDict)
     while not HasAnimDictLoaded(pointDict) do Wait(0) end
     SetPedCurrentWeaponVisible(ped, false, true, true, true)
@@ -10,7 +10,7 @@ local function startPointing(ped)
     RemoveAnimDict(pointDict)
 end
 
-local function stopPointing(ped)
+local function StopPointing(ped)
     Citizen.InvokeNative(0xD01015C7316AE176, ped, "Stop")
     if not IsPedInjured(ped) then
         ClearPedSecondaryTask(ped)
@@ -27,13 +27,13 @@ RegisterCommand('+lslegacy_point', function()
         return
     end
     pointing = true
-    startPointing(ped)
+    StartPointing(ped)
 end, false)
 
 RegisterCommand('-lslegacy_point', function()
     if not pointing then return end
     pointing = false
-    stopPointing(PlayerPedId())
+    StopPointing(PlayerPedId())
 end, false)
 
 RegisterKeyMapping('+lslegacy_point', 'Pointer du doigt', 'keyboard', 'B')
@@ -44,7 +44,7 @@ CreateThread(function()
             local ped = PlayerPedId()
             if IsPedInAnyVehicle(ped, false) or IsEntityDead(ped) or IsPedRagdoll(ped) or not IsPedOnFoot(ped) then
                 pointing = false
-                stopPointing(ped)
+                StopPointing(ped)
             else
                 DisableControlAction(0, 24, true) -- attack
                 DisableControlAction(0, 25, true) -- aim

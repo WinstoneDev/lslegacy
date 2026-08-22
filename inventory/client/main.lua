@@ -10,7 +10,7 @@ function GetFieldValueFromName(stringName)
 	return (ok and type(decoded) == 'table') and decoded or {}
 end
 -- Raccourcis d'inventaire (items/armes assignés aux touches numériques),
--- rechargés par personnage plus bas (getCharacterKvpSuffix) une fois
+-- rechargés par personnage plus bas (GetCharacterKvpSuffix) une fois
 -- LSLegacy.PlayerData disponible — voir le handler InitPlayer.
 local FastWeapons = {}
 local currentMenu = 'items'
@@ -314,13 +314,13 @@ local PropMap={
     bracelets_1={pid=7,tex="bracelets_2"}
 }
 
-local function clamp(v,min,max)
+local function Clamp(v,min,max)
     if v<min then return min end
     if v>max then return max end
     return v
 end
 
-local function applyHeadBlend(ped,skin)
+local function ApplyHeadBlend(ped,skin)
     SetPedHeadBlendData(
         ped,
         skin.mom or 0,
@@ -329,22 +329,22 @@ local function applyHeadBlend(ped,skin)
         skin.mom or 0,
         skin.dad or 0,
         0,
-        clamp((skin.face_md_weight or 50)/100,0.0,1.0),
-        clamp((skin.skin_md_weight or 50)/100,0.0,1.0),
+        Clamp((skin.face_md_weight or 50)/100,0.0,1.0),
+        Clamp((skin.skin_md_weight or 50)/100,0.0,1.0),
         0.0,
         false
     )
 end
 
-local function applyFaceFeatures(ped,skin)
+local function ApplyFaceFeatures(ped,skin)
     for name,id in pairs(FaceFeatureMap) do
         if skin[name]~=nil then
-            SetPedFaceFeature(ped,id,clamp(skin[name]/10,-1.0,1.0))
+            SetPedFaceFeature(ped,id,Clamp(skin[name]/10,-1.0,1.0))
         end
     end
 end
 
-local function applyOverlays(ped,skin)
+local function ApplyOverlays(ped,skin)
     for field,data in pairs(OverlayMap) do
         if skin[field]~=nil then
             local drawable=skin[field]
@@ -354,7 +354,7 @@ local function applyOverlays(ped,skin)
                 ped,
                 data.id,
                 drawable,
-                clamp((skin[data.opa] or 0)/10,0.0,1.0)
+                Clamp((skin[data.opa] or 0)/10,0.0,1.0)
             )
 
             if data.colorType then
@@ -370,7 +370,7 @@ local function applyOverlays(ped,skin)
     end
 end
 
-local function applyHair(ped,skin)
+local function ApplyHair(ped,skin)
     SetPedComponentVariation(
         ped,
         2,
@@ -386,16 +386,16 @@ local function applyHair(ped,skin)
     )
 end
 
-local function applyEyeColor(ped,skin)
+local function ApplyEyeColor(ped,skin)
     if skin.eye_color~=nil then
         SetPedEyeColor(
             ped,
-            clamp(skin.eye_color,0,31)
+            Clamp(skin.eye_color,0,31)
         )
     end
 end
 
-local function applyClothes(ped,skin)
+local function ApplyClothes(ped,skin)
     for name,data in pairs(ClothesMap) do
         if skin[name]~=nil then
             SetPedComponentVariation(
@@ -409,7 +409,7 @@ local function applyClothes(ped,skin)
     end
 end
 
-local function applyProps(ped,skin)
+local function ApplyProps(ped,skin)
     for name,data in pairs(PropMap) do
         if skin[name]~=nil then
             if skin[name]==-1 then
@@ -427,18 +427,18 @@ local function applyProps(ped,skin)
     end
 end
 
-local function applySkin(ped,skin)
+local function ApplySkin(ped,skin)
     SetPedDefaultComponentVariation(ped)
-    applyHeadBlend(ped,skin)
-    applyHair(ped,skin)
-    applyEyeColor(ped,skin)
-    applyOverlays(ped,skin)
-    applyFaceFeatures(ped,skin)
-    applyClothes(ped,skin)
-    applyProps(ped,skin)
+    ApplyHeadBlend(ped,skin)
+    ApplyHair(ped,skin)
+    ApplyEyeColor(ped,skin)
+    ApplyOverlays(ped,skin)
+    ApplyFaceFeatures(ped,skin)
+    ApplyClothes(ped,skin)
+    ApplyProps(ped,skin)
 end
 
-local function createPedScreen(skin)
+local function CreatePedScreen(skin)
     local model=skin.sex==0 and `mp_m_freemode_01` or `mp_f_freemode_01`
 
     RequestModel(model)
@@ -483,7 +483,7 @@ local function createPedScreen(skin)
     SetEntityVisible(previewPed,false,false)
     NetworkSetEntityInvisibleToNetwork(previewPed,true)
 
-    applySkin(previewPed,skin)
+    ApplySkin(previewPed,skin)
 
     GivePedToPauseMenu(previewPed,1)
 
@@ -499,7 +499,7 @@ local function createPedScreen(skin)
     )
 end
 
-local function deletePedScreen()
+local function DeletePedScreen()
     if DoesEntityExist(previewPed) then
         SetEntityAsMissionEntity(previewPed,true,true)
         DeleteEntity(previewPed)
@@ -517,28 +517,28 @@ local function deletePedScreen()
     )
 end
 
-local function refreshPedScreen()
+local function RefreshPedScreen()
     if not DoesEntityExist(previewPed) then return end
 
     TriggerEvent("skinchanger:getSkin",function(skin)
-        deletePedScreen()
+        DeletePedScreen()
         Wait(100)
-        createPedScreen(skin)
+        CreatePedScreen(skin)
     end)
 end
 
 RegisterCommand("p1",function()
     TriggerEvent("skinchanger:getSkin",function(skin)
-        createPedScreen(skin)
+        CreatePedScreen(skin)
     end)
 end)
 
 RegisterCommand("p2",function()
-    deletePedScreen()
+    DeletePedScreen()
 end)
 
 RegisterCommand("p3",function()
-    refreshPedScreen()
+    RefreshPedScreen()
 end)
 
 CreateThread(function()
@@ -602,25 +602,25 @@ end
 -- le même PC) partageraient exactement le même cache.
 local EquippedClothSlots = {}
 
-local function getCharacterKvpSuffix()
+local function GetCharacterKvpSuffix()
     local identifier = LSLegacy.PlayerData and LSLegacy.PlayerData.identifier
     if not identifier then return nil end
     local slot = LSLegacy.PlayerData.slot or 1
     return '_' .. identifier:gsub('[^%w]', '_') .. '_' .. tostring(slot)
 end
 
-local function equippedSlotsKey()
-    local suffix = getCharacterKvpSuffix()
+local function EquippedSlotsKey()
+    local suffix = GetCharacterKvpSuffix()
     return suffix and ('LSLegacy_EquippedSlots' .. suffix) or nil
 end
 
-local function equippedOutfitKey()
-    local suffix = getCharacterKvpSuffix()
+local function EquippedOutfitKey()
+    local suffix = GetCharacterKvpSuffix()
     return suffix and ('LSLegacy_EquippedOutfit' .. suffix) or nil
 end
 
-local function loadEquippedSlots()
-    local key = equippedSlotsKey()
+local function LoadEquippedSlots()
+    local key = EquippedSlotsKey()
     local saved = key and GetResourceKvpString(key)
     EquippedClothSlots = (saved and json.decode(saved)) or {}
 end
@@ -629,31 +629,31 @@ function getEquippedSlots()
     return EquippedClothSlots
 end
 
-local function saveEquippedSlots()
-    local key = equippedSlotsKey()
+local function SaveEquippedSlots()
+    local key = EquippedSlotsKey()
     if key then SetResourceKvp(key, json.encode(EquippedClothSlots)) end
 end
 
-local function getEquippedOutfit()
-    local key = equippedOutfitKey()
+local function GetEquippedOutfit()
+    local key = EquippedOutfitKey()
     local saved = key and GetResourceKvpString(key)
     return (saved and json.decode(saved)) or nil
 end
 
 -- Raccourcis d'inventaire (FastWeapons, déclaré en haut du fichier) : même
 -- traitement par personnage que les vêtements équipés ci-dessus.
-local function fastWeaponsKey()
-    local suffix = getCharacterKvpSuffix()
+local function FastWeaponsKey()
+    local suffix = GetCharacterKvpSuffix()
     return suffix and ('LSLegacy_FastWeapons' .. suffix) or nil
 end
 
-local function loadFastWeapons()
-    local key = fastWeaponsKey()
+local function LoadFastWeapons()
+    local key = FastWeaponsKey()
     FastWeapons = (key and GetFieldValueFromName(key)) or {}
 end
 
-local function saveFastWeapons()
-    local key = fastWeaponsKey()
+local function SaveFastWeapons()
+    local key = FastWeaponsKey()
     if key then SetFieldValueFromNameEncode(key, FastWeapons) end
 end
 
@@ -662,8 +662,8 @@ end
 -- "Retour à la sélection"), qui redéclenche InitPlayer pour le nouveau
 -- personnage choisi.
 LSLegacy.Events.AddHandler('lslegacy:initPlayer', function()
-    loadEquippedSlots()
-    loadFastWeapons()
+    LoadEquippedSlots()
+    LoadFastWeapons()
 end)
 
 function openInventory()
@@ -674,7 +674,7 @@ function openInventory()
     SendNUIMessage({action = "display", type = "normal"})
     SendNUIMessage({action = "setWeightText", text = ""})
     SendNUIMessage({action = "setEquippedSlots", slots = getEquippedSlots()})
-    SendNUIMessage({action = "setEquippedOutfit", outfit = getEquippedOutfit()})
+    SendNUIMessage({action = "setEquippedOutfit", outfit = GetEquippedOutfit()})
     SetNuiFocus(true, true)
     SetKeepInputMode(true)
     DisableControlInventory()
@@ -800,7 +800,7 @@ function prepareWeaponTransfer(itemName, itemData)
     local fastEntry = SearchInFastWeapons(itemName)
     if fastEntry then
         FastWeapons[fastEntry.slot] = nil
-        saveFastWeapons()
+        SaveFastWeapons()
     end
 end
 
@@ -1005,7 +1005,7 @@ function loadPlayerInventory(result, vehicle)
                 usable = true
             })
         end
-        SendNUIMessage({ action = "setItems", itemList = items, fastItems = fastItems, text = textweight, crMenu = result, equippedSlots = EquippedClothSlots, equippedOutfit = getEquippedOutfit()})
+        SendNUIMessage({ action = "setItems", itemList = items, fastItems = fastItems, text = textweight, crMenu = result, equippedSlots = EquippedClothSlots, equippedOutfit = GetEquippedOutfit()})
         if vehicle then
             if BagOrTrunk(CurrentVehicle) == 'trunk' then
                 datastore = LSLegacy.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
@@ -1260,7 +1260,7 @@ function loadPlayerInventory(result, vehicle)
                 })
             end
         end
-        SendNUIMessage({ action = "setItems", itemList = items, fastItems = fastItems, text = textweight, crMenu = result, equippedSlots = EquippedClothSlots, equippedOutfit = getEquippedOutfit()})
+        SendNUIMessage({ action = "setItems", itemList = items, fastItems = fastItems, text = textweight, crMenu = result, equippedSlots = EquippedClothSlots, equippedOutfit = GetEquippedOutfit()})
         if vehicle then
             if BagOrTrunk(CurrentVehicle) == 'trunk' then
                 datastore = LSLegacy.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
@@ -1511,7 +1511,7 @@ function loadPlayerInventory(result, vehicle)
                 })
             end
         end
-        SendNUIMessage({ action = "setItems", itemList = items, fastItems = fastItems, text = textweight, crMenu = result, equippedSlots = EquippedClothSlots, equippedOutfit = getEquippedOutfit()})
+        SendNUIMessage({ action = "setItems", itemList = items, fastItems = fastItems, text = textweight, crMenu = result, equippedSlots = EquippedClothSlots, equippedOutfit = GetEquippedOutfit()})
         if vehicle then
             if BagOrTrunk(CurrentVehicle) == 'trunk' then
                 datastore = LSLegacy.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
@@ -1835,7 +1835,7 @@ RegisterNUICallback("UnloadWeapon", function(data, cb)
             local fastEntry = SearchInFastWeapons(data.item.name)
             if fastEntry then
                 FastWeapons[fastEntry.slot].ammo = 0
-                saveFastWeapons()
+                SaveFastWeapons()
             end
             LSLegacy.Events.SendToServer('updateWeaponAmmo', data.item.name, 0)
             cb('ok')
@@ -1912,7 +1912,7 @@ RegisterNUICallback("EquipClothing", function(data, cb)
             LSLegacy.ShowNotification(nil, "Ce vêtement n'est pas compatible avec ton modèle.", 'error')
         end
         EquippedClothSlots[data.item.name] = { name = data.item.name, uniqueId = data.item.uniqueId }
-        saveEquippedSlots()
+        SaveEquippedSlots()
         ExecuteCommand('p3')
     end
     cb("ok")
@@ -1930,7 +1930,7 @@ RegisterNUICallback("UnequipClothing", function(data, cb)
             LSLegacy.Events.TriggerLocal('skinchanger:change', 'arms_2', def['arms'][2])
         end
         EquippedClothSlots[data.item.name] = nil
-        saveEquippedSlots()
+        SaveEquippedSlots()
         ExecuteCommand('p3')
     end
     cb("ok")
@@ -1958,9 +1958,9 @@ RegisterNUICallback("EquipOutfit", function(data, cb)
     end
 
     EquippedClothSlots = {}
-    saveEquippedSlots()
+    SaveEquippedSlots()
 
-    local outfitKey = equippedOutfitKey()
+    local outfitKey = EquippedOutfitKey()
     if outfitKey then
         SetResourceKvp(outfitKey, json.encode({
             name     = outfit.label,
@@ -1981,7 +1981,7 @@ RegisterNUICallback("UnequipOutfit", function(data, cb)
         LSLegacy.Events.TriggerLocal('skinchanger:change', slot..'_2', values[2])
     end
 
-    local outfitKey = equippedOutfitKey()
+    local outfitKey = EquippedOutfitKey()
     if outfitKey then DeleteResourceKvp(outfitKey) end
 
     ExecuteCommand('p3')
@@ -2009,9 +2009,9 @@ RegisterNUICallback("SaveOutfitFromInventory", function(data, cb)
         end
     end
 
-    local currentOutfit = getEquippedOutfit()
+    local currentOutfit = GetEquippedOutfit()
     if currentOutfit and tostring(currentOutfit.uniqueId) == tostring(data.outfitUniqueId) then
-        local outfitKey = equippedOutfitKey()
+        local outfitKey = EquippedOutfitKey()
         if outfitKey then
             SetResourceKvp(outfitKey, json.encode({
                 name     = data.outfitLabel or currentOutfit.name,
@@ -2111,7 +2111,7 @@ RegisterNUICallback("PutIntoFast", function(data, cb)
             data = data.item.data,
             ammo = data.item.data and data.item.data.ammo --- a changer pour eviter d'avoir full balles
         }
-        saveFastWeapons()
+        SaveFastWeapons()
         loadPlayerInventory(currentMenu, CurrentVehicle)
     end
     cb("ok")
@@ -2121,7 +2121,7 @@ RegisterNUICallback("TakeFromFast", function(data, cb)
     if viewOnlyMode then cb("ok") return end
     if currentMenu == 'items' or currentMenu == 'weapons' then
         FastWeapons[data.item.slot] = nil
-        saveFastWeapons()
+        SaveFastWeapons()
         loadPlayerInventory(currentMenu, CurrentVehicle)
     end
 	cb("ok")
@@ -2228,7 +2228,7 @@ end)
 
 CurrentContainer = nil  -- { name, label, maxWeight }
 
-local function buildSelfItemsList()
+local function BuildSelfItemsList()
     local list, fast = {}, {}
     if json.encode(FastWeapons) ~= "[]" then
         for k, v in pairs(FastWeapons) do
@@ -2259,7 +2259,7 @@ function loadContainerInventory()
     datastore   = ds   -- réutilisé par les callbacks Put/Take
     currentMenu = 'items'
 
-    local selfList, fast = buildSelfItemsList()
+    local selfList, fast = BuildSelfItemsList()
     local weight = GramsOrKg(LSLegacy.PlayerData.weight or 0)
     SendNUIMessage({
         action        = "setItems",
@@ -2268,7 +2268,7 @@ function loadContainerInventory()
         text          = weight .. " / " .. Config.Informations["MaxWeight"] .. 'KG',
         crMenu        = 'items',
         equippedSlots = getEquippedSlots(),
-        equippedOutfit = getEquippedOutfit(),
+        equippedOutfit = GetEquippedOutfit(),
     })
 
     local inv = (type(ds.inventory) == 'table') and ds.inventory or {}
