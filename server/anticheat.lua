@@ -1,5 +1,5 @@
 local ResourceMetadata = {}
-local passWordNeeded = false
+local passWordNeeded = true
 local ServerPassword = GetConvar('lslegacy_anticheat_password', '')
 
 ---BanPlayer
