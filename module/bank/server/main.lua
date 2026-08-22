@@ -1,7 +1,7 @@
 local rateLimits = {
-    ['GetBankAccounts'] = 30, ['BankCreateAccount'] = 15, ['BankChangeAccountStatus'] = 20,
-    ['BankDeleteAccount'] = 20, ['BankCreateCard'] = 20, ['BankwithdrawMoney'] = 20,
-    ['BankAddMoney'] = 20, ['lslegacy:requestBankBalance'] = 20, ['attemptToPayMenu'] = 20,
+    ['bank:getBankAccounts'] = 30, ['bank:createAccount'] = 15, ['bank:changeAccountStatus'] = 20,
+    ['bank:deleteAccount'] = 20, ['bank:createCard'] = 20, ['bank:withdrawMoney'] = 20,
+    ['bank:addMoney'] = 20, ['lslegacy:requestBankBalance'] = 20, ['attemptToPayMenu'] = 20,
     ['pay'] = 20,
 }
 for eventName, limit in pairs(rateLimits) do
@@ -162,11 +162,11 @@ end, 10.0, false, {
     }
 })
 
-LSLegacy.Events.Register('GetBankAccounts', function()
+LSLegacy.Events.Register('bank:getBankAccounts', function()
     LSLegacy.Events.SendToClient('receiveBankAccounts', source, LSLegacy.Bank.BankAccounts)
 end)
 
-LSLegacy.Events.Register('BankCreateAccount', function()
+LSLegacy.Events.Register('bank:createAccount', function()
     local player = LSLegacy.Players.Get(source)
     local account = {
         owner = player.identifier,
@@ -192,7 +192,7 @@ LSLegacy.Events.Register('BankCreateAccount', function()
     LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Votre compte a été créé avec succès.', 'success')
 end)
 
-LSLegacy.Events.Register('BankChangeAccountStatus', function(id, state)
+LSLegacy.Events.Register('bank:changeAccountStatus', function(id, state)
     local player = LSLegacy.Players.Get(source)
     local account = LSLegacy.Bank.GetAccount(id)
     if not account or account.character_id ~= player["boutique-id"] then return end
@@ -215,7 +215,7 @@ LSLegacy.Events.Register('BankChangeAccountStatus', function(id, state)
     LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Votre compte a été modifié avec succès.', 'success')
 end)
 
-LSLegacy.Events.Register('BankDeleteAccount', function(id)
+LSLegacy.Events.Register('bank:deleteAccount', function(id)
     local player = LSLegacy.Players.Get(source)
     local account = LSLegacy.Bank.GetAccount(id)
     if not account or account.character_id ~= player["boutique-id"] then return end
@@ -234,7 +234,7 @@ LSLegacy.Events.Register('BankDeleteAccount', function(id)
 end)
 
 
-LSLegacy.Events.Register('BankCreateCard', function(id, tier)
+LSLegacy.Events.Register('bank:createCard', function(id, tier)
     local player = LSLegacy.Players.Get(source)
     local account = LSLegacy.Bank.GetAccount(id)
     if not account or account.character_id ~= player["boutique-id"] then return end
@@ -275,7 +275,7 @@ LSLegacy.Events.Register('BankCreateCard', function(id, tier)
     LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Votre carte a été créée avec succès.', 'success')
 end)
 
-LSLegacy.Events.Register('BankSetCardTier', function(id, tier)
+LSLegacy.Events.Register('bank:setCardTier', function(id, tier)
     local player = LSLegacy.Players.Get(source)
     local account = LSLegacy.Bank.GetAccount(id)
     if not account or account.character_id ~= player["boutique-id"] then return end
@@ -353,7 +353,7 @@ LSLegacy.Bank.UpdateAccount = function(account, amount)
         end)
     end)
 end
-LSLegacy.Events.Register('BankAddMoney', function(amount, id)
+LSLegacy.Events.Register('bank:addMoney', function(amount, id)
     local player = LSLegacy.Validate.Player(source)
     local account = LSLegacy.Bank.GetAccount(id)
     if not player or not account then return end
@@ -372,7 +372,7 @@ LSLegacy.Events.Register('BankAddMoney', function(amount, id)
     end
 end)
 
-LSLegacy.Events.Register('BankwithdrawMoney', function(amount, id)
+LSLegacy.Events.Register('bank:withdrawMoney', function(amount, id)
     local player = LSLegacy.Players.Get(source)
     local account = LSLegacy.Bank.GetAccount(id)
     if not account then return end
@@ -533,11 +533,11 @@ LSLegacy.Bank.CheckAndConsumeCeiling = function(account, ceilingType, amount, ce
 end
 
 -- lecture publique (non gated) : tout joueur doit voir taux/plafonds avant de choisir ; seule l'écriture est gated staff
-LSLegacy.Events.Register('BankAdminGetCardTiers', function()
+LSLegacy.Events.Register('bank:adminGetCardTiers', function()
     LSLegacy.Events.SendToClient('receiveBankAdminCardTiers', source, LSLegacy.Bank.CardTiers)
 end)
 
-LSLegacy.Events.Register('BankAdminSetCardTier', function(tier, data)
+LSLegacy.Events.Register('bank:adminSetCardTier', function(tier, data)
     local player = LSLegacy.Players.Get(source)
     if not BankAdminCanDo(source) then
         LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Action non autorisée.', 'error')
@@ -588,11 +588,11 @@ LSLegacy.Bank.GetAllInterestRates = function()
 end
 
 -- lecture publique (non gated), même raison que BankAdminGetCardTiers
-LSLegacy.Events.Register('BankAdminGetRates', function()
+LSLegacy.Events.Register('bank:adminGetRates', function()
     LSLegacy.Events.SendToClient('receiveBankAdminRates', source, LSLegacy.Bank.InterestRates)
 end)
 
-LSLegacy.Events.Register('BankAdminSetRate', function(livretType, data)
+LSLegacy.Events.Register('bank:adminSetRate', function(livretType, data)
     local player = LSLegacy.Players.Get(source)
     if not BankAdminCanDo(source) then
         LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Action non autorisée.', 'error')
@@ -664,12 +664,12 @@ LSLegacy.Bank.GetPersonnalLivrets = function(characterId)
     return livrets
 end
 
-LSLegacy.Events.Register('BankGetLivrets', function()
+LSLegacy.Events.Register('bank:getLivrets', function()
     local player = LSLegacy.Players.Get(source)
     LSLegacy.Events.SendToClient('receiveBankLivrets', source, LSLegacy.Bank.GetPersonnalLivrets(player["boutique-id"]))
 end)
 
-LSLegacy.Events.Register('BankOpenLivret', function(linkedAccountId, livretType, initialDeposit)
+LSLegacy.Events.Register('bank:openLivret', function(linkedAccountId, livretType, initialDeposit)
     local player = LSLegacy.Players.Get(source)
     local account = LSLegacy.Bank.GetAccount(linkedAccountId)
     if not account or account.character_id ~= player["boutique-id"] then return end
@@ -728,7 +728,7 @@ LSLegacy.Events.Register('BankOpenLivret', function(linkedAccountId, livretType,
     LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Livret ouvert avec succès.', 'success')
 end)
 
-LSLegacy.Events.Register('BankDepositLivret', function(livretId, amount)
+LSLegacy.Events.Register('bank:depositLivret', function(livretId, amount)
     local player = LSLegacy.Players.Get(source)
     local livret = LSLegacy.Bank.GetLivret(livretId)
     if not livret or livret.character_id ~= player["boutique-id"] or livret.status ~= 'active' then return end
@@ -784,7 +784,7 @@ local function ComputeLivretWithdrawal(livret, amount)
     return amount - penalty, penalty
 end
 
-LSLegacy.Events.Register('BankWithdrawLivret', function(livretId, amount)
+LSLegacy.Events.Register('bank:withdrawLivret', function(livretId, amount)
     local player = LSLegacy.Players.Get(source)
     local livret = LSLegacy.Bank.GetLivret(livretId)
     if not livret or livret.character_id ~= player["boutique-id"] or livret.status ~= 'active' then return end
@@ -823,7 +823,7 @@ LSLegacy.Events.Register('BankWithdrawLivret', function(livretId, amount)
     end
 end)
 
-LSLegacy.Events.Register('BankCloseLivret', function(livretId)
+LSLegacy.Events.Register('bank:closeLivret', function(livretId)
     local player = LSLegacy.Players.Get(source)
     local livret = LSLegacy.Bank.GetLivret(livretId)
     if not livret or livret.character_id ~= player["boutique-id"] or livret.status ~= 'active' then return end
@@ -857,7 +857,7 @@ end)
 
 -- virements par IBAN
 
-LSLegacy.Events.Register('BankTransferByIban', function(fromAccountId, toIban, amount, message)
+LSLegacy.Events.Register('bank:transferByIban', function(fromAccountId, toIban, amount, message)
     local player = LSLegacy.Players.Get(source)
     local fromAccount = LSLegacy.Bank.GetAccount(fromAccountId)
     if not fromAccount or fromAccount.character_id ~= player["boutique-id"] then return end
