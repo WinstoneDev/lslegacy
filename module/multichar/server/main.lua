@@ -134,7 +134,7 @@ end)
 -- ─── Bucket routing (isolement pendant l'appartement de sélection) ─────────
 -- Même contrainte que registerPlayer/requestSlots : le système de jetons
 -- n'existe pas encore à ce stade, donc RegisterNetEvent brut (comme
--- module/creatorPerso, mais offset distinct pour ne jamais collisionner avec
+-- module/creatorperso, mais offset distinct pour ne jamais collisionner avec
 -- son propre bucket). Le serveur dérive le bucket du server id : un client
 -- modifié ne peut pas demander le bucket d'un autre joueur.
 RegisterNetEvent('multichar:setApartmentBucket')

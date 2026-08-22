@@ -14,12 +14,12 @@ files {
     'inventory/html/locales/*.js',
     'inventory/html/img/*.png',
     'inventory/html/img/items/*.png',
-    'module/creatorPerso/html/*.html',
-    'module/creatorPerso/html/css/*.css',
-    'module/creatorPerso/html/js/*.js',
+    'module/creatorperso/html/*.html',
+    'module/creatorperso/html/css/*.css',
+    'module/creatorperso/html/js/*.js',
     'module/multichar/html/*.html',
-    'module/creatorPerso/html/img/parents/mothers/*.png',
-    'module/creatorPerso/html/img/parents/fathers/*.png',
+    'module/creatorperso/html/img/parents/mothers/*.png',
+    'module/creatorperso/html/img/parents/fathers/*.png',
     'module/clothshop/html/*.html',
     'module/clothshop/html/css/*.css',
     'module/clothshop/html/js/*.js',
@@ -43,7 +43,7 @@ files {
     'module/police/html/js/*.js',
 }
 
-ui_page 'module/creatorPerso/html/ui.html'
+ui_page 'module/creatorperso/html/ui.html'
 
 -- Modèles/animations custom du menu émotes (module/emotes), repris tels
 -- quels de rpemotes-reborn (github.com/alberttheprince/rpemotes-reborn)
@@ -111,9 +111,9 @@ client_scripts {
     'inventory/utils.lua',
     'inventory/client/main.lua',
     'module/adminmenu/client/main.lua',
-    'module/creatorPerso/client/camera.lua',
-    'module/creatorPerso/client/main.lua',
-    'module/creatorPerso/client/cutscene.lua',
+    'module/creatorperso/client/camera.lua',
+    'module/creatorperso/client/main.lua',
+    'module/creatorperso/client/cutscene.lua',
     'module/identity/client/main.lua',
     'module/bank/client/main.lua',
     'module/bank/client/payment_menu.lua',
@@ -239,7 +239,7 @@ server_scripts {
     'server/player/*.lua',
     'inventory/server/main.lua',
     'module/adminmenu/server/main.lua',
-    'module/creatorPerso/server/main.lua',
+    'module/creatorperso/server/main.lua',
     'module/identity/server/main.lua',
     'module/bank/server/main.lua',
     'module/bank/server/payment_menu.lua',

@@ -40,7 +40,7 @@ Module de création de personnage moderne avec interface web (HTML/CSS/JS) pour 
 ## 📁 Structure des Fichiers
 
 ```
-module/creatorPerso/
+module/creatorperso/
 ├── client/
 │   ├── main.lua               # Logique client (Lua)
 │   └── camera.lua             # Caméras / scaleform (board d'identité, zoom)

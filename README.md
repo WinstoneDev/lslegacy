@@ -73,7 +73,7 @@ Le framework est organisé en un socle central (`client/`, `server/`, `shared/`,
 | `bank` | Banque (comptes, livrets, cartes, distributeurs) |
 | `clothshop` | Boutique de vêtements avec aperçu 3D |
 | `concessionnaire` | Concession automobile |
-| `creatorPerso` | Création de personnage (identité, apparence, hérédité) |
+| `creatorperso` | Création de personnage (identité, apparence, hérédité) |
 | `emotes` | Menu d'émotes (gestes, danses, objets, animaux) |
 | `farm` | Activités de récolte libres (bûcheron, mineur, pêcheur, agriculteur, chasseur) |
 | `fourriere` | Fourrière de véhicules |
@@ -109,7 +109,7 @@ LS Legacy intègre du code adapté et des assets créés par d'autres membres de
 
 - **RageUI** — bibliothèque de menu, par Dylan Malandain (Manason)
 - **[rpemotes-reborn](https://github.com/alberttheprince/rpemotes-reborn)** — base du module `emotes` (animations, traduit en français)
-- **[CutScene](https://github.com/Doublox/CutScene)** par Doublox — base de la cinématique d'introduction (`module/creatorPerso`)
+- **[CutScene](https://github.com/Doublox/CutScene)** par Doublox — base de la cinématique d'introduction (`module/creatorperso`)
 - **[disablecombatroll](https://github.com/JellyJamm/disablecombatroll)** par JellyJamm
 - **[tgiann-anti-strafe](https://github.com/TGIANN/tgiann-anti-strafe)** par TGIANN
 - **[mnr_sitanywhere](https://github.com/Monarch-Devs/mnr_sitanywhere)** (MIT) par Monarch-Devs — base du module `sit`

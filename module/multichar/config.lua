@@ -28,7 +28,7 @@ Config.Multichar = {
         Enabled = true,
 
         -- Offset additionné au server id pour dériver un bucket unique par
-        -- joueur (même principe que module/creatorPerso, offset différent
+        -- joueur (même principe que module/creatorperso, offset différent
         -- pour ne jamais entrer en collision avec lui).
         BucketOffset = 20000,
 

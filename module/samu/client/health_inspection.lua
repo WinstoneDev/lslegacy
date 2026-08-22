@@ -2,7 +2,7 @@
 --
 --  Outil de terrain (pas un onglet MDT) : ouvert en ciblant un patient
 --  via ox_target (samu_bag, cf. client/actions.lua). NUI autonome,
---  4ᵉ iframe du shell (module/creatorPerso/html/ui.html), préfixe `hi:`.
+--  4ᵉ iframe du shell (module/creatorperso/html/ui.html), préfixe `hi:`.
 --
 --  Même principe que le pont MDT médical (mdt_medical.lua), mais
 --  indépendant : lectures → requête/réponse tokenisée (hi:poll →
