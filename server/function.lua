@@ -366,8 +366,7 @@ end
 LSLegacy.GetPlayerFromIdentifier = function(identifier)
     if not identifier then return end
     for key, value in pairs(LSLegacy.ServerPlayers) do
-        if v.identifier == identifier then
-            break
+        if value.identifier == identifier then
             return value
         end
     end
@@ -713,7 +712,7 @@ end
 LSLegacy.CreateDuplicationOfATableWithoutFunctions = function(table)
     local newTable = {}
     for k, v in pairs(table) do
-        if not type(v) == "function" then
+        if type(v) ~= "function" then
             newTable[k] = v
         end
     end
