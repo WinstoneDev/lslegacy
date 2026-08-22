@@ -4,7 +4,7 @@ local pedOfflineLoadPromise = nil
 local pedOfflineLoading  = false
 local pedOfflineSettled  = false   -- evite de resoudre 2x la promesse (state n'est pas une string fiable)
 
-local function pedOfflineLoadSleepingList()
+local function PedOfflineLoadSleepingList()
     if pedOfflineLoading then return end
     pedOfflineLoading = true
     pedOfflineSettled = false
@@ -47,14 +47,14 @@ local function pedOfflineLoadSleepingList()
 end
 
 -- InitPlayer est deja enregistre dans player.lua -> LSLegacy.Events.AddHandler pour un 2e handler
-LSLegacy.Events.AddHandler('lslegacy:initPlayer', pedOfflineLoadSleepingList)
+LSLegacy.Events.AddHandler('lslegacy:initPlayer', PedOfflineLoadSleepingList)
 
 -- Couvre le cas d'un (re)demarrage de la resource alors que le joueur est deja connecte
 -- (InitPlayer ne se redeclenche pas dans ce cas)
 Citizen.CreateThread(function()
     while not NetworkIsPlayerActive(PlayerId()) do Wait(250) end
     while not LSLegacy.Token or not LSLegacy.Token["pedoffline:requestSleepingList"] do Wait(250) end
-    pedOfflineLoadSleepingList()
+    PedOfflineLoadSleepingList()
 end)
 
 -- Reponse du serveur avec la liste des peds endormis

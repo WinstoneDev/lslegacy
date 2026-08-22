@@ -21,12 +21,12 @@ end
 -- l'identifier. Sans le slot, se reconnecter avec un AUTRE personnage du
 -- même compte supprimerait/écraserait le ped endormi du premier (les deux
 -- partagent le même identifier).
-local function buildCitizenId(identifier, slot)
+local function BuildCitizenId(identifier, slot)
     if not identifier then return nil end
     return identifier .. '#' .. tostring(slot or 1)
 end
 
-local function buildSkinData(skin)
+local function BuildSkinData(skin)
     if not skin then return nil end
     local model = (skin.sex == 1) and `mp_f_freemode_01` or `mp_m_freemode_01`
     return { model = model, skin = skin }
@@ -57,15 +57,15 @@ end)
 -- Deconnexion (ou changement de personnage sans déco, cf. LSLegacy.PedOffline
 -- .PutToSleep plus bas) -> creation du ped endormi
 
-local function createSleepingPedFromCache(src, cached)
+local function CreateSleepingPedFromCache(src, cached)
     if not cached then return false end
     local identifier = cached.identifier
     local slot        = cached.slot or 1
-    local citizenId    = buildCitizenId(identifier, slot)
+    local citizenId    = BuildCitizenId(identifier, slot)
     local skin         = cached.skin
 
     if Sleeping.get(citizenId) then return false end
-    local skinData = buildSkinData(skin)
+    local skinData = BuildSkinData(skin)
     if not skinData then return false end
 
     local playerPed = GetPlayerPed(src)
@@ -93,7 +93,7 @@ LSLegacy.Events.AddHandler('playerDropped', function()
     local src    = source
     local cached = skinCache[src]
     skinCache[src] = nil
-    createSleepingPedFromCache(src, cached)
+    CreateSleepingPedFromCache(src, cached)
 end)
 
 -- Exposé pour module/multichar (commande /multichar, bouton "retour à la
@@ -103,7 +103,7 @@ end)
 LSLegacy.PedOffline = LSLegacy.PedOffline or {}
 
 function LSLegacy.PedOffline.PutToSleep(src)
-    return createSleepingPedFromCache(src, skinCache[src])
+    return CreateSleepingPedFromCache(src, skinCache[src])
 end
 
 -- Requete client : envoyer la liste des peds endormis + supprimer son propre ped
@@ -114,7 +114,7 @@ LSLegacy.Events.Register("pedoffline:requestSleepingList", function()
         if not dataLoaded then while not dataLoaded do Wait(100) end end
         local player = LSLegacy.Players.Get(src)
         if player and player.identifier then
-            local citizenId = buildCitizenId(player.identifier, player.slot or 1)
+            local citizenId = BuildCitizenId(player.identifier, player.slot or 1)
             local sp = Sleeping.get(citizenId)
             if sp then
                 sp:delete()
@@ -138,7 +138,7 @@ LSLegacy.RegisterCommand(pedOfflineCfg.testCommand.name, pedOfflineCfg.testComma
         local src = player.source
         if not player.identifier then return end
         local slot       = player.slot or 1
-        local citizenId  = buildCitizenId(player.identifier, slot)
+        local citizenId  = BuildCitizenId(player.identifier, slot)
 
         local sp = Sleeping.get(citizenId)
         if sp then
@@ -156,7 +156,7 @@ LSLegacy.RegisterCommand(pedOfflineCfg.testCommand.name, pedOfflineCfg.testComma
 
         pedOfflineDebug("testCommand skin: " .. (skin and json.encode(skin) or "nil"))
 
-        local skinData = buildSkinData(skin)
+        local skinData = BuildSkinData(skin)
         if not skinData then
             print("[pedOffline] testCommand: skin introuvable pour " .. citizenId)
             return
@@ -262,7 +262,7 @@ end)
 
 -- Purge des peds trop vieux (BDD + memoire si encore charges)
 
-local function purgeOldSleepingPeds()
+local function PurgeOldSleepingPeds()
     local expireSeconds = pedOfflineCfg.purgeDay * 86400
     local rows = MySQL.query.await(
         'SELECT citizenid FROM `exit_sleeping` WHERE unixTime < (UNIX_TIMESTAMP() - ?)',
@@ -285,7 +285,7 @@ end
 Citizen.CreateThread(function()
     while not dataLoaded do Wait(1000) end
     while true do
-        purgeOldSleepingPeds()
+        PurgeOldSleepingPeds()
         Wait(24 * 60 * 60 * 1000) -- 1x par jour
     end
 end)
