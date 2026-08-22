@@ -2,6 +2,39 @@
 --- Ne jamais faire confiance à une valeur client : renvoie une valeur saine ou nil/false.
 LSLegacy.Validate = {}
 
+---@class LSLegacy.Permissions
+---Mécanique commune de résolution du niveau staff (player.group est un nom,
+---Config.StaffGroups fait le lien nom <-> niveau numérique). Les modules
+---restent responsables de LEURS permissions métier (voir par ex.
+---module/mdt/shared/permissions.lua, module/atelier/shared/permissions.lua) ;
+---ceci ne couvre que le niveau staff générique du Core.
+LSLegacy.Permissions = {}
+
+---GetLevel — niveau staff numérique du joueur (0 si aucun groupe reconnu).
+---@type function
+---@param player table
+---@return number
+---@public
+LSLegacy.Permissions.GetLevel = function(player)
+    if not player or not player.group then return 0 end
+    for level, name in pairs(Config.StaffGroups) do
+        if name == player.group then return level end
+    end
+    return 0
+end
+
+---Has / Require — vrai si le niveau staff du joueur atteint minLevel.
+---@type function
+---@param player table
+---@param minLevel number
+---@return boolean
+---@public
+LSLegacy.Permissions.Has = function(player, minLevel)
+    if minLevel == nil then return false end
+    return LSLegacy.Permissions.GetLevel(player) >= minLevel
+end
+LSLegacy.Permissions.Require = LSLegacy.Permissions.Has
+
 ---Number — vérifie/convertit une valeur en nombre fini, avec bornes optionnelles.
 ---@type function
 ---@param value any
@@ -89,7 +122,8 @@ LSLegacy.Validate.Job = function(player, jobs, minGrade)
     return false
 end
 
----Permission — vrai si le groupe staff du joueur atteint le seuil minimum.
+---Permission — vrai si le niveau staff du joueur (résolu via
+---LSLegacy.Permissions.GetLevel) atteint le seuil minimum.
 ---@type function
 ---@param player table
 ---@param minGroup number
@@ -97,7 +131,7 @@ end
 ---@public
 LSLegacy.Validate.Permission = function(player, minGroup)
     if player == nil or minGroup == nil then return false end
-    return (player.group or 0) >= minGroup
+    return LSLegacy.Permissions.GetLevel(player) >= minGroup
 end
 
 ---Item — renvoie la définition Config.Items de l'item si elle existe.

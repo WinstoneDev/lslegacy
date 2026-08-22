@@ -12,7 +12,7 @@ end
 
 local function IsMecanicien(src)
     local p = GetPlayer(src)
-    return p and p.job == Config.Mecanicien.Job
+    return LSLegacy.Jobs.Is(p, Config.Mecanicien.Job)
 end
 
 local function GetGrade(src)

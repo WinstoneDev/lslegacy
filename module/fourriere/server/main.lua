@@ -49,7 +49,7 @@ local function normPlate(p)
 end
 
 local function isCop(player)
-    return player and player.job == CFG.Job
+    return LSLegacy.Jobs.Is(player, CFG.Job)
 end
 
 local function isOnDuty(src)

@@ -283,6 +283,23 @@ LSLegacy.Jobs.SetFactionGrade = function(player, grade)
     LSLegacy.SendEventToClient('UpdatePlayer', player.source, LSLegacy.ServerPlayers[player.source])
 end
 
+---Get / GetGrade — alias de confort de GetJob/GetJobGrade.
+---@type function
+LSLegacy.Jobs.Get = LSLegacy.Jobs.GetJob
+LSLegacy.Jobs.GetGrade = LSLegacy.Jobs.GetJobGrade
+
+---Is / Require — vrai si le joueur a un des jobs attendus (et un grade
+---suffisant). À utiliser à la place de `player.job == ...` /
+---`player.job_grade >= ...` dispersés dans les modules.
+---@type function
+---@param player table
+---@param jobs string|table
+---@param minGrade number|nil
+---@return boolean
+---@public
+LSLegacy.Jobs.Is = LSLegacy.Validate.Job
+LSLegacy.Jobs.Require = LSLegacy.Validate.Job
+
 LSLegacy.RegisterServerEvent('SetJob', function(job, grade)
     local _src = source
     local player = LSLegacy.GetPlayerFromId(_src)

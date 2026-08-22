@@ -50,7 +50,7 @@ end
 
 local function IsPoliceOfficer(src)
     local p = GetPlayer(src)
-    return p and p.job == Config.Police.Job
+    return LSLegacy.Jobs.Is(p, Config.Police.Job)
 end
 
 function IsPolice(src) return IsPoliceOfficer(src) end

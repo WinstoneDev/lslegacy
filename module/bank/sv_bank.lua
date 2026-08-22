@@ -454,12 +454,7 @@ end
 -- Admin.CanDo/GetLevel du module adminmenu sont locaux à leur fichier : helper dupliqué ici, synchronisé via Config.StaffGroups
 
 local function BankAdminLevel(source)
-    local player = LSLegacy.Players.Get(source)
-    if not player then return 0 end
-    for k, v in pairs(Config.StaffGroups) do
-        if player.group == v then return k end
-    end
-    return 0
+    return LSLegacy.Permissions.GetLevel(LSLegacy.Players.Get(source))
 end
 
 local function BankAdminCanDo(source)

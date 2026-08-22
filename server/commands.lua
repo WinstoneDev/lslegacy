@@ -107,20 +107,16 @@ LSLegacy.RegisterCommand = function(name, group, callback, suggestion, console)
 				end
 			else
                 if source ~= 0 and player ~= nil then
-                    for k,v in pairs(Config.StaffGroups) do
-                        if player.group == v then
-                            if k >= command.group then
-                                command.callback(player or false, args, function(msg)
-                                    if source == 0 and command.console then
-                                        Config.Development.Print(msg)
-                                    else
-                                        LSLegacy.SendEventToClient('notify', player.source, 'LSLegacy', msg, 'success')
-                                    end
-                                end, rawCommand)
+                    if LSLegacy.Permissions.Has(player, command.group) then
+                        command.callback(player or false, args, function(msg)
+                            if source == 0 and command.console then
+                                Config.Development.Print(msg)
                             else
-                                LSLegacy.SendEventToClient('notify', player.source, 'LSLegacy', "Vous n'avez pas les permissions pour utiliser cette commande", 'error')
+                                LSLegacy.SendEventToClient('notify', player.source, 'LSLegacy', msg, 'success')
                             end
-                        end
+                        end, rawCommand)
+                    else
+                        LSLegacy.SendEventToClient('notify', player.source, 'LSLegacy', "Vous n'avez pas les permissions pour utiliser cette commande", 'error')
                     end
 				elseif source == 0 and command.console then
 					command.callback(player or false, args, function(msg)

@@ -58,11 +58,7 @@ MySQL.Async.execute([[
 -- Helpers
 
 Admin.GetLevel = function(player)
-    if not player then return 0 end
-    for k, v in pairs(Config.StaffGroups) do
-        if player.group == v then return k end
-    end
-    return 0
+    return LSLegacy.Permissions.GetLevel(player)
 end
 
 Admin.CanDo = function(source, minLevel)

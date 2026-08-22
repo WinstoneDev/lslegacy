@@ -17,7 +17,7 @@ end
 
 local function IsEmployee(src)
     local p = GetPlayer(src)
-    return p and p.job == Config.LTD.Job
+    return LSLegacy.Jobs.Is(p, Config.LTD.Job)
 end
 
 local function GetGrade(src)

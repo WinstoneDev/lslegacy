@@ -21,7 +21,7 @@ end
 
 local function IsSamuAgent(src)
     local p = GetPlayer(src)
-    return p and p.job == Config.SAMU.Job
+    return LSLegacy.Jobs.Is(p, Config.SAMU.Job)
 end
 
 local function GetGrade(src)

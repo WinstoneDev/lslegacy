@@ -2,7 +2,7 @@
 --  Validation stricte : job/grade depuis ServerPlayers, jamais client
 
 local function GetPlayer(src)   return LSLegacy.Players.Get(src) end
-local function IsMecanicien(src) return GetPlayer(src) and GetPlayer(src).job == Config.Mecanicien.Job end
+local function IsMecanicien(src) return LSLegacy.Jobs.Is(GetPlayer(src), Config.Mecanicien.Job) end
 
 local function Notify(src, msg, t)
     TriggerClientEvent(Config.Mecanicien.NotifyEvent, src, 'Mécanicien', msg, 5000, t or 'info')

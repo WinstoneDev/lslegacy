@@ -17,7 +17,7 @@ end
 
 local function IsPompier(src)
     local p = GetPlayer(src)
-    return p and p.job == Config.Pompiers.Job
+    return LSLegacy.Jobs.Is(p, Config.Pompiers.Job)
 end
 
 local function GetGrade(src)

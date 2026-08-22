@@ -20,11 +20,7 @@ local function dbg(...) if C.Debug then print("[keyhanger]", ...) end end
 local function dsName(id) return "keyhanger_" .. id end
 
 local function groupLevel(player)
-    if not player or not player.group then return 0 end
-    for level, name in pairs(Config.StaffGroups) do
-        if name == player.group then return level end
-    end
-    return 0
+    return LSLegacy.Permissions.GetLevel(player)
 end
 
 local function isStaff(player) return groupLevel(player) >= (C.Placement.group or 3) end
@@ -41,7 +37,7 @@ local function canAccess(player, board)
     if not player or not board then return false end
     local t = board.ownerType
     if t == "public" then return true end
-    if t == "job" then return player.job == board.ownerId end
+    if t == "job" then return LSLegacy.Jobs.Is(player, board.ownerId) end
     if t == "faction" then return player.faction == board.ownerId end
     if board.ownerId == player.identifier then return true end
     if board.access and board.access[player.identifier] then return true end
@@ -54,7 +50,7 @@ local function canManage(player, board)
     if isStaff(player) then return true end
     local t = board.ownerType
     if t == "job" then
-        return player.job == board.ownerId and (player.job_grade or 0) >= (C.ManageGrade or 0)
+        return LSLegacy.Jobs.Is(player, board.ownerId, C.ManageGrade or 0)
     elseif t == "faction" then
         return player.faction == board.ownerId and (player.faction_grade or 0) >= (C.ManageGrade or 0)
     end

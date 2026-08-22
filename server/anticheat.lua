@@ -391,7 +391,7 @@ end)
 -- supérieur à 2 ("mod") est exempté de l'anticheat.
 function IsPlayerWhitelisted(playerId)
     local player = LSLegacy.GetPlayerFromId(playerId)
-    return player.group >= 2
+    return LSLegacy.Permissions.Has(player, 2)
 end
 
 function sendwebhooktodc(content)

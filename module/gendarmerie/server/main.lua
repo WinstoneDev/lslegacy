@@ -16,7 +16,7 @@ end
 
 local function IsGendarmeAgent(src)
     local p = GetPlayerGN(src)
-    return p and p.job == Config.Gendarmerie.Job
+    return LSLegacy.Jobs.Is(p, Config.Gendarmerie.Job)
 end
 
 local function GetGradeGN(src)

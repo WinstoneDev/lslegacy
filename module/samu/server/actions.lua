@@ -2,7 +2,7 @@
 --  Validation stricte : job/grade depuis ServerPlayers, jamais client
 
 local function GetPlayer(src)   return LSLegacy.Players.Get(src) end
-local function IsSamu(src)      return GetPlayer(src) and GetPlayer(src).job == Config.SAMU.Job end
+local function IsSamu(src)      return LSLegacy.Jobs.Is(GetPlayer(src), Config.SAMU.Job) end
 local function GetGrade(src)    return GetPlayer(src) and tonumber(GetPlayer(src).job_grade) or 0 end
 
 local function Notify(src, msg, t)
