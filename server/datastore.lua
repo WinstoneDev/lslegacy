@@ -346,10 +346,7 @@ LSLegacy.DataStore.RegisterDataStore = function(name, data)
     LSLegacy.SendEventToClient('UpdateDatastore', source, LSLegacy.DataStores)
 end
 
--- Point d'entrée réseau (déclenchable par n'importe quel client) : on ne fait jamais
--- confiance à `data` pour son contenu (money/dirty/inventory) — un client pourrait
--- sinon créer un DataStore pré-rempli d'argent/objets. Seul `maxWeight`/`type` sont
--- repris, le contenu est toujours forcé vide à la création.
+-- Event réseau : contenu toujours forcé vide côté serveur, jamais celui du client.
 LSLegacy.RegisterServerEvent('RegisterDataStore', function(name, data)
     local player = LSLegacy.Validate.Player(source)
     if not player then return end

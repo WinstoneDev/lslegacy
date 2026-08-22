@@ -3,9 +3,7 @@
 -- l'étendre pour restreindre l'accès/les items selon le nom du DataStore.
 LSLegacy.DataStoreGuard = LSLegacy.DataStoreGuard or function(_src, _name, _action, _item) return true end
 
--- Coffre/vide-poche véhicule : le nom du DataStore ('trunk_<plaque>'/'bag_<plaque>')
--- est visible/devinable par n'importe qui, donc on exige en plus que la source soit
--- réellement à proximité d'un véhicule portant cette plaque avant d'autoriser l'accès.
+-- Plaque devinable dans le nom du DataStore : on exige un véhicule réel à proximité.
 local function FindNearbyVehicleByPlate(plate, coords)
     for _, vehicle in pairs(GetAllVehicles()) do
         if DoesEntityExist(vehicle) and GetVehicleNumberPlateText(vehicle) == plate then

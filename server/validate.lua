@@ -1,8 +1,5 @@
 ---@class LSLegacy.Validate
---- Primitives de validation serveur réutilisables. Le client est toujours
---- considéré hostile : ces fonctions ne font jamais confiance à une valeur
---- reçue telle quelle, elles la vérifient et renvoient soit une valeur saine,
---- soit nil/false.
+--- Ne jamais faire confiance à une valeur client : renvoie une valeur saine ou nil/false.
 LSLegacy.Validate = {}
 
 ---Number — vérifie/convertit une valeur en nombre fini, avec bornes optionnelles.
