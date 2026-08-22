@@ -262,7 +262,7 @@ local function syncWound(force)
     if not force and (now - lastWoundSync) < 8000 then return end
     lastWoundSync = now
     local category, zone = getWoundCategory()
-    LSLegacy.Events.SendToServer("lslegacy:injury:syncWound", { category = category, zone = zone })
+    LSLegacy.Events.SendToServer("lslegacy:injurySyncWound", { category = category, zone = zone })
 end
 
 local function enterKO(ped)
@@ -270,7 +270,7 @@ local function enterKO(ped)
     isKO      = true
     koEndTime = GetGameTimer() + Config.Injury.KODuration * 1000
     syncWound(true)
-    LSLegacy.Events.SendToServer("lslegacy:injury:enterKO")
+    LSLegacy.Events.SendToServer("lslegacy:injuryEnterKO")
     stopLimp(ped)
     SetPedMoveRateOverride(ped, 1.0)
     SetPedToRagdoll(ped, Config.Injury.KODuration * 1000, Config.Injury.KODuration * 1000, 0, false, false, false)
@@ -316,7 +316,7 @@ local function enterKO(ped)
         ClearPedTasksImmediately(p)
         SetPedCanRagdoll(p, true)
         SetPedMoveRateOverride(p, 1.0)
-        LSLegacy.Events.SendToServer("lslegacy:injury:exitKO")
+        LSLegacy.Events.SendToServer("lslegacy:injuryExitKO")
     end)
 end
 
@@ -363,17 +363,17 @@ local function runComaScreen(totalSeconds)
 
             if remaining <= 0 then
                 isComa = false
-                LSLegacy.Events.SendToServer("lslegacy:injury:respawn")
+                LSLegacy.Events.SendToServer("lslegacy:injuryRespawn")
             end
         end
 
         -- Ne PAS dégeler/retirer l'invincibilité ici : le vrai téléport et la
         -- remontée de santé n'arrivent qu'après l'aller-retour serveur
-        -- (lslegacy:client:respawn plus bas), qui s'en charge une fois la
+        -- (lslegacy:clientRespawn plus bas), qui s'en charge une fois la
         -- téléportation et SetEntityHealth effectués. Sinon le joueur reste
         -- debout à 101 HP, vulnérable, pendant cette fenêtre — la moindre
         -- chute/ragdoll le refait retomber sous le seuil et relance le coma.
-        LSLegacy.Events.SendToServer("lslegacy:injury:exitComa")
+        LSLegacy.Events.SendToServer("lslegacy:injuryExitComa")
     end)
 end
 
@@ -387,7 +387,7 @@ local function enterComa()
     SetPedMoveRateOverride(ped, 1.0)
     stopLimp(ped)
     syncWound(true)
-    LSLegacy.Events.SendToServer("lslegacy:injury:enterComa")
+    LSLegacy.Events.SendToServer("lslegacy:injuryEnterComa")
     -- Mettre explicitement au sol : on ne peut pas compter sur la ragdoll
     -- laissée par les dégâts (elle a pu se terminer, ou n'avoir jamais eu
     -- lieu sur un dégât non projetant). L'ancien code figeait la position
@@ -399,7 +399,7 @@ local function enterComa()
 end
 
 -- Reprise du coma après reconnexion : le serveur envoie le temps restant.
-LSLegacy.Events.Register("lslegacy:injury:resumeComa", function(remaining)
+LSLegacy.Events.Register("lslegacy:injuryResumeComa", function(remaining)
     if isComa then return end
     isComa     = true
     isKO       = false
@@ -414,7 +414,7 @@ LSLegacy.Events.Register("lslegacy:injury:resumeComa", function(remaining)
     runComaScreen(remaining)
 end)
 
-LSLegacy.Events.Register("lslegacy:injury:adminRevive", function(health)
+LSLegacy.Events.Register("lslegacy:injuryAdminRevive", function(health)
     isKO   = false
     isComa = false
     local ped = PlayerPedId()
@@ -437,7 +437,7 @@ LSLegacy.Events.Register("lslegacy:injury:adminRevive", function(health)
     end)
 end)
 
-LSLegacy.Events.Register("lslegacy:client:respawn", function()
+LSLegacy.Events.Register("lslegacy:clientRespawn", function()
     isKO   = false
     isComa = false
     local ped    = PlayerPedId()
@@ -468,7 +468,7 @@ end)
 Keys.Register("e", "callems_coma", "Appeler les EMS (état coma)", function()
     if not isComa or emsCallled then return end
     emsCallled = true
-    LSLegacy.Events.SendToServer("lslegacy:injury:callEMS")
+    LSLegacy.Events.SendToServer("lslegacy:injuryCallEMS")
     LSLegacy.ShowNotification("EMS", "Appel envoyé aux services médicaux d'urgence.", "info")
 end)
 

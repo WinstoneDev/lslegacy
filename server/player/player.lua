@@ -204,7 +204,7 @@ AddEventHandler("registerPlayer", function(characterId)
                 local remaining = comaUntil - os.time()
                 if remaining > 0 then
                     p.isComa = true
-                    TriggerClientEvent("lslegacy:injury:resumeComa", _src, remaining)
+                    TriggerClientEvent("lslegacy:injuryResumeComa", _src, remaining)
                 end
             end
         end)

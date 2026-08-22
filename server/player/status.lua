@@ -133,7 +133,7 @@ CreateThread(function()
                 if thirst <= 0 then hpLoss = hpLoss + Config.Status.ThirstHPLoss end
 
                 if hpLoss > 0 and not player.isComa and not player.isKO then
-                    LSLegacy.Events.SendToClient("lslegacy:status:applyHPDrain", player.source, hpLoss)
+                    LSLegacy.Events.SendToClient("lslegacy:statusApplyHPDrain", player.source, hpLoss)
 
                     local msg = (hunger <= 0 and thirst <= 0)
                         and "Vous vous sentez terriblement mal, vous mourez de faim et de soif."

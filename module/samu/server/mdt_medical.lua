@@ -832,7 +832,7 @@ end)
 AddEventHandler('samu:patientCall', function(data)
     if type(data) ~= 'table' or not data.coords then return end
     local c = data.coords
-    -- `data.identifier` n'est jamais renseigné par l'appelant (lslegacy:injury:callEMS
+    -- `data.identifier` n'est jamais renseigné par l'appelant (lslegacy:injuryCallEMS
     -- ne le passe pas) : on résout l'appelant depuis `data.source`, toujours en ligne
     -- puisqu'il appelle depuis son propre coma.
     local caller = data.source and LSLegacy.Players.Get(data.source)

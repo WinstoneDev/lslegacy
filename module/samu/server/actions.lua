@@ -14,7 +14,7 @@ local function HasPermission(src, perm)
 end
 
 -- Le serveur suit l'état KO/coma via des events ponctuels
--- (lslegacy:injury:enterComa) qui peuvent manquer : restart de ressource,
+-- (lslegacy:injuryEnterComa) qui peuvent manquer : restart de ressource,
 -- reconnexion, ou resumeComa qui ne le renvoie volontairement pas. Le patient
 -- apparaissait alors inconscient à l'écran mais conscient pour le serveur —
 -- donc "pas en détresse vitale" et impossible à réanimer. Le statebag

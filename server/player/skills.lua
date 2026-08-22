@@ -22,15 +22,15 @@ local MAX_XP = Config.Skills.LevelThresholds[Config.Skills.MaxLevel]
 local sessionGains = {}
 
 -- Envoyer les compétences complètes au client
-LSLegacy.Events.Register("lslegacy:skills:requestAll", function()
+LSLegacy.Events.Register("lslegacy:skillsRequestAll", function()
     local src = source
     local player = LSLegacy.ServerPlayers[src]
     if not player or not player.skills then return end
-    LSLegacy.Events.SendToClient("lslegacy:skills:init", src, player.skills)
+    LSLegacy.Events.SendToClient("lslegacy:skillsInit", src, player.skills)
 end)
 
 -- Gain d'XP validé serveur (1 XP par appel)
-LSLegacy.Events.Register("lslegacy:skills:addXP", function(skillName)
+LSLegacy.Events.Register("lslegacy:skillsAddXP", function(skillName)
     local src = source
     local player = LSLegacy.ServerPlayers[src]
     if not player or not player.skills then return end
@@ -60,10 +60,10 @@ LSLegacy.Events.Register("lslegacy:skills:addXP", function(skillName)
     skill.lastActivity = now
     local newLevel = LSLegacy.Skills.GetLevel(skill.xp)
 
-    LSLegacy.Events.SendToClient("lslegacy:skills:update", src, skillName, skill.xp, newLevel)
+    LSLegacy.Events.SendToClient("lslegacy:skillsUpdate", src, skillName, skill.xp, newLevel)
 
     if newLevel > oldLevel then
-        LSLegacy.Events.SendToClient("lslegacy:skills:levelUp", src, skillName, newLevel)
+        LSLegacy.Events.SendToClient("lslegacy:skillsLevelUp", src, skillName, newLevel)
         Config.Development.Print(("[Skills] %s → %s niveau %d"):format(GetPlayerName(src), skillName, newLevel))
     end
 end)
@@ -88,9 +88,9 @@ CreateThread(function()
                             -- ce même écart (grandissant) au prochain tick de decay
                             s.lastActivity = now - (Config.Skills.DecayThreshold * 3600)
                             local newLevel = LSLegacy.Skills.GetLevel(s.xp)
-                            LSLegacy.Events.SendToClient("lslegacy:skills:update", player.source, skillName, s.xp, newLevel)
+                            LSLegacy.Events.SendToClient("lslegacy:skillsUpdate", player.source, skillName, s.xp, newLevel)
                             if newLevel < oldLevel then
-                                LSLegacy.Events.SendToClient("lslegacy:skills:levelDown", player.source, skillName, newLevel)
+                                LSLegacy.Events.SendToClient("lslegacy:skillsLevelDown", player.source, skillName, newLevel)
                             end
                         end
                     end
