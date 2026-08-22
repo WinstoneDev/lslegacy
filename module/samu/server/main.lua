@@ -160,7 +160,7 @@ LSLegacy.Events.Register('samu:spawnVehicle', function(data)
     TriggerClientEvent('samu:spawnVehicleClient', src, { model = data.model })
 end)
 
--- APPEL PATIENT (relayé depuis LSLegacy:injury:callEMS)
+-- APPEL PATIENT (relayé depuis lslegacy:injury:callEMS)
 
 AddEventHandler('samu:patientCall', function(data)
     if not data then return end

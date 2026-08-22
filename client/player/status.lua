@@ -1,7 +1,7 @@
 LSLegacy.Status = {}
 LSLegacy.Status.Displayed = true
 
-LSLegacy.Events.Register("LSLegacy:status:applyHPDrain", function(hpLoss)
+LSLegacy.Events.Register("lslegacy:status:applyHPDrain", function(hpLoss)
     local ped    = PlayerPedId()
     local health = GetEntityHealth(ped)
     SetEntityHealth(ped, math.max(100, health - hpLoss))

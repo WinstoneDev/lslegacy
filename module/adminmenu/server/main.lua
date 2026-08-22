@@ -378,7 +378,7 @@ LSLegacy.Events.Register('admin:heal', function(target)
     local tp = LSLegacy.Players.Get(target)
     if not tp then return end
 
-    -- ClearState envoie LSLegacy:injury:adminRevive au client
+    -- ClearState envoie lslegacy:injury:adminRevive au client
     -- qui gère SetEntityHealth(200) + SetPedArmour(100) + reset KO/coma
     if LSLegacy.Injury then LSLegacy.Injury.ClearState(target) end
     LSLegacy.Events.SendToClient('notify', target, 'Administration', 'Vous avez été soigné.', 'success')
@@ -392,7 +392,7 @@ LSLegacy.Events.Register('admin:revive', function(target)
     local tp = LSLegacy.Players.Get(target)
     if not tp then return end
 
-    -- ClearState envoie LSLegacy:injury:adminRevive (health + armure + reset état)
+    -- ClearState envoie lslegacy:injury:adminRevive (health + armure + reset état)
     -- admin:revive gère la résurrection GTA si le ped est mort
     if LSLegacy.Injury then LSLegacy.Injury.ClearState(target) end
     LSLegacy.Events.SendToClient('admin:revive', target)

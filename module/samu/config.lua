@@ -129,7 +129,7 @@ Config.SAMU.HealthInspection.InjuryLabels = {
     taser      = 'Fléchette de Taser',
 }
 
--- Catégorie de dégâts (LSLegacy:injury, calculée serveur) → type de blessure infligé.
+-- Catégorie de dégâts (lslegacy:injury, calculée serveur) → type de blessure infligé.
 -- Étend le système existant (unarmed/melee/vehicle/explosion/firearm/generic)
 -- avec une seule catégorie nouvelle : taser.
 Config.SAMU.HealthInspection.CategoryToInjury = {
