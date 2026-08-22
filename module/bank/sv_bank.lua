@@ -344,17 +344,21 @@ LSLegacy.Bank.UpdateAccount = function(account, amount)
     end)
 end
 LSLegacy.RegisterServerEvent('BankAddMoney', function(amount, id)
-    local player = LSLegacy.GetPlayerFromId(source)
+    local player = LSLegacy.Validate.Player(source)
     local account = LSLegacy.Bank.GetAccount(id)
-    if account ~= nil then
-        if LSLegacy.Money.GetPlayerMoney(player) >= tonumber(amount) then
-            LSLegacy.Money.RemovePlayerMoney(player, amount)
-            LSLegacy.Bank.UpdateAccount(account, account.amountMoney + amount)
-            LSLegacy.Bank.AddTransaction(account, amount, 'Ajout de '..amount..'$', 'Dépôt')
-            LSLegacy.SendEventToClient('notify', player.source, 'Maze Bank', 'Vous avez ajouté ' .. amount .. '$ à votre compte.', 'success')
-        else
-            LSLegacy.SendEventToClient('notify', player.source, 'Maze Bank', 'Vous n\'avez pas assez d\'argent.', 'error')
-        end
+    if not player or not account then return end
+    amount = LSLegacy.Validate.PositiveInteger(amount)
+    if not amount then
+        LSLegacy.SendEventToClient('notify', player.source, 'Maze Bank', 'Montant invalide.', 'error')
+        return
+    end
+    if LSLegacy.Money.GetPlayerMoney(player) >= amount then
+        LSLegacy.Money.RemovePlayerMoney(player, amount)
+        LSLegacy.Bank.UpdateAccount(account, account.amountMoney + amount)
+        LSLegacy.Bank.AddTransaction(account, amount, 'Ajout de '..amount..'$', 'Dépôt')
+        LSLegacy.SendEventToClient('notify', player.source, 'Maze Bank', 'Vous avez ajouté ' .. amount .. '$ à votre compte.', 'success')
+    else
+        LSLegacy.SendEventToClient('notify', player.source, 'Maze Bank', 'Vous n\'avez pas assez d\'argent.', 'error')
     end
 end)
 

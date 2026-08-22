@@ -144,8 +144,8 @@ end
 -- Ajoute des crédits en BDD, que le joueur soit en ligne ou hors ligne.
 local function AddCredits(identifier, amount)
     if not identifier or not amount then return end
-    amount = tonumber(amount)
-    if amount <= 0 then return end
+    amount = LSLegacy.Validate.PositiveInteger(amount)
+    if not amount then return end
 
     MySQL.Async.execute([[
         UPDATE players SET `boutique-credits` = `boutique-credits` + @amount

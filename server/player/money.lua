@@ -27,82 +27,92 @@ end
 ---@type function
 ---@param player table
 ---@param amount number
----@return any
+---@return boolean
 ---@public
 LSLegacy.Money.SetPlayerMoney = function(player, amount)
-    if player ~= nil then
-        player.cash = amount
-        LSLegacy.SendEventToClient('UpdatePlayer', player.source, player)
-    end
+    if player == nil then return false end
+    amount = LSLegacy.Validate.PositiveInteger(amount, {allowZero = true})
+    if not amount then return false end
+    player.cash = amount
+    LSLegacy.SendEventToClient('UpdatePlayer', player.source, player)
+    return true
 end
 
 ---AddPlayerMoney
 ---@type function
 ---@param player table
 ---@param amount number
----@return any
+---@return boolean
 ---@public
 LSLegacy.Money.AddPlayerMoney = function(player, amount)
-    if player ~= nil then
-        player.cash = player.cash + amount
-        LSLegacy.SendEventToClient('UpdatePlayer', player.source, player)
-    end
+    if player == nil then return false end
+    amount = LSLegacy.Validate.PositiveInteger(amount)
+    if not amount then return false end
+    player.cash = player.cash + amount
+    LSLegacy.SendEventToClient('UpdatePlayer', player.source, player)
+    return true
 end
 
 ---RemovePlayerMoney
 ---@type function
 ---@param player table
 ---@param amount number
----@return any
+---@return boolean
 ---@public
 LSLegacy.Money.RemovePlayerMoney = function(player, amount)
-    if player ~= nil then
-        if player.cash >= tonumber(amount) then
-            player.cash = player.cash - amount
-            LSLegacy.SendEventToClient('UpdatePlayer', player.source, player)
-        end
-    end
+    if player == nil then return false end
+    amount = LSLegacy.Validate.PositiveInteger(amount)
+    if not amount then return false end
+    if player.cash < amount then return false end
+    player.cash = player.cash - amount
+    LSLegacy.SendEventToClient('UpdatePlayer', player.source, player)
+    return true
 end
 
 ---SetPlayerDirtyMoney
 ---@type function
 ---@param player table
 ---@param amount number
----@return any
+---@return boolean
 ---@public
 LSLegacy.Money.SetPlayerDirtyMoney = function(player, amount)
-    if player ~= nil then
-        player.dirty = amount
-        LSLegacy.SendEventToClient('UpdatePlayer', player.source, player)
-    end
+    if player == nil then return false end
+    amount = LSLegacy.Validate.PositiveInteger(amount, {allowZero = true})
+    if not amount then return false end
+    player.dirty = amount
+    LSLegacy.SendEventToClient('UpdatePlayer', player.source, player)
+    return true
 end
 
 ---AddPlayerDirtyMoney
 ---@type function
 ---@param player table
 ---@param amount number
----@return any
+---@return boolean
 ---@public
 LSLegacy.Money.AddPlayerDirtyMoney = function(player, amount)
-    if player ~= nil then
-        player.dirty = player.dirty + amount
-        LSLegacy.SendEventToClient('UpdatePlayer', player.source, player)
-    end
+    if player == nil then return false end
+    amount = LSLegacy.Validate.PositiveInteger(amount)
+    if not amount then return false end
+    player.dirty = player.dirty + amount
+    LSLegacy.SendEventToClient('UpdatePlayer', player.source, player)
+    return true
 end
 
 ---RemovePlayerDirtyMoney
 ---@type function
 ---@param player table
 ---@param amount number
----@return any
+---@return boolean
 ---@public
 LSLegacy.Money.RemovePlayerDirtyMoney = function(player, amount)
-    if player ~= nil then
-        if player.dirty >= tonumber(amount) then
-            player.dirty = player.dirty - amount
-            LSLegacy.SendEventToClient('UpdatePlayer', player.source, player)
-        end
-    end
+    if player == nil then return false end
+    amount = LSLegacy.Validate.PositiveInteger(amount)
+    if not amount then return false end
+    if player.dirty < amount then return false end
+    player.dirty = player.dirty - amount
+    LSLegacy.SendEventToClient('UpdatePlayer', player.source, player)
+    return true
 end
 
 -- Débit unifié par SOURCE (cash ou banque). Utilisable en cross-ressource :
