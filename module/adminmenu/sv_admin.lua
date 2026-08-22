@@ -1,3 +1,23 @@
+local rateLimits = {
+    ['AdminServerPlayers'] = 25, ['MessageAdmin'] = 15, ['TeleportPlayers'] = 25,
+    ['admin:tpm'] = 30, ['admin:pos'] = 30, ['admin:freeze'] = 10, ['admin:heal'] = 10,
+    ['admin:revive'] = 10, ['admin:resetNeeds'] = 10, ['admin:resetSkin'] = 5,
+    ['admin:kick'] = 5, ['admin:tempban'] = 5, ['admin:permaban'] = 3, ['admin:warn'] = 10,
+    ['admin:getWarns'] = 15, ['admin:screenshot'] = 5, ['admin:repairVehicle'] = 10,
+    ['admin:deletePlayerVehicle'] = 10, ['admin:spawnVehicleForPlayer'] = 8,
+    ['admin:spawnVehicle'] = 8, ['admin:deleteVehiclesInZone'] = 8, ['admin:giveMoney'] = 10,
+    ['admin:removeMoney'] = 10, ['admin:giveItem'] = 10, ['admin:removeItem'] = 10,
+    ['admin:giveWeapon'] = 10, ['admin:getPlayerInventory'] = 15, ['admin:getTickets'] = 15,
+    ['admin:takeTicket'] = 10, ['admin:closeTicket'] = 10, ['admin:createTicket'] = 8,
+    ['admin:tpToTicket'] = 10, ['admin:bringTicketPlayer'] = 10, ['admin:setGodmode'] = 10,
+    ['admin:cleanVehicleDB'] = 10, ['admin:deleteWarn'] = 10,
+    ['admin:multichar:returnToSelection'] = 5, ['admin:logIdentifiers'] = 5,
+    ['admin:getTicketStats'] = 20, ['admin:setWorldTime'] = 15,
+}
+for eventName, limit in pairs(rateLimits) do
+    LSLegacy.Security.RegisterRateLimit(eventName, limit)
+end
+
 local Admin = {}
 
 local Webhooks = {

@@ -1,3 +1,13 @@
+local rateLimits = {
+    ['GetBankAccounts'] = 30, ['BankCreateAccount'] = 15, ['BankChangeAccountStatus'] = 20,
+    ['BankDeleteAccount'] = 20, ['BankCreateCard'] = 20, ['BankwithdrawMoney'] = 20,
+    ['BankAddMoney'] = 20, ['lslegacy:requestBankBalance'] = 20, ['attemptToPayMenu'] = 20,
+    ['pay'] = 20,
+}
+for eventName, limit in pairs(rateLimits) do
+    LSLegacy.Security.RegisterRateLimit(eventName, limit)
+end
+
 LSLegacy.Bank = {}
 LSLegacy.Bank.BankAccounts = {}
 LSLegacy.Bank.Livrets = {}

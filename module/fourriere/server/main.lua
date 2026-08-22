@@ -1,3 +1,11 @@
+local rateLimits = {
+    ['fourriere:impound'] = 15, ['fourriere:requestList'] = 15,
+    ['fourriere:retrieve'] = 10, ['fourriere:persistDelivered'] = 15,
+}
+for eventName, limit in pairs(rateLimits) do
+    LSLegacy.Security.RegisterRateLimit(eventName, limit)
+end
+
 local CFG = Config.Fourriere
 
 MySQL.Async.execute([[

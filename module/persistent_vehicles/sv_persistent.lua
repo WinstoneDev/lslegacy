@@ -1,4 +1,7 @@
 LSLegacy = LSLegacy or {}
+LSLegacy.Security.RegisterRateLimit('ap:updateVehicle', 20)
+LSLegacy.Security.RegisterRateLimit('ap:updateVehicleStatus', 20)
+LSLegacy.Security.RegisterRateLimit('ap:requestVehicleDeletion', 20)
 LSLegacy.AP = { Active = {} }
 
 local alwaysCheck = true

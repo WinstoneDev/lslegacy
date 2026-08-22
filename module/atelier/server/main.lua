@@ -1,5 +1,15 @@
 -- Indexée sur (character_id, company) : un personnage ne peut être employé que d'une seule
 -- entreprise à la fois, mais la clé composite prépare le terrain pour un futur changement d'employeur.
+local rateLimits = {
+    ['atelier:onDuty'] = 10, ['atelier:offDuty'] = 10, ['atelier:spawnVehicle'] = 15,
+    ['atelier:requestDiagnostic'] = 20, ['atelier:requestStock'] = 20, ['atelier:takePart'] = 15,
+    ['atelier:dropPart'] = 20, ['atelier:restockStock'] = 15, ['atelier:repairComponent'] = 15,
+    ['atelier:requestInvoice'] = 15, ['atelier:finalizeInvoice'] = 10,
+}
+for eventName, limit in pairs(rateLimits) do
+    LSLegacy.Security.RegisterRateLimit(eventName, limit)
+end
+
 MySQL.Async.execute([[
     CREATE TABLE IF NOT EXISTS atelier_agents (
         id            INT AUTO_INCREMENT PRIMARY KEY,

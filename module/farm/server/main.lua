@@ -1,5 +1,15 @@
 -- Chaque étape (outils, quantités, succès du minijeu) est revalidée ici, jamais prise au mot du client.
 
+local rateLimits = {
+    ['farm:animalSpawned'] = 20, ['farm:requestGather'] = 20, ['farm:completeGather'] = 20,
+    ['farm:requestPoach'] = 20, ['farm:requestProcess'] = 20, ['farm:completeProcess'] = 20,
+    ['farm:sellProcessed'] = 15, ['farm:sellPoaching'] = 15, ['farm:compactStones'] = 15,
+    ['farm:requestShopStock'] = 20, ['farm:buyShopItem'] = 15,
+}
+for eventName, limit in pairs(rateLimits) do
+    LSLegacy.Security.RegisterRateLimit(eventName, limit)
+end
+
 local NodeCooldowns  = {} -- ['activityKey_nodeIndex'] = os.time() de la dernière récolte
 local PendingGather   = {} -- [source] = { activity = activityKey, species = speciesTable|nil } — une autorisation en attente, consommée une seule fois
 local LootedCorpses   = {} -- [netId] = true — cadavre de gibier déjà dépecé (chasseur)

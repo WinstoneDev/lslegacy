@@ -2,6 +2,15 @@
 --  CONCESSIONNAIRE — Serveur principal
 --  Validation stricte : prix/modèle re-vérifiés depuis Config (jamais client)
 --  Possession enregistrée dans owned_vehicles (standard ESX)
+
+local rateLimits = {
+    ['concessionnaire:buy'] = 10, ['concessionnaire:sell'] = 10,
+    ['concessionnaire:getOccasions'] = 15, ['concessionnaire:buyOccasion'] = 10,
+    ['concessionnaire:persistDelivered'] = 10,
+}
+for eventName, limit in pairs(rateLimits) do
+    LSLegacy.Security.RegisterRateLimit(eventName, limit)
+end
 -- ═══════════════════════════════════════════════════════════════════
 
 local function GetPlayer(src) return LSLegacy.ServerPlayers[src] end

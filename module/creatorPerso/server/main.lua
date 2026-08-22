@@ -1,3 +1,7 @@
+LSLegacy.Security.RegisterRateLimit('SetBucket', 20)
+LSLegacy.Security.RegisterRateLimit('saveskin', 20)
+LSLegacy.Security.RegisterRateLimit('SetIdentity', 20)
+
 -- ─── Bucket routing (isolement du joueur pendant la création) ──────────────
 -- Le client ne choisit plus le bucket lui-même (un client modifié pourrait
 -- sinon demander le bucket d'un autre joueur en cours de création). Le

@@ -2,6 +2,12 @@
 --  LSLegacy – ClothShop Server
 -- ════════════════════════════════════════════════
 
+LSLegacy.Security.RegisterRateLimit('AddClothesInInventory', 20)
+LSLegacy.Security.RegisterRateLimit('clothshop:createOutfit', 20)
+LSLegacy.Security.RegisterRateLimit('clothshop:splitOutfit', 20)
+LSLegacy.Security.RegisterRateLimit('clothshop:modifyOutfit', 20)
+LSLegacy.Security.RegisterRateLimit('inventory:updateOutfitFromInventory', 20)
+
 -- ── Helper: remove inventory item by uniqueId ─────
 local function RemoveItemByUniqueId(player, uniqueId)
     if not player or not uniqueId then return end

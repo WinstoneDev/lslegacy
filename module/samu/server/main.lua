@@ -2,6 +2,15 @@
 --  Création tables SQL, gestion prise de service, spawn véhicule
 --  SÉCURITÉ : toutes les actions revalident job/grade depuis ServerPlayers
 
+local rateLimits = {
+    ['samu:onDuty'] = 10, ['samu:offDuty'] = 10, ['samu:spawnVehicle'] = 15,
+    ['samu:restock'] = 15, ['samu:revive'] = 15,
+    ['samu:hi:open'] = 15, ['samu:hi:useItem'] = 20, ['samu:hi:poll'] = 40, ['samu:hi:damage'] = 40,
+}
+for eventName, limit in pairs(rateLimits) do
+    LSLegacy.Security.RegisterRateLimit(eventName, limit)
+end
+
 local SamuAgents = {}   -- { [source] = { onDuty, grade, name } }
 
 -- Helpers sécurité

@@ -1,5 +1,14 @@
 -- Création tables SQL, gestion prise de service (par magasin). Toutes les actions revalident job/grade depuis ServerPlayers.
 
+local rateLimits = {
+    ['ltd:onDuty'] = 10, ['ltd:offDuty'] = 10, ['ltd:requestShelfStock'] = 20,
+    ['ltd:requestReserveStock'] = 20, ['ltd:sellItem'] = 20, ['ltd:restockShelf'] = 15,
+    ['ltd:fillReserve'] = 15, ['ltd:triggerAlarm'] = 10, ['ltd:stealItem'] = 15,
+}
+for eventName, limit in pairs(rateLimits) do
+    LSLegacy.Security.RegisterRateLimit(eventName, limit)
+end
+
 local LtdAgents = {}   -- { [source] = { onDuty, grade, storeId } }
 
 local function GetPlayer(src)

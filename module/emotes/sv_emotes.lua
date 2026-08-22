@@ -1,6 +1,15 @@
 -- Relais serveur : ne fait que valider la distance et relayer l'événement, toute la logique d'animation est côté client.
 -- Favoris stockés par personnage (players.`boutique-id`), pas par compte, pour ne pas les partager entre personnages.
 
+local rateLimits = {
+    ['lslegacy_emotes:requestShared'] = 20, ['lslegacy_emotes:confirmShared'] = 20,
+    ['lslegacy_emotes:cancelShared'] = 30, ['lslegacy_emotes:getFavorites'] = 10,
+    ['lslegacy_emotes:toggleFavorite'] = 30,
+}
+for eventName, limit in pairs(rateLimits) do
+    LSLegacy.Security.RegisterRateLimit(eventName, limit)
+end
+
 MySQL.Async.execute([[
     CREATE TABLE IF NOT EXISTS `emotes_favorites` (
         `character_id` INT(11) NOT NULL,

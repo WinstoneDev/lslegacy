@@ -1,6 +1,15 @@
 -- Job libre : chaque joueur a sa propre instance (camion + remorque + citerne), suivie via Interim.Sessions[src].
 -- Les stations essence sont persistées en BDD (interim_stations), seedées à 50 % au premier démarrage, jamais écrasées ensuite.
 
+local rateLimits = {
+    ['interim:startDuty'] = 10, ['interim:endDuty'] = 10, ['interim:rigSpawned'] = 15,
+    ['interim:trailerAttached'] = 15, ['interim:trailerDetached'] = 15,
+    ['interim:requestFillTank'] = 20, ['interim:stationFillComplete'] = 15,
+}
+for eventName, limit in pairs(rateLimits) do
+    LSLegacy.Security.RegisterRateLimit(eventName, limit)
+end
+
 local CFG = Config.Interim
 
 Interim = Interim or {}

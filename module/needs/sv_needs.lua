@@ -1,3 +1,5 @@
+LSLegacy.Security.RegisterRateLimit('applyNeedEffect', 20)
+
 for item, _ in pairs(Config.NeedsItems) do
     LSLegacy.RegisterUsableItem(item, function(data, uniqueId)
         LSLegacy.SendEventToClient('useNeed', source, item, data, uniqueId)

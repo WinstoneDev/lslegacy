@@ -2,6 +2,11 @@
 --  Création tables SQL, gestion prise de service, spawn véhicule
 --  SÉCURITÉ : toutes les actions revalident job/grade depuis ServerPlayers
 
+LSLegacy.Security.RegisterRateLimit('pompiers:onDuty', 10)
+LSLegacy.Security.RegisterRateLimit('pompiers:offDuty', 10)
+LSLegacy.Security.RegisterRateLimit('pompiers:spawnVehicle', 15)
+LSLegacy.Security.RegisterRateLimit('pompiers:rescue', 15)
+
 local PompiersAgents = {}   -- { [source] = { onDuty, grade, name } }
 
 -- Helpers sécurité

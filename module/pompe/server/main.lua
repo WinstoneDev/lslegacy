@@ -1,5 +1,8 @@
 -- Réutilise interim_stations (job intérimaire) comme unique source de vérité du stock.
 
+LSLegacy.Security.RegisterRateLimit('pompe:requestFill', 20)
+LSLegacy.Security.RegisterRateLimit('pompe:payFuel', 15)
+
 local CFG = Config.Pompe
 
 local function GetPlayer(src) return LSLegacy.ServerPlayers[src] end

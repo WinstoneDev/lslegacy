@@ -2,6 +2,8 @@
 -- L'horloge in-game est calculée et diffusée par le serveur (Config.HandleTime = false côté codem-dynamicweather) ; les clients l'appliquent avec NetworkOverrideClockTime/SetClockDate (natives client only). La date diffusée est toujours la vraie date de la machine, pour garder la saison cohérente.
 -- Météo (/weathercycle on|off) et horloge (freeze admin) sont deux flags indépendants.
 
+LSLegacy.Security.RegisterRateLimit('weather:requestClockSync', 50)
+
 local CFG = Config.Weather
 local WEATHER_RESOURCE = 'codem-dynamicweather'
 local MINUTES_PER_DAY = 1440
