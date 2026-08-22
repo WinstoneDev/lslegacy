@@ -8,7 +8,7 @@ local CFG = Config.Pompe
 local function GetPlayer(src) return LSLegacy.Players.Get(src) end
 
 local function Notify(src, msg, t)
-    LSLegacy.Events.SendToClient(CFG.NotifyEvent, src, 'Station essence', msg, 5000, t or 'info')
+    LSLegacy.Events.SendToClient('notify', src, 'Station essence', msg, t or 'info', 5000)
 end
 
 -- Vérifie l'argent du joueur ET le stock de la station avant d'autoriser le client à délivrer de l'essence.

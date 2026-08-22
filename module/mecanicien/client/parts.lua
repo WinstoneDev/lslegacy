@@ -3,7 +3,7 @@
 --  action liée à l'état "tient une pièce en main", pas un ciblage classique.
 
 local function Notify(msg, type)
-    TriggerEvent(Config.Mecanicien.NotifyEvent, 'Mécanicien', msg, 5000, type or 'info')
+    TriggerEvent('notify', 'Mécanicien', msg, type or 'info', 5000)
 end
 
 local function PlayAnim(dict, anim, duration, flag)

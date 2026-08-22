@@ -33,7 +33,7 @@ MySQL.Async.execute("ALTER TABLE fourriere ADD COLUMN IF NOT EXISTS character_id
 local function GetPlayer(src) return LSLegacy.Players.Get(src) end
 
 local function Notify(src, msg, t)
-    LSLegacy.Events.SendToClient(CFG.NotifyEvent, src, 'Fourrière', msg, 5000, t or 'info')
+    LSLegacy.Events.SendToClient('notify', src, 'Fourrière', msg, t or 'info', 5000)
 end
 
 local function charName(player)

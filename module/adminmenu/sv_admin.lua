@@ -63,7 +63,7 @@ end
 
 Admin.CanDo = function(source, minLevel)
     local player = LSLegacy.Players.Get(source)
-    return player and Admin.GetLevel(player) >= minLevel
+    return player and LSLegacy.Permissions.Has(player, minLevel)
 end
 
 Admin.GetIdentifier = function(source)
@@ -630,7 +630,7 @@ LSLegacy.Events.Register('admin:deleteVehiclesInZone', function(radius)
     for plate, data in pairs(LSLegacy.AP.Active) do
         if data.entity and DoesEntityExist(data.entity) then
             local vc = GetEntityCoords(data.entity)
-            if #(adminCoords - vc) <= r then
+            if LSLegacy.Validate.Distance(adminCoords, vc, r) then
                 toDelete[#toDelete + 1] = { plate = plate, entity = data.entity }
             end
         end

@@ -5,7 +5,7 @@
 local cooldowns = {}
 
 local function Notify(msg, type)
-    TriggerEvent(Config.SAMU.NotifyEvent, 'SAMU', msg, 5000, type or 'info')
+    TriggerEvent('notify', 'SAMU', msg, type or 'info', 5000)
 end
 
 -- Anti-abus cooldown

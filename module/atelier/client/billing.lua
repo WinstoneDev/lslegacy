@@ -1,7 +1,7 @@
 -- Aucun devis : affiche les prestations déjà accumulées côté serveur, puis déclenche le paiement.
 
 local function Notify(msg, type)
-    TriggerEvent(Config.Atelier.NotifyEvent, 'Atelier', msg, 5000, type or 'info')
+    TriggerEvent('notify', 'Atelier', msg, type or 'info', 5000)
 end
 
 local function CanBill()

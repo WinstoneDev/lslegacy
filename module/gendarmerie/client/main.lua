@@ -8,8 +8,7 @@ Gendarmerie.OnDuty = false
 Gendarmerie.Grade  = 0
 
 local function Notify(msg, type)
-    TriggerEvent(Config.Gendarmerie.NotifyEvent, 'Gendarmerie Nationale', msg,
-        Config.Gendarmerie.NotifyDuration or 30000, type or 'info')
+    TriggerEvent('notify', 'Gendarmerie Nationale', msg, type or 'info', Config.Gendarmerie.NotifyDuration or 30000)
 end
 
 -- Utilitaires

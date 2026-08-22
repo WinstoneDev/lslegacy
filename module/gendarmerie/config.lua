@@ -30,7 +30,6 @@ Config.Gendarmerie.Blips = {
 }
 
 -- Notifications
-Config.Gendarmerie.NotifyEvent    = 'notify'
 Config.Gendarmerie.NotifyDuration = 30000
 
 -- Borne de prise de service à la caserne

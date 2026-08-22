@@ -312,7 +312,7 @@ if not IsDuplicityVersion() then
                     -- sinon la collision (et donc les degats) revient au frame suivant.
                     local pedCoords = GetEntityCoords(ped)
                     for _, vehicle in ipairs(GetGamePool('CVehicle')) do
-                        if #(GetEntityCoords(vehicle) - pedCoords) < 15.0 then
+                        if LSLegacy.Validate.Distance(GetEntityCoords(vehicle), pedCoords, 15.0) then
                             SetEntityNoCollisionEntity(ped, vehicle, true)
                         end
                     end

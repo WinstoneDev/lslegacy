@@ -1,6 +1,5 @@
 Config.Atelier = {}
 
-Config.Atelier.NotifyEvent = 'brutal_notify:SendAlert'
 
 -- Distances / cooldowns génériques (repris du module mecanicien existant)
 Config.Atelier.Actions = {

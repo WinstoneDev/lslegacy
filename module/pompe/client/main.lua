@@ -3,7 +3,7 @@
 local CFG = Config.Pompe
 
 local function Notify(msg, t)
-    TriggerEvent(CFG.NotifyEvent, 'Station essence', msg, 5000, t or 'info')
+    TriggerEvent('notify', 'Station essence', msg, t or 'info', 5000)
 end
 
 local function DrawCenteredText(text, x, y, scale, font, r, g, b, a)
@@ -48,7 +48,7 @@ local function GetTargetVehicle()
     local pedCoords = GetEntityCoords(cache.ped)
 
     if lastVehicle and DoesEntityExist(lastVehicle)
-        and #(GetEntityCoords(lastVehicle) - pedCoords) <= CFG.VehicleMaxDistance
+        and LSLegacy.Validate.Distance(GetEntityCoords(lastVehicle), pedCoords, CFG.VehicleMaxDistance)
     then
         return lastVehicle
     end

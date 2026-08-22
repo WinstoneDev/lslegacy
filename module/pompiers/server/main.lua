@@ -22,7 +22,7 @@ end
 
 local function GetGrade(src)
     local p = GetPlayer(src)
-    return p and (tonumber(p.job_grade) or 0) or 0
+    return p and (tonumber(LSLegacy.Jobs.GetGrade(p)) or 0) or 0
 end
 
 local function GetName(src)
@@ -47,7 +47,7 @@ local function GetCharacterId(src)
 end
 
 local function Notify(src, msg, t)
-    TriggerClientEvent(Config.Pompiers.NotifyEvent, src, 'Sapeurs-Pompiers', msg, 5000, t or 'info')
+    LSLegacy.Events.SendToClient('notify', src, 'Sapeurs-Pompiers', msg, t or 'info', 5000)
 end
 
 -- Création des tables SQL

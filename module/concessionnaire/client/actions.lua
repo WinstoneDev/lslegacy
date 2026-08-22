@@ -1,7 +1,7 @@
 -- L'achat / la revente sont entièrement validés côté serveur.
 
 local function Notify(msg, type)
-    TriggerEvent(Config.Concessionnaire.NotifyEvent, 'Concessionnaire', msg, 5000, type or 'info')
+    TriggerEvent('notify', 'Concessionnaire', msg, type or 'info', 5000)
 end
 
 LSLegacy.Events.Register('concessionnaire:buyResult', function(data)

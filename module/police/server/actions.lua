@@ -5,8 +5,7 @@ local CuffedPlayers = {}    -- { [src] = { officer = officerSrc, time = ts } }
 local EscortLinks   = {}    -- { [targetSrc] = officerSrc }
 
 local function Notify(src, msg, t)
-    TriggerClientEvent(Config.Police.NotifyEvent, src, 'Police Nationale', msg,
-        Config.Police.NotifyDuration or 30000, t or 'info')
+    LSLegacy.Events.SendToClient('notify', src, 'Police Nationale', msg, t or 'info', Config.Police.NotifyDuration or 30000)
 end
 
 --  MENOTTAGE

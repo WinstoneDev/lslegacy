@@ -6,7 +6,7 @@ local Investigation = {}
 local activeScenes  = {}  -- { [sceneId] = { coords, blip, secured } }
 
 local function Notify(msg, type)
-    TriggerEvent(Config.Police.NotifyEvent, '🔬 PTS', msg, 5000, type or 'info')
+    TriggerEvent('notify', '🔬 PTS', msg, type or 'info', 5000)
 end
 
 -- Vérifie que le joueur est PTS ou a access aux preuves
@@ -110,7 +110,7 @@ function GetNearestSceneId()
     local pos   = GetEntityCoords(PlayerPedId())
     local range = 20.0
     for sceneId, scene in pairs(activeScenes) do
-        if #(pos - scene.coords) < range then return sceneId end
+        if LSLegacy.Validate.Distance(pos, scene.coords, range) then return sceneId end
     end
     return nil
 end

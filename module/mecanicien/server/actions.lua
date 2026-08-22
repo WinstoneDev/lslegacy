@@ -5,7 +5,7 @@ local function GetPlayer(src)   return LSLegacy.Players.Get(src) end
 local function IsMecanicien(src) return LSLegacy.Jobs.Is(GetPlayer(src), Config.Mecanicien.Job) end
 
 local function Notify(src, msg, t)
-    TriggerClientEvent(Config.Mecanicien.NotifyEvent, src, 'Mécanicien', msg, 5000, t or 'info')
+    LSLegacy.Events.SendToClient('notify', src, 'Mécanicien', msg, t or 'info', 5000)
 end
 
 -- token -> { onSuccess, onFail } — la suite (réparation/pose) n'est

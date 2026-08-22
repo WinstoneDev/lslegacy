@@ -7,7 +7,7 @@ Interim = Interim or {}
 local tankBlip = nil
 
 local function Notify(msg, t)
-    TriggerEvent(CFG.NotifyEvent, 'Intérimaire', msg, 5000, t or 'info')
+    TriggerEvent('notify', 'Intérimaire', msg, t or 'info', 5000)
 end
 
 -- a.prop est optionnel : présent (jerrican station) -> attaché en main ;
@@ -43,10 +43,10 @@ local function WalkToTanker()
     local target = GetOffsetFromEntityInWorldCoords(trailer, 0.0, -4.5, 0.0) -- à VÉRIFIER/AJUSTER visuellement
     local heading = GetEntityHeading(trailer)
 
-    if #(GetEntityCoords(ped) - target) > 0.3 then
+    if not LSLegacy.Validate.Distance(GetEntityCoords(ped), target, 0.3) then
         TaskGoStraightToCoord(ped, target.x, target.y, target.z, 1.0, 3000, heading, 0.15)
         local elapsed = 0
-        while elapsed < 3000 and #(GetEntityCoords(ped) - target) > 0.3 do
+        while elapsed < 3000 and not LSLegacy.Validate.Distance(GetEntityCoords(ped), target, 0.3) do
             Wait(100)
             elapsed = elapsed + 100
         end

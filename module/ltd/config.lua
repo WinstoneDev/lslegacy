@@ -103,4 +103,3 @@ Config.LTD.Actions = {
 }
 
 -- Notification (même système que les autres métiers)
-Config.LTD.NotifyEvent = 'brutal_notify:SendAlert'

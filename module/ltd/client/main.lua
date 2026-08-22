@@ -7,7 +7,7 @@ LTD.Grade     = 0
 LTD.InUniform = false
 
 local function Notify(msg, type)
-    TriggerEvent(Config.LTD.NotifyEvent, 'LTD', msg, 5000, type or 'info')
+    TriggerEvent('notify', 'LTD', msg, type or 'info', 5000)
 end
 
 local function IsEmployee()

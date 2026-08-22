@@ -56,5 +56,5 @@ function LSLegacy.Atelier.CanAct(src, perm)
 end
 
 function LSLegacy.Atelier.Notify(src, msg, t)
-    TriggerClientEvent(Config.Atelier.NotifyEvent, src, 'Atelier', msg, 5000, t or 'info')
+    LSLegacy.Events.SendToClient('notify', src, 'Atelier', msg, t or 'info', 5000)
 end

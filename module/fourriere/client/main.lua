@@ -2,7 +2,7 @@ local CFG = Config.Fourriere
 local spawnedPed = nil
 
 local function Notify(msg, t)
-    TriggerEvent(CFG.NotifyEvent, 'Fourrière', msg, 5000, t or 'info')
+    TriggerEvent('notify', 'Fourrière', msg, t or 'info', 5000)
 end
 
 local function modelLabel(hash)

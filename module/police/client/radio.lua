@@ -8,7 +8,7 @@ Radio.Active  = false
 Radio.Channel = nil   -- id numérique du canal actif
 
 local function Notify(msg, type)
-    TriggerEvent(Config.Police.NotifyEvent, 'Radio', msg, 3000, type or 'info')
+    TriggerEvent('notify', 'Radio', msg, type or 'info', 3000)
 end
 
 -- Helpers pma-voice

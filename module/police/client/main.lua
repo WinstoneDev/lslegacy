@@ -10,8 +10,7 @@ Police.Grade     = 0
 Police.InUniform = false
 
 local function Notify(msg, type)
-    TriggerEvent(Config.Police.NotifyEvent, 'Police Nationale', msg,
-        Config.Police.NotifyDuration or 30000, type or 'info')
+    TriggerEvent('notify', 'Police Nationale', msg, type or 'info', Config.Police.NotifyDuration or 30000)
 end
 
 -- Utilitaires

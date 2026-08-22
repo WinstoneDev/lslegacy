@@ -21,7 +21,7 @@ end
 
 local function GetGradeGN(src)
     local p = GetPlayerGN(src)
-    return p and (tonumber(p.job_grade) or 0) or 0
+    return p and (tonumber(LSLegacy.Jobs.GetGrade(p)) or 0) or 0
 end
 
 local function GetNameGN(src)

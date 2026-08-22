@@ -53,7 +53,7 @@ end)
 local function GetPlayer(src) return LSLegacy.Players.Get(src) end
 
 local function Notify(src, msg, t)
-    LSLegacy.Events.SendToClient(CFG.NotifyEvent, src, 'Intérimaire', msg, 5000, t or 'info')
+    LSLegacy.Events.SendToClient('notify', src, 'Intérimaire', msg, t or 'info', 5000)
 end
 
 local function findStation(id)

@@ -9,7 +9,7 @@ Interim.TrailerFuel = 0
 Interim.Capacity    = CFG.Economy.trailerCapacity
 
 local function Notify(msg, t)
-    TriggerEvent(CFG.NotifyEvent, 'Intérimaire', msg, 5000, t or 'info')
+    TriggerEvent('notify', 'Intérimaire', msg, t or 'info', 5000)
 end
 
 local spawnedPed = nil

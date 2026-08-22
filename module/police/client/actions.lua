@@ -6,8 +6,7 @@ local Actions   = {}
 local cooldowns = {}
 
 local function Notify(msg, type)
-    TriggerEvent(Config.Police.NotifyEvent, 'Police Nationale', msg,
-        Config.Police.NotifyDuration or 30000, type or 'info')
+    TriggerEvent('notify', 'Police Nationale', msg, type or 'info', Config.Police.NotifyDuration or 30000)
 end
 
 -- Anti-abus cooldown
@@ -222,9 +221,7 @@ end
 LSLegacy.Events.Register('police:idCheckResult', function(data)
     if not data then return end
     if data.hasId then
-        TriggerEvent(Config.Police.NotifyEvent, 'Police Nationale',
-            string.format(Lang.Police.id_result, data.name, data.dob, data.height),
-            Config.Police.NotifyDuration or 30000, 'info')
+        TriggerEvent('notify', 'Police Nationale', string.format(Lang.Police.id_result, data.name, data.dob, data.height), 'info', Config.Police.NotifyDuration or 30000)
     else
         Notify(Lang.Police.no_id, 'warning')
     end
@@ -291,7 +288,7 @@ LSLegacy.Events.Register('police:escortedBy', function(data)
                 local myPed = PlayerPedId()
                 local ofPos = GetEntityCoords(escortOfficer)
                 local myPos = GetEntityCoords(myPed)
-                if #(ofPos - myPos) > 2.5 then
+                if not LSLegacy.Validate.Distance(ofPos, myPos, 2.5) then
                     TaskGoToCoordAnyMeans(myPed, ofPos.x, ofPos.y, ofPos.z, 1.5, 0, 0, 786603, 0xbf800000)
                 end
                 Wait(500)

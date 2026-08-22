@@ -12,7 +12,7 @@ local metroEnabled = true -- basculé par /metrotoggle (staff), voir metro:setEn
 local function dbg(...) if Config.Metro.Debug then print('[metro]', ...) end end
 
 local function Notify(msg, type)
-    TriggerEvent(Config.Metro.NotifyEvent, 'Métro', msg, 5000, type or 'info')
+    TriggerEvent('notify', 'Métro', msg, type or 'info', 5000)
 end
 
 -- ── Piste de métro ──────────────────────────────────────────────────

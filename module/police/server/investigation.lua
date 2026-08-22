@@ -10,7 +10,7 @@ local function HasInvPermission(src)
 end
 
 local function Notify(src, msg, t)
-    TriggerClientEvent(Config.Police.NotifyEvent, src, '🔬 PTS', msg, 5000, t or 'info')
+    LSLegacy.Events.SendToClient('notify', src, '🔬 PTS', msg, t or 'info', 5000)
 end
 
 local function GenerateRef(prefix)
@@ -258,7 +258,7 @@ LSLegacy.Events.Register('police:inv:createScene', function(data)
     local src = source
     if not HasInvPermission(src) then return end
     if not LSLegacy.MDT.HasPermission('police', tonumber(GetPlayer(src).job_grade) or 0, 'manage_evidence') then
-        TriggerClientEvent(Config.Police.NotifyEvent, src, 'PTS', Lang.Police.grade_required, 4000, 'error')
+        LSLegacy.Events.SendToClient('notify', src, 'PTS', Lang.Police.grade_required, 'error', 4000)
         return
     end
     if not data then return end

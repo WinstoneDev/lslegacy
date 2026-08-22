@@ -107,8 +107,7 @@ MySQL.Async.execute([[
 --  HELPERS
 
 local function Notify(src, msg, t)
-    TriggerClientEvent(Config.Police.NotifyEvent, src, 'Police Nationale', msg,
-        Config.Police.NotifyDuration or 30000, t or 'info')
+    LSLegacy.Events.SendToClient('notify', src, 'Police Nationale', msg, t or 'info', Config.Police.NotifyDuration or 30000)
 end
 
 local function NotifyAll(list, msg, t)
@@ -291,7 +290,7 @@ local function AnyCivilianNear(coords, radius)
             local ped = GetPlayerPed(src)
             if ped and ped ~= 0 then
                 local pc = GetEntityCoords(ped)
-                if #(pc - coords) < radius then return true end
+                if LSLegacy.Validate.Distance(pc, coords, radius) then return true end
             end
         end
     end
@@ -2397,7 +2396,7 @@ LSLegacy.Events.Register('police:callouts:reposition', function(data)
 
     -- Garde-fou : on n'accepte qu'un recalage local, jamais un
     local base = co.location.loc.coords
-    if #(vector3(x, y, z) - vector3(base.x, base.y, base.z)) > (C.SearchRadius + 50.0) then
+    if not LSLegacy.Validate.Distance(vector3(x, y, z), vector3(base.x, base.y, base.z), C.SearchRadius + 50.0) then
         return
     end
 
@@ -2577,7 +2576,7 @@ local function AgentNear(src, ped, radius)
     if not ped or not ped.entity or not DoesEntityExist(ped.entity) then return false end
     local a = GetEntityCoords(GetPlayerPed(src))
     local b = GetEntityCoords(ped.entity)
-    return #(a - b) <= (radius or 5.0)
+    return LSLegacy.Validate.Distance(a, b, radius or 5.0)
 end
 
 LSLegacy.Events.Register('police:callouts:suspectStunned', function(data)
@@ -3050,11 +3049,11 @@ LSLegacy.Events.Register('police:callouts:suspectDelivered', function(data)
     local npc = (p.role == 'wanderer') and C.Npcs.hospital or C.Npcs.custody
     if not p.entity or not DoesEntityExist(p.entity) then return end
     local pc = GetEntityCoords(p.entity)
-    if #(pc - npc.coords) > C.CustodyRadius then
+    if not LSLegacy.Validate.Distance(pc, npc.coords, C.CustodyRadius) then
         Notify(src, 'Vous devez présenter l\'individu sur place.', 'error')
         return
     end
-    if #(GetEntityCoords(GetPlayerPed(src)) - npc.coords) > (C.CustodyRadius + 5.0) then return end
+    if not LSLegacy.Validate.Distance(GetEntityCoords(GetPlayerPed(src)), npc.coords, C.CustodyRadius + 5.0) then return end
 
     -- Contrôle d'armement à l'arrivée
     if p.role == 'suspect' and (p.weapon ~= nil) then
@@ -3520,17 +3519,12 @@ end)
 local ADMIN_MIN_LEVEL = 3
 
 local function GetStaffLevel(src)
-    local p = GetPlayer(src)
-    if not p or not p.group then return 0 end
-    for level, name in pairs(Config.StaffGroups or {}) do
-        if p.group == name then return level end
-    end
-    return 0
+    return LSLegacy.Permissions.GetLevel(GetPlayer(src))
 end
 
 local function IsAdmin(src)
     if src == 0 then return true end   -- console
-    return GetStaffLevel(src) >= ADMIN_MIN_LEVEL
+    return LSLegacy.Permissions.Has(GetPlayer(src), ADMIN_MIN_LEVEL)
 end
 
 -- Refus explicite : une commande qui ne répond rien est indébogable.

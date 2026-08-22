@@ -177,4 +177,3 @@ Config.SAMU.RestockItems = {
 }
 
 -- Notification (même système que les autres métiers)
-Config.SAMU.NotifyEvent = 'brutal_notify:SendAlert'

@@ -4,7 +4,7 @@ Farm = Farm or {}
 Farm.Busy = false -- action en cours (récolte ou traitement) — anti double-déclenchement
 
 local function Notify(msg, type)
-    TriggerEvent(Config.Farm.NotifyEvent, 'Farm', msg, 5000, type or 'info')
+    TriggerEvent('notify', 'Farm', msg, type or 'info', 5000)
 end
 
 -- PNJ statique et invincible avec des options ox_target attachées à lui (addLocalEntity) — pattern repris de module/concessionnaire.

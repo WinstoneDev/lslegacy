@@ -6,8 +6,7 @@ local ActiveCustody   = {}  -- { [identifier] = { endTime, reason, duration, off
 
 -- Notify local : délai 6000ms spécifique aux notifications GAV/prison
 local function Notify(src, msg, t)
-    TriggerClientEvent(Config.Police.NotifyEvent, src, 'Police Nationale', msg,
-        Config.Police.NotifyDuration or 30000, t or 'info')
+    LSLegacy.Events.SendToClient('notify', src, 'Police Nationale', msg, t or 'info', Config.Police.NotifyDuration or 30000)
 end
 
 -- Tables SQL

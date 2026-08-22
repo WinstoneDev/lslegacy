@@ -3,7 +3,6 @@
 Config.Farm = {}
 
 -- Notification (même système que les autres métiers)
-Config.Farm.NotifyEvent = 'brutal_notify:SendAlert'
 
 -- Minijeu générique (barre + appui touche, identique à Mécanicien), réutilisé pour la récolte et le traitement.
 Config.Farm.Minigame = {

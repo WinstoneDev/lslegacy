@@ -376,7 +376,7 @@ LSLegacy.Events.Register('BankwithdrawMoney', function(amount, id)
     local player = LSLegacy.Players.Get(source)
     local account = LSLegacy.Bank.GetAccount(id)
     if not account then return end
-    amount = tonumber(amount)
+    amount = LSLegacy.Validate.Number(amount)
     if not amount or amount <= 0 then return end
     local tierCfg = LSLegacy.Bank.GetCardTierConfig(account.card_tier)
 
@@ -737,7 +737,7 @@ LSLegacy.Events.Register('BankDepositLivret', function(livretId, amount)
         return
     end
 
-    amount = tonumber(amount) or 0
+    amount = LSLegacy.Validate.Number(amount) or 0
     if amount <= 0 then return end
 
     local account = LSLegacy.Bank.GetAccount(livret.linked_account_id)
@@ -789,7 +789,7 @@ LSLegacy.Events.Register('BankWithdrawLivret', function(livretId, amount)
     local livret = LSLegacy.Bank.GetLivret(livretId)
     if not livret or livret.character_id ~= player["boutique-id"] or livret.status ~= 'active' then return end
 
-    amount = tonumber(amount) or 0
+    amount = LSLegacy.Validate.Number(amount) or 0
     if amount <= 0 or amount > livret.amountMoney then
         LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Montant invalide.', 'error')
         return
@@ -862,7 +862,7 @@ LSLegacy.Events.Register('BankTransferByIban', function(fromAccountId, toIban, a
     local fromAccount = LSLegacy.Bank.GetAccount(fromAccountId)
     if not fromAccount or fromAccount.character_id ~= player["boutique-id"] then return end
 
-    amount = tonumber(amount) or 0
+    amount = LSLegacy.Validate.Number(amount) or 0
     if amount <= 0 then
         LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Montant invalide.', 'error')
         return

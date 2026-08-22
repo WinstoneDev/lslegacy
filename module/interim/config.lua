@@ -2,8 +2,6 @@
 
 Config = Config or {}
 Config.Interim = {
-    -- Event de notification (framework)
-    NotifyEvent = 'brutal_notify:SendAlert',
 
     -- PNJ chantier (prise/fin de service) — pos 2
     Ped = {

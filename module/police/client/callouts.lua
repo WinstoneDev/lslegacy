@@ -81,8 +81,7 @@ MyCrew             = nil     -- équipage courant (id)
 MyCrewLbl          = nil     -- libellé affiché
 
 local function Notify(msg, type)
-    TriggerEvent(Config.Police.NotifyEvent, 'Police Nationale', msg,
-        Config.Police.NotifyDuration or 30000, type or 'info')
+    TriggerEvent('notify', 'Police Nationale', msg, type or 'info', Config.Police.NotifyDuration or 30000)
 end
 
 --  FILE D'ENVOI VERS LE SERVEUR
@@ -562,7 +561,7 @@ local function SpawnStaticNpc(key)
     -- Filet de sécurité : un PNJ orphelin d'un précédent démarrage de la
     for _, e in ipairs(GetGamePool('CPed')) do
         if DoesEntityExist(e) and GetEntityModel(e) == GetHashKey(cfg.model)
-           and #(GetEntityCoords(e) - vector3(cfg.coords.x, cfg.coords.y, cfg.coords.z)) < 2.0 then
+           and LSLegacy.Validate.Distance(GetEntityCoords(e), vector3(cfg.coords.x, cfg.coords.y, cfg.coords.z), 2.0) then
             DeleteEntity(e)
         end
     end
@@ -1757,12 +1756,12 @@ local function RunDoorstepWait(entity, p)
 
         -- Il ne doit jamais s'éloigner de son entrée.
         local function Leash()
-            if #(GetEntityCoords(entity) - anchor) <= leash then return end
+            if LSLegacy.Validate.Distance(GetEntityCoords(entity), anchor, leash) then return end
             DoorLog('rappel vers l\'entrée')
             TaskGoStraightToCoord(entity, anchor.x, anchor.y, anchor.z, 1.0, 6000,
                 baseHead, 0.3)
             local t = 0
-            while t < 60 and Alive() and #(GetEntityCoords(entity) - anchor) > 0.6 do
+            while t < 60 and Alive() and not LSLegacy.Validate.Distance(GetEntityCoords(entity), anchor, 0.6) do
                 Wait(100) t = t + 1
             end
         end
@@ -2441,12 +2440,12 @@ local function RunSceneAmbience(entity, p)
             RequestControl(entity)
 
             -- Laisse : il ne quitte jamais les abords de son poste.
-            if #(GetEntityCoords(entity) - anchor) > leash + 1.0 then
+            if not LSLegacy.Validate.Distance(GetEntityCoords(entity), anchor, leash + 1.0) then
                 TaskGoStraightToCoord(entity, anchor.x, anchor.y, anchor.z,
                     1.2, 6000, baseHead, 0.4)
                 local t = 0
                 while t < 50 and Alive()
-                      and #(GetEntityCoords(entity) - anchor) > 1.0 do
+                      and not LSLegacy.Validate.Distance(GetEntityCoords(entity), anchor, 1.0) do
                     Wait(100) t = t + 1
                 end
             end
@@ -3114,7 +3113,7 @@ local function TriggerFlee(p, entity, st)
         local bike = NetworkDoesNetworkIdExist(p.bikeNet)
             and NetworkGetEntityFromNetworkId(p.bikeNet) or nil
         if bike and bike ~= 0 and DoesEntityExist(bike)
-           and #(GetEntityCoords(entity) - GetEntityCoords(bike)) < 25.0 then
+           and LSLegacy.Validate.Distance(GetEntityCoords(entity), GetEntityCoords(bike), 25.0) then
             TaskEnterVehicle(entity, bike, 10000, -1, 2.0, 1, 0)
             st.onBike = true
             SetTimeout(6000, function()
@@ -3515,7 +3514,7 @@ local function StartHeistScene()
                     local cur = PedData(m.netId)
                     if cur and cur.state == 'idle' and not cur.escaped then
                         local e = PedEntity(m)
-                        if e and #(GetEntityCoords(e) - Heist.anchor) < 60.0 then
+                        if e and LSLegacy.Validate.Distance(GetEntityCoords(e), Heist.anchor, 60.0) then
                             active = active + 1
                         end
                     end
@@ -5735,7 +5734,7 @@ LSLegacy.Events.Register('police:callouts:radioWalk', function(data)
                 while GetGameTimer() < timeout do
                     Wait(300)
                     if not DoesEntityExist(ped) or not DoesEntityExist(veh) then break end
-                    if #(GetEntityCoords(ped) - GetEntityCoords(veh)) < 2.5 then break end
+                    if LSLegacy.Validate.Distance(GetEntityCoords(ped), GetEntityCoords(veh), 2.5) then break end
                 end
 
                 if DoesEntityExist(ped) and DoesEntityExist(veh) then
@@ -5803,7 +5802,7 @@ LSLegacy.Events.Register('police:callouts:hospitalIntake', function(data)
             Wait(1000)
             local arrived = false
             if person and DoesEntityExist(person) then
-                if #(GetEntityCoords(person) - dest) < 2.5 then arrived = true end
+                if LSLegacy.Validate.Distance(GetEntityCoords(person), dest, 2.5) then arrived = true end
             else
                 arrived = true
             end
@@ -6122,8 +6121,8 @@ LSLegacy.Events.Register('police:callouts:ambulance', function(data)
                 Wait(400)
                 if not DoesEntityExist(veh) then return end
                 local vp = GetEntityCoords(veh)
-                if #(vp - target) <= 10.0 then break end
-                if #(vp - prev) < 0.6 then break end   -- ne progresse plus
+                if LSLegacy.Validate.Distance(vp, target, 10.0) then break end
+                if LSLegacy.Validate.Distance(vp, prev, 0.6) then break end   -- ne progresse plus
                 prev = vp
             end
         end

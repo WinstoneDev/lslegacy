@@ -380,3 +380,15 @@ LSLegacy.Events = {
 LSLegacy.Utils = {
     Math = LSLegacy.Math,
 }
+
+---LSLegacy.Validate.Distance — équivalent client de server/validate.lua (pure géométrie, sans notion d'autorité serveur).
+---@type function
+---@param coordsA vector3
+---@param coordsB vector3
+---@param maxDistance number
+---@return boolean
+LSLegacy.Validate = LSLegacy.Validate or {}
+LSLegacy.Validate.Distance = function(coordsA, coordsB, maxDistance)
+    if coordsA == nil or coordsB == nil or maxDistance == nil then return false end
+    return #(coordsA - coordsB) <= maxDistance
+end

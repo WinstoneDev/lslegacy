@@ -16,7 +16,7 @@ end
 local function GetPlayer(src) return LSLegacy.Players.Get(src) end
 
 local function Notify(src, msg, t)
-    TriggerClientEvent(Config.Concessionnaire.NotifyEvent, src, 'Concessionnaire', msg, 5000, t or 'info')
+    LSLegacy.Events.SendToClient('notify', src, 'Concessionnaire', msg, t or 'info', 5000)
 end
 
 -- ── Table de possession (compatible ESX / lb-phone) ──────────────────

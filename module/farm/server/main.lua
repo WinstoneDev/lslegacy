@@ -179,7 +179,7 @@ local function GetPlayer(src)
 end
 
 local function Notify(src, msg, t)
-    TriggerClientEvent(Config.Farm.NotifyEvent, src, 'Farm', msg, 5000, t or 'info')
+    LSLegacy.Events.SendToClient('notify', src, 'Farm', msg, t or 'info', 5000)
 end
 
 local function GetItemCount(player, item)
@@ -267,7 +267,7 @@ LSLegacy.Events.Register('farm:requestGather', function(data)
 
         local playerCoords = GetEntityCoords(GetPlayerPed(src))
         local entCoords     = GetEntityCoords(entity)
-        if #(entCoords - playerCoords) > (Config.Farm.ZoneDistance + 3.0) then
+        if not LSLegacy.Validate.Distance(entCoords, playerCoords, Config.Farm.ZoneDistance + 3.0) then
             TriggerClientEvent('farm:gatherDenied', src, 'Trop loin du cadavre.')
             return
         end

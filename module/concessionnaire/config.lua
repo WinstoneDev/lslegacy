@@ -629,4 +629,3 @@ Config.Concessionnaire.Occasion = {
 }
 
 -- ── Notification (même système que les autres modules) ────────────────
-Config.Concessionnaire.NotifyEvent = 'brutal_notify:SendAlert'

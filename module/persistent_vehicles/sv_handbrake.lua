@@ -16,7 +16,7 @@ LSLegacy.Events.Register("handbrake:broadcastSound", function(netId, isEngage)
             local playerPed = GetPlayerPed(playerId)
             if DoesEntityExist(playerPed) then
                 local playerPos = GetEntityCoords(playerPed)
-                if #(vehPos - playerPos) <= 50.0 then
+                if LSLegacy.Validate.Distance(vehPos, playerPos, 50.0) then
                     LSLegacy.Events.SendToClient("handbrake:playSound", playerId, netId, isEngage)
                 end
             end

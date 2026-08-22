@@ -7,7 +7,7 @@
 local C = Config.Concessionnaire
 
 local function Notify(msg, type)
-    TriggerEvent(C.NotifyEvent, 'Concessionnaire', msg, 5000, type or 'info')
+    TriggerEvent('notify', 'Concessionnaire', msg, type or 'info', 5000)
 end
 
 -- Retire les espaces de tête ET de fin (le jeu centre les plaques courtes)
@@ -423,7 +423,7 @@ function Concessionnaire.StartTestDrive(model)
             if now >= endTime then EndTestDrive(Lang.Concessionnaire.test_timeout) break end
 
             local pos = GetEntityCoords(PlayerPedId())
-            if #(pos - C.TestDrive.boundaryCenter) > C.TestDrive.boundaryRadius then
+            if not LSLegacy.Validate.Distance(pos, C.TestDrive.boundaryCenter, C.TestDrive.boundaryRadius) then
                 EndTestDrive(Lang.Concessionnaire.test_outofbounds) break
             end
 

@@ -9,7 +9,7 @@ Concessionnaire = Concessionnaire or {}
 local spawnedPeds = {}
 
 local function Notify(msg, type)
-    TriggerEvent(Config.Concessionnaire.NotifyEvent, 'Concessionnaire', msg, 5000, type or 'info')
+    TriggerEvent('notify', 'Concessionnaire', msg, type or 'info', 5000)
 end
 Concessionnaire.Notify = Notify
 
@@ -142,7 +142,7 @@ Citizen.CreateThread(function()
         local wait = 2000
         local pos  = GetEntityCoords(PlayerPedId())
         -- Actif seulement quand on est proche (économie de perfs)
-        if #(pos - z.center) < (math.max(z.size.x, z.size.y) + 40.0) then
+        if LSLegacy.Validate.Distance(pos, z.center, math.max(z.size.x, z.size.y) + 40.0) then
             wait = 500
             local mn, mx = GetTrafficBox()
 

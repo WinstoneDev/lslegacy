@@ -31,8 +31,7 @@ LSLegacy.Events.Register('police:teleportToCustody', function(data)
 end)
 
 LSLegacy.Events.Register('police:releasedFromCustody', function()
-    TriggerEvent(Config.Police.NotifyEvent, 'Police Nationale', Lang.Police.custody_released,
-        Config.Police.NotifyDuration or 30000, 'success')
+    TriggerEvent('notify', 'Police Nationale', Lang.Police.custody_released, 'success', Config.Police.NotifyDuration or 30000)
 end)
 
 -- Prison client
@@ -59,7 +58,7 @@ LSLegacy.Events.Register('police:sendToPrison', function(data)
                 nextTick = now + 1000
 
                 local pos = GetEntityCoords(PlayerPedId())
-                if #(pos - pzone) > 200.0 then
+                if not LSLegacy.Validate.Distance(pos, pzone, 200.0) then
                     if LSLegacy.Anticheat then LSLegacy.Anticheat.AllowTeleport() end
                     SetEntityCoords(PlayerPedId(), data.x, data.y, data.z, false, false, false, false)
                 end
@@ -81,5 +80,5 @@ end)
 LSLegacy.Events.Register('police:releasedFromPrison', function()
     if LSLegacy.Anticheat then LSLegacy.Anticheat.AllowTeleport() end
     SetEntityCoords(PlayerPedId(), 1849.4, 2634.8, 45.7, false, false, false, false)
-    TriggerEvent(Config.Police.NotifyEvent, 'Prison', Lang.Police.prison_released, 8000, 'success')
+    TriggerEvent('notify', 'Prison', Lang.Police.prison_released, 'success', 8000)
 end)

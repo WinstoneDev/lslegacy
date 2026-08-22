@@ -6,10 +6,10 @@ local Stock = {}   -- { [item] = quantity } — chargé depuis mecanicien_stock
 
 local function GetPlayer(src)   return LSLegacy.Players.Get(src) end
 local function IsMecanicien(src) return LSLegacy.Jobs.Is(GetPlayer(src), Config.Mecanicien.Job) end
-local function GetGrade(src)     return GetPlayer(src) and tonumber(GetPlayer(src).job_grade) or 0 end
+local function GetGrade(src)     return GetPlayer(src) and tonumber(LSLegacy.Jobs.GetGrade(GetPlayer(src))) or 0 end
 
 local function Notify(src, msg, t)
-    TriggerClientEvent(Config.Mecanicien.NotifyEvent, src, 'Mécanicien', msg, 5000, t or 'info')
+    LSLegacy.Events.SendToClient('notify', src, 'Mécanicien', msg, t or 'info', 5000)
 end
 
 -- Le client facturé est le joueur le plus proche de l'entité (hors mécanicien)

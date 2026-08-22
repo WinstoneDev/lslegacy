@@ -7,7 +7,7 @@ local Actions   = {}
 local cooldowns = {}
 
 local function Notify(msg, type)
-    TriggerEvent(Config.Pompiers.NotifyEvent, 'Sapeurs-Pompiers', msg, 5000, type or 'info')
+    TriggerEvent('notify', 'Sapeurs-Pompiers', msg, type or 'info', 5000)
 end
 
 -- Anti-abus cooldown

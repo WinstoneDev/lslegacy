@@ -356,7 +356,7 @@ LSLegacy.Events.Register('keyhanger:share', function(boardId, targetSrc)
     end
     local sp = GetEntityCoords(GetPlayerPed(src))
     local tp = GetEntityCoords(GetPlayerPed(target.source))
-    if #(sp - tp) > 8.0 then
+    if not LSLegacy.Validate.Distance(sp, tp, 8.0) then
         return LSLegacy.Events.SendToClient('notify', src, KeyHanger.L('title'), KeyHanger.L('share_none_nearby'), 'error')
     end
     board.access = board.access or {}

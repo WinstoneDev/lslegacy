@@ -3,7 +3,7 @@ Atelier.HeldPart = nil   -- nom de l'item actuellement porté en main (ou nil)
 Atelier.HeldProp = nil
 
 local function Notify(msg, type)
-    TriggerEvent(Config.Atelier.NotifyEvent, 'Atelier', msg, 5000, type or 'info')
+    TriggerEvent('notify', 'Atelier', msg, type or 'info', 5000)
 end
 
 local function CanUseDepot(companyId)

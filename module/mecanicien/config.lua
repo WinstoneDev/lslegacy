@@ -180,4 +180,3 @@ Config.Mecanicien.Actions = {
 }
 
 -- Notification (même système que les autres métiers)
-Config.Mecanicien.NotifyEvent = 'brutal_notify:SendAlert'

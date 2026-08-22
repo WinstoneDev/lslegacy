@@ -91,4 +91,3 @@ Config.Pompiers.Actions = {
 }
 
 -- Notification (même système que les autres métiers)
-Config.Pompiers.NotifyEvent = 'brutal_notify:SendAlert'

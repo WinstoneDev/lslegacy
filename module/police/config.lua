@@ -190,7 +190,6 @@ Config.Police.Actions = {
 }
 
 -- Notifications (clé de l'event de notif du framework)
-Config.Police.NotifyEvent = 'brutal_notify:SendAlert'
 
 -- Durée d'affichage de TOUTES les notifications « Police Nationale »,
 -- en millisecondes. Les messages du service sont souvent longs

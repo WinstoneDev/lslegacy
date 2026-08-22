@@ -6,7 +6,7 @@ Interim = Interim or {}
 local truckEntity, trailerEntity = nil, nil
 
 local function Notify(msg, t)
-    TriggerEvent(CFG.NotifyEvent, 'Intérimaire', msg, 5000, t or 'info')
+    TriggerEvent('notify', 'Intérimaire', msg, t or 'info', 5000)
 end
 
 -- Exposée pour refuel.lua : la citerne à rejoindre est l'entité remorque elle-même, sa position n'est donc pas fixe comme la zone d'interaction pos4.
@@ -26,7 +26,7 @@ end
 local function ClearVehiclesAround(coords, radius)
     for _, vehicle in ipairs(GetGamePool('CVehicle')) do
         if DoesEntityExist(vehicle) and not VehicleHasPlayerOccupant(vehicle)
-            and #(GetEntityCoords(vehicle) - coords) <= radius
+            and LSLegacy.Validate.Distance(GetEntityCoords(vehicle), coords, radius)
         then
             SetEntityAsMissionEntity(vehicle, true, true)
             DeleteVehicle(vehicle)

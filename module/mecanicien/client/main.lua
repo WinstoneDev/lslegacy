@@ -10,7 +10,7 @@ Mecanicien.HeldPart  = nil   -- nom de l'item actuellement porté en main (ou ni
 Mecanicien.HeldProp  = nil   -- entité du prop attaché
 
 local function Notify(msg, type)
-    TriggerEvent(Config.Mecanicien.NotifyEvent, 'Mécanicien', msg, 5000, type or 'info')
+    TriggerEvent('notify', 'Mécanicien', msg, type or 'info', 5000)
 end
 
 -- Utilitaires

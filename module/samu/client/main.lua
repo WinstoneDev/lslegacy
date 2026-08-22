@@ -8,7 +8,7 @@ SAMU.Grade     = 0
 SAMU.InUniform = false
 
 local function Notify(msg, type)
-    TriggerEvent(Config.SAMU.NotifyEvent, 'SAMU', msg, 5000, type or 'info')
+    TriggerEvent('notify', 'SAMU', msg, type or 'info', 5000)
 end
 
 -- Utilitaires

@@ -3,7 +3,7 @@
 local cooldowns = {}
 
 local function Notify(msg, type)
-    TriggerEvent(Config.LTD.NotifyEvent, 'LTD', msg, 5000, type or 'info')
+    TriggerEvent('notify', 'LTD', msg, type or 'info', 5000)
 end
 
 local function HasCooldown(action)

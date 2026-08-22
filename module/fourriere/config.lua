@@ -4,9 +4,6 @@ Config.Fourriere = {
     -- Job autorisé à mettre un véhicule en fourrière (ox_target sur le véhicule)
     Job = 'police',
 
-    -- Event de notification (framework)
-    NotifyEvent = 'brutal_notify:SendAlert',
-
     -- Département MDT associé (pour le statut « Fourrière » du véhicule)
     Department = 'police',
 
