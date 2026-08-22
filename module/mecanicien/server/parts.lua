@@ -18,7 +18,7 @@ local function GetClosestPlayerToEntity(entity, mecanoSrc, range)
     local coords  = GetEntityCoords(entity)
     local closest, closestDist = nil, range
 
-    for _, p in pairs(LSLegacy.ServerPlayers) do
+    for _, p in pairs(LSLegacy.Players.GetAll()) do
         if p.source and p.source ~= mecanoSrc then
             local ped = GetPlayerPed(p.source)
             if DoesEntityExist(ped) then

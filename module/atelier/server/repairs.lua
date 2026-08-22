@@ -11,7 +11,7 @@ local function GetNearestCustomer(entity, mecanoSrc, range)
     local coords = GetEntityCoords(entity)
     local closestSrc, closestDist = nil, range
 
-    for src, p in pairs(LSLegacy.ServerPlayers) do
+    for src, p in pairs(LSLegacy.Players.GetAll()) do
         if src ~= mecanoSrc then
             local ped = GetPlayerPed(src)
             if DoesEntityExist(ped) then

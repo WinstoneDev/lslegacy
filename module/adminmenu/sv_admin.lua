@@ -134,7 +134,7 @@ LSLegacy.RegisterServerEvent('AdminServerPlayers', function()
     -- Copie superficielle : ajoute les labels job/faction lisibles sans polluer
     -- la table LSLegacy.ServerPlayers vivante (utilisée partout ailleurs).
     local snapshot = {}
-    for src, pdat in pairs(LSLegacy.ServerPlayers) do
+    for src, pdat in pairs(LSLegacy.Players.GetAll()) do
         local copy = {}
         for k, v in pairs(pdat) do copy[k] = v end
         copy.jobLabel          = LSLegacy.Jobs.GetJobLabel(pdat.job)
@@ -230,7 +230,7 @@ LSLegacy.RegisterServerEvent('admin:getOnlineStaff', function()
     if not Admin.CanDo(_source, 1) then return end
 
     local list = {}
-    for src, pdat in pairs(LSLegacy.ServerPlayers) do
+    for src, pdat in pairs(LSLegacy.Players.GetAll()) do
         local lvl = Admin.GetLevel(pdat)
         if lvl >= 1 then
             local rpName = pdat.characterInfos
@@ -264,7 +264,7 @@ CreateThread(function()
                 local ped = GetPlayerPed(sid)
                 if ped ~= 0 then
                     local c    = GetEntityCoords(ped)
-                    local pdat = LSLegacy.ServerPlayers[tonumber(sid)]
+                    local pdat = LSLegacy.Players.Get(tonumber(sid))
                     local rpName = pdat and pdat.characterInfos
                         and (tostring(pdat.characterInfos.Prenom) .. ' ' .. tostring(pdat.characterInfos.NDF))
                         or nil
@@ -414,7 +414,7 @@ LSLegacy.RegisterServerEvent('admin:resetNeeds', function(target)
     LSLegacy.Status.SetHunger(tp, 100)
     LSLegacy.Status.SetThirst(tp, 100)
     if Config.UseStamina then LSLegacy.Status.SetStamina(tp, 100) end
-    LSLegacy.SendEventToClient('UpdatePlayer', target, LSLegacy.ServerPlayers[target])
+    LSLegacy.SendEventToClient('UpdatePlayer', target, LSLegacy.Players.Get(target))
     LSLegacy.SendEventToClient('notify', target, 'Administration', 'Votre faim et soif ont été réinitialisées.', 'success')
 
     Admin.Log('staff', LSLegacy.GetPlayerFromId(_source), 'Reset besoins joueur', tp)
@@ -944,7 +944,7 @@ LSLegacy.RegisterServerEvent('admin:createTicket', function(subject)
         function()
             LSLegacy.SendEventToClient('notify', _source, 'Support', 'Ticket créé, le staff va vous répondre.', 'success')
             -- Notifier le staff en ligne
-            for src, p in pairs(LSLegacy.ServerPlayers) do
+            for src, p in pairs(LSLegacy.Players.GetAll()) do
                 if Admin.GetLevel(p) >= 1 then
                     LSLegacy.SendEventToClient('notify', src, '🎫 Ticket', Admin.CharName(player) .. ' : ' .. subject, 'warning')
                 end
@@ -981,7 +981,7 @@ LSLegacy.RegisterCommand('report', 0, function(player, args, showError, rawComma
         },
         function()
             LSLegacy.SendEventToClient('notify', _source, 'Support', 'Ticket créé. Le staff va vous répondre.', 'success')
-            for src, sp in pairs(LSLegacy.ServerPlayers) do
+            for src, sp in pairs(LSLegacy.Players.GetAll()) do
                 if Admin.GetLevel(sp) >= 1 then
                     LSLegacy.SendEventToClient('notify', src, '🎫 Ticket', Admin.CharName(p) .. ' : ' .. text, 'warning')
                 end

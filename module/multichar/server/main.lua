@@ -108,7 +108,7 @@ AddEventHandler('multichar:requestSlots', function()
     local source = source
     Config.Development.Print("[multichar] requestSlots reçu de " .. source)
 
-    if LSLegacy.ServerPlayers[source] then
+    if LSLegacy.Players.Get(source) then
         Config.Development.Print("Player " .. source .. " already registered")
         DropPlayer(source, "Player " .. source .. " already registered ╭∩╮（︶_︶）╭∩╮")
         return
@@ -140,7 +140,7 @@ end)
 RegisterNetEvent('multichar:setApartmentBucket')
 AddEventHandler('multichar:setApartmentBucket', function(enter)
     local source = source
-    if LSLegacy.ServerPlayers[source] then return end
+    if LSLegacy.Players.Get(source) then return end
     SetPlayerRoutingBucket(source, enter and (Config.Multichar.Apartment.BucketOffset + source) or 0)
 end)
 
@@ -149,7 +149,7 @@ RegisterNetEvent('multichar:deleteCharacter')
 AddEventHandler('multichar:deleteCharacter', function(characterId)
     local source = source
 
-    if LSLegacy.ServerPlayers[source] then
+    if LSLegacy.Players.Get(source) then
         -- La suppression ne se fait que depuis l'écran de sélection, avant
         -- tout chargement de personnage.
         return
@@ -217,7 +217,7 @@ end)
 -- dans Config.Multichar.AdminIdentifiers (mêmes comptes qui ont accès à
 -- plusieurs slots) — pas au grade en jeu, qui est propre à chaque personnage.
 local function SaveAndReleaseCharacter(source)
-    local player = LSLegacy.ServerPlayers[source]
+    local player = LSLegacy.Players.Get(source)
     if not player then return end
 
     local ped = GetPlayerPed(source)
@@ -271,7 +271,7 @@ function LSLegacy.Multichar.ReturnToSelection(source)
         return
     end
 
-    if not LSLegacy.ServerPlayers[source] then return end
+    if not LSLegacy.Players.Get(source) then return end
 
     SaveAndReleaseCharacter(source)
     TriggerClientEvent('multichar:forceReselect', source)

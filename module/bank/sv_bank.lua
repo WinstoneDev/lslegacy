@@ -468,7 +468,7 @@ end
 
 local function GetSourceByCharacterIdForBank(characterId)
     if not characterId then return nil end
-    for src, p in pairs(LSLegacy.ServerPlayers) do
+    for src, p in pairs(LSLegacy.Players.GetAll()) do
         if p["boutique-id"] == characterId then
             return src
         end
@@ -1097,7 +1097,7 @@ end
 -- compte peuvent partager un identifier mais jamais un character_id)
 local function GetSourceByCharacterId(characterId)
     if not characterId then return nil end
-    for src, player in pairs(LSLegacy.ServerPlayers) do
+    for src, player in pairs(LSLegacy.Players.GetAll()) do
         if player["boutique-id"] == characterId then
             return src
         end

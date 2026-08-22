@@ -835,7 +835,7 @@ AddEventHandler('samu:patientCall', function(data)
     -- `data.identifier` n'est jamais renseigné par l'appelant (LSLegacy:injury:callEMS
     -- ne le passe pas) : on résout l'appelant depuis `data.source`, toujours en ligne
     -- puisqu'il appelle depuis son propre coma.
-    local caller = data.source and LSLegacy.ServerPlayers[data.source]
+    local caller = data.source and LSLegacy.Players.Get(data.source)
     MySQL.Async.execute([[
         INSERT INTO mdt_med_calls (caller_identifier, character_id, caller_name, x, y, z, reason, status)
         VALUES (@ci, @charId, @cn, @x, @y, @z, @re, 'pending')

@@ -19,7 +19,7 @@ MySQL.Async.execute([[
 ]])
 
 local function getCharacterId(src)
-    local player = LSLegacy.ServerPlayers[src]
+    local player = LSLegacy.Players.Get(src)
     return player and player["boutique-id"] or nil
 end
 

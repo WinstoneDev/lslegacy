@@ -566,7 +566,7 @@ end
 -- Résout le nom RP d'un citoyen (online ou BDD) puis appelle cb(name|nil).
 local function resolveCitizenName(identifier, cb)
     if type(identifier) ~= 'string' or identifier == '' then return cb(nil) end
-    for _, p in pairs(LSLegacy.ServerPlayers) do
+    for _, p in pairs(LSLegacy.Players.GetAll()) do
         if p.identifier == identifier then return cb(charName(p)) end
     end
     MySQL.Async.fetchAll('SELECT characterInfos FROM players WHERE identifier = @id LIMIT 1', { ['@id'] = identifier }, function(rows)
@@ -1075,7 +1075,7 @@ end)
 -- utile pour ouvrir le menu de paiement directement sur le joueur verbalisé).
 local function GetOnlineSourceByCharacterId(charId)
     if not charId then return nil end
-    for src, p in pairs(LSLegacy.ServerPlayers) do
+    for src, p in pairs(LSLegacy.Players.GetAll()) do
         if p["boutique-id"] == charId then return src end
     end
     return nil
@@ -2075,7 +2075,7 @@ end
 
 -- Département MDT d'un joueur connecté, ou nil s'il n'en a aucun.
 function GetMdtDepartment(src)
-    local p = LSLegacy.ServerPlayers[src]
+    local p = LSLegacy.Players.Get(src)
     if not p or not p.job then return nil end
     return LSLegacy.MDT.GetDepartmentForJob(p.job)
 end
@@ -2093,7 +2093,7 @@ end
 -- Force de l'ordre ET en service (chaque pôle a sa propre bascule).
 function IsLawEnforcementOnDuty(src)
     if not IsLawEnforcement(src) then return false end
-    local p = LSLegacy.ServerPlayers[src]
+    local p = LSLegacy.Players.Get(src)
     return isPlayerOnDuty(src, p and p.job)
 end
 
@@ -2105,7 +2105,7 @@ readHandlers.getRoster = function(player, depName, grade, data, reply)
     for _, j in ipairs(dep.jobs or {}) do jobsSet[j] = true end
 
     local out = {}
-    for src, p in pairs(LSLegacy.ServerPlayers) do
+    for src, p in pairs(LSLegacy.Players.GetAll()) do
         if p.job and jobsSet[p.job] then
             local g = tonumber(p.job_grade) or 0
             local onDuty = isPlayerOnDuty(src, p.job)
@@ -2144,7 +2144,7 @@ readHandlers.getDashboard = function(player, depName, grade, data, reply)
     local jobsSet = {}
     for _, j in ipairs(dep.jobs or {}) do jobsSet[j] = true end
     local onDuty, meOnDuty = {}, false
-    for src, p in pairs(LSLegacy.ServerPlayers) do
+    for src, p in pairs(LSLegacy.Players.GetAll()) do
         if p.job and jobsSet[p.job] and isPlayerOnDuty(src, p.job) then
             local g = tonumber(p.job_grade) or 0
             local ci = p.characterInfos or {}

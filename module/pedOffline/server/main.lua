@@ -6,11 +6,14 @@ local entityList = {}   -- identifier -> netId (peds en cours de portage)
 local skinCache  = {}   -- source -> { identifier, skin }
 
 -- Rate limiting pour les events du module
-LSLegacy.RateLimit['pedOffline:request:sleepingList']  = 5
-LSLegacy.RateLimit['pedOffline:server:startCarrying']  = 15
-LSLegacy.RateLimit['pedOffline:server:stopCarrying']   = 15
-LSLegacy.RateLimit['pedOffline:server:putInVehicle']   = 10
-LSLegacy.RateLimit['pedOffline:server:outVehicle']     = 10
+local rateLimits = {
+    ['pedOffline:request:sleepingList'] = 5, ['pedOffline:server:startCarrying'] = 15,
+    ['pedOffline:server:stopCarrying'] = 15, ['pedOffline:server:putInVehicle'] = 10,
+    ['pedOffline:server:outVehicle'] = 10,
+}
+for eventName, limit in pairs(rateLimits) do
+    LSLegacy.Security.RegisterRateLimit(eventName, limit)
+end
 
 -- Helpers
 
@@ -43,7 +46,7 @@ end)
 Citizen.CreateThread(function()
     while true do
         Wait(30000)
-        for src, player in pairs(LSLegacy.ServerPlayers) do
+        for src, player in pairs(LSLegacy.Players.GetAll()) do
             if player.identifier and player.skin then
                 skinCache[src] = { identifier = player.identifier, slot = player.slot or 1, skin = player.skin }
             end

@@ -6,14 +6,14 @@ KeyHanger.Boards = {}     -- [id] = board (métadonnées ; le contenu est dans l
 KeyHanger.Loaded = false
 
 -- Rate limiting (events sécurisés)
-LSLegacy.RateLimit['keyhanger:requestBoards'] = 10
-LSLegacy.RateLimit['keyhanger:create']        = 10
-LSLegacy.RateLimit['keyhanger:remove']        = 10
-LSLegacy.RateLimit['keyhanger:open']          = 30
-LSLegacy.RateLimit['keyhanger:rename']        = 10
-LSLegacy.RateLimit['keyhanger:share']         = 15
-LSLegacy.RateLimit['keyhanger:unshare']       = 15
-LSLegacy.RateLimit['keyhanger:createKey']     = 15
+local rateLimits = {
+    ['keyhanger:requestBoards'] = 10, ['keyhanger:create'] = 10, ['keyhanger:remove'] = 10,
+    ['keyhanger:open'] = 30, ['keyhanger:rename'] = 10, ['keyhanger:share'] = 15,
+    ['keyhanger:unshare'] = 15, ['keyhanger:createKey'] = 15,
+}
+for eventName, limit in pairs(rateLimits) do
+    LSLegacy.Security.RegisterRateLimit(eventName, limit)
+end
 
 local function dbg(...) if C.Debug then print("[keyhanger]", ...) end end
 
@@ -211,7 +211,7 @@ MySQL.ready(function()
     end
     KeyHanger.Loaded = true
     dbg(("chargement de %d porte-clés"):format(#rows))
-    for src in pairs(LSLegacy.ServerPlayers) do syncAllTo(src) end
+    for src in pairs(LSLegacy.Players.GetAll()) do syncAllTo(src) end
 end)
 
 -- Synchronise à la connexion

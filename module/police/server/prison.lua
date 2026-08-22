@@ -166,7 +166,7 @@ LSLegacy.RegisterServerEvent('police:custody', function(data)
                 'UPDATE police_custody SET released_at=NOW() WHERE identifier=@id AND released_at IS NULL',
                 { ['@id'] = ident }
             )
-            for pid, pd in pairs(LSLegacy.ServerPlayers) do
+            for pid, pd in pairs(LSLegacy.Players.GetAll()) do
                 -- Notifier l'individu (une seule notif via l'event client)
                 if pd.identifier == ident then
                     TriggerClientEvent('police:releasedFromCustody', pid)
@@ -253,7 +253,7 @@ LSLegacy.RegisterServerEvent('police:prison', function(data)
                 'UPDATE police_prison SET released_at=NOW() WHERE identifier=@id AND released_at IS NULL',
                 { ['@id'] = ident }
             )
-            for pid, pd in pairs(LSLegacy.ServerPlayers) do
+            for pid, pd in pairs(LSLegacy.Players.GetAll()) do
                 if pd.identifier == ident then
                     TriggerClientEvent('police:releasedFromPrison', pid)
                     Notify(pid, Lang.Police.prison_released, 'success')

@@ -338,7 +338,7 @@ end)
 CreateThread(function()
     while true do
         if not Config.AP.Enable then goto continue end
-        local players = LSLegacy.ServerPlayers
+        local players = LSLegacy.Players.GetAll()
 
         if next(players) ~= nil then
             for plate, v in pairs(LSLegacy.AP.Active) do
