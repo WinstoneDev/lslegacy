@@ -13,6 +13,16 @@
 --    • aucune donnée judiciaire n'est jamais renvoyée (le dossier
 --      médical ne contient que identité + médical).
 
+local rateLimits = {
+    ['mdtmed:query'] = 40, ['mdtmed:saveRecord'] = 20, ['mdtmed:addEntry'] = 20,
+    ['mdtmed:deleteEntry'] = 15, ['mdtmed:addTreatment'] = 20, ['mdtmed:setTreatmentStatus'] = 25,
+    ['mdtmed:assignCall'] = 20, ['mdtmed:closeCall'] = 20, ['mdtmed:saveDoc'] = 15,
+    ['mdtmed:deleteDoc'] = 15, ['mdtmed:postBoard'] = 15, ['mdtmed:removeBoard'] = 15,
+}
+for eventName, limit in pairs(rateLimits) do
+    LSLegacy.Security.RegisterRateLimit(eventName, limit)
+end
+
 local L = Config.Medical.Limits
 
 -- Création du schéma (miroir de sql/medical.sql)

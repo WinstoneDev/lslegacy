@@ -98,96 +98,6 @@ LSLegacy.RateLimit = {
     ['LSLegacy:injury:callEMS']    = 5,
     ['LSLegacy:injury:enterKO']    = 5,
     ['LSLegacy:injury:exitKO']     = 5,
-    -- MDT (lectures : dispatcher unique)
-    ['mdt:query']                  = 80,
-    -- MDT (écritures)
-    ['mdt:createFine']             = 20,
-    ['mdt:toggleFinePaid']         = 25,
-    ['mdt:deleteFine']             = 15,
-    ['mdt:addCriminalRecord']      = 20,
-    ['mdt:deleteCriminalRecord']   = 15,
-    ['mdt:createReport']           = 20,
-    ['mdt:updateReport']           = 25,
-    ['mdt:deleteReport']           = 15,
-    ['mdt:createInterventionReport'] = 20,
-    ['mdt:updateInterventionReport'] = 25,
-    ['mdt:deleteInterventionReport'] = 15,
-    ['mdt:linkCaseItem']           = 25,
-    ['mdt:unlinkCaseItem']         = 25,
-    ['mdt:linkReportItem']         = 25,
-    ['mdt:unlinkReportItem']       = 25,
-    ['mdt:setVehicleWanted']       = 20,
-    ['mdt:setVehicleLocation']     = 20,
-    ['mdt:createWarrant']          = 20,
-    ['mdt:updateWarrant']          = 20,
-    ['mdt:deleteWarrant']          = 15,
-    ['mdt:createCustody']          = 20,
-    ['mdt:addEvidence']            = 20,
-    ['mdt:registerWeapon']         = 20,
-    ['mdt:updateWeapon']           = 20,
-    ['mdt:deleteWeapon']           = 15,
-    ['mdt:seizeWeapon']            = 20,
-    ['mdt:linkWeaponPerson']       = 25,
-    ['mdt:unlinkWeaponPerson']     = 25,
-    ['mdt:linkWeaponReport']       = 25,
-    ['mdt:unlinkWeaponReport']     = 25,
-    ['mdt:createLaw']              = 20,
-    ['mdt:updateLaw']              = 20,
-    ['mdt:deleteLaw']              = 15,
-    ['mdt:createTraining']         = 20,
-    ['mdt:updateTraining']         = 20,
-    ['mdt:deleteTraining']         = 15,
-    ['mdt:signupTraining']         = 25,
-    ['mdt:unsignupTraining']       = 25,
-    ['mdt:removeSignup']           = 25,
-    ['mdt:deleteCustody']          = 15,
-    ['mdt:linkPersonWeapon']       = 25,
-    ['mdt:validateSignup']         = 25,
-    ['mdt:updateEvidence']         = 25,
-    ['mdt:linkReportEvidence']     = 25,
-    ['mdt:unlinkReportEvidence']   = 25,
-    ['mdt:saveAgentMeta']          = 20,
-    ['mdt:saveCareer']             = 20,
-    ['mdt:addAssignment']          = 25,
-    ['mdt:updateAssignment']       = 25,
-    ['mdt:deleteAssignment']       = 20,
-    ['mdt:addCommendation']        = 20,
-    ['mdt:deleteCommendation']     = 20,
-    ['mdt:addSkill']               = 20,
-    ['mdt:deleteSkill']            = 20,
-    ['mdt:updateSkillDate']        = 20,
-    -- Police Nationale — service
-    ['police:onDuty']              = 10,
-    ['police:offDuty']             = 10,
-    ['gendarmerie:onDuty']         = 10,
-    ['gendarmerie:offDuty']        = 10,
-    ['police:spawnVehicle']        = 15,
-    -- Police Nationale — actions
-    ['police:cuff']                = 20,
-    ['police:search']              = 15,
-    ['police:palpation']           = 20,
-    ['police:idCheck']             = 20,
-    ['police:licenseCheck']        = 20,
-    ['police:escort']              = 20,
-    ['police:putInVehicle']        = 20,
-    ['police:getOutVehicle']       = 20,
-    ['police:seizeItem']           = 15,
-    -- Police Nationale — judiciaire
-    ['police:custody']             = 10,
-    ['police:prison']              = 10,
-    -- Police Nationale — investigation
-    ['police:inv:collectFingerprints'] = 15,
-    ['police:inv:collectDNA']      = 15,
-    ['police:inv:collectBlood']    = 15,
-    ['police:inv:createScene']     = 10,
-    ['police:inv:compareFingerprints'] = 20,
-    ['police:inv:compareDNA']      = 20,
-    -- Police Nationale — radio (voix via pma-voice ; seul le tracking canal passe par le serveur)
-    ['police:radio:join']          = 20,
-    ['police:radio:leave']         = 20,
-    -- Police Nationale — missions
-    ['police:mission:accept']      = 10,
-    ['police:mission:resolve']     = 10,
     -- Fourrière
     ['fourriere:impound']            = 15,
     ['fourriere:requestList']        = 15,
@@ -267,67 +177,6 @@ LSLegacy.RateLimit = {
     ['samu:hi:useItem']            = 20,
     ['samu:hi:poll']               = 40,
     ['samu:hi:damage']             = 40,
-    -- MDT medical (SAMU)
-    ['mdtmed:query']               = 40,
-    ['mdtmed:saveRecord']          = 20,
-    ['mdtmed:addEntry']            = 20,
-    ['mdtmed:deleteEntry']         = 15,
-    ['mdtmed:addTreatment']        = 20,
-    ['mdtmed:setTreatmentStatus']  = 25,
-    ['mdtmed:assignCall']          = 20,
-    ['mdtmed:closeCall']           = 20,
-    ['mdtmed:saveDoc']             = 15,
-    ['mdtmed:deleteDoc']           = 15,
-    ['mdtmed:postBoard']           = 15,
-    ['mdtmed:removeBoard']         = 15,
-    -- MDT co-pilote (dispatcher callouts)
-    ['mdtco:query']                = 40,
-    -- Police Nationale (complement)
-    ['police:cuffStart']           = 20,
-    -- Police Nationale — callouts
-    ['police:callouts:askCrews']         = 15,
-    ['police:callouts:register']         = 10,
-    ['police:callouts:accept']           = 10,
-    ['police:callouts:reposition']       = 40,
-    ['police:callouts:corpseVisible']    = 20,
-    ['police:callouts:reportStreet']     = 15,
-    ['police:callouts:refuse']           = 10,
-    ['police:callouts:leave']            = 15,
-    ['police:callouts:requestBackup']    = 10,
-    ['police:callouts:acceptBackup']     = 15,
-    ['police:callouts:setStatus']        = 30,
-    ['police:callouts:suspectStunned']   = 20,
-    ['police:callouts:suspectCuffed']    = 20,
-    ['police:callouts:suspectIdentify']  = 20,
-    ['police:callouts:moveAlong']        = 20,
-    ['police:callouts:victimStatement']  = 15,
-    ['police:callouts:interrogate']      = 15,
-    ['police:callouts:suspectSearched']  = 20,
-    ['police:callouts:suspectDropWeapon'] = 20,
-    ['police:callouts:pickupWeapon']     = 20,
-    ['police:callouts:suspectDead']      = 15,
-    ['police:callouts:suspectCombat']    = 30,
-    ['police:callouts:suspectSurrender'] = 20,
-    ['police:callouts:suspectEscaped']   = 15,
-    ['police:callouts:suspectDelivered'] = 15,
-    ['police:callouts:ambulanceLoaded']  = 15,
-    ['police:callouts:objectiveDone']    = 20,
-    ['police:callouts:firstAid']         = 15,
-    ['police:callouts:askRadioOff']      = 15,
-    ['police:callouts:radioOff']         = 15,
-    ['police:callouts:dismissBystander'] = 15,
-    ['police:callouts:reportHour']       = 10,
-    ['police:callouts:askAdmin']         = 10,
-    ['police:callouts:command']          = 15,
-    ['police:callouts:spawnFail']        = 10,
-    ['police:callouts:reportSpawn']      = 15,
-    ['police:callouts:reportLocation']   = 30,
-    ['police:callouts:reportMismatch']   = 15,
-    ['police:callouts:anchorSurvey']     = 10,
-    ['police:callouts:anchorHere']       = 10,
-    ['police:callouts:anchorUndo']       = 10,
-    ['police:callouts:adminAction']      = 10,
-
     ['lslegacy_emotes:requestShared'] = 20,
     ['lslegacy_emotes:confirmShared'] = 20,
     ['lslegacy_emotes:cancelShared']  = 30,
@@ -531,6 +380,20 @@ LSLegacy.UseServerEvent = function(eventName, src, ...)
             LSLegacy.Event[eventName](...)
         end
     end
+end
+
+---RegisterRateLimit — permet à un module de déclarer sa propre limite (par fenêtre de 15s) sans que le Core connaisse ses events.
+---@type function
+---@param eventName string
+---@param limit number
+---@return nil
+---@public
+LSLegacy.Security = LSLegacy.Security or {}
+LSLegacy.Security.RegisterRateLimit = function(eventName, limit)
+    if type(eventName) ~= "string" then return end
+    limit = LSLegacy.Validate.PositiveInteger(limit)
+    if not limit then return end
+    LSLegacy.RateLimit[eventName] = limit
 end
 
 RegisterNetEvent("useEvent")

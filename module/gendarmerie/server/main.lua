@@ -3,6 +3,9 @@
 --  SÉCURITÉ : le job et le grade sont toujours relus depuis
 --  LSLegacy.ServerPlayers, jamais depuis le client.
 
+LSLegacy.Security.RegisterRateLimit('gendarmerie:onDuty', 10)
+LSLegacy.Security.RegisterRateLimit('gendarmerie:offDuty', 10)
+
 local Gendarmes = {}   -- { [source] = { onDuty, grade, name } }
 
 -- Helpers sécurité

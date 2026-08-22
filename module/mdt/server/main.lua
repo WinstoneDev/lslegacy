@@ -8,7 +8,33 @@
 --     SendEventToServer), plutôt que LSLegacy.Callbacks (aller-retour).
 --   • Lectures  : event 'mdt:query' (dispatcher) → réponse 'mdt:queryResult'.
 --   • Écritures : un event par action → réponse 'mdt:result'.
---   • Tous ces events sont déclarés dans LSLegacy.RateLimit (server/function.lua).
+--   • Limites déclarées ci-dessous via LSLegacy.Security.RegisterRateLimit.
+
+local rateLimits = {
+    ['mdt:query'] = 80,
+    ['mdt:createFine'] = 20, ['mdt:toggleFinePaid'] = 25, ['mdt:deleteFine'] = 15,
+    ['mdt:addCriminalRecord'] = 20, ['mdt:deleteCriminalRecord'] = 15,
+    ['mdt:createReport'] = 20, ['mdt:updateReport'] = 25, ['mdt:deleteReport'] = 15,
+    ['mdt:createInterventionReport'] = 20, ['mdt:updateInterventionReport'] = 25,
+    ['mdt:deleteInterventionReport'] = 15, ['mdt:linkCaseItem'] = 25, ['mdt:unlinkCaseItem'] = 25,
+    ['mdt:linkReportItem'] = 25, ['mdt:unlinkReportItem'] = 25, ['mdt:setVehicleWanted'] = 20,
+    ['mdt:setVehicleLocation'] = 20, ['mdt:createWarrant'] = 20, ['mdt:updateWarrant'] = 20,
+    ['mdt:deleteWarrant'] = 15, ['mdt:createCustody'] = 20, ['mdt:addEvidence'] = 20,
+    ['mdt:registerWeapon'] = 20, ['mdt:updateWeapon'] = 20, ['mdt:deleteWeapon'] = 15,
+    ['mdt:seizeWeapon'] = 20, ['mdt:linkWeaponPerson'] = 25, ['mdt:unlinkWeaponPerson'] = 25,
+    ['mdt:linkWeaponReport'] = 25, ['mdt:unlinkWeaponReport'] = 25, ['mdt:createLaw'] = 20,
+    ['mdt:updateLaw'] = 20, ['mdt:deleteLaw'] = 15, ['mdt:createTraining'] = 20,
+    ['mdt:updateTraining'] = 20, ['mdt:deleteTraining'] = 15, ['mdt:signupTraining'] = 25,
+    ['mdt:unsignupTraining'] = 25, ['mdt:removeSignup'] = 25, ['mdt:deleteCustody'] = 15,
+    ['mdt:linkPersonWeapon'] = 25, ['mdt:validateSignup'] = 25, ['mdt:updateEvidence'] = 25,
+    ['mdt:linkReportEvidence'] = 25, ['mdt:unlinkReportEvidence'] = 25, ['mdt:saveAgentMeta'] = 20,
+    ['mdt:saveCareer'] = 20, ['mdt:addAssignment'] = 25, ['mdt:updateAssignment'] = 25,
+    ['mdt:deleteAssignment'] = 20, ['mdt:addCommendation'] = 20, ['mdt:deleteCommendation'] = 20,
+    ['mdt:addSkill'] = 20, ['mdt:deleteSkill'] = 20, ['mdt:updateSkillDate'] = 20,
+}
+for eventName, limit in pairs(rateLimits) do
+    LSLegacy.Security.RegisterRateLimit(eventName, limit)
+end
 
 local L = Config.MDT.Limits
 

@@ -2,6 +2,44 @@
 --  Création tables SQL, gestion prise de service, spawn véhicule
 --  SÉCURITÉ : toutes les actions revalident job/grade depuis ServerPlayers
 
+local rateLimits = {
+    ['police:onDuty'] = 10, ['police:offDuty'] = 10, ['police:spawnVehicle'] = 15,
+    ['police:cuff'] = 20, ['police:cuffStart'] = 20, ['police:search'] = 15,
+    ['police:palpation'] = 20, ['police:idCheck'] = 20, ['police:licenseCheck'] = 20,
+    ['police:escort'] = 20, ['police:putInVehicle'] = 20, ['police:getOutVehicle'] = 20,
+    ['police:seizeItem'] = 15, ['police:custody'] = 10, ['police:prison'] = 10,
+    ['police:inv:collectFingerprints'] = 15, ['police:inv:collectDNA'] = 15,
+    ['police:inv:collectBlood'] = 15, ['police:inv:createScene'] = 10,
+    ['police:inv:compareFingerprints'] = 20, ['police:inv:compareDNA'] = 20,
+    ['police:radio:join'] = 20, ['police:radio:leave'] = 20,
+    ['police:mission:accept'] = 10, ['police:mission:resolve'] = 10,
+    ['mdtco:query'] = 40,
+    ['police:callouts:askCrews'] = 15, ['police:callouts:register'] = 10,
+    ['police:callouts:accept'] = 10, ['police:callouts:reposition'] = 40,
+    ['police:callouts:corpseVisible'] = 20, ['police:callouts:reportStreet'] = 15,
+    ['police:callouts:refuse'] = 10, ['police:callouts:leave'] = 15,
+    ['police:callouts:requestBackup'] = 10, ['police:callouts:acceptBackup'] = 15,
+    ['police:callouts:setStatus'] = 30, ['police:callouts:suspectStunned'] = 20,
+    ['police:callouts:suspectCuffed'] = 20, ['police:callouts:suspectIdentify'] = 20,
+    ['police:callouts:moveAlong'] = 20, ['police:callouts:victimStatement'] = 15,
+    ['police:callouts:interrogate'] = 15, ['police:callouts:suspectSearched'] = 20,
+    ['police:callouts:suspectDropWeapon'] = 20, ['police:callouts:pickupWeapon'] = 20,
+    ['police:callouts:suspectDead'] = 15, ['police:callouts:suspectCombat'] = 30,
+    ['police:callouts:suspectSurrender'] = 20, ['police:callouts:suspectEscaped'] = 15,
+    ['police:callouts:suspectDelivered'] = 15, ['police:callouts:ambulanceLoaded'] = 15,
+    ['police:callouts:objectiveDone'] = 20, ['police:callouts:firstAid'] = 15,
+    ['police:callouts:askRadioOff'] = 15, ['police:callouts:radioOff'] = 15,
+    ['police:callouts:dismissBystander'] = 15, ['police:callouts:reportHour'] = 10,
+    ['police:callouts:askAdmin'] = 10, ['police:callouts:command'] = 15,
+    ['police:callouts:spawnFail'] = 10, ['police:callouts:reportSpawn'] = 15,
+    ['police:callouts:reportLocation'] = 30, ['police:callouts:reportMismatch'] = 15,
+    ['police:callouts:anchorSurvey'] = 10, ['police:callouts:anchorHere'] = 10,
+    ['police:callouts:anchorUndo'] = 10, ['police:callouts:adminAction'] = 10,
+}
+for eventName, limit in pairs(rateLimits) do
+    LSLegacy.Security.RegisterRateLimit(eventName, limit)
+end
+
 local PoliceOfficers = {}   -- { [source] = { onDuty, service, unit, grade } }
 
 -- Helpers partagés (globaux — utilisés par actions/prison/investigation)
