@@ -1,7 +1,7 @@
 -- Suit qui occupe quelle place, pour éviter deux joueurs sur la même place d'un banc/canapé multi-places. Port de server/server.lua de mnr_sitanywhere.
 local occupied = {} -- [entity] = { [seatIndex] = source }
 
-LSLegacy.Callbacks.RegisterServer('sit:server:occupy', function(source, cb, netId, seatIndex)
+LSLegacy.Callbacks.RegisterServer('sit:serverOccupy', function(source, cb, netId, seatIndex)
     local entity = NetworkGetEntityFromNetworkId(netId)
     if not DoesEntityExist(entity) then return cb(false) end
 
@@ -12,7 +12,7 @@ LSLegacy.Callbacks.RegisterServer('sit:server:occupy', function(source, cb, netI
     cb(true)
 end)
 
-LSLegacy.Callbacks.RegisterServer('sit:server:getFree', function(source, cb, netId, hash)
+LSLegacy.Callbacks.RegisterServer('sit:serverGetFree', function(source, cb, netId, hash)
     local entity = NetworkGetEntityFromNetworkId(netId)
     if not DoesEntityExist(entity) then return cb(false) end
 
@@ -26,7 +26,7 @@ LSLegacy.Callbacks.RegisterServer('sit:server:getFree', function(source, cb, net
     cb(false)
 end)
 
-RegisterNetEvent('sit:server:free', function(netId)
+RegisterNetEvent('sit:serverFree', function(netId)
     local src = source
     local entity = NetworkGetEntityFromNetworkId(netId)
     if not DoesEntityExist(entity) or not occupied[entity] then return end
@@ -39,6 +39,6 @@ RegisterNetEvent('sit:server:free', function(netId)
 
     if not next(occupied[entity]) then
         occupied[entity] = nil
-        TriggerClientEvent('sit:client:unregister', src, netId)
+        TriggerClientEvent('sit:clientUnregister', src, netId)
     end
 end)

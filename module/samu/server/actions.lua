@@ -39,7 +39,7 @@ end
 
 --  HEALTH INSPECTION — mannequin par membre, trousse de soins
 
-LSLegacy.Events.Register('samu:hi:open', function(data)
+LSLegacy.Events.Register('samu:hiOpen', function(data)
     local src = source
     if not IsSamu(src) or not IsSamuOnDuty(src) then return end
     if not data or not data.target then return end
@@ -58,7 +58,7 @@ LSLegacy.Events.Register('samu:hi:open', function(data)
         supplies[itemName] = owned and owned.count or 0
     end
 
-    TriggerClientEvent('samu:hi:openResult', src, {
+    TriggerClientEvent('samu:hiOpenResult', src, {
         success = true,
         target = target,
         parts = LSLegacy.Injury.GetWounds(target),
@@ -70,7 +70,7 @@ LSLegacy.Events.Register('samu:hi:open', function(data)
     })
 end)
 
-LSLegacy.Events.Register('samu:hi:useItem', function(data)
+LSLegacy.Events.Register('samu:hiUseItem', function(data)
     local src = source
     if not IsSamu(src) or not IsSamuOnDuty(src) then return end
     if not data or not data.target or not data.item or not LSLegacy.Injury.IsValidPart(data.part) then return end
@@ -84,13 +84,13 @@ LSLegacy.Events.Register('samu:hi:useItem', function(data)
     if not itemDef then return end
 
     if IsDowned(target, targetPlayer) then
-        TriggerClientEvent('samu:hi:useItemResult', src, { success = false, reason = 'unconscious' })
+        TriggerClientEvent('samu:hiUseItemResult', src, { success = false, reason = 'unconscious' })
         return
     end
 
     local owned = LSLegacy.Inventory.GetInventoryItem(samuPlayer, itemName)
     if not owned or owned.count <= 0 then
-        TriggerClientEvent('samu:hi:useItemResult', src, { success = false, reason = 'missing_item', item = itemName })
+        TriggerClientEvent('samu:hiUseItemResult', src, { success = false, reason = 'missing_item', item = itemName })
         return
     end
 
@@ -99,7 +99,7 @@ LSLegacy.Events.Register('samu:hi:useItem', function(data)
 
     local current = GetEntityHealth(targetPed)
     if current >= 200 then
-        TriggerClientEvent('samu:hi:useItemResult', src, { success = false, reason = 'full_health' })
+        TriggerClientEvent('samu:hiUseItemResult', src, { success = false, reason = 'full_health' })
         return
     end
 
@@ -108,7 +108,7 @@ LSLegacy.Events.Register('samu:hi:useItem', function(data)
     SetEntityHealth(targetPed, math.min(200, current + itemDef.heal))
 
     local owned2 = LSLegacy.Inventory.GetInventoryItem(samuPlayer, itemName)
-    TriggerClientEvent('samu:hi:useItemResult', src, {
+    TriggerClientEvent('samu:hiUseItemResult', src, {
         success = true,
         part = data.part,
         item = itemName,
@@ -120,7 +120,7 @@ LSLegacy.Events.Register('samu:hi:useItem', function(data)
     TriggerClientEvent('samu:treatedByEms', target, itemDef.label)
 end)
 
-LSLegacy.Events.Register('samu:hi:poll', function(data)
+LSLegacy.Events.Register('samu:hiPoll', function(data)
     local src = source
     if not data or not data.reqId then return end
     local result = false
@@ -134,7 +134,7 @@ LSLegacy.Events.Register('samu:hi:poll', function(data)
             }
         end
     end
-    TriggerClientEvent('samu:hi:pollResult', src, { reqId = data.reqId, result = result })
+    TriggerClientEvent('samu:hiPollResult', src, { reqId = data.reqId, result = result })
 end)
 
 --  RÉASSORT DE LA TROUSSE (Centre Médical)

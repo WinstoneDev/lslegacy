@@ -537,7 +537,7 @@ CreateThread(function()
 end)
 
 -- Health Inspection (SAMU) : un envoi par frame faisait sauter la limite anti-spam
--- du serveur (samu:hi:damage = 40 events / 15 s, cf. server/function.lua) dès qu'une
+-- du serveur (samu:hiDamage = 40 events / 15 s, cf. server/function.lua) dès qu'une
 -- source de dégâts continue entrait en jeu. On accumule donc les dégâts par
 -- (membre, catégorie) et on les envoie groupés une fois par seconde.
 local woundDamageBuffer = {}
@@ -563,7 +563,7 @@ CreateThread(function()
             woundDamageBuffer[key] = nil
         end
         if count > 0 then
-            LSLegacy.Events.SendToServer('samu:hi:damage', { batch = batch })
+            LSLegacy.Events.SendToServer('samu:hiDamage', { batch = batch })
         end
     end
 end)

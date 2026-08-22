@@ -33,14 +33,14 @@ local function StandUp()
 
     if sitEntity and DoesEntityExist(sitEntity) then
         local netId = NetworkGetNetworkIdFromEntity(sitEntity)
-        TriggerServerEvent('sit:server:free', netId)
+        TriggerServerEvent('sit:serverFree', netId)
     end
     sitEntity = nil
 end
 
 local function PlaySit(entity, seatIndex)
     local netId = NetworkGetNetworkIdFromEntity(entity)
-    local taken = LSLegacy.Callbacks.AwaitServer('sit:server:occupy', netId, seatIndex)
+    local taken = LSLegacy.Callbacks.AwaitServer('sit:serverOccupy', netId, seatIndex)
     if not taken then
         Notify("Cette place est déjà occupée", "error")
         return
@@ -96,7 +96,7 @@ local function TrySit(entity)
 
     local hash = GetEntityModel(entity)
     local netId = NetworkGetNetworkIdFromEntity(entity)
-    local seatIndex = LSLegacy.Callbacks.AwaitServer('sit:server:getFree', netId, hash)
+    local seatIndex = LSLegacy.Callbacks.AwaitServer('sit:serverGetFree', netId, hash)
     if not seatIndex then
         Notify("Cette place est déjà occupée", "error")
         return
@@ -124,7 +124,7 @@ exports.ox_target:addModel(targetModels, {
     },
 })
 
-RegisterNetEvent('sit:client:unregister', function(netId)
+RegisterNetEvent('sit:clientUnregister', function(netId)
     if GetInvokingResource() then return end
     local entity = NetworkGetEntityFromNetworkId(netId)
     if DoesEntityExist(entity) then

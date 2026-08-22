@@ -162,7 +162,7 @@ end
 
 -- Le SERVEUR fait la conversion catégorie→type de blessure (jamais confiance
 -- au client) ; aucun SetEntityHealth ici, cf. ApplyDamage.
-LSLegacy.Events.Register('samu:hi:damage', function(data)
+LSLegacy.Events.Register('samu:hiDamage', function(data)
     local src = source
     if type(data) ~= 'table' then return end
 
