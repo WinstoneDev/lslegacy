@@ -1,7 +1,36 @@
 -- Garde d'accès générique pour les DataStores (coffres, conteneurs, stashs).
--- Par défaut tout est autorisé ; des modules (ex. keyhanger) peuvent l'étendre
--- pour restreindre l'accès/les items selon le nom du DataStore.
+-- Par défaut tout est autorisé ; des modules (ex. keyhanger, atelier) peuvent
+-- l'étendre pour restreindre l'accès/les items selon le nom du DataStore.
 LSLegacy.DataStoreGuard = LSLegacy.DataStoreGuard or function(_src, _name, _action, _item) return true end
+
+-- Coffre/vide-poche véhicule : le nom du DataStore ('trunk_<plaque>'/'bag_<plaque>')
+-- est visible/devinable par n'importe qui, donc on exige en plus que la source soit
+-- réellement à proximité d'un véhicule portant cette plaque avant d'autoriser l'accès.
+local function FindNearbyVehicleByPlate(plate, coords)
+    for _, vehicle in pairs(GetAllVehicles()) do
+        if DoesEntityExist(vehicle) and GetVehicleNumberPlateText(vehicle) == plate then
+            if LSLegacy.Validate.Distance(coords, GetEntityCoords(vehicle), 5.0) then
+                return vehicle
+            end
+        end
+    end
+    return nil
+end
+
+local prevGuard = LSLegacy.DataStoreGuard
+LSLegacy.DataStoreGuard = function(src, name, action, item)
+    if type(name) == "string" then
+        local plate = name:match("^trunk_(.+)$") or name:match("^bag_(.+)$")
+        if plate then
+            local player = LSLegacy.Validate.Player(src)
+            if not player then return false end
+            if not FindNearbyVehicleByPlate(plate, GetEntityCoords(GetPlayerPed(src))) then return false end
+            return true
+        end
+    end
+    if prevGuard then return prevGuard(src, name, action, item) end
+    return true
+end
 
 LSLegacy.RegisterServerEvent('PutIntoTrunk', function(data, name)
     if not data or not name then return end
@@ -18,11 +47,12 @@ LSLegacy.RegisterServerEvent('PutIntoTrunk', function(data, name)
     end
 
     if data.type == 'item_standard' then
-        if LSLegacy.Inventory.GetInventoryItem(player, data.name) ~= nil then
-            if LSLegacy.Inventory.GetInventoryItem(player, data.name).count >= data.count then
+        local sourceItem = LSLegacy.Inventory.GetInventoryItem(player, data.name)
+        if sourceItem ~= nil then
+            if sourceItem.count >= data.count then
                 if LSLegacy.DataStore.CanStoreItem(datastore, data.name, data.count) then
                     LSLegacy.Inventory.RemoveItemInInventory(player, data.name, data.count, data.label)
-                    LSLegacy.DataStore.AddItemInInventory(datastore, data.name, data.count, data.label, data.uniqueId, data.data)
+                    LSLegacy.DataStore.AddItemInInventory(datastore, data.name, data.count, data.label, sourceItem.uniqueId, sourceItem.data)
                     LSLegacy.SendEventToClient('notify', source, nil, data.count..' '..data.label..' ont été ajouté(s) au coffre.', 'success')
                     TriggerEvent('lslegacy:containerUpdated', name, source)
                 else
@@ -67,11 +97,12 @@ LSLegacy.RegisterServerEvent('TakeFromTrunk', function(data, name)
         return
     end
     if data.type == 'item_standard' then
-        if LSLegacy.DataStore.GetInventoryItem(datastore, data.name) ~= nil then
-            if LSLegacy.DataStore.GetInventoryItem(datastore, data.name).count >= data.count then
+        local storedItem = LSLegacy.DataStore.GetInventoryItem(datastore, data.name)
+        if storedItem ~= nil then
+            if storedItem.count >= data.count then
                 if LSLegacy.Inventory.CanCarryItem(player, data.name, data.count) then
                     LSLegacy.DataStore.RemoveItemInInventory(datastore, data.name, data.count)
-                    LSLegacy.Inventory.AddItemInInventory(player, data.name, data.count, data.label, data.uniqueId, data.data)
+                    LSLegacy.Inventory.AddItemInInventory(player, data.name, data.count, data.label, storedItem.uniqueId, storedItem.data)
                     LSLegacy.SendEventToClient('notify', source, nil, data.count..' '..data.label..' ont été retiré(s) du coffre.', 'success')
                     TriggerEvent('lslegacy:containerUpdated', name, source)
                 else

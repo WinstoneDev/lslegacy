@@ -119,10 +119,13 @@ end
 ---@return any
 ---@public
 LSLegacy.DataStore.AddMoney = function(datastore, amount)
-    if not datastore or not amount then return end
+    if not datastore then return false end
+    amount = LSLegacy.Validate.PositiveInteger(amount)
+    if not amount then return false end
     if not datastore.money then datastore.money = 0 end
     datastore.money = datastore.money + amount
     LSLegacy.SendEventToClient('UpdateDatastore', source, LSLegacy.DataStores)
+    return true
 end
 
 ---AddDirtyMoney
@@ -132,10 +135,13 @@ end
 ---@return any
 ---@public
 LSLegacy.DataStore.AddDirtyMoney = function(datastore, amount)
-    if not datastore or not amount then return end
+    if not datastore then return false end
+    amount = LSLegacy.Validate.PositiveInteger(amount)
+    if not amount then return false end
     if not datastore.dirty then datastore.dirty = 0 end
     datastore.dirty = datastore.dirty + amount
     LSLegacy.SendEventToClient('UpdateDatastore', source, LSLegacy.DataStores)
+    return true
 end
 
 ---RemoveMoney
@@ -145,12 +151,16 @@ end
 ---@return any
 ---@public
 LSLegacy.DataStore.RemoveMoney = function(datastore, amount)
-    if not datastore or not amount then return false end
+    if not datastore then return false end
+    amount = LSLegacy.Validate.PositiveInteger(amount)
+    if not amount then return false end
     if not datastore.money then datastore.money = 0 end
     if datastore.money >= amount then
         datastore.money = datastore.money - amount
         LSLegacy.SendEventToClient('UpdateDatastore', source, LSLegacy.DataStores)
+        return true
     end
+    return false
 end
 
 ---RemoveDirtyMoney
@@ -160,12 +170,16 @@ end
 ---@return any
 ---@public
 LSLegacy.DataStore.RemoveDirtyMoney = function(datastore, amount)
-    if not datastore or not amount then return false end
+    if not datastore then return false end
+    amount = LSLegacy.Validate.PositiveInteger(amount)
+    if not amount then return false end
     if not datastore.dirty then datastore.dirty = 0 end
     if datastore.dirty >= amount then
         datastore.dirty = datastore.dirty - amount
         LSLegacy.SendEventToClient('UpdateDatastore', source, LSLegacy.DataStores)
+        return true
     end
+    return false
 end
 
 ---GetMoney
@@ -228,6 +242,7 @@ end
 LSLegacy.DataStore.AddItemInInventory = function(datastore, item, quantity, newLabel, uniqueId, data)
     if not datastore then return end
     if not item then return end
+    quantity = LSLegacy.Validate.PositiveInteger(quantity)
     if not quantity then return end
     local exist = false
     local source = source
@@ -274,6 +289,7 @@ end
 LSLegacy.DataStore.RemoveItemInInventory = function(datastore, item, quantity, itemLabel)
     if not datastore then return end
     if not item then return end
+    quantity = LSLegacy.Validate.PositiveInteger(quantity)
     if not quantity then return end
     local source = source
     local inventory = datastore.inventory
@@ -330,7 +346,21 @@ LSLegacy.DataStore.RegisterDataStore = function(name, data)
     LSLegacy.SendEventToClient('UpdateDatastore', source, LSLegacy.DataStores)
 end
 
+-- Point d'entrée réseau (déclenchable par n'importe quel client) : on ne fait jamais
+-- confiance à `data` pour son contenu (money/dirty/inventory) — un client pourrait
+-- sinon créer un DataStore pré-rempli d'argent/objets. Seul `maxWeight`/`type` sont
+-- repris, le contenu est toujours forcé vide à la création.
 LSLegacy.RegisterServerEvent('RegisterDataStore', function(name, data)
-    if not name or not data then return end
-    LSLegacy.DataStore.RegisterDataStore(name, data)
+    local player = LSLegacy.Validate.Player(source)
+    if not player then return end
+    if type(name) ~= "string" or type(data) ~= "table" then return end
+    local maxWeight = LSLegacy.Validate.PositiveInteger(data.maxWeight, {allowZero = true}) or 0
+    LSLegacy.DataStore.RegisterDataStore(name, {
+        name = name,
+        type = data.type,
+        inventory = {},
+        money = 0,
+        dirty = 0,
+        maxWeight = maxWeight
+    })
 end)
