@@ -45,7 +45,7 @@ else
 end
 
 
-local function isBlacklisted(entity)
+local function IsBlacklisted(entity)
     local model = GetEntityModel(entity)
     for _, m in ipairs(Config.AP.Blacklist.Models) do
         if m == model then return true end
@@ -57,9 +57,9 @@ local function isBlacklisted(entity)
     return false
 end
 
-local function saveVehicle(entity)
+local function SaveVehicle(entity)
     if not DoesEntityExist(entity) then return end
-    if isBlacklisted(entity) then return end
+    if IsBlacklisted(entity) then return end
 
     local plate = (GetVehicleNumberPlateText(entity) or ""):upper()
     local pos = GetEntityCoords(entity)
@@ -145,7 +145,7 @@ local function saveVehicle(entity)
 end
 
 
-local function spawnVehicle(row)
+local function SpawnVehicle(row)
     local pos    = json.decode(row.position)
     local status = json.decode(row.status)
     local entity = CreateVehicle(row.model, pos.x, pos.y, pos.z, pos.h or 0.0, true, true)
@@ -175,7 +175,7 @@ function LSLegacy.AP.SpawnPersistedRow(row, target)
     local tuning = type(row.tuning) == "string" and json.decode(row.tuning) or row.tuning or {}
 
     if not LSLegacy.AP.Active[row.plate] then
-        spawnVehicle(row)
+        SpawnVehicle(row)
     end
 
     local timeout = 0
@@ -286,7 +286,7 @@ end)
 
 LSLegacy.Events.Register("ap:updateVehicle", function(netId)
     local entity = NetworkGetEntityFromNetworkId(netId)
-    if DoesEntityExist(entity) then saveVehicle(entity) end
+    if DoesEntityExist(entity) then SaveVehicle(entity) end
 end)
 
 LSLegacy.Events.AddHandler('ap:clientsetonSpawn', function(source)
@@ -297,7 +297,7 @@ LSLegacy.Events.AddHandler('ap:clientsetonSpawn', function(source)
                 local tuning = type(row.tuning) == "string" and json.decode(row.tuning) or row.tuning
 
                 if not LSLegacy.AP.Active[row.plate] then
-                    spawnVehicle(row)
+                    SpawnVehicle(row)
                 end
 
                 local timeout = 0
@@ -343,7 +343,7 @@ CreateThread(function()
         if next(players) ~= nil then
             for plate, v in pairs(LSLegacy.AP.Active) do
                 if DoesEntityExist(v.entity) then
-                    saveVehicle(v.entity)
+                    SaveVehicle(v.entity)
                 end
             end
 
@@ -351,7 +351,7 @@ CreateThread(function()
                 Citizen.CreateThread(function()
                     for _, row in ipairs(rows) do
                         if not LSLegacy.AP.Active[row.plate] then
-                            spawnVehicle(row)
+                            SpawnVehicle(row)
                         end
                     end
                 end)

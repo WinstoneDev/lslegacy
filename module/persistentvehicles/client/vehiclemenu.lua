@@ -37,11 +37,11 @@ local SeatLabels = {
     [2] = 'Passager arrière droite',
 }
 
-local function seatLabel(index)
+local function SeatLabel(index)
     return SeatLabels[index] or ('Passager arrière (place N°' .. (index + 1) .. ')')
 end
 
-local function changeSeat(vehicle, seat)
+local function ChangeSeat(vehicle, seat)
     -- La place peut avoir été prise entre l'affichage du menu et le clic, on revérifie ici.
     if not IsVehicleSeatFree(vehicle, seat) then
         LSLegacy.ShowNotification(nil, "Cette place est déjà occupée.", "error")
@@ -55,7 +55,7 @@ local function changeSeat(vehicle, seat)
     refreshSeats(vehicle)
 end
 
-local function buildSeatItems(vehicle)
+local function BuildSeatItems(vehicle)
     local items = {}
 
     if IsVehicleSeatFree(vehicle, -1) then
@@ -63,7 +63,7 @@ local function buildSeatItems(vehicle)
             id = 'vehiclemenu_seat_driver',
             icon = 'fa-solid fa-car-side',
             label = 'Conducteur (avant)',
-            onSelect = function() changeSeat(vehicle, -1) end
+            onSelect = function() ChangeSeat(vehicle, -1) end
         }
     end
 
@@ -74,8 +74,8 @@ local function buildSeatItems(vehicle)
             items[#items + 1] = {
                 id = 'vehiclemenu_seat_' .. i,
                 icon = 'fa-solid fa-chair',
-                label = seatLabel(i),
-                onSelect = function() changeSeat(vehicle, i) end
+                label = SeatLabel(i),
+                onSelect = function() ChangeSeat(vehicle, i) end
             }
         end
     end
@@ -84,12 +84,12 @@ local function buildSeatItems(vehicle)
 end
 
 refreshSeats = function(vehicle)
-    lib.registerRadial({ id = 'vehiclemenu_seats', items = buildSeatItems(vehicle) })
+    lib.registerRadial({ id = 'vehiclemenu_seats', items = BuildSeatItems(vehicle) })
 end
 
-local function buildTopLevelItems(vehicle)
+local function BuildTopLevelItems(vehicle)
     if GetPedInVehicleSeat(vehicle, -1) ~= PlayerPedId() then
-        return buildSeatItems(vehicle)
+        return BuildSeatItems(vehicle)
     end
 
     local engineOn = GetIsVehicleEngineRunning(vehicle)
@@ -136,10 +136,10 @@ refreshTopLevel = function(vehicle)
         lib.removeRadialItem(staleIds[i])
     end
 
-    lib.addRadialItem(buildTopLevelItems(vehicle))
+    lib.addRadialItem(BuildTopLevelItems(vehicle))
 end
 
-local function buildDoorItems(vehicle)
+local function BuildDoorItems(vehicle)
     local items = {
         {
             id = 'vehiclemenu_doors_open_all',
@@ -197,10 +197,10 @@ local function buildDoorItems(vehicle)
 end
 
 refreshDoors = function(vehicle)
-    lib.registerRadial({ id = 'vehiclemenu_doors', items = buildDoorItems(vehicle) })
+    lib.registerRadial({ id = 'vehiclemenu_doors', items = BuildDoorItems(vehicle) })
 end
 
-local function buildWindowItems(vehicle)
+local function BuildWindowItems(vehicle)
     if not VehicleMenu.windows[vehicle] then
         VehicleMenu.windows[vehicle] = {}
     end
@@ -259,10 +259,10 @@ local function buildWindowItems(vehicle)
 end
 
 refreshWindows = function(vehicle)
-    lib.registerRadial({ id = 'vehiclemenu_windows', items = buildWindowItems(vehicle) })
+    lib.registerRadial({ id = 'vehiclemenu_windows', items = BuildWindowItems(vehicle) })
 end
 
-local function buildExtraItems(vehicle)
+local function BuildExtraItems(vehicle)
     local items = {}
 
     for i = 0, 20 do
@@ -292,7 +292,7 @@ local function buildExtraItems(vehicle)
 end
 
 refreshExtras = function(vehicle)
-    lib.registerRadial({ id = 'vehiclemenu_extras', items = buildExtraItems(vehicle) })
+    lib.registerRadial({ id = 'vehiclemenu_extras', items = BuildExtraItems(vehicle) })
 end
 
 lib.registerRadial({ id = 'vehiclemenu_doors', items = {} })

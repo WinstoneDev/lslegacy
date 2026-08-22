@@ -175,7 +175,7 @@ CreateThread(function()
     end
 end)
 
-local function updateVehicleStatus(veh)
+local function UpdateVehicleStatus(veh)
     if veh == 0 then return end
 
     local plate = GetVehicleNumberPlateText(veh)
@@ -299,7 +299,7 @@ CreateThread(function()
         local ped = PlayerPedId()
         local veh = GetVehiclePedIsIn(ped, false)
         if veh ~= 0 then
-            updateVehicleStatus(veh)
+            UpdateVehicleStatus(veh)
         end
         Wait(Config.AP.UpdateIntervalMs) 
     end

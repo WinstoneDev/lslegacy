@@ -10,7 +10,7 @@ local rollingSpeed = {}
 -- Timestamp de sortie du véhicule ; délai de 2s avant physique de roulement pour éviter un départ immédiat.
 local rollingDelay = {}
 
-local function isVehicleEligible(veh)
+local function IsVehicleEligible(veh)
     local class = GetVehicleClass(veh)
     for _, disabledClass in ipairs(Config.Handbrake.DisabledClasses) do
         if class == disabledClass then return false end
@@ -25,7 +25,7 @@ end
 -- Force de gravité projetée sur la pente, appliquée en continu (bScaleByMass=true pour une accélération indépendante de la masse).
 local GRAVITY = 9.8
 
-local function applySlopeForce(veh)
+local function ApplySlopeForce(veh)
     -- GetEntityUpVector n'existe pas dans FiveM ; reconstruit via GetOffsetFromEntityInWorldCoords (point à 1 unité au-dessus, en espace local).
     local pos   = GetEntityCoords(veh)
     local upOff = GetOffsetFromEntityInWorldCoords(veh, 0.0, 0.0, 1.0)
@@ -79,7 +79,7 @@ local function applySlopeForce(veh)
     SetEntityVelocity(veh, dirX * spd, dirY * spd, vel.z)
 end
 
-local function engageHandbrake(veh)
+local function EngageHandbrake(veh)
     handbrakeActive = true
     SetVehicleHandbrake(veh, true)
     SetVehicleBrakeLights(veh, true)
@@ -89,7 +89,7 @@ local function engageHandbrake(veh)
     LSLegacy.Events.SendToServer("handbrake:broadcastSound", VehToNet(veh), true)
 end
 
-local function releaseHandbrake(veh)
+local function ReleaseHandbrake(veh)
     handbrakeActive = false
     SetVehicleHandbrake(veh, false)
     SetVehicleBrakeLights(veh, false)
@@ -107,7 +107,7 @@ CreateThread(function()
         local veh  = GetVehiclePedIsIn(ped, false)
         local isDriver = veh ~= 0 and GetPedInVehicleSeat(veh, -1) == ped
 
-        if isDriver and isVehicleEligible(veh) then
+        if isDriver and IsVehicleEligible(veh) then
             wait = 0
 
             -- Transition : entrée dans un nouveau véhicule
@@ -124,9 +124,9 @@ CreateThread(function()
 
             if IsControlJustPressed(0, Config.Handbrake.HandbrakeKey) and GetEntitySpeed(veh)*3.6 < 5 then
                 if handbrakeActive then
-                    releaseHandbrake(veh)
+                    ReleaseHandbrake(veh)
                 else
-                    engageHandbrake(veh)
+                    EngageHandbrake(veh)
                 end
             end
 
@@ -231,7 +231,7 @@ CreateThread(function()
                         FreezeEntityPosition(veh, false)
                         ActivatePhysics(veh)
                         SetVehicleHandbrake(veh, false)
-                        applySlopeForce(veh)
+                        ApplySlopeForce(veh)
                         hasWork = true
                     end
                 end

@@ -6,7 +6,7 @@ local CONTROL_VEH_MOVE_UD   = 60  -- INPUT_VEH_MOVE_UD   (volant haut/bas)
 local CONTROL_VEH_ACCELERATE = 71 -- INPUT_VEH_ACCELERATE
 local CONTROL_VEH_BRAKE      = 72 -- INPUT_VEH_BRAKE
 
-local function isLandVehicle(veh)
+local function IsLandVehicle(veh)
     local class = GetVehicleClass(veh)
     for _, excluded in ipairs(Config.VehicleStability.ExcludedClasses) do
         if class == excluded then return false end
@@ -15,7 +15,7 @@ local function isLandVehicle(veh)
 end
 
 -- Vecteur "haut" normalisé du véhicule ; Z fortement négatif = toit vers le sol.
-local function isUpsideDown(veh)
+local function IsUpsideDown(veh)
     local pos   = GetEntityCoords(veh)
     local upOff = GetOffsetFromEntityInWorldCoords(veh, 0.0, 0.0, 1.0)
     local upZ   = upOff.z - pos.z
@@ -32,7 +32,7 @@ CreateThread(function()
             local veh = GetVehiclePedIsIn(ped, false)
             local isDriver = veh ~= 0 and GetPedInVehicleSeat(veh, -1) == ped
 
-            if isDriver and isLandVehicle(veh) then
+            if isDriver and IsLandVehicle(veh) then
                 wait = 0
 
                 if IsEntityInAir(veh) then
@@ -40,7 +40,7 @@ CreateThread(function()
                     DisableControlAction(0, CONTROL_VEH_MOVE_UD, true)
                 end
 
-                if isUpsideDown(veh) then
+                if IsUpsideDown(veh) then
                     DisableControlAction(0, CONTROL_VEH_MOVE_LR, true)
                     DisableControlAction(0, CONTROL_VEH_MOVE_UD, true)
                     DisableControlAction(0, CONTROL_VEH_ACCELERATE, true)
