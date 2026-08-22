@@ -123,7 +123,7 @@ end
 
 -- Joueurs
 
-LSLegacy.RegisterServerEvent('AdminServerPlayers', function()
+LSLegacy.Events.Register('AdminServerPlayers', function()
     local _source = source
     if not Admin.CanDo(_source, 1) then return end
 
@@ -135,26 +135,26 @@ LSLegacy.RegisterServerEvent('AdminServerPlayers', function()
         for k, v in pairs(pdat) do copy[k] = v end
         copy.jobLabel          = LSLegacy.Jobs.GetJobLabel(pdat.job)
         copy.jobGradeLabel     = LSLegacy.Jobs.GetJobGradeLabel(pdat.job, pdat.job_grade)
-        copy.factionLabel      = LSLegacy.Jobs.GetFactionLabel(pdat.faction)
-        copy.factionGradeLabel = LSLegacy.Jobs.GetFactionGradeLabel(pdat.faction, pdat.faction_grade)
+        copy.factionLabel      = LSLegacy.Factions.GetLabel(pdat.faction)
+        copy.factionGradeLabel = LSLegacy.Factions.GetGradeLabel(pdat.faction, pdat.faction_grade)
         snapshot[src] = copy
     end
 
-    LSLegacy.SendEventToClient('AdminServerPlayers', _source, snapshot)
+    LSLegacy.Events.SendToClient('AdminServerPlayers', _source, snapshot)
 end)
 
 -- Jobs / Factions (fiche joueur + changement depuis le menu Économie)
 
-LSLegacy.RegisterServerEvent('admin:getJobsFactions', function()
+LSLegacy.Events.Register('admin:getJobsFactions', function()
     local _source = source
     if not Admin.CanDo(_source, 1) then return end
-    LSLegacy.SendEventToClient('admin:jobsFactionsList', _source, {
+    LSLegacy.Events.SendToClient('admin:jobsFactionsList', _source, {
         jobs     = LSLegacy.Jobs.GetAvailableJobs(),
-        factions = LSLegacy.Jobs.GetAvailableFactions(),
+        factions = LSLegacy.Factions.GetAvailable(),
     })
 end)
 
-LSLegacy.RegisterServerEvent('admin:setPlayerJob', function(target, job, grade)
+LSLegacy.Events.Register('admin:setPlayerJob', function(target, job, grade)
     local _source = source
     if not Admin.CanDo(_source, 2) then return end
     local tp = LSLegacy.Players.Get(target)
@@ -163,25 +163,25 @@ LSLegacy.RegisterServerEvent('admin:setPlayerJob', function(target, job, grade)
 
     LSLegacy.Jobs.SetJob(tp, job)
     LSLegacy.Jobs.SetJobGrade(tp, grade)
-    LSLegacy.SendEventToClient('notify', target, nil, 'Votre métier a été mis à jour en ' .. LSLegacy.Jobs.GetJobLabel(job) .. ' - ' .. LSLegacy.Jobs.GetJobGradeLabel(job, grade) .. '.', 'success')
+    LSLegacy.Events.SendToClient('notify', target, nil, 'Votre métier a été mis à jour en ' .. LSLegacy.Jobs.GetJobLabel(job) .. ' - ' .. LSLegacy.Jobs.GetJobGradeLabel(job, grade) .. '.', 'success')
 
     Admin.Log('staff', LSLegacy.Players.Get(_source),
         'Changement de job → ' .. LSLegacy.Jobs.GetJobLabel(job) .. ' (' .. LSLegacy.Jobs.GetJobGradeLabel(job, grade) .. ')', tp)
 end)
 
-LSLegacy.RegisterServerEvent('admin:setPlayerFaction', function(target, faction, grade)
+LSLegacy.Events.Register('admin:setPlayerFaction', function(target, faction, grade)
     local _source = source
     if not Admin.CanDo(_source, 2) then return end
     local tp = LSLegacy.Players.Get(target)
     if not tp then return end
-    if not LSLegacy.Jobs.DoesFactionExist(faction) or not LSLegacy.Jobs.DoesFactionGradeExist(faction, grade) then return end
+    if not LSLegacy.Factions.Exists(faction) or not LSLegacy.Factions.GradeExists(faction, grade) then return end
 
-    LSLegacy.Jobs.SetFaction(tp, faction)
-    LSLegacy.Jobs.SetFactionGrade(tp, grade)
-    LSLegacy.SendEventToClient('notify', target, nil, 'Votre faction a été mise à jour en ' .. LSLegacy.Jobs.GetFactionLabel(faction) .. ' - ' .. LSLegacy.Jobs.GetFactionGradeLabel(faction, grade) .. '.', 'success')
+    LSLegacy.Factions.Set(tp, faction)
+    LSLegacy.Factions.SetGrade(tp, grade)
+    LSLegacy.Events.SendToClient('notify', target, nil, 'Votre faction a été mise à jour en ' .. LSLegacy.Factions.GetLabel(faction) .. ' - ' .. LSLegacy.Factions.GetGradeLabel(faction, grade) .. '.', 'success')
 
     Admin.Log('staff', LSLegacy.Players.Get(_source),
-        'Changement de faction → ' .. LSLegacy.Jobs.GetFactionLabel(faction) .. ' (' .. LSLegacy.Jobs.GetFactionGradeLabel(faction, grade) .. ')', tp)
+        'Changement de faction → ' .. LSLegacy.Factions.GetLabel(faction) .. ' (' .. LSLegacy.Factions.GetGradeLabel(faction, grade) .. ')', tp)
 end)
 
 -- Suivi joueurs (blips / IDs) — OneSync Infinity
@@ -193,7 +193,7 @@ end)
 -- admins abonnés.
 Admin.Tracking = {}
 
-LSLegacy.RegisterServerEvent('admin:trackPlayers', function(state)
+LSLegacy.Events.Register('admin:trackPlayers', function(state)
     local _source = source
     if not Admin.CanDo(_source, 1) then return end
     if state then
@@ -214,14 +214,14 @@ end)
 -- sensibles exigent d'être explicitement "en service".
 Admin.OnDutyStaff = {}
 
-LSLegacy.RegisterServerEvent('admin:setDuty', function(state)
+LSLegacy.Events.Register('admin:setDuty', function(state)
     local _source = source
     if not Admin.CanDo(_source, 1) then return end
     Admin.OnDutyStaff[_source] = state and true or nil
     Admin.Log('staff', LSLegacy.Players.Get(_source), state and 'Prise de service' or 'Fin de service')
 end)
 
-LSLegacy.RegisterServerEvent('admin:getOnlineStaff', function()
+LSLegacy.Events.Register('admin:getOnlineStaff', function()
     local _source = source
     if not Admin.CanDo(_source, 1) then return end
 
@@ -247,7 +247,7 @@ LSLegacy.RegisterServerEvent('admin:getOnlineStaff', function()
         return a.level > b.level
     end)
 
-    LSLegacy.SendEventToClient('admin:onlineStaffList', _source, list)
+    LSLegacy.Events.SendToClient('admin:onlineStaffList', _source, list)
 end)
 
 CreateThread(function()
@@ -273,20 +273,20 @@ CreateThread(function()
                 end
             end
             for adminSrc in pairs(Admin.Tracking) do
-                LSLegacy.SendEventToClient('admin:playersSnapshot', adminSrc, snapshot)
+                LSLegacy.Events.SendToClient('admin:playersSnapshot', adminSrc, snapshot)
             end
         end
     end
 end)
 
-LSLegacy.RegisterServerEvent('MessageAdmin', function(target, msg)
+LSLegacy.Events.Register('MessageAdmin', function(target, msg)
     local _source = source
     if not Admin.CanDo(_source, 1) then return end
     if not LSLegacy.Players.Get(target) then return end
-    LSLegacy.SendEventToClient('notify', target, 'Administration', msg, 'warning')
+    LSLegacy.Events.SendToClient('notify', target, 'Administration', msg, 'warning')
 end)
 
-LSLegacy.RegisterServerEvent('TeleportPlayers', function(tpType, target)
+LSLegacy.Events.Register('TeleportPlayers', function(tpType, target)
     local _source = source
     if not Admin.CanDo(_source, 2) then return end
     if not LSLegacy.Players.Get(target) then return end
@@ -301,17 +301,17 @@ LSLegacy.RegisterServerEvent('TeleportPlayers', function(tpType, target)
 end)
 
 -- tpm → client fait la téléportation (blip)
-LSLegacy.RegisterServerEvent('admin:tpm', function()
+LSLegacy.Events.Register('admin:tpm', function()
     local _source = source
-    LSLegacy.SendEventToClient('admin:doTpm', _source)
+    LSLegacy.Events.SendToClient('admin:doTpm', _source)
 end)
 
 -- pos → retourne les coords au client
-LSLegacy.RegisterServerEvent('admin:pos', function()
+LSLegacy.Events.Register('admin:pos', function()
     local _source = source
     local coords  = LSLegacy.GetEntityCoords(_source)
     local heading = GetEntityHeading(GetPlayerPed(_source))
-    LSLegacy.SendEventToClient('admin:showPos', _source, coords.x, coords.y, coords.z, heading)
+    LSLegacy.Events.SendToClient('admin:showPos', _source, coords.x, coords.y, coords.z, heading)
 end)
 
 -- Monde / Serveur — Heure
@@ -320,7 +320,7 @@ end)
 -- false côté codem-dynamicweather). LSLegacy.Weather.SetTime recale juste le
 -- point de départ du cycle jour/nuit dynamique — celui-ci continue ensuite
 -- normalement dessus, il n'est jamais interrompu par un changement manuel.
-LSLegacy.RegisterServerEvent('admin:setWorldTime', function(h, mnt)
+LSLegacy.Events.Register('admin:setWorldTime', function(h, mnt)
     local _source = source
     if not Admin.CanDo(_source, 2) then return end
 
@@ -328,13 +328,13 @@ LSLegacy.RegisterServerEvent('admin:setWorldTime', function(h, mnt)
     mnt = math.floor(tonumber(mnt) or 0) % 60
 
     if not LSLegacy.Weather then
-        LSLegacy.SendEventToClient('notify', _source, 'Administration', "Le module météo n'est pas chargé.", 'error')
+        LSLegacy.Events.SendToClient('notify', _source, 'Administration', "Le module météo n'est pas chargé.", 'error')
         return
     end
 
     LSLegacy.Weather.SetTime(h, mnt)
 
-    LSLegacy.SendEventToClient('notify', _source, 'Serveur', 'Heure : ' .. h .. 'h' .. string.format('%02d', mnt), 'success')
+    LSLegacy.Events.SendToClient('notify', _source, 'Serveur', 'Heure : ' .. h .. 'h' .. string.format('%02d', mnt), 'success')
     Admin.Log('weather', LSLegacy.Players.Get(_source), 'Heure : ' .. h .. 'h' .. string.format('%02d', mnt))
 end)
 
@@ -342,37 +342,37 @@ end)
 -- ceci gèle/dégèle l'horloge in-game sur sa valeur courante. Le serveur
 -- continue de la repousser à tout le monde toutes les Config.Weather.TimeTickMs
 -- même gelée, pour compenser la dérive naturelle du moteur GTA côté client.
-LSLegacy.RegisterServerEvent('admin:setTimeFrozen', function(state)
+LSLegacy.Events.Register('admin:setTimeFrozen', function(state)
     local _source = source
     if not Admin.CanDo(_source, 2) then return end
 
     if not LSLegacy.Weather then
-        LSLegacy.SendEventToClient('notify', _source, 'Administration', "Le module météo n'est pas chargé.", 'error')
+        LSLegacy.Events.SendToClient('notify', _source, 'Administration', "Le module météo n'est pas chargé.", 'error')
         return
     end
 
     state = not not state
     LSLegacy.Weather.SetTimeFrozen(state)
 
-    LSLegacy.SendEventToClient('notify', _source, 'Serveur', state and 'Horloge gelée.' or 'Horloge relancée.', 'success')
+    LSLegacy.Events.SendToClient('notify', _source, 'Serveur', state and 'Horloge gelée.' or 'Horloge relancée.', 'success')
     Admin.Log('weather', LSLegacy.Players.Get(_source), state and 'Horloge gelée' or 'Horloge relancée')
 end)
 
 -- Outils Staff
 
-LSLegacy.RegisterServerEvent('admin:freeze', function(target, state)
+LSLegacy.Events.Register('admin:freeze', function(target, state)
     local _source = source
     if not Admin.CanDo(_source, 2) then return end
     local tp = LSLegacy.Players.Get(target)
     if not tp then return end
 
-    LSLegacy.SendEventToClient('admin:setFreeze', target, state)
-    LSLegacy.SendEventToClient('notify', target, 'Administration', state and 'Vous avez été freeze.' or 'Vous avez été unfreeze.', 'warning')
+    LSLegacy.Events.SendToClient('admin:setFreeze', target, state)
+    LSLegacy.Events.SendToClient('notify', target, 'Administration', state and 'Vous avez été freeze.' or 'Vous avez été unfreeze.', 'warning')
 
     Admin.Log('staff', LSLegacy.Players.Get(_source), (state and 'Freeze' or 'Unfreeze') .. ' joueur', tp)
 end)
 
-LSLegacy.RegisterServerEvent('admin:heal', function(target)
+LSLegacy.Events.Register('admin:heal', function(target)
     local _source = source
     if not Admin.CanDo(_source, 2) then return end
     local tp = LSLegacy.Players.Get(target)
@@ -381,12 +381,12 @@ LSLegacy.RegisterServerEvent('admin:heal', function(target)
     -- ClearState envoie LSLegacy:injury:adminRevive au client
     -- qui gère SetEntityHealth(200) + SetPedArmour(100) + reset KO/coma
     if LSLegacy.Injury then LSLegacy.Injury.ClearState(target) end
-    LSLegacy.SendEventToClient('notify', target, 'Administration', 'Vous avez été soigné.', 'success')
+    LSLegacy.Events.SendToClient('notify', target, 'Administration', 'Vous avez été soigné.', 'success')
 
     Admin.Log('staff', LSLegacy.Players.Get(_source), 'Heal joueur', tp)
 end)
 
-LSLegacy.RegisterServerEvent('admin:revive', function(target)
+LSLegacy.Events.Register('admin:revive', function(target)
     local _source = source
     if not Admin.CanDo(_source, 2) then return end
     local tp = LSLegacy.Players.Get(target)
@@ -395,13 +395,13 @@ LSLegacy.RegisterServerEvent('admin:revive', function(target)
     -- ClearState envoie LSLegacy:injury:adminRevive (health + armure + reset état)
     -- admin:revive gère la résurrection GTA si le ped est mort
     if LSLegacy.Injury then LSLegacy.Injury.ClearState(target) end
-    LSLegacy.SendEventToClient('admin:revive', target)
-    LSLegacy.SendEventToClient('notify', target, 'Administration', 'Vous avez été réanimé.', 'success')
+    LSLegacy.Events.SendToClient('admin:revive', target)
+    LSLegacy.Events.SendToClient('notify', target, 'Administration', 'Vous avez été réanimé.', 'success')
 
     Admin.Log('staff', LSLegacy.Players.Get(_source), 'Revive joueur', tp)
 end)
 
-LSLegacy.RegisterServerEvent('admin:resetNeeds', function(target)
+LSLegacy.Events.Register('admin:resetNeeds', function(target)
     local _source = source
     if not Admin.CanDo(_source, 2) then return end
     local tp = LSLegacy.Players.Get(target)
@@ -410,32 +410,32 @@ LSLegacy.RegisterServerEvent('admin:resetNeeds', function(target)
     LSLegacy.Status.SetHunger(tp, 100)
     LSLegacy.Status.SetThirst(tp, 100)
     if Config.UseStamina then LSLegacy.Status.SetStamina(tp, 100) end
-    LSLegacy.SendEventToClient('UpdatePlayer', target, LSLegacy.Players.Get(target))
-    LSLegacy.SendEventToClient('notify', target, 'Administration', 'Votre faim et soif ont été réinitialisées.', 'success')
+    LSLegacy.Events.SendToClient('UpdatePlayer', target, LSLegacy.Players.Get(target))
+    LSLegacy.Events.SendToClient('notify', target, 'Administration', 'Votre faim et soif ont été réinitialisées.', 'success')
 
     Admin.Log('staff', LSLegacy.Players.Get(_source), 'Reset besoins joueur', tp)
 end)
 
-LSLegacy.RegisterServerEvent('admin:resetSkin', function(target)
+LSLegacy.Events.Register('admin:resetSkin', function(target)
     local _source = source
     if not Admin.CanDo(_source, 3) then return end
     local tp = LSLegacy.Players.Get(target)
     if not tp then return end
 
-    LSLegacy.SendEventToClient('CreatePerso', target)
+    LSLegacy.Events.SendToClient('CreatePerso', target)
     Admin.Log('staff', LSLegacy.Players.Get(_source), 'Reset skin joueur', tp)
 end)
 
-LSLegacy.RegisterServerEvent('admin:setGodmode', function(state)
+LSLegacy.Events.Register('admin:setGodmode', function(state)
     local _source = source
     if not Admin.CanDo(_source, 2) then return end
     -- SetEntityInvincible est client-side uniquement
-    LSLegacy.SendEventToClient('admin:applyGodmode', _source, state)
+    LSLegacy.Events.SendToClient('admin:applyGodmode', _source, state)
 end)
 
 -- Warns
 
-LSLegacy.RegisterServerEvent('admin:getWarns', function(target)
+LSLegacy.Events.Register('admin:getWarns', function(target)
     local _source = source
     if not Admin.CanDo(_source, 2) then return end
 
@@ -444,12 +444,12 @@ LSLegacy.RegisterServerEvent('admin:getWarns', function(target)
         'SELECT * FROM admin_warns WHERE player_identifier = @id ORDER BY created_at DESC LIMIT 20',
         { ['@id'] = identifier },
         function(rows)
-            LSLegacy.SendEventToClient('admin:receiveWarns', _source, rows or {})
+            LSLegacy.Events.SendToClient('admin:receiveWarns', _source, rows or {})
         end
     )
 end)
 
-LSLegacy.RegisterServerEvent('admin:warn', function(target, reason)
+LSLegacy.Events.Register('admin:warn', function(target, reason)
     local _source = source
     if not Admin.CanDo(_source, 2) then return end
     local staff = LSLegacy.Players.Get(_source)
@@ -466,13 +466,13 @@ LSLegacy.RegisterServerEvent('admin:warn', function(target, reason)
             ['@r']  = reason
         }
     )
-    LSLegacy.SendEventToClient('notify', target, 'Administration', 'Avertissement : ' .. reason, 'error')
+    LSLegacy.Events.SendToClient('notify', target, 'Administration', 'Avertissement : ' .. reason, 'error')
     Admin.Log('sanctions', staff, 'Warn - ' .. reason, tp)
 end)
 
 -- Sanctions
 
-LSLegacy.RegisterServerEvent('admin:kick', function(target, reason)
+LSLegacy.Events.Register('admin:kick', function(target, reason)
     local _source = source
     if not Admin.CanDo(_source, 2) then return end
     local staff = LSLegacy.Players.Get(_source)
@@ -483,7 +483,7 @@ LSLegacy.RegisterServerEvent('admin:kick', function(target, reason)
     Admin.Log('sanctions', staff, 'Kick - ' .. reason, tp)
 end)
 
-LSLegacy.RegisterServerEvent('admin:tempban', function(target, hours, reason)
+LSLegacy.Events.Register('admin:tempban', function(target, hours, reason)
     local _source = source
     if not Admin.CanDo(_source, 3) then return end
     local staff = LSLegacy.Players.Get(_source)
@@ -494,7 +494,7 @@ LSLegacy.RegisterServerEvent('admin:tempban', function(target, hours, reason)
     Admin.Log('sanctions', staff, 'Tempban ' .. tostring(hours) .. 'h - ' .. reason, tp)
 end)
 
-LSLegacy.RegisterServerEvent('admin:permaban', function(target, reason)
+LSLegacy.Events.Register('admin:permaban', function(target, reason)
     local _source = source
     if not Admin.CanDo(_source, 4) then return end
     local staff = LSLegacy.Players.Get(_source)
@@ -509,7 +509,7 @@ end)
 -- PerformHttpRequest ne gère pas fiablement le binaire (octets nuls dans les JPEG).
 -- On passe par imgbb (base64 → URL) puis on poste l'URL dans un embed Discord.
 
-LSLegacy.RegisterServerEvent('admin:screenshot', function(target)
+LSLegacy.Events.Register('admin:screenshot', function(target)
     local _source = source
     if not Admin.CanDo(_source, 2) then return end
     local staff = LSLegacy.Players.Get(_source)
@@ -517,19 +517,19 @@ LSLegacy.RegisterServerEvent('admin:screenshot', function(target)
     if not tp or not staff then return end
 
     if not exports['screenshot-basic'] then
-        LSLegacy.SendEventToClient('notify', _source, 'Administration', 'Ressource screenshot-basic manquante.', 'error')
+        LSLegacy.Events.SendToClient('notify', _source, 'Administration', 'Ressource screenshot-basic manquante.', 'error')
         return
     end
 
     exports['screenshot-basic']:requestClientScreenshot(target, { encoding = 'jpg', quality = 0.85 }, function(err, encoded)
         if err or not encoded then
-            LSLegacy.SendEventToClient('notify', _source, 'Administration', 'Échec du screenshot.', 'error')
+            LSLegacy.Events.SendToClient('notify', _source, 'Administration', 'Échec du screenshot.', 'error')
             return
         end
 
         local b64 = encoded:match('base64,(.+)$')
         if not b64 then
-            LSLegacy.SendEventToClient('notify', _source, 'Administration', 'Format screenshot invalide.', 'error')
+            LSLegacy.Events.SendToClient('notify', _source, 'Administration', 'Format screenshot invalide.', 'error')
             return
         end
 
@@ -541,12 +541,12 @@ LSLegacy.RegisterServerEvent('admin:screenshot', function(target)
             'https://api.imgbb.com/1/upload?key=' .. ImgbbKey,
             function(imgStatus, imgBody)
                 if imgStatus ~= 200 then
-                    LSLegacy.SendEventToClient('notify', _source, 'Administration', 'Erreur imgbb (' .. tostring(imgStatus) .. ').', 'error')
+                    LSLegacy.Events.SendToClient('notify', _source, 'Administration', 'Erreur imgbb (' .. tostring(imgStatus) .. ').', 'error')
                     return
                 end
                 local imgData = json.decode(imgBody)
                 if not imgData or not imgData.data or not imgData.data.url then
-                    LSLegacy.SendEventToClient('notify', _source, 'Administration', 'Réponse imgbb invalide.', 'error')
+                    LSLegacy.Events.SendToClient('notify', _source, 'Administration', 'Réponse imgbb invalide.', 'error')
                     return
                 end
 
@@ -566,7 +566,7 @@ LSLegacy.RegisterServerEvent('admin:screenshot', function(target)
                     }),
                     { ['Content-Type'] = 'application/json' }
                 )
-                LSLegacy.SendEventToClient('notify', _source, 'Administration', 'Screenshot envoyé.', 'success')
+                LSLegacy.Events.SendToClient('notify', _source, 'Administration', 'Screenshot envoyé.', 'success')
             end,
             'POST', 'image=' .. b64Encoded,
             { ['Content-Type'] = 'application/x-www-form-urlencoded' }
@@ -578,18 +578,18 @@ end)
 
 -- Véhicules joueur
 
-LSLegacy.RegisterServerEvent('admin:repairVehicle', function(target)
+LSLegacy.Events.Register('admin:repairVehicle', function(target)
     local _source = source
     if not Admin.CanDo(_source, 3) then return end
     local staff = LSLegacy.Players.Get(_source)
     local tp    = LSLegacy.Players.Get(target)
     if not tp then return end
 
-    LSLegacy.SendEventToClient('admin:doRepairVehicle', target)
+    LSLegacy.Events.SendToClient('admin:doRepairVehicle', target)
     Admin.Log('vehicles', staff, 'Repair véhicule joueur', tp)
 end)
 
-LSLegacy.RegisterServerEvent('admin:deletePlayerVehicle', function(target)
+LSLegacy.Events.Register('admin:deletePlayerVehicle', function(target)
     local _source = source
     if not Admin.CanDo(_source, 3) then return end
     local staff = LSLegacy.Players.Get(_source)
@@ -597,11 +597,11 @@ LSLegacy.RegisterServerEvent('admin:deletePlayerVehicle', function(target)
     if not tp then return end
 
     -- Envoyer ap:findAndDeleteVehicle au client cible : il supprime son véhicule + nettoyage BDD
-    LSLegacy.SendEventToClient('ap:findAndDeleteVehicle', target)
+    LSLegacy.Events.SendToClient('ap:findAndDeleteVehicle', target)
     Admin.Log('vehicles', staff, 'Delete véhicule joueur', tp)
 end)
 
-LSLegacy.RegisterServerEvent('admin:spawnVehicleForPlayer', function(target, model)
+LSLegacy.Events.Register('admin:spawnVehicleForPlayer', function(target, model)
     local _source = source
     if not Admin.CanDo(_source, 3) then return end
     local staff = LSLegacy.Players.Get(_source)
@@ -611,13 +611,13 @@ LSLegacy.RegisterServerEvent('admin:spawnVehicleForPlayer', function(target, mod
     local pos     = GetEntityCoords(GetPlayerPed(target))
     local heading = GetEntityHeading(GetPlayerPed(target))
     LSLegacy.AP.SpawnPersistentVehicle(model, pos, heading + 5.0, target)
-    LSLegacy.SendEventToClient('notify', target, 'Administration', 'Véhicule ' .. model .. ' spawné pour vous.', 'success')
+    LSLegacy.Events.SendToClient('notify', target, 'Administration', 'Véhicule ' .. model .. ' spawné pour vous.', 'success')
     Admin.Log('vehicles', staff, 'Spawn véhicule ' .. model .. ' pour joueur', tp)
 end)
 
 -- Véhicules zone
 
-LSLegacy.RegisterServerEvent('admin:deleteVehiclesInZone', function(radius)
+LSLegacy.Events.Register('admin:deleteVehiclesInZone', function(radius)
     local _source = source
     if not Admin.CanDo(_source, 3) then return end
     local staff      = LSLegacy.Players.Get(_source)
@@ -640,11 +640,11 @@ LSLegacy.RegisterServerEvent('admin:deleteVehiclesInZone', function(radius)
     end
 
     -- Laisser le client supprimer les véhicules non-persistants restants (trafic, etc.)
-    LSLegacy.SendEventToClient('admin:doDeleteVehiclesInZone', _source, r)
+    LSLegacy.Events.SendToClient('admin:doDeleteVehiclesInZone', _source, r)
     Admin.Log('vehicles', staff, 'Delete véhicules zone ' .. tostring(r) .. 'm (' .. #toDelete .. ' AP)', nil)
 end)
 
-LSLegacy.RegisterServerEvent('admin:spawnVehicle', function(model)
+LSLegacy.Events.Register('admin:spawnVehicle', function(model)
     local _source = source
     if not Admin.CanDo(_source, 3) then return end
     local staff = LSLegacy.Players.Get(_source)
@@ -653,12 +653,12 @@ LSLegacy.RegisterServerEvent('admin:spawnVehicle', function(model)
     local pos     = GetEntityCoords(GetPlayerPed(_source))
     local heading = GetEntityHeading(GetPlayerPed(_source))
     LSLegacy.AP.SpawnPersistentVehicle(model, pos, heading + 5.0, _source)
-    LSLegacy.SendEventToClient('notify', _source, 'Administration', 'Véhicule ' .. model .. ' spawné.', 'success')
+    LSLegacy.Events.SendToClient('notify', _source, 'Administration', 'Véhicule ' .. model .. ' spawné.', 'success')
     Admin.Log('vehicles', staff, 'Spawn véhicule ' .. model, nil)
 end)
 
 -- Suppression BDD batch (appelé après DeleteEntity côté client)
-LSLegacy.RegisterServerEvent('admin:cleanVehicleDB', function(plates)
+LSLegacy.Events.Register('admin:cleanVehicleDB', function(plates)
     local _source = source
     if not Admin.CanDo(_source, 3) then return end
     for _, plate in ipairs(plates or {}) do
@@ -668,7 +668,7 @@ end)
 
 -- Économie
 
-LSLegacy.RegisterServerEvent('admin:giveMoney', function(target, amount, bank)
+LSLegacy.Events.Register('admin:giveMoney', function(target, amount, bank)
     local _source = source
     if not Admin.CanDo(_source, 4) then return end
     local staff = LSLegacy.Players.Get(_source)
@@ -679,18 +679,18 @@ LSLegacy.RegisterServerEvent('admin:giveMoney', function(target, amount, bank)
     if bank then
         local ok = exports[GetCurrentResourceName()]:addBankMoneyByCharacterId(tp["boutique-id"], amount)
         if not ok then
-            LSLegacy.SendEventToClient('notify', _source, 'Administration', "Ce joueur n'a pas de compte courant.", 'error')
+            LSLegacy.Events.SendToClient('notify', _source, 'Administration', "Ce joueur n'a pas de compte courant.", 'error')
             return
         end
-        LSLegacy.SendEventToClient('notify', target, 'Économie', 'Reçu ' .. amount .. '$ sur votre compte courant.', 'success')
+        LSLegacy.Events.SendToClient('notify', target, 'Économie', 'Reçu ' .. amount .. '$ sur votre compte courant.', 'success')
     else
         LSLegacy.Money.AddPlayerMoney(tp, amount)
-        LSLegacy.SendEventToClient('notify', target, 'Économie', 'Reçu ' .. amount .. '$.', 'success')
+        LSLegacy.Events.SendToClient('notify', target, 'Économie', 'Reçu ' .. amount .. '$.', 'success')
     end
     Admin.Log('economy', staff, 'Give ' .. (bank and 'compte courant' or 'cash') .. ' ' .. amount .. '$', tp)
 end)
 
-LSLegacy.RegisterServerEvent('admin:removeMoney', function(target, amount, bank)
+LSLegacy.Events.Register('admin:removeMoney', function(target, amount, bank)
     local _source = source
     if not Admin.CanDo(_source, 4) then return end
     local staff = LSLegacy.Players.Get(_source)
@@ -701,33 +701,33 @@ LSLegacy.RegisterServerEvent('admin:removeMoney', function(target, amount, bank)
     if bank then
         local info = exports[GetCurrentResourceName()]:getCompteCourantInfoByCharacterId(tp["boutique-id"])
         if not info or not info.hasAccount then
-            LSLegacy.SendEventToClient('notify', _source, 'Administration', "Ce joueur n'a pas de compte courant.", 'error')
+            LSLegacy.Events.SendToClient('notify', _source, 'Administration', "Ce joueur n'a pas de compte courant.", 'error')
             return
         end
         local ok = exports[GetCurrentResourceName()]:removeBankMoneyByCharacterId(tp["boutique-id"], amount)
         if not ok then
-            LSLegacy.SendEventToClient('notify', _source, 'Administration', 'Solde du compte courant insuffisant.', 'error')
+            LSLegacy.Events.SendToClient('notify', _source, 'Administration', 'Solde du compte courant insuffisant.', 'error')
             return
         end
-        LSLegacy.SendEventToClient('notify', target, 'Économie', amount .. '$ retirés de votre compte courant.', 'warning')
+        LSLegacy.Events.SendToClient('notify', target, 'Économie', amount .. '$ retirés de votre compte courant.', 'warning')
     else
         LSLegacy.Money.RemovePlayerMoney(tp, amount)
-        LSLegacy.SendEventToClient('notify', target, 'Économie', amount .. '$ retirés.', 'warning')
+        LSLegacy.Events.SendToClient('notify', target, 'Économie', amount .. '$ retirés.', 'warning')
     end
     Admin.Log('economy', staff, 'Remove ' .. (bank and 'compte courant' or 'cash') .. ' ' .. amount .. '$', tp)
 end)
 
 -- Compte courant d'un joueur (affiché dans la fiche joueur)
-LSLegacy.RegisterServerEvent('admin:getBankInfo', function(target)
+LSLegacy.Events.Register('admin:getBankInfo', function(target)
     local _source = source
     if not Admin.CanDo(_source, 1) then return end
     local tp = LSLegacy.Players.Get(target)
     if not tp then return end
     local info = exports[GetCurrentResourceName()]:getCompteCourantInfoByCharacterId(tp["boutique-id"])
-    LSLegacy.SendEventToClient('admin:bankInfo', _source, info)
+    LSLegacy.Events.SendToClient('admin:bankInfo', _source, info)
 end)
 
-LSLegacy.RegisterServerEvent('admin:giveItem', function(target, item, qty)
+LSLegacy.Events.Register('admin:giveItem', function(target, item, qty)
     local _source = source
     if not Admin.CanDo(_source, 4) then return end
     local staff = LSLegacy.Players.Get(_source)
@@ -744,14 +744,14 @@ LSLegacy.RegisterServerEvent('admin:giveItem', function(target, item, qty)
             data = { durability = 100 }
         end
         LSLegacy.Inventory.AddItemInInventory(tp, item, qty, nil, nil, data)
-        LSLegacy.SendEventToClient('notify', target, 'Économie', 'Reçu ' .. qty .. 'x ' .. item .. '.', 'success')
+        LSLegacy.Events.SendToClient('notify', target, 'Économie', 'Reçu ' .. qty .. 'x ' .. item .. '.', 'success')
         Admin.Log('economy', staff, 'Give item ' .. qty .. 'x ' .. item, tp)
     else
-        LSLegacy.SendEventToClient('notify', _source, 'Économie', 'Inventaire joueur plein.', 'error')
+        LSLegacy.Events.SendToClient('notify', _source, 'Économie', 'Inventaire joueur plein.', 'error')
     end
 end)
 
-LSLegacy.RegisterServerEvent('admin:giveWeapon', function(target, weapon, ammo)
+LSLegacy.Events.Register('admin:giveWeapon', function(target, weapon, ammo)
     local _source = source
     if not Admin.CanDo(_source, 4) then return end
     local staff = LSLegacy.Players.Get(_source)
@@ -761,24 +761,24 @@ LSLegacy.RegisterServerEvent('admin:giveWeapon', function(target, weapon, ammo)
     if LSLegacy.Inventory.CanCarryItem(tp, weapon, 1) then
         local data = { ammo = tonumber(ammo) or 50, components = {}, serialNumber = LSLegacy.GenerateNumeroDeSerie() }
         LSLegacy.Inventory.AddItemInInventory(tp, weapon, 1, nil, nil, data)
-        LSLegacy.SendEventToClient('notify', target, 'Économie', 'Reçu ' .. weapon .. '.', 'success')
+        LSLegacy.Events.SendToClient('notify', target, 'Économie', 'Reçu ' .. weapon .. '.', 'success')
         Admin.Log('economy', staff, 'Give weapon ' .. weapon, tp)
     else
-        LSLegacy.SendEventToClient('notify', _source, 'Économie', 'Inventaire joueur plein.', 'error')
+        LSLegacy.Events.SendToClient('notify', _source, 'Économie', 'Inventaire joueur plein.', 'error')
     end
 end)
 
 -- Inventaire joueur (consultation)
 
-LSLegacy.RegisterServerEvent('admin:getPlayerInventory', function(target)
+LSLegacy.Events.Register('admin:getPlayerInventory', function(target)
     local _source = source
     if not Admin.CanDo(_source, 2) then return end
     local tp = LSLegacy.Players.Get(target)
     if not tp then return end
-    LSLegacy.SendEventToClient('admin:receiveInventory', _source, tp.inventory or {}, tp.characterInfos, tp.cash or 0, tp.dirty or 0)
+    LSLegacy.Events.SendToClient('admin:receiveInventory', _source, tp.inventory or {}, tp.characterInfos, tp.cash or 0, tp.dirty or 0)
 end)
 
-LSLegacy.RegisterServerEvent('admin:logIdentifiers', function(target)
+LSLegacy.Events.Register('admin:logIdentifiers', function(target)
     local _source = source
     if not Admin.CanDo(_source, 3) then return end
     local staff = LSLegacy.Players.Get(_source)
@@ -799,12 +799,12 @@ LSLegacy.RegisterServerEvent('admin:logIdentifiers', function(target)
         { { name = 'Staff', value = Admin.CharName(staff) .. ' (ID: ' .. tostring(_source) .. ')', inline = true },
           { name = 'Date',  value = os.date('%d/%m/%Y %H:%M:%S'), inline = true } }
     )
-    LSLegacy.SendEventToClient('notify', _source, 'Administration', 'Identifiers envoyés sur Discord.', 'success')
+    LSLegacy.Events.SendToClient('notify', _source, 'Administration', 'Identifiers envoyés sur Discord.', 'success')
 end)
 
 -- Tickets
 
-LSLegacy.RegisterServerEvent('admin:getTicketStats', function()
+LSLegacy.Events.Register('admin:getTicketStats', function()
     local _source = source
     if not Admin.CanDo(_source, 1) then return end
 
@@ -816,12 +816,12 @@ LSLegacy.RegisterServerEvent('admin:getTicketStats', function()
             AND DATE(closed_at) = CURDATE()]],
         {},
         function(avg)
-            LSLegacy.SendEventToClient('admin:receiveTicketStats', _source, tonumber(avg) or 0)
+            LSLegacy.Events.SendToClient('admin:receiveTicketStats', _source, tonumber(avg) or 0)
         end
     )
 end)
 
-LSLegacy.RegisterServerEvent('admin:getTickets', function(status)
+LSLegacy.Events.Register('admin:getTickets', function(status)
     local _source = source
     if not Admin.CanDo(_source, 1) then return end
 
@@ -834,11 +834,11 @@ LSLegacy.RegisterServerEvent('admin:getTickets', function(status)
     query = query .. ' ORDER BY created_at DESC LIMIT 50'
 
     MySQL.Async.fetchAll(query, params, function(rows)
-        LSLegacy.SendEventToClient('admin:receiveTickets', _source, rows or {})
+        LSLegacy.Events.SendToClient('admin:receiveTickets', _source, rows or {})
     end)
 end)
 
-LSLegacy.RegisterServerEvent('admin:takeTicket', function(ticketId)
+LSLegacy.Events.Register('admin:takeTicket', function(ticketId)
     local _source = source
     if not Admin.CanDo(_source, 1) then return end
     local staff = LSLegacy.Players.Get(_source)
@@ -848,12 +848,12 @@ LSLegacy.RegisterServerEvent('admin:takeTicket', function(ticketId)
         'UPDATE support_tickets SET status = \'taken\', assigned_to = @s, assigned_name = @n WHERE id = @id AND status = \'open\'',
         { ['@s'] = _source, ['@n'] = Admin.CharName(staff), ['@id'] = ticketId },
         function()
-            LSLegacy.SendEventToClient('notify', _source, 'Tickets', 'Ticket pris en charge.', 'success')
+            LSLegacy.Events.SendToClient('notify', _source, 'Tickets', 'Ticket pris en charge.', 'success')
         end
     )
 end)
 
-LSLegacy.RegisterServerEvent('admin:closeTicket', function(ticketId)
+LSLegacy.Events.Register('admin:closeTicket', function(ticketId)
     local _source = source
     if not Admin.CanDo(_source, 1) then return end
     local staff = LSLegacy.Players.Get(_source)
@@ -862,13 +862,13 @@ LSLegacy.RegisterServerEvent('admin:closeTicket', function(ticketId)
         'UPDATE support_tickets SET status = \'closed\', closed_at = NOW() WHERE id = @id',
         { ['@id'] = ticketId },
         function()
-            LSLegacy.SendEventToClient('notify', _source, 'Tickets', 'Ticket fermé.', 'success')
+            LSLegacy.Events.SendToClient('notify', _source, 'Tickets', 'Ticket fermé.', 'success')
         end
     )
     Admin.Log('staff', staff, 'Ticket fermé #' .. tostring(ticketId), nil)
 end)
 
-LSLegacy.RegisterServerEvent('admin:tpToTicket', function(ticketId)
+LSLegacy.Events.Register('admin:tpToTicket', function(ticketId)
     local _source = source
     if not Admin.CanDo(_source, 1) then return end
 
@@ -884,7 +884,7 @@ LSLegacy.RegisterServerEvent('admin:tpToTicket', function(ticketId)
     )
 end)
 
-LSLegacy.RegisterServerEvent('admin:bringTicketPlayer', function(ticketId)
+LSLegacy.Events.Register('admin:bringTicketPlayer', function(ticketId)
     local _source = source
     if not Admin.CanDo(_source, 1) then return end
 
@@ -902,7 +902,7 @@ end)
 
 -- Suppression warn (superadmin)
 
-LSLegacy.RegisterServerEvent('admin:deleteWarn', function(warnId, target)
+LSLegacy.Events.Register('admin:deleteWarn', function(warnId, target)
     local _source = source
     if not Admin.CanDo(_source, 4) then return end
     local staff = LSLegacy.Players.Get(_source)
@@ -915,7 +915,7 @@ LSLegacy.RegisterServerEvent('admin:deleteWarn', function(warnId, target)
                 'SELECT * FROM admin_warns WHERE player_identifier = @id ORDER BY created_at DESC LIMIT 20',
                 { ['@id'] = identifier },
                 function(rows)
-                    LSLegacy.SendEventToClient('admin:receiveWarns', _source, rows or {})
+                    LSLegacy.Events.SendToClient('admin:receiveWarns', _source, rows or {})
                 end
             )
         end
@@ -924,7 +924,7 @@ LSLegacy.RegisterServerEvent('admin:deleteWarn', function(warnId, target)
 end)
 
 -- Création ticket (depuis joueur)
-LSLegacy.RegisterServerEvent('admin:createTicket', function(subject)
+LSLegacy.Events.Register('admin:createTicket', function(subject)
     local _source = source
     local player  = LSLegacy.Players.Get(_source)
     if not player then return end
@@ -938,11 +938,11 @@ LSLegacy.RegisterServerEvent('admin:createTicket', function(subject)
             ['@s']   = subject
         },
         function()
-            LSLegacy.SendEventToClient('notify', _source, 'Support', 'Ticket créé, le staff va vous répondre.', 'success')
+            LSLegacy.Events.SendToClient('notify', _source, 'Support', 'Ticket créé, le staff va vous répondre.', 'success')
             -- Notifier le staff en ligne
             for src, p in pairs(LSLegacy.Players.GetAll()) do
                 if Admin.GetLevel(p) >= 1 then
-                    LSLegacy.SendEventToClient('notify', src, '🎫 Ticket', Admin.CharName(player) .. ' : ' .. subject, 'warning')
+                    LSLegacy.Events.SendToClient('notify', src, '🎫 Ticket', Admin.CharName(player) .. ' : ' .. subject, 'warning')
                 end
             end
         end
@@ -960,7 +960,7 @@ LSLegacy.RegisterCommand('report', 0, function(player, args, showError, rawComma
         text = text ..sm[i].. " " 
     end
     if not text or text == '' then
-        LSLegacy.SendEventToClient('notify', _source, 'Support', 'Usage : /report raison', 'error')
+        LSLegacy.Events.SendToClient('notify', _source, 'Support', 'Usage : /report raison', 'error')
         return
     end
 
@@ -976,10 +976,10 @@ LSLegacy.RegisterCommand('report', 0, function(player, args, showError, rawComma
             ['@s']   = text
         },
         function()
-            LSLegacy.SendEventToClient('notify', _source, 'Support', 'Ticket créé. Le staff va vous répondre.', 'success')
+            LSLegacy.Events.SendToClient('notify', _source, 'Support', 'Ticket créé. Le staff va vous répondre.', 'success')
             for src, sp in pairs(LSLegacy.Players.GetAll()) do
                 if Admin.GetLevel(sp) >= 1 then
-                    LSLegacy.SendEventToClient('notify', src, '🎫 Ticket', Admin.CharName(p) .. ' : ' .. text, 'warning')
+                    LSLegacy.Events.SendToClient('notify', src, '🎫 Ticket', Admin.CharName(p) .. ' : ' .. text, 'warning')
                 end
             end
         end

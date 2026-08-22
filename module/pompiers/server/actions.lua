@@ -15,7 +15,7 @@ end
 
 --  DÉSINCARCÉRATION / SECOURS
 
-LSLegacy.RegisterServerEvent('pompiers:rescue', function(data)
+LSLegacy.Events.Register('pompiers:rescue', function(data)
     local src = source
     if not IsPompier(src) or not IsPompierOnDuty(src) then return end
     if not HasPermission(src, 'rescue_victim') then

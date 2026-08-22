@@ -49,7 +49,7 @@ end
 
 local function CancelCarry()
     if not role then return end
-    LSLegacy.SendEventToServer('lslegacy_carry:cancel')
+    LSLegacy.Events.SendToServer('lslegacy_carry:cancel')
     StopCarry()
 end
 
@@ -73,7 +73,7 @@ local function PlayCarried(carrierSrc)
     LSLegacy.IsBeingCarried = true
 end
 
-LSLegacy.RegisterClientEvent('lslegacy_carry:client:start', function(carrierSrc, carriedSrc)
+LSLegacy.Events.Register('lslegacy_carry:client:start', function(carrierSrc, carriedSrc)
     local mySrc = GetPlayerServerId(PlayerId())
     if mySrc == carrierSrc then
         PlayCarrier(carriedSrc)
@@ -82,7 +82,7 @@ LSLegacy.RegisterClientEvent('lslegacy_carry:client:start', function(carrierSrc,
     end
 end)
 
-LSLegacy.RegisterClientEvent('lslegacy_carry:client:stop', function()
+LSLegacy.Events.Register('lslegacy_carry:client:stop', function()
     StopCarry()
 end)
 
@@ -136,7 +136,7 @@ local function StartCarry(targetPed)
     local targetSrc = GetServerIdFromPed(targetPed)
     if not targetSrc then return end
 
-    LSLegacy.SendEventToServer('lslegacy_carry:request', targetSrc)
+    LSLegacy.Events.SendToServer('lslegacy_carry:request', targetSrc)
 end
 
 RegisterCommand('porter', function()
@@ -153,7 +153,7 @@ end, false)
 
 -- Demande de portage : la cible (consciente) doit accepter
 
-LSLegacy.RegisterClientEvent('lslegacy_carry:client:request', function(requesterServerId)
+LSLegacy.Events.Register('lslegacy_carry:client:request', function(requesterServerId)
     local requesterName = GetPlayerName(GetPlayerFromServerId(requesterServerId)) or 'Un joueur'
     Notify(('%s souhaite vous porter. Y pour accepter, L pour refuser.'):format(requesterName), 'info')
 
@@ -162,7 +162,7 @@ LSLegacy.RegisterClientEvent('lslegacy_carry:client:request', function(requester
         while GetGameTimer() < timeout do
             Wait(0)
             if IsControlJustPressed(1, 246) then -- Y
-                LSLegacy.SendEventToServer('lslegacy_carry:confirm', requesterServerId)
+                LSLegacy.Events.SendToServer('lslegacy_carry:confirm', requesterServerId)
                 return
             elseif IsControlJustPressed(1, 182) then -- L
                 return

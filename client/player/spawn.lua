@@ -169,7 +169,7 @@ function LSLegacy.Player.RunLoginFlow()
         AddTextEntry('PM_PANE_CFX', 'LSLegacy')
         if LSLegacy.PlayerData.skin == nil then
             Config.Development.Print("[login] skin nil -> CreatePerso")
-            LSLegacy.TriggerLocalEvent('CreatePerso')
+            LSLegacy.Events.TriggerLocal('CreatePerso')
         elseif json.encode(LSLegacy.PlayerData.skin) ~= "[]" then
             Config.Development.Print("[login] chargement du skin existant")
             TriggerEvent('skinchanger:loadSkin', LSLegacy.PlayerData.skin)

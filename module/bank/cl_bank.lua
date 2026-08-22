@@ -106,23 +106,23 @@ local function CloseBankNUI()
     SendNUIMessage({ action = 'bank:hide' })
 end
 
-LSLegacy.RegisterClientEvent('openBankMenu', function(theme, displayName)
-    LSLegacy.SendEventToServer('GetBankAccounts')
-    LSLegacy.SendEventToServer('BankGetLivrets')
-    LSLegacy.SendEventToServer('BankAdminGetRates')
-    LSLegacy.SendEventToServer('BankAdminGetCardTiers')
+LSLegacy.Events.Register('openBankMenu', function(theme, displayName)
+    LSLegacy.Events.SendToServer('GetBankAccounts')
+    LSLegacy.Events.SendToServer('BankGetLivrets')
+    LSLegacy.Events.SendToServer('BankAdminGetRates')
+    LSLegacy.Events.SendToServer('BankAdminGetCardTiers')
     Wait(150)
     OpenBankNUI('branch', theme or 'mazebank', displayName or 'Maze Bank')
 end)
 
-LSLegacy.RegisterClientEvent('useCarteBank', function(data)
+LSLegacy.Events.Register('useCarteBank', function(data)
     if NearAtms() then
         local input = LSLegacy.KeyboardInput('Code PIN', 4)
         if tonumber(input) then
             if tonumber(input) == tonumber(data.card_pin) then
                 bankState.atmAccountId = data.card_account
-                LSLegacy.SendEventToServer('GetBankAccounts')
-                LSLegacy.SendEventToServer('BankAdminGetCardTiers')
+                LSLegacy.Events.SendToServer('GetBankAccounts')
+                LSLegacy.Events.SendToServer('BankAdminGetCardTiers')
                 Wait(150)
                 OpenBankNUI('atm', 'mazebank', 'Distributeur')
             else
@@ -134,7 +134,7 @@ LSLegacy.RegisterClientEvent('useCarteBank', function(data)
     end
 end)
 
-LSLegacy.RegisterClientEvent('receiveBankAccounts', function(accounts)
+LSLegacy.Events.Register('receiveBankAccounts', function(accounts)
     bankState.accounts = accounts
     if bankState.opened then
         local refreshed
@@ -148,21 +148,21 @@ LSLegacy.RegisterClientEvent('receiveBankAccounts', function(accounts)
     end
 end)
 
-LSLegacy.RegisterClientEvent('receiveBankLivrets', function(livrets)
+LSLegacy.Events.Register('receiveBankLivrets', function(livrets)
     bankState.livrets = livrets
     if bankState.opened then
         SendNUIMessage({ action = 'bank:livrets', livrets = livrets })
     end
 end)
 
-LSLegacy.RegisterClientEvent('receiveBankAdminRates', function(rates)
+LSLegacy.Events.Register('receiveBankAdminRates', function(rates)
     bankState.adminRates = rates
     if bankState.opened then
         SendNUIMessage({ action = 'bank:adminRates', rates = rates })
     end
 end)
 
-LSLegacy.RegisterClientEvent('receiveBankAdminCardTiers', function(tiers)
+LSLegacy.Events.Register('receiveBankAdminCardTiers', function(tiers)
     bankState.adminCardTiers = tiers
     if bankState.opened then
         SendNUIMessage({ action = 'bank:adminCardTiers', tiers = tiers })
@@ -177,81 +177,81 @@ RegisterNUICallback('bank:close', function(data, cb)
 end)
 
 RegisterNUICallback('bank:createAccount', function(data, cb)
-    LSLegacy.SendEventToServer('BankCreateAccount')
+    LSLegacy.Events.SendToServer('BankCreateAccount')
     cb('ok')
 end)
 
 RegisterNUICallback('bank:deleteAccount', function(data, cb)
-    LSLegacy.SendEventToServer('BankDeleteAccount', data.id)
+    LSLegacy.Events.SendToServer('BankDeleteAccount', data.id)
     cb('ok')
 end)
 
 RegisterNUICallback('bank:setCourant', function(data, cb)
-    LSLegacy.SendEventToServer('BankChangeAccountStatus', data.id, data.state)
+    LSLegacy.Events.SendToServer('BankChangeAccountStatus', data.id, data.state)
     cb('ok')
 end)
 
 RegisterNUICallback('bank:createCard', function(data, cb)
-    LSLegacy.SendEventToServer('BankCreateCard', data.id, data.tier)
+    LSLegacy.Events.SendToServer('BankCreateCard', data.id, data.tier)
     cb('ok')
 end)
 
 RegisterNUICallback('bank:setCardTier', function(data, cb)
-    LSLegacy.SendEventToServer('BankSetCardTier', data.id, data.tier)
+    LSLegacy.Events.SendToServer('BankSetCardTier', data.id, data.tier)
     cb('ok')
 end)
 
 RegisterNUICallback('bank:atmDeposit', function(data, cb)
-    LSLegacy.SendEventToServer('BankAddMoney', data.amount, data.id)
+    LSLegacy.Events.SendToServer('BankAddMoney', data.amount, data.id)
     cb('ok')
 end)
 
 RegisterNUICallback('bank:atmWithdraw', function(data, cb)
-    LSLegacy.SendEventToServer('BankwithdrawMoney', data.amount, data.id)
+    LSLegacy.Events.SendToServer('BankwithdrawMoney', data.amount, data.id)
     cb('ok')
 end)
 
 RegisterNUICallback('bank:makeTransfer', function(data, cb)
-    LSLegacy.SendEventToServer('BankTransferByIban', data.fromAccountId, data.toIban, data.amount, data.message)
+    LSLegacy.Events.SendToServer('BankTransferByIban', data.fromAccountId, data.toIban, data.amount, data.message)
     cb('ok')
 end)
 
 RegisterNUICallback('bank:openLivret', function(data, cb)
-    LSLegacy.SendEventToServer('BankOpenLivret', data.linkedAccountId, data.livretType, data.initialDeposit)
+    LSLegacy.Events.SendToServer('BankOpenLivret', data.linkedAccountId, data.livretType, data.initialDeposit)
     cb('ok')
 end)
 
 RegisterNUICallback('bank:depositLivret', function(data, cb)
-    LSLegacy.SendEventToServer('BankDepositLivret', data.livretId, data.amount)
+    LSLegacy.Events.SendToServer('BankDepositLivret', data.livretId, data.amount)
     cb('ok')
 end)
 
 RegisterNUICallback('bank:withdrawLivret', function(data, cb)
-    LSLegacy.SendEventToServer('BankWithdrawLivret', data.livretId, data.amount)
+    LSLegacy.Events.SendToServer('BankWithdrawLivret', data.livretId, data.amount)
     cb('ok')
 end)
 
 RegisterNUICallback('bank:closeLivret', function(data, cb)
-    LSLegacy.SendEventToServer('BankCloseLivret', data.livretId)
+    LSLegacy.Events.SendToServer('BankCloseLivret', data.livretId)
     cb('ok')
 end)
 
 RegisterNUICallback('bank:getAdminRates', function(data, cb)
-    LSLegacy.SendEventToServer('BankAdminGetRates')
+    LSLegacy.Events.SendToServer('BankAdminGetRates')
     cb('ok')
 end)
 
 RegisterNUICallback('bank:setAdminRate', function(data, cb)
-    LSLegacy.SendEventToServer('BankAdminSetRate', data.livretType, data.rate)
+    LSLegacy.Events.SendToServer('BankAdminSetRate', data.livretType, data.rate)
     cb('ok')
 end)
 
 RegisterNUICallback('bank:getAdminCardTiers', function(data, cb)
-    LSLegacy.SendEventToServer('BankAdminGetCardTiers')
+    LSLegacy.Events.SendToServer('BankAdminGetCardTiers')
     cb('ok')
 end)
 
 RegisterNUICallback('bank:setAdminCardTier', function(data, cb)
-    LSLegacy.SendEventToServer('BankAdminSetCardTier', data.tier, data.config)
+    LSLegacy.Events.SendToServer('BankAdminSetCardTier', data.tier, data.config)
     cb('ok')
 end)

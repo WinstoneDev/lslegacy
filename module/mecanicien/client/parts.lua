@@ -47,14 +47,14 @@ local function InstallPart(veh, itemName)
             return
         end
 
-        LSLegacy.SendEventToServer('mecanicien:installPart', {
+        LSLegacy.Events.SendToServer('mecanicien:installPart', {
             vehNet = NetworkGetNetworkIdFromEntity(veh),
             item   = itemName,
         })
     end)
 end
 
-LSLegacy.RegisterClientEvent('mecanicien:installResult', function(data)
+LSLegacy.Events.Register('mecanicien:installResult', function(data)
     if not data then return end
     if data.success then
         Notify(Lang.Mecanicien.install_done, 'success')

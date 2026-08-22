@@ -102,7 +102,7 @@ local function RequestHuntSpawn(src, target, event, payload)
 end
 
 -- `netId` présent si le spawn a réussi côté client, absent sinon (modèle non chargé, filtre eau raté...) — dans les deux cas la place "pending" est libérée.
-LSLegacy.RegisterServerEvent('farm:animalSpawned', function(data)
+LSLegacy.Events.Register('farm:animalSpawned', function(data)
     local src = source
     if not data or not data.reqId then return end
     local req = PendingHuntSpawns[data.reqId]
@@ -225,7 +225,7 @@ local function GetSellableItems(activity)
     return list
 end
 
-LSLegacy.RegisterServerEvent('farm:requestGather', function(data)
+LSLegacy.Events.Register('farm:requestGather', function(data)
     local src    = source
     local player = GetPlayer(src)
     if not player then return end
@@ -298,7 +298,7 @@ LSLegacy.RegisterServerEvent('farm:requestGather', function(data)
     TriggerClientEvent('farm:gatherAuthorized', src, { activity = data.activity, nodeIndex = data.nodeIndex })
 end)
 
-LSLegacy.RegisterServerEvent('farm:completeGather', function(data)
+LSLegacy.Events.Register('farm:completeGather', function(data)
     local src     = source
     local player  = GetPlayer(src)
     if not player then return end
@@ -340,7 +340,7 @@ LSLegacy.RegisterServerEvent('farm:completeGather', function(data)
 end)
 
 -- Braconnage (chasseur, coyote/cougar uniquement) : action séparée du dépeçage, le cadavre reste en place après.
-LSLegacy.RegisterServerEvent('farm:requestPoach', function(data)
+LSLegacy.Events.Register('farm:requestPoach', function(data)
     local src    = source
     local player = GetPlayer(src)
     if not player then return end
@@ -399,7 +399,7 @@ LSLegacy.RegisterServerEvent('farm:requestPoach', function(data)
     TriggerClientEvent('farm:poachResult', src, { success = true, item = species.peauItem, netId = data.netId })
 end)
 
-LSLegacy.RegisterServerEvent('farm:requestProcess', function(data)
+LSLegacy.Events.Register('farm:requestProcess', function(data)
     local src    = source
     local player = GetPlayer(src)
     if not player then return end
@@ -418,7 +418,7 @@ LSLegacy.RegisterServerEvent('farm:requestProcess', function(data)
     TriggerClientEvent('farm:processAuthorized', src, { activity = data.activity })
 end)
 
-LSLegacy.RegisterServerEvent('farm:completeProcess', function(data)
+LSLegacy.Events.Register('farm:completeProcess', function(data)
     local src    = source
     local player = GetPlayer(src)
     if not player then return end
@@ -464,7 +464,7 @@ LSLegacy.RegisterServerEvent('farm:completeProcess', function(data)
     })
 end)
 
-LSLegacy.RegisterServerEvent('farm:sellProcessed', function(data)
+LSLegacy.Events.Register('farm:sellProcessed', function(data)
     local src    = source
     local player = GetPlayer(src)
     if not player then return end
@@ -529,7 +529,7 @@ LSLegacy.RegisterServerEvent('farm:sellProcessed', function(data)
 end)
 
 -- Revente des peaux : passe uniquement par le receleur, jamais par la boutique publique (absentes de `directSellItems`/`multiSellItems`). Argent normal, pas sale.
-LSLegacy.RegisterServerEvent('farm:sellPoaching', function(data)
+LSLegacy.Events.Register('farm:sellPoaching', function(data)
     local src    = source
     local player = GetPlayer(src)
     if not player then return end
@@ -566,7 +566,7 @@ LSLegacy.RegisterServerEvent('farm:sellPoaching', function(data)
     })
 end)
 
-LSLegacy.RegisterServerEvent('farm:compactStones', function()
+LSLegacy.Events.Register('farm:compactStones', function()
     local src     = source
     local player  = GetPlayer(src)
     if not player then return end
@@ -592,12 +592,12 @@ LSLegacy.RegisterServerEvent('farm:compactStones', function()
     TriggerClientEvent('farm:compactStonesResult', src, { success = true, bags = bags })
 end)
 
-LSLegacy.RegisterServerEvent('farm:requestShopStock', function()
+LSLegacy.Events.Register('farm:requestShopStock', function()
     local src = source
     TriggerClientEvent('farm:shopStockResult', src, ShopStock)
 end)
 
-LSLegacy.RegisterServerEvent('farm:buyShopItem', function(data)
+LSLegacy.Events.Register('farm:buyShopItem', function(data)
     local src    = source
     local player = GetPlayer(src)
     if not player then return end

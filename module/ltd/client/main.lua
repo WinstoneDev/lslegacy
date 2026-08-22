@@ -44,7 +44,7 @@ local function GoOnDuty(storeId)
     LTD.StoreId = storeId
     LTD.Grade   = GetGrade()
 
-    LSLegacy.SendEventToServer('ltd:onDuty', { storeId = storeId })
+    LSLegacy.Events.SendToServer('ltd:onDuty', { storeId = storeId })
     Notify(Lang.LTD.duty_on, 'success')
     TriggerEvent('ltd:dutyChanged', true)
 end
@@ -58,7 +58,7 @@ local function GoOffDuty()
     LTD.OnDuty  = false
     LTD.StoreId = nil
 
-    LSLegacy.SendEventToServer('ltd:offDuty')
+    LSLegacy.Events.SendToServer('ltd:offDuty')
     Notify(Lang.LTD.duty_off, 'info')
     TriggerEvent('ltd:dutyChanged', false)
 end

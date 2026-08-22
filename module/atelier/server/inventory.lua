@@ -39,7 +39,7 @@ end
 
 -- Consultation du stock
 
-LSLegacy.RegisterServerEvent('atelier:requestStock', function()
+LSLegacy.Events.Register('atelier:requestStock', function()
     local src = source
     local companyId = LSLegacy.Atelier.GetCompany(src)
     if not companyId then return end
@@ -50,12 +50,12 @@ LSLegacy.RegisterServerEvent('atelier:requestStock', function()
         local entry = LSLegacy.DataStore.GetInventoryItem(ds, item)
         stock[item] = entry and entry.count or 0
     end
-    LSLegacy.SendEventToClient('atelier:stockResult', src, stock)
+    LSLegacy.Events.SendToClient('atelier:stockResult', src, stock)
 end)
 
 -- Prise d'une pièce au dépôt (réservation)
 
-LSLegacy.RegisterServerEvent('atelier:takePart', function(data)
+LSLegacy.Events.Register('atelier:takePart', function(data)
     local src = source
     local ok, companyId = LSLegacy.Atelier.CanAct(src)
     if not ok then return end
@@ -89,7 +89,7 @@ LSLegacy.RegisterServerEvent('atelier:takePart', function(data)
     }
 
     local part = Config.Atelier.Parts[data.item]
-    LSLegacy.SendEventToClient('atelier:partTaken', src, { item = data.item, carried = part.carried })
+    LSLegacy.Events.SendToClient('atelier:partTaken', src, { item = data.item, carried = part.carried })
 end)
 
 -- Restitue au stock la pièce réservée par src (annulation/expiration/drop).
@@ -125,14 +125,14 @@ function LSLegacy.Atelier.GetReservation(src)
     return LSLegacy.Atelier.Reservations[src]
 end
 
-LSLegacy.RegisterServerEvent('atelier:dropPart', function()
+LSLegacy.Events.Register('atelier:dropPart', function()
     local src = source
     LSLegacy.Atelier.ReturnReservation(src)
 end)
 
 -- Remplissage du stock (permission manage_stock)
 
-LSLegacy.RegisterServerEvent('atelier:restockStock', function(data)
+LSLegacy.Events.Register('atelier:restockStock', function(data)
     local src = source
     local ok, companyId = LSLegacy.Atelier.CanAct(src, 'manage_stock')
     if not ok then return end
@@ -143,7 +143,7 @@ LSLegacy.RegisterServerEvent('atelier:restockStock', function(data)
 
     local ds = EnsureStash(companyId)
     LSLegacy.DataStore.AddItemInInventory(ds, data.item, amount)
-    LSLegacy.SendEventToClient('atelier:restockResult', src, { success = true, item = data.item, amount = amount })
+    LSLegacy.Events.SendToClient('atelier:restockResult', src, { success = true, item = data.item, amount = amount })
 end)
 
 -- Nettoyage : expiration + déconnexion

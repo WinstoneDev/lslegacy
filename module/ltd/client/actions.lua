@@ -43,10 +43,10 @@ local function OpenRegister(store)
 
     LTD.PendingCustomer = customerSrc
     LTD.PendingStore     = store.id
-    LSLegacy.SendEventToServer('ltd:requestShelfStock', { storeId = store.id })
+    LSLegacy.Events.SendToServer('ltd:requestShelfStock', { storeId = store.id })
 end
 
-LSLegacy.RegisterClientEvent('ltd:shelfStockResult', function(stock)
+LSLegacy.Events.Register('ltd:shelfStockResult', function(stock)
     stock = stock or {}
     local customerSrc = LTD.PendingCustomer
     local storeId      = LTD.PendingStore
@@ -63,7 +63,7 @@ LSLegacy.RegisterClientEvent('ltd:shelfStockResult', function(stock)
             disabled = not available,
             onSelect = function()
                 SetCooldown('sell')
-                LSLegacy.SendEventToServer('ltd:sellItem', { storeId = storeId, item = entry.item, customer = customerSrc })
+                LSLegacy.Events.SendToServer('ltd:sellItem', { storeId = storeId, item = entry.item, customer = customerSrc })
             end,
         }
     end
@@ -72,7 +72,7 @@ LSLegacy.RegisterClientEvent('ltd:shelfStockResult', function(stock)
     lib.showContext('ltd_register')
 end)
 
-LSLegacy.RegisterClientEvent('ltd:sellResult', function(data)
+LSLegacy.Events.Register('ltd:sellResult', function(data)
     if not data then return end
     if data.success then
         Notify(string.format(Lang.LTD.sell_done, data.label, data.price), 'success')
@@ -81,7 +81,7 @@ LSLegacy.RegisterClientEvent('ltd:sellResult', function(data)
     end
 end)
 
-LSLegacy.RegisterClientEvent('ltd:purchaseNotice', function(data)
+LSLegacy.Events.Register('ltd:purchaseNotice', function(data)
     if not data then return end
     Notify(string.format(Lang.LTD.sold_to_you, data.label, data.price), 'info')
 end)
@@ -91,10 +91,10 @@ local function OpenStorage(store)
         Notify(Lang.LTD.not_employee, 'error') return
     end
     LTD.PendingStore = store.id
-    LSLegacy.SendEventToServer('ltd:requestReserveStock', { storeId = store.id })
+    LSLegacy.Events.SendToServer('ltd:requestReserveStock', { storeId = store.id })
 end
 
-LSLegacy.RegisterClientEvent('ltd:reserveStockResult', function(stock)
+LSLegacy.Events.Register('ltd:reserveStockResult', function(stock)
     stock = stock or {}
     local storeId = LTD.PendingStore
     if not storeId then return end
@@ -109,7 +109,7 @@ LSLegacy.RegisterClientEvent('ltd:reserveStockResult', function(stock)
             onSelect = function()
                 if HasCooldown('restock') then Notify(Lang.LTD.action_cooldown, 'error') return end
                 SetCooldown('restock')
-                LSLegacy.SendEventToServer('ltd:restockShelf', { storeId = storeId, item = entry.item })
+                LSLegacy.Events.SendToServer('ltd:restockShelf', { storeId = storeId, item = entry.item })
             end,
         }
     end
@@ -130,7 +130,7 @@ LSLegacy.RegisterClientEvent('ltd:reserveStockResult', function(stock)
                             local qtyStr = LSLegacy.KeyboardInput('Quantité à ajouter à la réserve', 4)
                             local qty    = tonumber(qtyStr)
                             if not qty or qty <= 0 then return end
-                            LSLegacy.SendEventToServer('ltd:fillReserve', { storeId = storeId, item = entry.item, amount = math.floor(qty) })
+                            LSLegacy.Events.SendToServer('ltd:fillReserve', { storeId = storeId, item = entry.item, amount = math.floor(qty) })
                         end,
                     }
                 end
@@ -144,7 +144,7 @@ LSLegacy.RegisterClientEvent('ltd:reserveStockResult', function(stock)
     lib.showContext('ltd_storage')
 end)
 
-LSLegacy.RegisterClientEvent('ltd:restockResult', function(data)
+LSLegacy.Events.Register('ltd:restockResult', function(data)
     if not data then return end
     if data.success then
         Notify(string.format(Lang.LTD.restock_done, data.label, data.amount), 'success')
@@ -153,7 +153,7 @@ LSLegacy.RegisterClientEvent('ltd:restockResult', function(data)
     end
 end)
 
-LSLegacy.RegisterClientEvent('ltd:fillResult', function(data)
+LSLegacy.Events.Register('ltd:fillResult', function(data)
     if not data then return end
     if data.success then
         Notify(string.format(Lang.LTD.fill_added, data.amount, data.label), 'success')
@@ -164,13 +164,13 @@ RegisterCommand('ltd_alarm', function()
     if not LTD.IsOnDuty() then return end
     if HasCooldown('alarm') then Notify(Lang.LTD.action_cooldown, 'error') return end
     SetCooldown('alarm')
-    LSLegacy.SendEventToServer('ltd:triggerAlarm', { storeId = LTD.GetStoreId() })
+    LSLegacy.Events.SendToServer('ltd:triggerAlarm', { storeId = LTD.GetStoreId() })
     Notify(Lang.LTD.alarm_triggered, 'info')
 end, false)
 
 RegisterKeyMapping('ltd_alarm', 'Déclencher alarme silencieuse (LTD)', 'keyboard', 'F11')
 
-LSLegacy.RegisterClientEvent('ltd:alarmReceived', function(data)
+LSLegacy.Events.Register('ltd:alarmReceived', function(data)
     if not data or not data.coords then return end
     Notify(Lang.LTD.alarm_received, 'error')
     SetNewWaypoint(data.coords.x, data.coords.y)
@@ -181,10 +181,10 @@ local function StealItem(store)
     if LTD.IsOnDuty() and LTD.GetStoreId() == store.id then return end
     if HasCooldown('theft') then Notify(Lang.LTD.action_cooldown, 'error') return end
     SetCooldown('theft')
-    LSLegacy.SendEventToServer('ltd:stealItem', { storeId = store.id })
+    LSLegacy.Events.SendToServer('ltd:stealItem', { storeId = store.id })
 end
 
-LSLegacy.RegisterClientEvent('ltd:theftResult', function(data)
+LSLegacy.Events.Register('ltd:theftResult', function(data)
     if not data then return end
     if data.success then
         Notify(string.format(Lang.LTD.theft_done, data.label), 'success')
@@ -193,7 +193,7 @@ LSLegacy.RegisterClientEvent('ltd:theftResult', function(data)
     end
 end)
 
-LSLegacy.RegisterClientEvent('ltd:theftAlertEmployee', function()
+LSLegacy.Events.Register('ltd:theftAlertEmployee', function()
     Notify(Lang.LTD.theft_alert_employee, 'error')
 end)
 

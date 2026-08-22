@@ -58,7 +58,7 @@ MySQL.Async.execute([[
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 ]], {})
 
-LSLegacy.RegisterServerEvent('ltd:onDuty', function(data)
+LSLegacy.Events.Register('ltd:onDuty', function(data)
     local src = source
     if not IsEmployee(src) then return end
     if not data or not IsValidStore(data.storeId) then return end
@@ -75,7 +75,7 @@ LSLegacy.RegisterServerEvent('ltd:onDuty', function(data)
     )
 end)
 
-LSLegacy.RegisterServerEvent('ltd:offDuty', function()
+LSLegacy.Events.Register('ltd:offDuty', function()
     local src = source
     if not LtdAgents[src] then return end
 

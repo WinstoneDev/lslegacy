@@ -7,7 +7,7 @@ LSLegacy.Security.RegisterRateLimit('SetIdentity', 20)
 -- sinon demander le bucket d'un autre joueur en cours de création). Le
 -- serveur dérive un bucket unique à partir du server id, qui ne peut pas
 -- entrer en collision avec celui d'un autre joueur connecté.
-LSLegacy.RegisterServerEvent("SetBucket", function(enter)
+LSLegacy.Events.Register("SetBucket", function(enter)
     local _src = source
     SetPlayerRoutingBucket(_src, enter and (10000 + _src) or 0)
 end)
@@ -44,7 +44,7 @@ local function SaveWithRetry(column, boutiqueId, jsonValue, maxAttempts, delayMs
     return false, maxAttempts
 end
 
-LSLegacy.RegisterServerEvent('saveskin', function(skin)
+LSLegacy.Events.Register('saveskin', function(skin)
     local _src = source
     local player = LSLegacy.Players.Get(_src)
 
@@ -66,7 +66,7 @@ LSLegacy.RegisterServerEvent('saveskin', function(skin)
     -- SetIdentity peut relire le skin en BDD avant que l'UPDATE ci-dessus
     -- soit committé (les deux handlers tournent en coroutines concurrentes),
     -- et écraser le skin fraîchement créé avec une valeur périmée.
-    LSLegacy.SendEventToClient('creatorPerso:skinSaved', _src, saved)
+    LSLegacy.Events.SendToClient('creatorPerso:skinSaved', _src, saved)
 end)
 
 -- ─── Identité ────────────────────────────────────────────────────────────────
@@ -105,7 +105,7 @@ local function IsValidDateOfBirth(dob)
     return true
 end
 
-LSLegacy.RegisterServerEvent("SetIdentity", function(lastName, firstName, dateOfBirth, sex, height, birthPlace)
+LSLegacy.Events.Register("SetIdentity", function(lastName, firstName, dateOfBirth, sex, height, birthPlace)
     local _src = source
     local player = LSLegacy.Players.Get(_src)
 
@@ -117,32 +117,32 @@ LSLegacy.RegisterServerEvent("SetIdentity", function(lastName, firstName, dateOf
     height = tonumber(height)
 
     if not IsSafeText(lastName, 50) or not IsSafeText(firstName, 50) then
-        LSLegacy.SendEventToClient('notify', _src, "Erreur", "Nom ou prénom invalide", "error")
-        LSLegacy.SendEventToClient('creatorPerso:identityResult', _src, false)
+        LSLegacy.Events.SendToClient('notify', _src, "Erreur", "Nom ou prénom invalide", "error")
+        LSLegacy.Events.SendToClient('creatorPerso:identityResult', _src, false)
         return
     end
 
     if not IsValidDateOfBirth(dateOfBirth) then
-        LSLegacy.SendEventToClient('notify', _src, "Erreur", "Date de naissance invalide", "error")
-        LSLegacy.SendEventToClient('creatorPerso:identityResult', _src, false)
+        LSLegacy.Events.SendToClient('notify', _src, "Erreur", "Date de naissance invalide", "error")
+        LSLegacy.Events.SendToClient('creatorPerso:identityResult', _src, false)
         return
     end
 
     if sex ~= "M" and sex ~= "F" then
-        LSLegacy.SendEventToClient('notify', _src, "Erreur", "Sexe invalide", "error")
-        LSLegacy.SendEventToClient('creatorPerso:identityResult', _src, false)
+        LSLegacy.Events.SendToClient('notify', _src, "Erreur", "Sexe invalide", "error")
+        LSLegacy.Events.SendToClient('creatorPerso:identityResult', _src, false)
         return
     end
 
     if not height or height < 140 or height > 220 then
-        LSLegacy.SendEventToClient('notify', _src, "Erreur", "Taille invalide", "error")
-        LSLegacy.SendEventToClient('creatorPerso:identityResult', _src, false)
+        LSLegacy.Events.SendToClient('notify', _src, "Erreur", "Taille invalide", "error")
+        LSLegacy.Events.SendToClient('creatorPerso:identityResult', _src, false)
         return
     end
 
     if not IsSafeText(birthPlace, 100) then
-        LSLegacy.SendEventToClient('notify', _src, "Erreur", "Lieu de naissance invalide", "error")
-        LSLegacy.SendEventToClient('creatorPerso:identityResult', _src, false)
+        LSLegacy.Events.SendToClient('notify', _src, "Erreur", "Lieu de naissance invalide", "error")
+        LSLegacy.Events.SendToClient('creatorPerso:identityResult', _src, false)
         return
     end
 
@@ -159,8 +159,8 @@ LSLegacy.RegisterServerEvent("SetIdentity", function(lastName, firstName, dateOf
 
     if not saved then
         Config.Development.Print("ÉCHEC sauvegarde identité après " .. attempts .. " tentatives pour le joueur: " .. _src)
-        LSLegacy.SendEventToClient('notify', _src, "Erreur", "Impossible d'enregistrer l'identité, réessayez.", "error")
-        LSLegacy.SendEventToClient('creatorPerso:identityResult', _src, false)
+        LSLegacy.Events.SendToClient('notify', _src, "Erreur", "Impossible d'enregistrer l'identité, réessayez.", "error")
+        LSLegacy.Events.SendToClient('creatorPerso:identityResult', _src, false)
         return
     end
 
@@ -203,5 +203,5 @@ LSLegacy.RegisterServerEvent("SetIdentity", function(lastName, firstName, dateOf
     end
 
     Config.Development.Print("Identité définie pour le joueur: " .. _src .. " - " .. firstName .. " " .. lastName .. " (tentative " .. attempts .. ")")
-    LSLegacy.SendEventToClient('creatorPerso:identityResult', _src, true, appliedOutfit)
+    LSLegacy.Events.SendToClient('creatorPerso:identityResult', _src, true, appliedOutfit)
 end)

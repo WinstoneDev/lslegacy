@@ -168,7 +168,7 @@ local function BroadcastClock(receiver)
     local hour = math.floor(totalMinutes / 60)
     local minute = math.floor(totalMinutes % 60)
     local d = os.date('*t')
-    LSLegacy.SendEventToClient('weather:syncClock', receiver, hour, minute, d.day, d.month, d.year)
+    LSLegacy.Events.SendToClient('weather:syncClock', receiver, hour, minute, d.day, d.month, d.year)
 end
 
 local function ReadInitialTotalMinutes()
@@ -206,7 +206,7 @@ function LSLegacy.Weather.IsTimeFrozen()
     return timeFrozen
 end
 
-LSLegacy.RegisterServerEvent('weather:requestClockSync', function()
+LSLegacy.Events.Register('weather:requestClockSync', function()
     local src = source
     if not totalMinutes then return end
     BroadcastClock(src)
@@ -248,7 +248,7 @@ end)
 
 local function Reply(player, msg, type)
     if player then
-        LSLegacy.SendEventToClient('notify', player.source, 'Météo', msg, type or 'info')
+        LSLegacy.Events.SendToClient('notify', player.source, 'Météo', msg, type or 'info')
     else
         Config.Development.Print('[weather] ' .. msg)
     end

@@ -56,7 +56,7 @@ Actions.Cuff = function(targetSrc, targetPed)
     while not HasAnimDictLoaded(dict) and t < 50 do Wait(100); t = t + 1 end
 
     -- Notifier la cible pour geler ses contrôles pendant l'animation
-    LSLegacy.SendEventToServer('police:cuffStart', {
+    LSLegacy.Events.SendToServer('police:cuffStart', {
         target   = targetSrc,
         duration = Config.Police.Actions.cuffDuration,
     })
@@ -69,7 +69,7 @@ Actions.Cuff = function(targetSrc, targetPed)
     Wait(Config.Police.Actions.cuffDuration)
     ClearPedTasks(PlayerPedId())
 
-    LSLegacy.SendEventToServer('police:cuff', { target = targetSrc, cuffed = true })
+    LSLegacy.Events.SendToServer('police:cuff', { target = targetSrc, cuffed = true })
 
 end
 
@@ -86,7 +86,7 @@ Actions.Uncuff = function(targetSrc)
     Wait(Config.Police.Actions.cuffDuration)
     ClearPedTasks(PlayerPedId())
 
-    LSLegacy.SendEventToServer('police:cuff', { target = targetSrc, cuffed = false })
+    LSLegacy.Events.SendToServer('police:cuff', { target = targetSrc, cuffed = false })
 
 end
 
@@ -100,7 +100,7 @@ Actions.Search = function(targetSrc)
     PlayAnim('amb@world_human_cop_idles@male@idle_a', 'idle_b',
         Config.Police.Actions.searchDuration, 49)
 
-    LSLegacy.SendEventToServer('police:search', { target = targetSrc })
+    LSLegacy.Events.SendToServer('police:search', { target = targetSrc })
 
 end
 
@@ -129,7 +129,7 @@ local function OpenSearchMenu()
             icon = 'fa-solid fa-box',
             disabled = not seizable,
             onSelect = function()
-                LSLegacy.SendEventToServer('police:seizeItem', {
+                LSLegacy.Events.SendToServer('police:seizeItem', {
                     target   = searchTarget,
                     itemName = item.name,
                     count    = item.count,
@@ -142,7 +142,7 @@ local function OpenSearchMenu()
     lib.showContext('police_search')
 end
 
-LSLegacy.RegisterClientEvent('police:searchResult', function(data)
+LSLegacy.Events.Register('police:searchResult', function(data)
     if not data then return end
     if data.items and #data.items > 0 then
         searchItems  = data.items
@@ -163,7 +163,7 @@ Actions.Palpation = function(targetSrc)
     PlayAnim('amb@world_human_cop_idles@male@idle_a', 'idle_c',
         Config.Police.Actions.palpationDuration, 49)
 
-    LSLegacy.SendEventToServer('police:palpation', { target = targetSrc })
+    LSLegacy.Events.SendToServer('police:palpation', { target = targetSrc })
 
 end
 
@@ -180,7 +180,7 @@ local function OpenPalpationMenu()
             description = 'Saisir cette arme',
             icon = 'fa-solid fa-gun',
             onSelect = function()
-                LSLegacy.SendEventToServer('police:seizeItem', {
+                LSLegacy.Events.SendToServer('police:seizeItem', {
                     target   = palpationTarget,
                     itemName = w.name,
                     count    = w.count,
@@ -193,7 +193,7 @@ local function OpenPalpationMenu()
     lib.showContext('police_palpation')
 end
 
-LSLegacy.RegisterClientEvent('police:palpationResult', function(data)
+LSLegacy.Events.Register('police:palpationResult', function(data)
     if not data then return end
     if data.armed and data.weapons and #data.weapons > 0 then
         Notify(Lang.Police.palpation_armed, 'error')
@@ -215,11 +215,11 @@ Actions.IdCheck = function(targetSrc)
     PlayAnim('amb@world_human_cop_idles@male@idle_a', 'idle_d',
         Config.Police.Actions.idCheckDuration, 49)
 
-    LSLegacy.SendEventToServer('police:idCheck', { target = targetSrc })
+    LSLegacy.Events.SendToServer('police:idCheck', { target = targetSrc })
 
 end
 
-LSLegacy.RegisterClientEvent('police:idCheckResult', function(data)
+LSLegacy.Events.Register('police:idCheckResult', function(data)
     if not data then return end
     if data.hasId then
         TriggerEvent(Config.Police.NotifyEvent, 'Police Nationale',
@@ -240,10 +240,10 @@ Actions.LicenseCheck = function(targetSrc)
     PlayAnim('amb@world_human_cop_idles@male@idle_a', 'idle_d',
         Config.Police.Actions.licenseCheckDuration, 49)
 
-    LSLegacy.SendEventToServer('police:licenseCheck', { target = targetSrc })
+    LSLegacy.Events.SendToServer('police:licenseCheck', { target = targetSrc })
 end
 
-LSLegacy.RegisterClientEvent('police:licenseCheckResult', function(data)
+LSLegacy.Events.Register('police:licenseCheckResult', function(data)
     if not data then return end
     if data.valid then
         Notify(string.format(Lang.Police.license_valid, data.name), 'success')
@@ -260,7 +260,7 @@ Actions.Escort = function(targetSrc)
     if HasCooldown('escort') then Notify(Lang.Police.action_cooldown, 'error') return end
     SetCooldown('escort')
     escortTarget = targetSrc
-    LSLegacy.SendEventToServer('police:escort', { target = targetSrc, active = true })
+    LSLegacy.Events.SendToServer('police:escort', { target = targetSrc, active = true })
 
     local targetName = GetPlayerName(GetPlayerFromServerId(targetSrc)) or '?'
     Notify(string.format(Lang.Police.escort_start, targetName), 'success')
@@ -269,7 +269,7 @@ end
 
 RegisterCommand('police_escort_stop', function()
     if not LSLegacy.MDT.IsLocalLeoOnDuty() or not escortTarget then return end
-    LSLegacy.SendEventToServer('police:escort', { target = escortTarget, active = false })
+    LSLegacy.Events.SendToServer('police:escort', { target = escortTarget, active = false })
     escortTarget = nil
     Notify(Lang.Police.escort_stop, 'info')
 end, false)
@@ -280,7 +280,7 @@ RegisterKeyMapping('police_escort_stop', "Arrêter l'escorte (Police)", 'keyboar
 local isEscorted   = false
 local escortOfficer = nil
 
-LSLegacy.RegisterClientEvent('police:escortedBy', function(data)
+LSLegacy.Events.Register('police:escortedBy', function(data)
     if not data then return end
     if data.active then
         Notify(Lang.Police.escorted_by, 'info')
@@ -333,7 +333,7 @@ Actions.PutInVehicle = function(targetSrc)
         return
     end
 
-    LSLegacy.SendEventToServer('police:putInVehicle', {
+    LSLegacy.Events.SendToServer('police:putInVehicle', {
         target  = targetSrc,
         vehNet  = NetworkGetNetworkIdFromEntity(veh),
         seat    = 2, -- arrière droit
@@ -359,7 +359,7 @@ Actions.GetOutVehicle = function()
     end
     if not targetSrc then Notify(Lang.Police.no_target, 'error') return end
 
-    LSLegacy.SendEventToServer('police:getOutVehicle', { target = targetSrc })
+    LSLegacy.Events.SendToServer('police:getOutVehicle', { target = targetSrc })
 
 end
 
@@ -370,7 +370,7 @@ end, false)
 RegisterKeyMapping('police_get_out_vehicle', 'Sortir un passager du véhicule (Police)', 'keyboard', 'F10')
 
 -- Handler : être placé dans un véhicule par un policier
-LSLegacy.RegisterClientEvent('police:forcePutInVehicle', function(data)
+LSLegacy.Events.Register('police:forcePutInVehicle', function(data)
     if not data then return end
     local veh  = NetToVeh(data.vehNet)
     if not DoesEntityExist(veh) then return end
@@ -384,13 +384,13 @@ LSLegacy.RegisterClientEvent('police:forcePutInVehicle', function(data)
     Notify('Vous avez été placé(e) dans le véhicule.', 'info')
 end)
 
-LSLegacy.RegisterClientEvent('police:forceGetOutVehicle', function()
+LSLegacy.Events.Register('police:forceGetOutVehicle', function()
     TaskLeaveVehicle(PlayerPedId(), GetVehiclePedIsIn(PlayerPedId(), false), 4160)
     Notify('Vous avez été sorti(e) du véhicule.', 'info')
 end)
 
 -- Nettoyage arme saisie : retire du ped + fast slots + DataStore
-LSLegacy.RegisterClientEvent('police:clearWeapon', function(data)
+LSLegacy.Events.Register('police:clearWeapon', function(data)
     if not data or not data.itemName then return end
     prepareWeaponTransfer(data.itemName, nil)
 end)
@@ -405,7 +405,7 @@ Actions.SeizeItem = function(targetSrc)
     PlayAnim('amb@world_human_cop_idles@male@idle_a', 'idle_b',
         Config.Police.Actions.seizeItemDuration, 49)
 
-    LSLegacy.SendEventToServer('police:seizeItem', {
+    LSLegacy.Events.SendToServer('police:seizeItem', {
         target   = targetSrc,
         itemName = string.lower(itemName),
         count    = 1,
@@ -422,7 +422,7 @@ local function RemoveFromList(list, itemName)
     end
 end
 
-LSLegacy.RegisterClientEvent('police:seizeResult', function(data)
+LSLegacy.Events.Register('police:seizeResult', function(data)
     if not data then return end
     if data.success then
         Notify(string.format(Lang.Police.seize_item, data.label, data.count), 'success')
@@ -461,7 +461,7 @@ Actions.Fine = function(targetSrc)
         return
     end
 
-    LSLegacy.SendEventToServer('mdt:createFine', {
+    LSLegacy.Events.SendToServer('mdt:createFine', {
         target      = targetSrc,
         reason      = reason,
         amount      = amount,
@@ -485,7 +485,7 @@ Actions.PlaceCustody = function(targetSrc)
     local durationStr = LSLegacy.KeyboardInput('Durée (minutes, max 240)', 3)
     local duration    = math.min(tonumber(durationStr) or 30, 240)
 
-    LSLegacy.SendEventToServer('police:custody', {
+    LSLegacy.Events.SendToServer('police:custody', {
         target   = targetSrc,
         reason   = reason,
         duration = duration,
@@ -508,7 +508,7 @@ Actions.SendToPrison = function(targetSrc)
     local durationStr = LSLegacy.KeyboardInput('Durée de peine (minutes, max 720)', 3)
     local duration    = math.min(tonumber(durationStr) or 30, 720)
 
-    LSLegacy.SendEventToServer('police:prison', {
+    LSLegacy.Events.SendToServer('police:prison', {
         target   = targetSrc,
         reason   = reason,
         duration = duration,
@@ -592,7 +592,7 @@ exports.ox_target:addGlobalPlayer({
 local isCuffed = false
 LSLegacy.IsCuffed = false  -- flag accessible à tous les scripts du même contexte Lua
 
-LSLegacy.RegisterClientEvent('police:setCuffed', function(state)
+LSLegacy.Events.Register('police:setCuffed', function(state)
     isCuffed          = state
     LSLegacy.IsCuffed = state
     if state then
@@ -641,7 +641,7 @@ Citizen.CreateThread(function()
 end)
 
 -- Gèle les contrôles de la cible pendant l'animation de menottage
-LSLegacy.RegisterClientEvent('police:cuffAnimation', function(data)
+LSLegacy.Events.Register('police:cuffAnimation', function(data)
     if not data then return end
     local duration = data.duration or 3000
     local ped      = PlayerPedId()

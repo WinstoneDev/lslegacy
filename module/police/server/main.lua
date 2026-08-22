@@ -154,7 +154,7 @@ MySQL.Async.execute([[
 
 -- PRISE DE SERVICE
 
-LSLegacy.RegisterServerEvent('police:onDuty', function(data)
+LSLegacy.Events.Register('police:onDuty', function(data)
     local src = source
     if not IsPoliceOfficer(src) then return end
     if not data then return end
@@ -192,7 +192,7 @@ LSLegacy.RegisterServerEvent('police:onDuty', function(data)
         ' — Service : ' .. (data.service or '?') .. ' / Unité : ' .. (data.unit or '?'), 3066993)
 end)
 
-LSLegacy.RegisterServerEvent('police:offDuty', function()
+LSLegacy.Events.Register('police:offDuty', function()
     local src   = source
     if not PoliceOfficers[src] then return end
 
@@ -217,7 +217,7 @@ end)
 
 -- SPAWN VÉHICULE
 
-LSLegacy.RegisterServerEvent('police:spawnVehicle', function(data)
+LSLegacy.Events.Register('police:spawnVehicle', function(data)
     local src   = source
     if not IsPoliceOfficer(src) or not PoliceOfficers[src] then return end
     if not data or not data.model then return end

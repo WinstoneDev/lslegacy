@@ -266,7 +266,7 @@ Shared.Anticheat.Unban = function(id)
     end)
 end
 
-LSLegacy.AddEventHandler("playerConnecting", function(name, setKickReason, deferrals)
+LSLegacy.Events.AddHandler("playerConnecting", function(name, setKickReason, deferrals)
     local _src = source
     playerBanned = false
     local ids = Shared.Anticheat.ExtractIdentifiersBan(_src)

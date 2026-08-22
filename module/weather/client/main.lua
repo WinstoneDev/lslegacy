@@ -10,7 +10,7 @@ local function Clamp(value, min, max)
 end
 
 -- NetworkOverrideClockTime plante le client si hours/minutes sortent de leur plage : on clamp par sécurité.
-LSLegacy.RegisterClientEvent('weather:syncClock', function(hour, minute, day, month, year)
+LSLegacy.Events.Register('weather:syncClock', function(hour, minute, day, month, year)
     currentHour = math.floor(Clamp(tonumber(hour) or 0, 0, 23))
     currentMinute = math.floor(Clamp(tonumber(minute) or 0, 0, 59))
     SetClockDate(day, month, year)
@@ -18,7 +18,7 @@ end)
 
 CreateThread(function()
     -- Sans ça, on resterait sur l'heure par défaut du jeu jusqu'au prochain tick serveur.
-    LSLegacy.SendEventToServer('weather:requestClockSync')
+    LSLegacy.Events.SendToServer('weather:requestClockSync')
 
     while true do
         Wait(0)

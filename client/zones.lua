@@ -1,4 +1,4 @@
-LSLegacy.RegisterClientEvent('zones:registerBlips', function(zones)
+LSLegacy.Events.Register('zones:registerBlips', function(zones)
     for name, zone in pairs(zones) do
         if zone.drawBlip then
             Config.Development.Print("Registering blip " .. zone.blipInfos.blipName)
@@ -18,7 +18,7 @@ LSLegacy.PedsZones = {}
 LSLegacy.ActiveZones = {}
 LSLegacy.ZoneDynamicState = LSLegacy.ZoneDynamicState or {}
 
-LSLegacy.RegisterClientEvent('SpawnPedZone', function(hash, coords, zone)
+LSLegacy.Events.Register('SpawnPedZone', function(hash, coords, zone)
     if not hash or not coords or not zone then return end
 
     if not LSLegacy.PedsZones[zone] then
@@ -53,11 +53,11 @@ LSLegacy.RegisterClientEvent('SpawnPedZone', function(hash, coords, zone)
     SetModelAsNoLongerNeeded(pedHash)
 end)
 
-LSLegacy.RegisterClientEvent('zones:updateZoneState', function(name, state)
+LSLegacy.Events.Register('zones:updateZoneState', function(name, state)
     LSLegacy.ZoneDynamicState[name] = state
 end)
 
-LSLegacy.RegisterClientEvent('zones:exitedZone', function(zoneName)
+LSLegacy.Events.Register('zones:exitedZone', function(zoneName)
     LSLegacy.ActiveZones[zoneName] = nil
     LSLegacy.ZoneDynamicState[zoneName] = nil
 
@@ -66,7 +66,7 @@ LSLegacy.RegisterClientEvent('zones:exitedZone', function(zoneName)
     RageUI.CloseAll()
 end)
 
-LSLegacy.RegisterClientEvent('zones:enteredZone', function(zone)
+LSLegacy.Events.Register('zones:enteredZone', function(zone)
     if not zone or not zone.name then return end
 
     -- Protection contre plusieurs threads pour la même zone
@@ -149,7 +149,7 @@ LSLegacy.RegisterClientEvent('zones:enteredZone', function(zone)
                     LSLegacy.DisplayInteract(message)
 
                     if IsControlJustPressed(0, 51) then
-                        LSLegacy.SendEventToServer(
+                        LSLegacy.Events.SendToServer(
                             'zones:haveInteract',
                             zone.name
                         )

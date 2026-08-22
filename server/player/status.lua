@@ -40,7 +40,7 @@ end
 LSLegacy.Status.SetHunger = function(player, value)
     local v = math.min(100, math.max(0, value))
     LSLegacy.Status.GetStatuses(player).hunger = v
-    LSLegacy.SendEventToClient('UpdatePlayer', player.source, LSLegacy.ServerPlayers[player.source])
+    LSLegacy.Events.SendToClient('UpdatePlayer', player.source, LSLegacy.ServerPlayers[player.source])
 end
 
 ---SetThirst
@@ -50,7 +50,7 @@ end
 LSLegacy.Status.SetThirst = function(player, value)
     local v = math.min(100, math.max(0, value))
     LSLegacy.Status.GetStatuses(player).thirst = v
-    LSLegacy.SendEventToClient('UpdatePlayer', player.source, LSLegacy.ServerPlayers[player.source])
+    LSLegacy.Events.SendToClient('UpdatePlayer', player.source, LSLegacy.ServerPlayers[player.source])
 end
 
 ---SetStamina
@@ -60,7 +60,7 @@ end
 LSLegacy.Status.SetStamina = function(player, value)
     local v = math.min(100, math.max(0, value))
     LSLegacy.Status.GetStatuses(player).stamina = v
-    LSLegacy.SendEventToClient('UpdatePlayer', player.source, LSLegacy.ServerPlayers[player.source])
+    LSLegacy.Events.SendToClient('UpdatePlayer', player.source, LSLegacy.ServerPlayers[player.source])
 end
 
 ---AddHunger
@@ -133,12 +133,12 @@ CreateThread(function()
                 if thirst <= 0 then hpLoss = hpLoss + Config.Status.ThirstHPLoss end
 
                 if hpLoss > 0 and not player.isComa and not player.isKO then
-                    LSLegacy.SendEventToClient("LSLegacy:status:applyHPDrain", player.source, hpLoss)
+                    LSLegacy.Events.SendToClient("LSLegacy:status:applyHPDrain", player.source, hpLoss)
 
                     local msg = (hunger <= 0 and thirst <= 0)
                         and "Vous vous sentez terriblement mal, vous mourez de faim et de soif."
                         or  (hunger <= 0 and "Vous vous sentez faible, vous mourez de faim." or "Vous vous déshydratez dangereusement.")
-                    LSLegacy.SendEventToClient("notify", player.source, "État critique", msg, "error")
+                    LSLegacy.Events.SendToClient("notify", player.source, "État critique", msg, "error")
                 end
             end
         end

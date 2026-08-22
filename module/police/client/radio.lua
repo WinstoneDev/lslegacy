@@ -70,7 +70,7 @@ RegisterNUICallback('radio:setChannel', function(data, cb)
     PmaSetChannel(Radio.Channel)
 
     -- Notifier le serveur (tracking HUD + logs)
-    LSLegacy.SendEventToServer('police:radio:join', { channelId = data.id })
+    LSLegacy.Events.SendToServer('police:radio:join', { channelId = data.id })
 
     -- Feedback UI
     local ch = nil
@@ -91,7 +91,7 @@ RegisterNUICallback('radio:disable', function(_, cb)
     Radio.Active  = false
     Radio.Channel = nil
     Notify(Lang.Police.radio_off, 'info')
-    LSLegacy.SendEventToServer('police:radio:leave')
+    LSLegacy.Events.SendToServer('police:radio:leave')
     cb('ok')
 end)
 
@@ -122,11 +122,11 @@ end)
 
 -- Désactiver proprement à la fin de service
 
-LSLegacy.AddEventHandler('police:dutyChanged', function(onDuty)
+LSLegacy.Events.AddHandler('police:dutyChanged', function(onDuty)
     if not onDuty and Radio.Active then
         PmaLeaveChannel(Radio.Channel)
         Radio.Active  = false
         Radio.Channel = nil
-        LSLegacy.SendEventToServer('police:radio:leave')
+        LSLegacy.Events.SendToServer('police:radio:leave')
     end
 end)

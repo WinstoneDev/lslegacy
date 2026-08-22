@@ -1,5 +1,5 @@
 -- tpm : reçoit l'ordre du serveur (RegisterCommand client supprimé pour sécurité)
-LSLegacy.RegisterClientEvent('admin:doTpm', function()
+LSLegacy.Events.Register('admin:doTpm', function()
     if LSLegacy.Anticheat then LSLegacy.Anticheat.AllowTeleport() end
     local entity = PlayerPedId()
     local blipFound = false
@@ -50,7 +50,7 @@ LSLegacy.RegisterClientEvent('admin:doTpm', function()
 end)
 
 -- pos : affiche les coordonnées reçues du serveur
-LSLegacy.RegisterClientEvent('admin:showPos', function(x, y, z, h)
+LSLegacy.Events.Register('admin:showPos', function(x, y, z, h)
     Config.Development.Print(vector3(x, y, z))
     Config.Development.Print(h)
 end)

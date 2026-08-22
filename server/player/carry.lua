@@ -28,7 +28,7 @@ local function StopCarry(src)
     TriggerClientEvent('lslegacy_carry:client:stop', src)
 end
 
-LSLegacy.RegisterServerEvent('lslegacy_carry:request', function(targetServerId)
+LSLegacy.Events.Register('lslegacy_carry:request', function(targetServerId)
     local src = source
     local target = tonumber(targetServerId)
     if not target or GetPlayerName(target) == nil or target == src then return end
@@ -45,7 +45,7 @@ LSLegacy.RegisterServerEvent('lslegacy_carry:request', function(targetServerId)
     end
 end)
 
-LSLegacy.RegisterServerEvent('lslegacy_carry:confirm', function(requesterServerId)
+LSLegacy.Events.Register('lslegacy_carry:confirm', function(requesterServerId)
     local src = source
     local requester = tonumber(requesterServerId)
     if not requester or GetPlayerName(requester) == nil then return end
@@ -55,7 +55,7 @@ LSLegacy.RegisterServerEvent('lslegacy_carry:confirm', function(requesterServerI
     StartCarry(requester, src)
 end)
 
-LSLegacy.RegisterServerEvent('lslegacy_carry:cancel', function()
+LSLegacy.Events.Register('lslegacy_carry:cancel', function()
     StopCarry(source)
 end)
 

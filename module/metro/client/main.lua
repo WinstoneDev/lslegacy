@@ -134,7 +134,7 @@ exports.ox_target:addModel(Config.Metro.TicketMachineModel, {
             dbg('achat ticket demandé')
             -- L'heure in-game n'existe que côté client : on la transmet
             -- pour le label du ticket.
-            LSLegacy.SendEventToServer('metro:buyTicket', GetClockHours(), GetClockMinutes())
+            LSLegacy.Events.SendToServer('metro:buyTicket', GetClockHours(), GetClockMinutes())
         end,
     },
 })
@@ -194,7 +194,7 @@ CreateThread(function()
     end
 end)
 
-LSLegacy.RegisterClientEvent('metro:toggleTrainBlips', function()
+LSLegacy.Events.Register('metro:toggleTrainBlips', function()
     trainBlipsEnabled = not trainBlipsEnabled
     dbg('blips de debug rames', trainBlipsEnabled and 'ACTIVÉS' or 'DÉSACTIVÉS')
     if not trainBlipsEnabled then
@@ -208,7 +208,7 @@ end)
 
 -- ── Retours serveur ─────────────────────────────────────────────────
 
-LSLegacy.RegisterClientEvent('metro:setEnabled', function(enabled)
+LSLegacy.Events.Register('metro:setEnabled', function(enabled)
     metroEnabled = enabled
     dbg('métro', enabled and 'ACTIVÉ' or 'DÉSACTIVÉ', 'par le staff')
     if not enabled then
@@ -218,12 +218,12 @@ LSLegacy.RegisterClientEvent('metro:setEnabled', function(enabled)
     end
 end)
 
-LSLegacy.RegisterClientEvent('metro:ticketBought', function()
+LSLegacy.Events.Register('metro:ticketBought', function()
     dbg('ticket acheté avec succès')
     Notify(Lang.Metro.ticket_bought, 'success')
 end)
 
-LSLegacy.RegisterClientEvent('metro:ticketFailed', function(reason)
+LSLegacy.Events.Register('metro:ticketFailed', function(reason)
     dbg('achat ticket refusé :', tostring(reason))
     Notify(reason or Lang.Metro.ticket_failed, 'error')
 end)

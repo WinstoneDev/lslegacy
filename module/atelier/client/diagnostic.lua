@@ -53,7 +53,7 @@ local function ShowReport(data)
     lib.showContext('atelier_diagnostic_report')
 end
 
-LSLegacy.RegisterClientEvent('atelier:diagnosticResult', function(data)
+LSLegacy.Events.Register('atelier:diagnosticResult', function(data)
     if not data then return end
     ShowReport(data)
 end)
@@ -61,7 +61,7 @@ end)
 local function Diagnose(veh)
     if HasCooldown('diagnose') then Notify(Lang.Atelier.action_cooldown, 'error') return end
     SetCooldown('diagnose')
-    LSLegacy.SendEventToServer('atelier:requestDiagnostic', { vehNet = NetworkGetNetworkIdFromEntity(veh) })
+    LSLegacy.Events.SendToServer('atelier:requestDiagnostic', { vehNet = NetworkGetNetworkIdFromEntity(veh) })
 end
 
 exports.ox_target:addGlobalVehicle({

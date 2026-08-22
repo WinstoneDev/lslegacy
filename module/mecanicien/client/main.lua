@@ -53,7 +53,7 @@ local function GoOnDuty()
     Mecanicien.OnDuty = true
     Mecanicien.Grade  = GetGrade()
 
-    LSLegacy.SendEventToServer('mecanicien:onDuty')
+    LSLegacy.Events.SendToServer('mecanicien:onDuty')
     Notify(Lang.Mecanicien.duty_on, 'success')
     --TriggerEvent('mecanicien:dutyChanged', true)
 end
@@ -66,7 +66,7 @@ local function GoOffDuty()
     end
     Mecanicien.OnDuty = false
 
-    LSLegacy.SendEventToServer('mecanicien:offDuty')
+    LSLegacy.Events.SendToServer('mecanicien:offDuty')
     Notify(Lang.Mecanicien.duty_off, 'info')
     --TriggerEvent('mecanicien:dutyChanged', false)
 end
@@ -143,7 +143,7 @@ local function OpenGarageMenu()
                 icon = 'fa-solid fa-truck-pickup',
                 disabled = not available,
                 onSelect = function()
-                    LSLegacy.SendEventToServer('mecanicien:spawnVehicle', {
+                    LSLegacy.Events.SendToServer('mecanicien:spawnVehicle', {
                         model    = veh.model,
                         category = category,
                         grade    = veh.grade,
@@ -206,10 +206,10 @@ local function OpenPartsDepot()
     if not Mecanicien.OnDuty then Notify(Lang.Mecanicien.not_mecanicien, 'error') return end
     if Mecanicien.HeldPart then Notify(Lang.Mecanicien.depot_already_holding, 'error') return end
 
-    LSLegacy.SendEventToServer('mecanicien:requestStock')
+    LSLegacy.Events.SendToServer('mecanicien:requestStock')
 end
 
-LSLegacy.RegisterClientEvent('mecanicien:stockResult', function(stock)
+LSLegacy.Events.Register('mecanicien:stockResult', function(stock)
     stock = stock or {}
     local options = {}
 
@@ -222,7 +222,7 @@ LSLegacy.RegisterClientEvent('mecanicien:stockResult', function(stock)
             icon = part.carried and 'fa-solid fa-hand-holding' or 'fa-solid fa-circle-dot',
             disabled = not available,
             onSelect = function()
-                LSLegacy.SendEventToServer('mecanicien:buyPart', { item = itemName })
+                LSLegacy.Events.SendToServer('mecanicien:buyPart', { item = itemName })
             end,
         }
     end
@@ -243,7 +243,7 @@ LSLegacy.RegisterClientEvent('mecanicien:stockResult', function(stock)
                             local qtyStr = LSLegacy.KeyboardInput('Quantité à ajouter au stock', 4)
                             local qty    = tonumber(qtyStr)
                             if not qty or qty <= 0 then return end
-                            LSLegacy.SendEventToServer('mecanicien:restockDepot', { item = itemName, amount = math.floor(qty) })
+                            LSLegacy.Events.SendToServer('mecanicien:restockDepot', { item = itemName, amount = math.floor(qty) })
                         end,
                     }
                 end
@@ -257,7 +257,7 @@ LSLegacy.RegisterClientEvent('mecanicien:stockResult', function(stock)
     lib.showContext('mecanicien_depot')
 end)
 
-LSLegacy.RegisterClientEvent('mecanicien:restockResult', function(data)
+LSLegacy.Events.Register('mecanicien:restockResult', function(data)
     if not data then return end
     if data.success then
         local part = data.item and Config.Mecanicien.Parts[data.item]
@@ -265,7 +265,7 @@ LSLegacy.RegisterClientEvent('mecanicien:restockResult', function(data)
     end
 end)
 
-LSLegacy.RegisterClientEvent('mecanicien:partBought', function(data)
+LSLegacy.Events.Register('mecanicien:partBought', function(data)
     if not data then return end
     Notify(string.format(Lang.Mecanicien.depot_part_bought, data.label), 'success')
     local part = Config.Mecanicien.Parts[data.item]
@@ -346,7 +346,7 @@ exports.ox_target:addBoxZone({
 
 -- Events serveur → client
 
-LSLegacy.RegisterClientEvent('mecanicien:spawnVehicleClient', function(data)
+LSLegacy.Events.Register('mecanicien:spawnVehicleClient', function(data)
     if not data or not data.model then return end
     local coords  = GetEntityCoords(PlayerPedId())
     local heading = GetEntityHeading(PlayerPedId())

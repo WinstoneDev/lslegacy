@@ -148,7 +148,7 @@ local function runPreview()
                     cfg.ownerId = owner or ""
                 end
 
-                LSLegacy.SendEventToServer('keyhanger:create', {
+                LSLegacy.Events.SendToServer('keyhanger:create', {
                     board     = cfg.boardKey,
                     ownerType = cfg.ownerType,
                     ownerId   = cfg.ownerId,
@@ -215,7 +215,7 @@ local function openPMenu()
     end)
 end
 
-LSLegacy.RegisterClientEvent('keyhanger:placement:start', function()
+LSLegacy.Events.Register('keyhanger:placement:start', function()
     if placing then return end
     openPMenu()
 end)

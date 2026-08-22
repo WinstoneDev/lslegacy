@@ -23,7 +23,7 @@ local function getCharacterId(src)
     return player and player["boutique-id"] or nil
 end
 
-LSLegacy.RegisterServerEvent('lslegacy_emotes:getFavorites', function()
+LSLegacy.Events.Register('lslegacy_emotes:getFavorites', function()
     local src = source
     local characterId = getCharacterId(src)
     if not characterId then return end
@@ -39,7 +39,7 @@ LSLegacy.RegisterServerEvent('lslegacy_emotes:getFavorites', function()
     end)
 end)
 
-LSLegacy.RegisterServerEvent('lslegacy_emotes:toggleFavorite', function(emoteKey)
+LSLegacy.Events.Register('lslegacy_emotes:toggleFavorite', function(emoteKey)
     local src = source
     local characterId = getCharacterId(src)
     if not characterId or type(emoteKey) ~= 'string' or #emoteKey == 0 or #emoteKey > 80 then return end
@@ -70,7 +70,7 @@ local function playerDistance(a, b)
     return #(GetEntityCoords(pedA) - GetEntityCoords(pedB))
 end
 
-LSLegacy.RegisterServerEvent('lslegacy_emotes:requestShared', function(targetServerId, emoteId)
+LSLegacy.Events.Register('lslegacy_emotes:requestShared', function(targetServerId, emoteId)
     local src = source
     local target = tonumber(targetServerId)
     if not target or GetPlayerName(target) == nil then return end
@@ -79,7 +79,7 @@ LSLegacy.RegisterServerEvent('lslegacy_emotes:requestShared', function(targetSer
     TriggerClientEvent('lslegacy_emotes:client:requestShared', target, emoteId, src)
 end)
 
-LSLegacy.RegisterServerEvent('lslegacy_emotes:confirmShared', function(requesterServerId, emoteId, targetEmoteId)
+LSLegacy.Events.Register('lslegacy_emotes:confirmShared', function(requesterServerId, emoteId, targetEmoteId)
     local src = source
     local requester = tonumber(requesterServerId)
     if not requester or GetPlayerName(requester) == nil then return end
@@ -89,7 +89,7 @@ LSLegacy.RegisterServerEvent('lslegacy_emotes:confirmShared', function(requester
     TriggerClientEvent('lslegacy_emotes:client:playSharedTarget', src, targetEmoteId, requester)
 end)
 
-LSLegacy.RegisterServerEvent('lslegacy_emotes:cancelShared', function(otherServerId)
+LSLegacy.Events.Register('lslegacy_emotes:cancelShared', function(otherServerId)
     local src = source
     local target = tonumber(otherServerId)
     if not target or GetPlayerName(target) == nil then return end

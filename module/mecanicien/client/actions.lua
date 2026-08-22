@@ -97,7 +97,7 @@ local function RepairEngine(veh)
             Notify(Lang.Mecanicien.repair_engine_failed, 'error')
             return
         end
-        LSLegacy.SendEventToServer('mecanicien:repairEngine', {
+        LSLegacy.Events.SendToServer('mecanicien:repairEngine', {
             vehNet = NetworkGetNetworkIdFromEntity(veh),
             customer = customerSrc,
         })
@@ -127,7 +127,7 @@ local function ChangeTyre(veh)
             Notify(Lang.Mecanicien.change_tyre_failed, 'error')
             return
         end
-        LSLegacy.SendEventToServer('mecanicien:changeTyre', {
+        LSLegacy.Events.SendToServer('mecanicien:changeTyre', {
             vehNet   = NetworkGetNetworkIdFromEntity(veh),
             wheel    = burstWheel,
             customer = customerSrc,
@@ -135,7 +135,7 @@ local function ChangeTyre(veh)
     end)
 end
 
-LSLegacy.RegisterClientEvent('mecanicien:repairResult', function(data)
+LSLegacy.Events.Register('mecanicien:repairResult', function(data)
     if not data then return end
     if data.success then
         Notify(Lang.Mecanicien.repair_engine_done, 'success')
@@ -144,7 +144,7 @@ LSLegacy.RegisterClientEvent('mecanicien:repairResult', function(data)
     end
 end)
 
-LSLegacy.RegisterClientEvent('mecanicien:tyreResult', function(data)
+LSLegacy.Events.Register('mecanicien:tyreResult', function(data)
     if not data then return end
     if data.success then
         Notify(Lang.Mecanicien.change_tyre_done, 'success')
@@ -190,7 +190,7 @@ local function OpenTuningMenu(veh)
                     colorOptions[#colorOptions + 1] = {
                         title = c.label,
                         onSelect = function()
-                            LSLegacy.SendEventToServer('mecanicien:requestTuning', {
+                            LSLegacy.Events.SendToServer('mecanicien:requestTuning', {
                                 vehNet = vehNet, customer = customerSrc, kind = 'color', price = prices.color,
                             })
                             ApplyColor(veh, c.id)
@@ -211,7 +211,7 @@ local function OpenTuningMenu(veh)
                     wheelOptions[#wheelOptions + 1] = {
                         title = w.label,
                         onSelect = function()
-                            LSLegacy.SendEventToServer('mecanicien:requestTuning', {
+                            LSLegacy.Events.SendToServer('mecanicien:requestTuning', {
                                 vehNet = vehNet, customer = customerSrc, kind = 'wheels', price = prices.wheels,
                             })
                             ApplyWheelType(veh, w.id)
@@ -227,7 +227,7 @@ local function OpenTuningMenu(veh)
             description = prices.performance .. '$',
             icon = 'fa-solid fa-gauge-high',
             onSelect = function()
-                LSLegacy.SendEventToServer('mecanicien:requestTuning', {
+                LSLegacy.Events.SendToServer('mecanicien:requestTuning', {
                     vehNet = vehNet, customer = customerSrc, kind = 'performance', price = prices.performance,
                 })
                 ApplyPerformance(veh)
@@ -239,7 +239,7 @@ local function OpenTuningMenu(veh)
     lib.showContext('mecanicien_tuning')
 end
 
-LSLegacy.RegisterClientEvent('mecanicien:tuningResult', function(data)
+LSLegacy.Events.Register('mecanicien:tuningResult', function(data)
     if not data then return end
     if data.success then
         Notify(string.format(Lang.Mecanicien.tuning_applied, data.kind), 'success')

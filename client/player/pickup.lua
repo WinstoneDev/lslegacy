@@ -2,7 +2,7 @@ LSLegacy.Pickup = {}
 
 LSLegacy.IsRetrieving = false
 
-LSLegacy.RegisterClientEvent('interactItemPickup', function(type, data)
+LSLegacy.Events.Register('interactItemPickup', function(type, data)
     if type == "create" then
         object = CreateObject(data.model, data.coords.x, data.coords.y, data.coords.z - 1, false, false, false)
         SetEntityHeading(object, data.coords.w)
@@ -55,7 +55,7 @@ Citizen.CreateThread(function()
                         end
                         TaskPlayAnim(pPed, 'random@domestic', 'pickup_low', 8.0, 8.0, -1, 0, 1, 0, 0, 0)
                         Wait(150)
-                        LSLegacy.SendEventToServer("removeItemPickup", {
+                        LSLegacy.Events.SendToServer("removeItemPickup", {
                             id = v.id,
                             object = v.object,
                             name = v.name, 

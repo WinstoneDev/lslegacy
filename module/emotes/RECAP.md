@@ -84,7 +84,7 @@ emotes_conditionalanims.meta   -- racine de la ressource
 
 ## Conventions du projet respectées
 
-- Tous les événements réseau passent par `LSLegacy.RegisterClientEvent` / `LSLegacy.RegisterServerEvent` / `LSLegacy.SendEventToServer` (pas de `RegisterNetEvent`/`TriggerServerEvent` bruts)
+- Tous les événements réseau passent par `LSLegacy.Events.Register` / `LSLegacy.Events.Register` / `LSLegacy.Events.SendToServer` (pas de `RegisterNetEvent`/`TriggerServerEvent` bruts)
 - Rate limits ajoutés dans `LSLegacy.RateLimit` (`server/function.lua`) pour les 5 événements serveur du module
 - Toutes les touches sont enregistrées via `RegisterKeyMapping`/`Keys.Register` (rebindables par le joueur dans les paramètres FiveM)
 

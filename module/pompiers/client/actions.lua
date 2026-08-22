@@ -81,19 +81,19 @@ local function Rescue(targetSrc)
 
     PlayAnim('mini@repair', 'fixing_a_ped', Config.Pompiers.Actions.rescueDuration, 49)
 
-    LSLegacy.SendEventToServer('pompiers:rescue', { target = targetSrc })
+    LSLegacy.Events.SendToServer('pompiers:rescue', { target = targetSrc })
 end
 
 -- Résultats serveur
 
-LSLegacy.RegisterClientEvent('pompiers:rescueResult', function(data)
+LSLegacy.Events.Register('pompiers:rescueResult', function(data)
     if not data then return end
     if data.success then
         Notify(Lang.Pompiers.rescue_done, 'success')
     end
 end)
 
-LSLegacy.RegisterClientEvent('pompiers:rescuedByFiremen', function()
+LSLegacy.Events.Register('pompiers:rescuedByFiremen', function()
     local ped = PlayerPedId()
     if IsPedInAnyVehicle(ped, false) then
         TaskLeaveVehicle(ped, GetVehiclePedIsIn(ped, false), 4160)

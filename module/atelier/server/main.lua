@@ -27,7 +27,7 @@ MySQL.Async.execute([[
 
 -- PRISE DE SERVICE
 
-LSLegacy.RegisterServerEvent('atelier:onDuty', function()
+LSLegacy.Events.Register('atelier:onDuty', function()
     local src = source
     local companyId = LSLegacy.Atelier.GetCompany(src)
     if not companyId then return end
@@ -49,10 +49,10 @@ LSLegacy.RegisterServerEvent('atelier:onDuty', function()
         { ['@charId'] = charId, ['@company'] = companyId, ['@id'] = ident, ['@name'] = name }
     )
 
-    LSLegacy.SendEventToClient('atelier:dutyResult', src, { success = true, onDuty = true, companyId = companyId, grade = grade })
+    LSLegacy.Events.SendToClient('atelier:dutyResult', src, { success = true, onDuty = true, companyId = companyId, grade = grade })
 end)
 
-LSLegacy.RegisterServerEvent('atelier:offDuty', function()
+LSLegacy.Events.Register('atelier:offDuty', function()
     local src = source
     local agent = LSLegacy.Atelier.Agents[src]
     if not agent then return end
@@ -66,12 +66,12 @@ LSLegacy.RegisterServerEvent('atelier:offDuty', function()
     end
     LSLegacy.Atelier.Agents[src] = nil
 
-    LSLegacy.SendEventToClient('atelier:dutyResult', src, { success = true, onDuty = false })
+    LSLegacy.Events.SendToClient('atelier:dutyResult', src, { success = true, onDuty = false })
 end)
 
 -- SPAWN VÉHICULE (dépanneuse)
 
-LSLegacy.RegisterServerEvent('atelier:spawnVehicle', function(data)
+LSLegacy.Events.Register('atelier:spawnVehicle', function(data)
     local src = source
     local ok, companyId = LSLegacy.Atelier.CanAct(src)
     if not ok then return end
@@ -96,7 +96,7 @@ LSLegacy.RegisterServerEvent('atelier:spawnVehicle', function(data)
         return
     end
 
-    LSLegacy.SendEventToClient('atelier:spawnVehicleClient', src, { model = data.model })
+    LSLegacy.Events.SendToClient('atelier:spawnVehicleClient', src, { model = data.model })
 end)
 
 -- Nettoyage à la déconnexion

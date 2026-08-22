@@ -21,17 +21,17 @@ local function RemoveItemByUniqueId(player, uniqueId)
     player.inventory = inventory
     player:MarkDirty('inventory')
     player.weight    = LSLegacy.Inventory.GetInventoryWeight(player.inventory)
-    LSLegacy.SendEventToClient('UpdatePlayer', player.source, player)
+    LSLegacy.Events.SendToClient('UpdatePlayer', player.source, player)
 end
 
 -- ── Add single clothing item after purchase ───────
-LSLegacy.RegisterServerEvent('AddClothesInInventory', function(item, label, data)
+LSLegacy.Events.Register('AddClothesInInventory', function(item, label, data)
     local player = LSLegacy.Players.Get(source)
     LSLegacy.Inventory.AddItemInInventory(player, item, 1, label, nil, data)
 end)
 
 -- ── Create outfit from individual clothing items ──
-LSLegacy.RegisterServerEvent('clothshop:createOutfit', function(name, itemsData, itemIds)
+LSLegacy.Events.Register('clothshop:createOutfit', function(name, itemsData, itemIds)
     local player = LSLegacy.Players.Get(source)
     if not player then return end
 
@@ -49,11 +49,11 @@ LSLegacy.RegisterServerEvent('clothshop:createOutfit', function(name, itemsData,
     -- Give outfit item with all clothing data embedded
     LSLegacy.Inventory.AddItemInInventory(player, 'outfit', 1, name, nil, outfitData)
 
-    LSLegacy.SendEventToClient('clothshop:outfitCreated', source)
+    LSLegacy.Events.SendToClient('clothshop:outfitCreated', source)
 end)
 
 -- ── Split outfit back into individual items ───────
-LSLegacy.RegisterServerEvent('clothshop:splitOutfit', function(outfitItem)
+LSLegacy.Events.Register('clothshop:splitOutfit', function(outfitItem)
     local player = LSLegacy.Players.Get(source)
     if not player then return end
 
@@ -78,11 +78,11 @@ LSLegacy.RegisterServerEvent('clothshop:splitOutfit', function(outfitItem)
         end
     end
 
-    LSLegacy.SendEventToClient('clothshop:outfitSplit', source)
+    LSLegacy.Events.SendToClient('clothshop:outfitSplit', source)
 end)
 
 -- ── Modify an existing outfit ─────────────────────
-LSLegacy.RegisterServerEvent('clothshop:modifyOutfit', function(modData)
+LSLegacy.Events.Register('clothshop:modifyOutfit', function(modData)
     local player = LSLegacy.Players.Get(source)
     if not player then return end
 
@@ -120,11 +120,11 @@ LSLegacy.RegisterServerEvent('clothshop:modifyOutfit', function(modData)
     local name = modData.newName or 'Tenue'
     LSLegacy.Inventory.AddItemInInventory(player, 'outfit', 1, name, nil, outfitData)
 
-    LSLegacy.SendEventToClient('clothshop:outfitModified', source)
+    LSLegacy.Events.SendToClient('clothshop:outfitModified', source)
 end)
 
 -- ── Modifier une tenue depuis l'inventaire (drag & drop) ──
-LSLegacy.RegisterServerEvent('inventory:updateOutfitFromInventory', function(updateData)
+LSLegacy.Events.Register('inventory:updateOutfitFromInventory', function(updateData)
     local player = LSLegacy.Players.Get(source)
     if not player or not updateData.outfitUniqueId then return end
 
@@ -163,7 +163,7 @@ LSLegacy.RegisterServerEvent('inventory:updateOutfitFromInventory', function(upd
     if (not updateData.consumedItems or #updateData.consumedItems == 0) and
        (not updateData.removedSlots  or not next(updateData.removedSlots)) then
         player.weight = LSLegacy.Inventory.GetInventoryWeight(player.inventory)
-        LSLegacy.SendEventToClient('UpdatePlayer', player.source, player)
+        LSLegacy.Events.SendToClient('UpdatePlayer', player.source, player)
     end
 end)
 
@@ -174,7 +174,7 @@ for k, v in pairs(Config.zoneClothShop) do
     for i = 1, #v, 1 do
         number = number + 1
         LSLegacy.RegisterZone('Magasin de vêtements n°'..number, v[i].coords, function(source)
-            LSLegacy.SendEventToClient('openClothMenu', source, "Magasin de vêtements n°"..number, v.Type)
+            LSLegacy.Events.SendToClient('openClothMenu', source, "Magasin de vêtements n°"..number, v.Type)
         end, 10.0, true, {
             markerType  = 25,
             markerColor = {r = 0, g = 125, b = 255, a = 255},

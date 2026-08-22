@@ -23,7 +23,7 @@ local function pedOfflineLoadSleepingList()
     -- Creer une promesse locale et envoyer la requete au serveur
     local prom = promise:new()
     pedOfflineLoadPromise = prom
-    LSLegacy.SendEventToServer("pedOffline:request:sleepingList")
+    LSLegacy.Events.SendToServer("pedOffline:request:sleepingList")
 
     -- Timeout de securite : 10 secondes
     SetTimeout(10000, function()
@@ -46,8 +46,8 @@ local function pedOfflineLoadSleepingList()
     pedOfflineLoading = false
 end
 
--- InitPlayer est deja enregistre dans player.lua -> LSLegacy.AddEventHandler pour un 2e handler
-LSLegacy.AddEventHandler('InitPlayer', pedOfflineLoadSleepingList)
+-- InitPlayer est deja enregistre dans player.lua -> LSLegacy.Events.AddHandler pour un 2e handler
+LSLegacy.Events.AddHandler('InitPlayer', pedOfflineLoadSleepingList)
 
 -- Couvre le cas d'un (re)demarrage de la resource alors que le joueur est deja connecte
 -- (InitPlayer ne se redeclenche pas dans ce cas)
@@ -58,7 +58,7 @@ Citizen.CreateThread(function()
 end)
 
 -- Reponse du serveur avec la liste des peds endormis
-LSLegacy.RegisterClientEvent("pedOffline:response:sleepingList", function(list)
+LSLegacy.Events.Register("pedOffline:response:sleepingList", function(list)
     local count = 0
     if list then for _ in pairs(list) do count = count + 1 end end
     pedOfflineDebug("response:sleepingList recue, taille =", count)
@@ -69,7 +69,7 @@ LSLegacy.RegisterClientEvent("pedOffline:response:sleepingList", function(list)
 end)
 
 -- Synchronisation des actions depuis le serveur
-LSLegacy.RegisterClientEvent("pedOffline:client:sync", function(action, identifier, data)
+LSLegacy.Events.Register("pedOffline:client:sync", function(action, identifier, data)
     pedOfflineDebug("sync", action, identifier)
     if action == "new" then
         Sleeping:new(data)
@@ -99,12 +99,12 @@ LSLegacy.RegisterClientEvent("pedOffline:client:sync", function(action, identifi
 end)
 
 -- Ordre du serveur de lacher le ped (lors d'un putInVehicle)
-LSLegacy.RegisterClientEvent("pedOffline:client:forceStopCarrying", function()
+LSLegacy.Events.Register("pedOffline:client:forceStopCarrying", function()
     Sleeping.StopCarrying(false)
 end)
 
 -- Declenche par le serveur apres outVehicle
-LSLegacy.RegisterClientEvent("pedOffline:client:TargetCarryAction", function(identifier)
+LSLegacy.Events.Register("pedOffline:client:TargetCarryAction", function(identifier)
     local sp = Sleeping.get(identifier)
     if not sp then return end
     Sleeping.TargetCarryAction(sp)
@@ -154,7 +154,7 @@ Citizen.CreateThread(function()
     end
 end)
 
-LSLegacy.AddEventHandler('onResourceStop', function(resourceName)
+LSLegacy.Events.AddHandler('onResourceStop', function(resourceName)
     if resourceName ~= GetCurrentResourceName() then return end
 
     -- Supprime tous les peds endormis spawned localement (evite les duplis au reload)

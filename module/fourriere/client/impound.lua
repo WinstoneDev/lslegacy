@@ -20,7 +20,7 @@ local function OpenImpound(entity)
             description = ('Taxe : %d $  ·  Immobilisation : %d min'):format(fee, dur),
             icon = 'gavel',
             onSelect = function()
-                LSLegacy.SendEventToServer('fourriere:impound', { netId = netId, plate = plate, reason = r.label })
+                LSLegacy.Events.SendToServer('fourriere:impound', { netId = netId, plate = plate, reason = r.label })
             end,
         }
     end
@@ -36,7 +36,7 @@ local function OpenImpound(entity)
                     { type = 'number', label = "Durée d'immobilisation (min)", required = true, min = 0, default = CFG.BaseDuration },
                 })
                 if not input then return end
-                LSLegacy.SendEventToServer('fourriere:impound', {
+                LSLegacy.Events.SendToServer('fourriere:impound', {
                     netId = netId, plate = plate, custom = true,
                     reason = input[1], fee = input[2], duration = input[3],
                 })

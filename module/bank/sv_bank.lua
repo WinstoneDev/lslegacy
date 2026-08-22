@@ -138,7 +138,7 @@ LSLegacy.Bank.GetPersonnalAccounts = function(characterId)
 end
 
 LSLegacy.RegisterZone('Guichet de banque', vector3(243.2082, 224.7312, 106.2869), function(source)
-    LSLegacy.SendEventToClient('openBankMenu', source, 'mazebank', 'Maze Bank')
+    LSLegacy.Events.SendToClient('openBankMenu', source, 'mazebank', 'Maze Bank')
 end, 10.0, false, {
     markerType = 25,
     markerColor = {r = 0, g = 125, b = 255, a = 255},
@@ -162,11 +162,11 @@ end, 10.0, false, {
     }
 })
 
-LSLegacy.RegisterServerEvent('GetBankAccounts', function()
-    LSLegacy.SendEventToClient('receiveBankAccounts', source, LSLegacy.Bank.BankAccounts)
+LSLegacy.Events.Register('GetBankAccounts', function()
+    LSLegacy.Events.SendToClient('receiveBankAccounts', source, LSLegacy.Bank.BankAccounts)
 end)
 
-LSLegacy.RegisterServerEvent('BankCreateAccount', function()
+LSLegacy.Events.Register('BankCreateAccount', function()
     local player = LSLegacy.Players.Get(source)
     local account = {
         owner = player.identifier,
@@ -188,11 +188,11 @@ LSLegacy.RegisterServerEvent('BankCreateAccount', function()
     Wait(150)
     LSLegacy.Bank.GetAllAccounts()
     Wait(150)
-    LSLegacy.SendEventToClient('receiveBankAccounts', player.source, LSLegacy.Bank.BankAccounts)
-    LSLegacy.SendEventToClient('notify', player.source, 'Maze Bank', 'Votre compte a été créé avec succès.', 'success')
+    LSLegacy.Events.SendToClient('receiveBankAccounts', player.source, LSLegacy.Bank.BankAccounts)
+    LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Votre compte a été créé avec succès.', 'success')
 end)
 
-LSLegacy.RegisterServerEvent('BankChangeAccountStatus', function(id, state)
+LSLegacy.Events.Register('BankChangeAccountStatus', function(id, state)
     local player = LSLegacy.Players.Get(source)
     local account = LSLegacy.Bank.GetAccount(id)
     if not account or account.character_id ~= player["boutique-id"] then return end
@@ -211,11 +211,11 @@ LSLegacy.RegisterServerEvent('BankChangeAccountStatus', function(id, state)
     Wait(150)
     LSLegacy.Bank.GetAllAccounts()
     Wait(150)
-    LSLegacy.SendEventToClient('receiveBankAccounts', player.source, LSLegacy.Bank.BankAccounts)
-    LSLegacy.SendEventToClient('notify', player.source, 'Maze Bank', 'Votre compte a été modifié avec succès.', 'success')
+    LSLegacy.Events.SendToClient('receiveBankAccounts', player.source, LSLegacy.Bank.BankAccounts)
+    LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Votre compte a été modifié avec succès.', 'success')
 end)
 
-LSLegacy.RegisterServerEvent('BankDeleteAccount', function(id)
+LSLegacy.Events.Register('BankDeleteAccount', function(id)
     local player = LSLegacy.Players.Get(source)
     local account = LSLegacy.Bank.GetAccount(id)
     if not account or account.character_id ~= player["boutique-id"] then return end
@@ -229,12 +229,12 @@ LSLegacy.RegisterServerEvent('BankDeleteAccount', function(id)
     LSLegacy.Bank.GetAllAccounts()
     LSLegacy.Bank.GetAllLivrets()
     Wait(150)
-    LSLegacy.SendEventToClient('receiveBankAccounts', player.source, LSLegacy.Bank.BankAccounts)
-    LSLegacy.SendEventToClient('notify', player.source, 'Maze Bank', 'Votre compte a été supprimé avec succès.', 'success')
+    LSLegacy.Events.SendToClient('receiveBankAccounts', player.source, LSLegacy.Bank.BankAccounts)
+    LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Votre compte a été supprimé avec succès.', 'success')
 end)
 
 
-LSLegacy.RegisterServerEvent('BankCreateCard', function(id, tier)
+LSLegacy.Events.Register('BankCreateCard', function(id, tier)
     local player = LSLegacy.Players.Get(source)
     local account = LSLegacy.Bank.GetAccount(id)
     if not account or account.character_id ~= player["boutique-id"] then return end
@@ -271,16 +271,16 @@ LSLegacy.RegisterServerEvent('BankCreateCard', function(id, tier)
     Wait(150)
     LSLegacy.Bank.GetAllAccounts()
     Wait(150)
-    LSLegacy.SendEventToClient('receiveBankAccounts', player.source, LSLegacy.Bank.BankAccounts)
-    LSLegacy.SendEventToClient('notify', player.source, 'Maze Bank', 'Votre carte a été créée avec succès.', 'success')
+    LSLegacy.Events.SendToClient('receiveBankAccounts', player.source, LSLegacy.Bank.BankAccounts)
+    LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Votre carte a été créée avec succès.', 'success')
 end)
 
-LSLegacy.RegisterServerEvent('BankSetCardTier', function(id, tier)
+LSLegacy.Events.Register('BankSetCardTier', function(id, tier)
     local player = LSLegacy.Players.Get(source)
     local account = LSLegacy.Bank.GetAccount(id)
     if not account or account.character_id ~= player["boutique-id"] then return end
     if not LSLegacy.Bank.CardTiers[tier] then
-        LSLegacy.SendEventToClient('notify', player.source, 'Maze Bank', 'Palier de carte invalide.', 'error')
+        LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Palier de carte invalide.', 'error')
         return
     end
 
@@ -305,8 +305,8 @@ LSLegacy.RegisterServerEvent('BankSetCardTier', function(id, tier)
     Wait(150)
     LSLegacy.Bank.GetAllAccounts()
     Wait(150)
-    LSLegacy.SendEventToClient('receiveBankAccounts', player.source, LSLegacy.Bank.BankAccounts)
-    LSLegacy.SendEventToClient('notify', player.source, 'Maze Bank', 'Votre palier de carte est maintenant '..tier..'.', 'success')
+    LSLegacy.Events.SendToClient('receiveBankAccounts', player.source, LSLegacy.Bank.BankAccounts)
+    LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Votre palier de carte est maintenant '..tier..'.', 'success')
 end)
 
 LSLegacy.Bank.GetAccount = function(id)
@@ -336,7 +336,7 @@ LSLegacy.Bank.AddTransaction = function(account, amount, message, type)
         ['@transactions'] = json.encode(account.transactions)
     }, function()
         LSLegacy.Bank.GetAllAccounts(function()
-            LSLegacy.SendEventToClient('receiveBankAccounts', _src, LSLegacy.Bank.BankAccounts)
+            LSLegacy.Events.SendToClient('receiveBankAccounts', _src, LSLegacy.Bank.BankAccounts)
         end)
     end)
 end
@@ -349,30 +349,30 @@ LSLegacy.Bank.UpdateAccount = function(account, amount)
         ['@amountMoney'] = account.amountMoney
     }, function()
         LSLegacy.Bank.GetAllAccounts(function()
-            LSLegacy.SendEventToClient('receiveBankAccounts', _src, LSLegacy.Bank.BankAccounts)
+            LSLegacy.Events.SendToClient('receiveBankAccounts', _src, LSLegacy.Bank.BankAccounts)
         end)
     end)
 end
-LSLegacy.RegisterServerEvent('BankAddMoney', function(amount, id)
+LSLegacy.Events.Register('BankAddMoney', function(amount, id)
     local player = LSLegacy.Validate.Player(source)
     local account = LSLegacy.Bank.GetAccount(id)
     if not player or not account then return end
     amount = LSLegacy.Validate.PositiveInteger(amount)
     if not amount then
-        LSLegacy.SendEventToClient('notify', player.source, 'Maze Bank', 'Montant invalide.', 'error')
+        LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Montant invalide.', 'error')
         return
     end
     if LSLegacy.Money.GetPlayerMoney(player) >= amount then
         LSLegacy.Money.RemovePlayerMoney(player, amount)
         LSLegacy.Bank.UpdateAccount(account, account.amountMoney + amount)
         LSLegacy.Bank.AddTransaction(account, amount, 'Ajout de '..amount..'$', 'Dépôt')
-        LSLegacy.SendEventToClient('notify', player.source, 'Maze Bank', 'Vous avez ajouté ' .. amount .. '$ à votre compte.', 'success')
+        LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Vous avez ajouté ' .. amount .. '$ à votre compte.', 'success')
     else
-        LSLegacy.SendEventToClient('notify', player.source, 'Maze Bank', 'Vous n\'avez pas assez d\'argent.', 'error')
+        LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Vous n\'avez pas assez d\'argent.', 'error')
     end
 end)
 
-LSLegacy.RegisterServerEvent('BankwithdrawMoney', function(amount, id)
+LSLegacy.Events.Register('BankwithdrawMoney', function(amount, id)
     local player = LSLegacy.Players.Get(source)
     local account = LSLegacy.Bank.GetAccount(id)
     if not account then return end
@@ -384,15 +384,15 @@ LSLegacy.RegisterServerEvent('BankwithdrawMoney', function(amount, id)
         -- ne consommer le plafond que si le retrait va effectivement avoir lieu
         local ok, remaining = LSLegacy.Bank.CheckAndConsumeCeiling(account, 'withdrawal', amount, tierCfg.withdrawal_ceiling, tierCfg.cost_period)
         if not ok then
-            LSLegacy.SendEventToClient('notify', player.source, 'Maze Bank', 'Plafond de retrait atteint : il vous reste '..math.max(0, math.floor(remaining))..'$ sur '..tierCfg.withdrawal_ceiling..'$ sur la période en cours.', 'error')
+            LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Plafond de retrait atteint : il vous reste '..math.max(0, math.floor(remaining))..'$ sur '..tierCfg.withdrawal_ceiling..'$ sur la période en cours.', 'error')
             return
         end
         LSLegacy.Bank.AddTransaction(account, amount, 'Retrait de ' .. amount .. '$', 'Retrait')
         LSLegacy.Bank.UpdateAccount(account, account.amountMoney - amount)
         LSLegacy.Money.AddPlayerMoney(player, amount)
-        LSLegacy.SendEventToClient('notify', player.source, 'Maze Bank', 'Vous avez retiré ' .. amount .. '$ avec succès.', 'success')
+        LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Vous avez retiré ' .. amount .. '$ avec succès.', 'success')
     else
-        LSLegacy.SendEventToClient('notify', player.source, 'Maze Bank', 'Vous n\'avez pas assez d\'argent sur votre compte.', 'error')
+        LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Vous n\'avez pas assez d\'argent sur votre compte.', 'error')
     end
 end)
 
@@ -533,14 +533,14 @@ LSLegacy.Bank.CheckAndConsumeCeiling = function(account, ceilingType, amount, ce
 end
 
 -- lecture publique (non gated) : tout joueur doit voir taux/plafonds avant de choisir ; seule l'écriture est gated staff
-LSLegacy.RegisterServerEvent('BankAdminGetCardTiers', function()
-    LSLegacy.SendEventToClient('receiveBankAdminCardTiers', source, LSLegacy.Bank.CardTiers)
+LSLegacy.Events.Register('BankAdminGetCardTiers', function()
+    LSLegacy.Events.SendToClient('receiveBankAdminCardTiers', source, LSLegacy.Bank.CardTiers)
 end)
 
-LSLegacy.RegisterServerEvent('BankAdminSetCardTier', function(tier, data)
+LSLegacy.Events.Register('BankAdminSetCardTier', function(tier, data)
     local player = LSLegacy.Players.Get(source)
     if not BankAdminCanDo(source) then
-        LSLegacy.SendEventToClient('notify', player.source, 'Maze Bank', 'Action non autorisée.', 'error')
+        LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Action non autorisée.', 'error')
         return
     end
     if not tier or type(data) ~= 'table' then return end
@@ -572,8 +572,8 @@ LSLegacy.RegisterServerEvent('BankAdminSetCardTier', function(tier, data)
     Wait(150)
     LSLegacy.Bank.GetAllCardTiers()
     Wait(150)
-    LSLegacy.SendEventToClient('receiveBankAdminCardTiers', player.source, LSLegacy.Bank.CardTiers)
-    LSLegacy.SendEventToClient('notify', player.source, 'Maze Bank', 'Palier '..tier..' mis à jour.', 'success')
+    LSLegacy.Events.SendToClient('receiveBankAdminCardTiers', player.source, LSLegacy.Bank.CardTiers)
+    LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Palier '..tier..' mis à jour.', 'success')
 end)
 
 -- taux d'intérêt des livrets — bank_interest_rates
@@ -588,14 +588,14 @@ LSLegacy.Bank.GetAllInterestRates = function()
 end
 
 -- lecture publique (non gated), même raison que BankAdminGetCardTiers
-LSLegacy.RegisterServerEvent('BankAdminGetRates', function()
-    LSLegacy.SendEventToClient('receiveBankAdminRates', source, LSLegacy.Bank.InterestRates)
+LSLegacy.Events.Register('BankAdminGetRates', function()
+    LSLegacy.Events.SendToClient('receiveBankAdminRates', source, LSLegacy.Bank.InterestRates)
 end)
 
-LSLegacy.RegisterServerEvent('BankAdminSetRate', function(livretType, data)
+LSLegacy.Events.Register('BankAdminSetRate', function(livretType, data)
     local player = LSLegacy.Players.Get(source)
     if not BankAdminCanDo(source) then
-        LSLegacy.SendEventToClient('notify', player.source, 'Maze Bank', 'Action non autorisée.', 'error')
+        LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Action non autorisée.', 'error')
         return
     end
     if not (livretType == 'livret_a' or livretType == 'ldds' or livretType == 'compte_terme') or type(data) ~= 'table' then return end
@@ -621,8 +621,8 @@ LSLegacy.RegisterServerEvent('BankAdminSetRate', function(livretType, data)
     Wait(150)
     LSLegacy.Bank.GetAllInterestRates()
     Wait(150)
-    LSLegacy.SendEventToClient('receiveBankAdminRates', player.source, LSLegacy.Bank.InterestRates)
-    LSLegacy.SendEventToClient('notify', player.source, 'Maze Bank', 'Taux de '..livretType..' mis à jour.', 'success')
+    LSLegacy.Events.SendToClient('receiveBankAdminRates', player.source, LSLegacy.Bank.InterestRates)
+    LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Taux de '..livretType..' mis à jour.', 'success')
 end)
 
 -- livrets d'épargne — bank_livrets
@@ -664,12 +664,12 @@ LSLegacy.Bank.GetPersonnalLivrets = function(characterId)
     return livrets
 end
 
-LSLegacy.RegisterServerEvent('BankGetLivrets', function()
+LSLegacy.Events.Register('BankGetLivrets', function()
     local player = LSLegacy.Players.Get(source)
-    LSLegacy.SendEventToClient('receiveBankLivrets', source, LSLegacy.Bank.GetPersonnalLivrets(player["boutique-id"]))
+    LSLegacy.Events.SendToClient('receiveBankLivrets', source, LSLegacy.Bank.GetPersonnalLivrets(player["boutique-id"]))
 end)
 
-LSLegacy.RegisterServerEvent('BankOpenLivret', function(linkedAccountId, livretType, initialDeposit)
+LSLegacy.Events.Register('BankOpenLivret', function(linkedAccountId, livretType, initialDeposit)
     local player = LSLegacy.Players.Get(source)
     local account = LSLegacy.Bank.GetAccount(linkedAccountId)
     if not account or account.character_id ~= player["boutique-id"] then return end
@@ -678,7 +678,7 @@ LSLegacy.RegisterServerEvent('BankOpenLivret', function(linkedAccountId, livretT
     initialDeposit = tonumber(initialDeposit) or 0
     if initialDeposit < 0 then return end
     if livretType == 'compte_terme' and initialDeposit <= 0 then
-        LSLegacy.SendEventToClient('notify', player.source, 'Maze Bank', 'Un compte à terme nécessite un dépôt initial.', 'error')
+        LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Un compte à terme nécessite un dépôt initial.', 'error')
         return
     end
 
@@ -686,12 +686,12 @@ LSLegacy.RegisterServerEvent('BankOpenLivret', function(linkedAccountId, livretT
     if not rateCfg then return end
 
     if rateCfg.deposit_cap and initialDeposit > rateCfg.deposit_cap then
-        LSLegacy.SendEventToClient('notify', player.source, 'Maze Bank', 'Plafond de dépôt dépassé (max '..rateCfg.deposit_cap..'$).', 'error')
+        LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Plafond de dépôt dépassé (max '..rateCfg.deposit_cap..'$).', 'error')
         return
     end
 
     if initialDeposit > 0 and account.amountMoney < initialDeposit then
-        LSLegacy.SendEventToClient('notify', player.source, 'Maze Bank', 'Solde insuffisant sur le compte lié.', 'error')
+        LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Solde insuffisant sur le compte lié.', 'error')
         return
     end
 
@@ -724,16 +724,16 @@ LSLegacy.RegisterServerEvent('BankOpenLivret', function(linkedAccountId, livretT
     Wait(150)
     LSLegacy.Bank.GetAllLivrets()
     Wait(150)
-    LSLegacy.SendEventToClient('receiveBankLivrets', player.source, LSLegacy.Bank.GetPersonnalLivrets(player["boutique-id"]))
-    LSLegacy.SendEventToClient('notify', player.source, 'Maze Bank', 'Livret ouvert avec succès.', 'success')
+    LSLegacy.Events.SendToClient('receiveBankLivrets', player.source, LSLegacy.Bank.GetPersonnalLivrets(player["boutique-id"]))
+    LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Livret ouvert avec succès.', 'success')
 end)
 
-LSLegacy.RegisterServerEvent('BankDepositLivret', function(livretId, amount)
+LSLegacy.Events.Register('BankDepositLivret', function(livretId, amount)
     local player = LSLegacy.Players.Get(source)
     local livret = LSLegacy.Bank.GetLivret(livretId)
     if not livret or livret.character_id ~= player["boutique-id"] or livret.status ~= 'active' then return end
     if livret.livret_type == 'compte_terme' then
-        LSLegacy.SendEventToClient('notify', player.source, 'Maze Bank', 'Un compte à terme ne peut recevoir qu\'un dépôt unique à l\'ouverture.', 'error')
+        LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Un compte à terme ne peut recevoir qu\'un dépôt unique à l\'ouverture.', 'error')
         return
     end
 
@@ -742,13 +742,13 @@ LSLegacy.RegisterServerEvent('BankDepositLivret', function(livretId, amount)
 
     local account = LSLegacy.Bank.GetAccount(livret.linked_account_id)
     if not account or account.amountMoney < amount then
-        LSLegacy.SendEventToClient('notify', player.source, 'Maze Bank', 'Solde insuffisant sur le compte lié.', 'error')
+        LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Solde insuffisant sur le compte lié.', 'error')
         return
     end
 
     local rateCfg = LSLegacy.Bank.InterestRates[livret.livret_type]
     if rateCfg and rateCfg.deposit_cap and (livret.amountMoney + amount) > rateCfg.deposit_cap then
-        LSLegacy.SendEventToClient('notify', player.source, 'Maze Bank', 'Plafond de dépôt dépassé (max '..rateCfg.deposit_cap..'$).', 'error')
+        LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Plafond de dépôt dépassé (max '..rateCfg.deposit_cap..'$).', 'error')
         return
     end
 
@@ -766,8 +766,8 @@ LSLegacy.RegisterServerEvent('BankDepositLivret', function(livretId, amount)
     Wait(150)
     LSLegacy.Bank.GetAllLivrets()
     Wait(150)
-    LSLegacy.SendEventToClient('receiveBankLivrets', player.source, LSLegacy.Bank.GetPersonnalLivrets(player["boutique-id"]))
-    LSLegacy.SendEventToClient('notify', player.source, 'Maze Bank', 'Dépôt effectué avec succès.', 'success')
+    LSLegacy.Events.SendToClient('receiveBankLivrets', player.source, LSLegacy.Bank.GetPersonnalLivrets(player["boutique-id"]))
+    LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Dépôt effectué avec succès.', 'success')
 end)
 
 -- montant net crédité + pénalité éventuelle (compte à terme retiré avant échéance)
@@ -784,14 +784,14 @@ local function ComputeLivretWithdrawal(livret, amount)
     return amount - penalty, penalty
 end
 
-LSLegacy.RegisterServerEvent('BankWithdrawLivret', function(livretId, amount)
+LSLegacy.Events.Register('BankWithdrawLivret', function(livretId, amount)
     local player = LSLegacy.Players.Get(source)
     local livret = LSLegacy.Bank.GetLivret(livretId)
     if not livret or livret.character_id ~= player["boutique-id"] or livret.status ~= 'active' then return end
 
     amount = tonumber(amount) or 0
     if amount <= 0 or amount > livret.amountMoney then
-        LSLegacy.SendEventToClient('notify', player.source, 'Maze Bank', 'Montant invalide.', 'error')
+        LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Montant invalide.', 'error')
         return
     end
 
@@ -815,15 +815,15 @@ LSLegacy.RegisterServerEvent('BankWithdrawLivret', function(livretId, amount)
     Wait(150)
     LSLegacy.Bank.GetAllLivrets()
     Wait(150)
-    LSLegacy.SendEventToClient('receiveBankLivrets', player.source, LSLegacy.Bank.GetPersonnalLivrets(player["boutique-id"]))
+    LSLegacy.Events.SendToClient('receiveBankLivrets', player.source, LSLegacy.Bank.GetPersonnalLivrets(player["boutique-id"]))
     if penalty > 0 then
-        LSLegacy.SendEventToClient('notify', player.source, 'Maze Bank', 'Retrait anticipé : pénalité de '..math.floor(penalty)..'$ appliquée.', 'error')
+        LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Retrait anticipé : pénalité de '..math.floor(penalty)..'$ appliquée.', 'error')
     else
-        LSLegacy.SendEventToClient('notify', player.source, 'Maze Bank', 'Retrait effectué avec succès.', 'success')
+        LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Retrait effectué avec succès.', 'success')
     end
 end)
 
-LSLegacy.RegisterServerEvent('BankCloseLivret', function(livretId)
+LSLegacy.Events.Register('BankCloseLivret', function(livretId)
     local player = LSLegacy.Players.Get(source)
     local livret = LSLegacy.Bank.GetLivret(livretId)
     if not livret or livret.character_id ~= player["boutique-id"] or livret.status ~= 'active' then return end
@@ -851,20 +851,20 @@ LSLegacy.RegisterServerEvent('BankCloseLivret', function(livretId)
     Wait(150)
     LSLegacy.Bank.GetAllLivrets()
     Wait(150)
-    LSLegacy.SendEventToClient('receiveBankLivrets', player.source, LSLegacy.Bank.GetPersonnalLivrets(player["boutique-id"]))
-    LSLegacy.SendEventToClient('notify', player.source, 'Maze Bank', 'Livret fermé, '..math.floor(netAmount)..'$ reversés sur votre compte.', 'success')
+    LSLegacy.Events.SendToClient('receiveBankLivrets', player.source, LSLegacy.Bank.GetPersonnalLivrets(player["boutique-id"]))
+    LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Livret fermé, '..math.floor(netAmount)..'$ reversés sur votre compte.', 'success')
 end)
 
 -- virements par IBAN
 
-LSLegacy.RegisterServerEvent('BankTransferByIban', function(fromAccountId, toIban, amount, message)
+LSLegacy.Events.Register('BankTransferByIban', function(fromAccountId, toIban, amount, message)
     local player = LSLegacy.Players.Get(source)
     local fromAccount = LSLegacy.Bank.GetAccount(fromAccountId)
     if not fromAccount or fromAccount.character_id ~= player["boutique-id"] then return end
 
     amount = tonumber(amount) or 0
     if amount <= 0 then
-        LSLegacy.SendEventToClient('notify', player.source, 'Maze Bank', 'Montant invalide.', 'error')
+        LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Montant invalide.', 'error')
         return
     end
 
@@ -877,11 +877,11 @@ LSLegacy.RegisterServerEvent('BankTransferByIban', function(fromAccountId, toIba
     end
 
     if not toAccount then
-        LSLegacy.SendEventToClient('notify', player.source, 'Maze Bank', 'IBAN introuvable.', 'error')
+        LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'IBAN introuvable.', 'error')
         return
     end
     if toAccount.id == fromAccount.id then
-        LSLegacy.SendEventToClient('notify', player.source, 'Maze Bank', 'Vous ne pouvez pas virer un compte vers lui-même.', 'error')
+        LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Vous ne pouvez pas virer un compte vers lui-même.', 'error')
         return
     end
 
@@ -889,14 +889,14 @@ LSLegacy.RegisterServerEvent('BankTransferByIban', function(fromAccountId, toIba
 
     local available = fromAccount.amountMoney + tierCfg.overdraft_limit
     if amount > available then
-        LSLegacy.SendEventToClient('notify', player.source, 'Maze Bank', 'Solde insuffisant.', 'error')
+        LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Solde insuffisant.', 'error')
         return
     end
 
     -- ne consommer le plafond que si le virement va effectivement avoir lieu
     local ok, remaining = LSLegacy.Bank.CheckAndConsumeCeiling(fromAccount, 'transfer', amount, tierCfg.transfer_ceiling, tierCfg.cost_period)
     if not ok then
-        LSLegacy.SendEventToClient('notify', player.source, 'Maze Bank', 'Plafond de virement atteint : il vous reste '..math.max(0, math.floor(remaining))..'$ sur '..tierCfg.transfer_ceiling..'$ sur la période en cours.', 'error')
+        LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Plafond de virement atteint : il vous reste '..math.max(0, math.floor(remaining))..'$ sur '..tierCfg.transfer_ceiling..'$ sur la période en cours.', 'error')
         return
     end
 
@@ -908,12 +908,12 @@ LSLegacy.RegisterServerEvent('BankTransferByIban', function(fromAccountId, toIba
     LSLegacy.Bank.AddTransaction(toAccount, amount, 'Virement reçu de '..fromAccount.iban..' ('..fromAccount.owner_name..') — '..message, 'Virement entrant')
     LSLegacy.Bank.UpdateAccount(toAccount, toAccount.amountMoney + amount)
 
-    LSLegacy.SendEventToClient('notify', player.source, 'Maze Bank', 'Virement de '..amount..'$ envoyé.', 'success')
+    LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Virement de '..amount..'$ envoyé.', 'success')
 
     local toSrc = GetSourceByCharacterIdForBank(toAccount.character_id)
     if toSrc then
-        LSLegacy.SendEventToClient('receiveBankAccounts', toSrc, LSLegacy.Bank.BankAccounts)
-        LSLegacy.SendEventToClient('notify', toSrc, 'Maze Bank', 'Vous avez reçu un virement de '..amount..'$.', 'success')
+        LSLegacy.Events.SendToClient('receiveBankAccounts', toSrc, LSLegacy.Bank.BankAccounts)
+        LSLegacy.Events.SendToClient('notify', toSrc, 'Maze Bank', 'Vous avez reçu un virement de '..amount..'$.', 'success')
     end
 end)
 
@@ -953,8 +953,8 @@ LSLegacy.Bank.RunInterestPayout = function()
     for characterId, _ in pairs(touchedCharacters) do
         local src = GetSourceByCharacterIdForBank(characterId)
         if src then
-            LSLegacy.SendEventToClient('receiveBankLivrets', src, LSLegacy.Bank.GetPersonnalLivrets(characterId))
-            LSLegacy.SendEventToClient('notify', src, 'Maze Bank', 'Des intérêts ont été versés sur vos livrets.', 'success')
+            LSLegacy.Events.SendToClient('receiveBankLivrets', src, LSLegacy.Bank.GetPersonnalLivrets(characterId))
+            LSLegacy.Events.SendToClient('notify', src, 'Maze Bank', 'Des intérêts ont été versés sur vos livrets.', 'success')
         end
     end
 end
@@ -992,7 +992,7 @@ LSLegacy.Bank.RunMaintenanceTick = function()
                     })
                     local src = GetSourceByCharacterIdForBank(account.character_id)
                     if src then
-                        LSLegacy.SendEventToClient('notify', src, 'Maze Bank', 'Fonds insuffisants pour la cotisation : votre carte a été rétrogradée en Standard.', 'error')
+                        LSLegacy.Events.SendToClient('notify', src, 'Maze Bank', 'Fonds insuffisants pour la cotisation : votre carte a été rétrogradée en Standard.', 'error')
                     end
                 end
                 changed = true
@@ -1025,7 +1025,7 @@ LSLegacy.Bank.RunMaintenanceTick = function()
     for characterId, _ in pairs(touchedCharacters) do
         local src = GetSourceByCharacterIdForBank(characterId)
         if src then
-            LSLegacy.SendEventToClient('receiveBankAccounts', src, LSLegacy.Bank.BankAccounts)
+            LSLegacy.Events.SendToClient('receiveBankAccounts', src, LSLegacy.Bank.BankAccounts)
         end
     end
 end
@@ -1058,7 +1058,7 @@ end)
 LSLegacy.RegisterUsableItem('carte', function(data)
     local _src = source
     local player = LSLegacy.Players.Get(source)
-    LSLegacy.SendEventToClient('useCarteBank', player.source, data)
+    LSLegacy.Events.SendToClient('useCarteBank', player.source, data)
 end)
 
 -- Envoie uniquement le solde du compte courant à un joueur (pour lb-phone)
@@ -1111,7 +1111,7 @@ local function GetPhoneNumberFromInventory(player)
 end
 
 -- Permet à lb-phone de demander son solde au chargement
-LSLegacy.RegisterServerEvent("lslegacy:requestBankBalance", function()
+LSLegacy.Events.Register("lslegacy:requestBankBalance", function()
     local src    = source
     local player = LSLegacy.Players.Get(src)
     if not player then return end
@@ -1194,7 +1194,7 @@ local function AddCompteCourant(characterId, amount, message)
             local onlineSrc = GetSourceByCharacterId(characterId)
             if onlineSrc then
                 SendBalanceToClient(onlineSrc, characterId)
-                LSLegacy.SendEventToClient('receiveBankAccounts', onlineSrc, LSLegacy.Bank.BankAccounts)
+                LSLegacy.Events.SendToClient('receiveBankAccounts', onlineSrc, LSLegacy.Bank.BankAccounts)
             end
             return true
         end
@@ -1223,7 +1223,7 @@ local function RemoveCompteCourant(characterId, amount, message)
             local onlineSrc = GetSourceByCharacterId(characterId)
             if onlineSrc then
                 SendBalanceToClient(onlineSrc, characterId)
-                LSLegacy.SendEventToClient('receiveBankAccounts', onlineSrc, LSLegacy.Bank.BankAccounts)
+                LSLegacy.Events.SendToClient('receiveBankAccounts', onlineSrc, LSLegacy.Bank.BankAccounts)
             end
             return true
         end

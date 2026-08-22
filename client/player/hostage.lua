@@ -122,14 +122,14 @@ function callTakeHostage(targetPed)
     LSLegacy.IsHostageTaker = true
     ensureAnimDict(Hostage.aggressor.dict)
 
-    LSLegacy.SendEventToServer('lslegacy_hostage:sync', targetSrc)
+    LSLegacy.Events.SendToServer('lslegacy_hostage:sync', targetSrc)
 end
 
 RegisterCommand('otage', function()
     callTakeHostage(nil)
 end, false)
 
-LSLegacy.RegisterClientEvent('lslegacy_hostage:client:syncTarget', function(aggressorSrc)
+LSLegacy.Events.Register('lslegacy_hostage:client:syncTarget', function(aggressorSrc)
     local aggressorPed = GetPlayerPed(GetPlayerFromServerId(aggressorSrc))
     if aggressorPed == 0 then return end
 
@@ -144,7 +144,7 @@ LSLegacy.RegisterClientEvent('lslegacy_hostage:client:syncTarget', function(aggr
         0.5, 0.5, 0.0, false, false, false, false, 2, false)
 end)
 
-LSLegacy.RegisterClientEvent('lslegacy_hostage:client:release', function()
+LSLegacy.Events.Register('lslegacy_hostage:client:release', function()
     Hostage.inProgress = false
     Hostage.type       = ''
     LSLegacy.IsHostageTaker, LSLegacy.IsHostage = false, false
@@ -153,7 +153,7 @@ LSLegacy.RegisterClientEvent('lslegacy_hostage:client:release', function()
     playReactionOnce(PlayerPedId(), 'reaction@shove', 'shoved_back', 0, 1000)
 end)
 
-LSLegacy.RegisterClientEvent('lslegacy_hostage:client:kill', function()
+LSLegacy.Events.Register('lslegacy_hostage:client:kill', function()
     Hostage.inProgress = false
     Hostage.type       = ''
     LSLegacy.IsHostageTaker, LSLegacy.IsHostage = false, false
@@ -167,7 +167,7 @@ LSLegacy.RegisterClientEvent('lslegacy_hostage:client:kill', function()
     SetEntityHealth(PlayerPedId(), 0)
 end)
 
-LSLegacy.RegisterClientEvent('lslegacy_hostage:client:stop', function()
+LSLegacy.Events.Register('lslegacy_hostage:client:stop', function()
     Hostage.inProgress = false
     Hostage.type       = ''
     LSLegacy.IsHostageTaker, LSLegacy.IsHostage = false, false
@@ -218,7 +218,7 @@ CreateThread(function()
                 Hostage.inProgress = false
                 LSLegacy.IsHostageTaker = false
                 playReactionOnce(PlayerPedId(), 'reaction@shove', 'shove_var_a', 168, 1000)
-                LSLegacy.SendEventToServer('lslegacy_hostage:release', Hostage.targetSrc)
+                LSLegacy.Events.SendToServer('lslegacy_hostage:release', Hostage.targetSrc)
             end
 
             if IsDisabledControlJustPressed(0, 47) then -- relâcher
@@ -226,14 +226,14 @@ CreateThread(function()
                 Hostage.inProgress = false
                 LSLegacy.IsHostageTaker = false
                 playReactionOnce(PlayerPedId(), 'reaction@shove', 'shove_var_a', 168, 1000)
-                LSLegacy.SendEventToServer('lslegacy_hostage:release', Hostage.targetSrc)
+                LSLegacy.Events.SendToServer('lslegacy_hostage:release', Hostage.targetSrc)
             elseif IsDisabledControlJustPressed(0, 74) then -- tuer
                 Hostage.type = ''
                 Hostage.inProgress = false
                 LSLegacy.IsHostageTaker = false
                 playReactionOnce(PlayerPedId(), 'anim@gangops@hostage@', 'perp_fail', 168, 1500)
-                LSLegacy.SendEventToServer('lslegacy_hostage:kill', Hostage.targetSrc)
-                LSLegacy.SendEventToServer('lslegacy_hostage:stop', Hostage.targetSrc)
+                LSLegacy.Events.SendToServer('lslegacy_hostage:kill', Hostage.targetSrc)
+                LSLegacy.Events.SendToServer('lslegacy_hostage:stop', Hostage.targetSrc)
                 Wait(100)
                 SetPedShootsAtCoord(PlayerPedId(), 0.0, 0.0, 0.0, 0)
             end

@@ -67,7 +67,7 @@ MySQL.Async.execute('UPDATE gendarmerie_officers SET on_duty=0', {})
 
 -- PRISE DE SERVICE
 
-LSLegacy.RegisterServerEvent('gendarmerie:onDuty', function()
+LSLegacy.Events.Register('gendarmerie:onDuty', function()
     local src = source
     if not IsGendarmeAgent(src) then return end
 
@@ -90,7 +90,7 @@ LSLegacy.RegisterServerEvent('gendarmerie:onDuty', function()
     )
 end)
 
-LSLegacy.RegisterServerEvent('gendarmerie:offDuty', function()
+LSLegacy.Events.Register('gendarmerie:offDuty', function()
     local src = source
     if not Gendarmes[src] then return end
 

@@ -89,14 +89,14 @@ local function StartRepair(veh, componentId)
             Notify(Lang.Atelier.repair_failed, 'error')
             return
         end
-        LSLegacy.SendEventToServer('atelier:repairComponent', {
+        LSLegacy.Events.SendToServer('atelier:repairComponent', {
             vehNet      = NetworkGetNetworkIdFromEntity(veh),
             componentId = componentId,
         })
     end)
 end
 
-LSLegacy.RegisterClientEvent('atelier:repairResult', function(data)
+LSLegacy.Events.Register('atelier:repairResult', function(data)
     if not data then return end
     Notify(data.success and Lang.Atelier.repair_done or Lang.Atelier.repair_failed, data.success and 'success' or 'error')
 end)
@@ -123,7 +123,7 @@ local function DoInstall(veh, componentId)
             Notify(Lang.Atelier.repair_failed, 'error')
             return
         end
-        LSLegacy.SendEventToServer('atelier:repairComponent', {
+        LSLegacy.Events.SendToServer('atelier:repairComponent', {
             vehNet      = NetworkGetNetworkIdFromEntity(veh),
             componentId = componentId,
         })

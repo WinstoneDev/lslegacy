@@ -3,9 +3,9 @@ LSLegacy.RegisterZone('Pièce d\'identité', vector3(-1093.411, -809.2663, 19.28
     local identity = LSLegacy.Inventory.GetInventoryItem(player, 'idcard')
     if identity == nil then
         LSLegacy.Inventory.AddItemInInventory(player, 'idcard', 1, player.characterInfos.Prenom.." "..player.characterInfos.NDF, nil, player.characterInfos)
-        LSLegacy.SendEventToClient('notify', source,  nil, '1 '..player.characterInfos.Prenom.." "..player.characterInfos.NDF..' ont été ajouté(s) à votre inventaire.', 'success')
+        LSLegacy.Events.SendToClient('notify', source,  nil, '1 '..player.characterInfos.Prenom.." "..player.characterInfos.NDF..' ont été ajouté(s) à votre inventaire.', 'success')
     else
-        LSLegacy.SendEventToClient('notify', source, nil, 'Vous avez déjà une pièce d\'identité.', 'error')
+        LSLegacy.Events.SendToClient('notify', source, nil, 'Vous avez déjà une pièce d\'identité.', 'error')
     end
 end, 10.0, false, {
     markerType = 25,
@@ -31,5 +31,5 @@ end, 10.0, false, {
 })
 
 LSLegacy.RegisterUsableItem("idcard", function(data)
-    LSLegacy.SendEventToClient('useIdCard', source, data)
+    LSLegacy.Events.SendToClient('useIdCard', source, data)
 end)

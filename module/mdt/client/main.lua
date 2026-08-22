@@ -5,7 +5,7 @@
 --    décidée côté client.
 --  • Lectures NUI  → pont requête/réponse via events tokenisés
 --    (mdt:query → mdt:queryResult), plutôt que LSLegacy.Callbacks.
---  • Écritures NUI → LSLegacy.SendEventToServer (events tokenisés).
+--  • Écritures NUI → LSLegacy.Events.SendToServer (events tokenisés).
 
 local mdtOpen = false
 
@@ -44,13 +44,13 @@ local function closeMDT()
 end
 
 -- Serveur → client : ouverture pilotée par la tablette
-LSLegacy.RegisterClientEvent('mdt:open', function(payload)
+LSLegacy.Events.Register('mdt:open', function(payload)
     if type(payload) ~= 'table' then return end
     openMDT(payload)
 end)
 
 -- Serveur → client : résultat d'une écriture (notif + refresh éventuel)
-LSLegacy.RegisterClientEvent('mdt:result', function(payload)
+LSLegacy.Events.Register('mdt:result', function(payload)
     if type(payload) ~= 'table' then return end
     if payload.message then
         TriggerEvent('brutal_notify:SendAlert', 'MDT', payload.message, 4000, payload.ok and 'success' or 'error')
@@ -74,7 +74,7 @@ end)
 local pendingQueries = {}
 local queryCounter = 0
 
-LSLegacy.RegisterClientEvent('mdt:queryResult', function(payload)
+LSLegacy.Events.Register('mdt:queryResult', function(payload)
     if type(payload) ~= 'table' then return end
     local cb = pendingQueries[payload.reqId]
     if cb then
@@ -87,7 +87,7 @@ local function mdtQuery(action, data, cb)
     queryCounter = queryCounter + 1
     local reqId = queryCounter
     pendingQueries[reqId] = cb
-    LSLegacy.SendEventToServer('mdt:query', { reqId = reqId, action = action, data = data })
+    LSLegacy.Events.SendToServer('mdt:query', { reqId = reqId, action = action, data = data })
     -- filet de sécurité : si pas de réponse en 15 s, on débloque le fetch
     Citizen.SetTimeout(15000, function()
         if pendingQueries[reqId] then
@@ -151,7 +151,7 @@ end)
 
 local function writeCallback(name)
     RegisterNUICallback(name, function(data, cb)
-        LSLegacy.SendEventToServer(name, data)
+        LSLegacy.Events.SendToServer(name, data)
         cb('ok')
     end)
 end

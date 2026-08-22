@@ -1,4 +1,4 @@
-LSLegacy.RegisterClientEvent('police:teleportToCustody', function(data)
+LSLegacy.Events.Register('police:teleportToCustody', function(data)
     if not data then return end
 
     Citizen.CreateThread(function()
@@ -30,13 +30,13 @@ LSLegacy.RegisterClientEvent('police:teleportToCustody', function(data)
     end)
 end)
 
-LSLegacy.RegisterClientEvent('police:releasedFromCustody', function()
+LSLegacy.Events.Register('police:releasedFromCustody', function()
     TriggerEvent(Config.Police.NotifyEvent, 'Police Nationale', Lang.Police.custody_released,
         Config.Police.NotifyDuration or 30000, 'success')
 end)
 
 -- Prison client
-LSLegacy.RegisterClientEvent('police:sendToPrison', function(data)
+LSLegacy.Events.Register('police:sendToPrison', function(data)
     if not data then return end
     if LSLegacy.Anticheat then LSLegacy.Anticheat.AllowTeleport() end
     SetEntityCoords(PlayerPedId(), data.x, data.y, data.z, false, false, false, false)
@@ -78,7 +78,7 @@ LSLegacy.RegisterClientEvent('police:sendToPrison', function(data)
     end)
 end)
 
-LSLegacy.RegisterClientEvent('police:releasedFromPrison', function()
+LSLegacy.Events.Register('police:releasedFromPrison', function()
     if LSLegacy.Anticheat then LSLegacy.Anticheat.AllowTeleport() end
     SetEntityCoords(PlayerPedId(), 1849.4, 2634.8, 45.7, false, false, false, false)
     TriggerEvent(Config.Police.NotifyEvent, 'Prison', Lang.Police.prison_released, 8000, 'success')

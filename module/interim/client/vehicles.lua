@@ -58,7 +58,7 @@ local function SpawnVehicleAt(modelName, coords, heading)
 end
 
 -- Spawn du rig à la prise de service
-LSLegacy.RegisterClientEvent('interim:spawnRig', function(data)
+LSLegacy.Events.Register('interim:spawnRig', function(data)
     if not data then return end
     Interim.OnDuty = true
 
@@ -75,13 +75,13 @@ LSLegacy.RegisterClientEvent('interim:spawnRig', function(data)
 
     local truckNetId   = NetworkGetNetworkIdFromEntity(truckEntity)
     local trailerNetId = NetworkGetNetworkIdFromEntity(trailerEntity)
-    LSLegacy.SendEventToServer('interim:rigSpawned', { truckNetId = truckNetId, trailerNetId = trailerNetId })
+    LSLegacy.Events.SendToServer('interim:rigSpawned', { truckNetId = truckNetId, trailerNetId = trailerNetId })
 
     Notify('Camion et remorque disponibles dans le parking en face.', 'success')
 end)
 
 -- Despawn à la fin de service
-LSLegacy.RegisterClientEvent('interim:despawnRig', function()
+LSLegacy.Events.Register('interim:despawnRig', function()
     Interim.OnDuty      = false
     Interim.Attached    = false
     Interim.TrailerFuel = 0
@@ -107,11 +107,11 @@ CreateThread(function()
             local nowAttached = IsVehicleAttachedToTrailer(truckEntity)
             if not Interim.Attached and nowAttached then
                 Interim.Attached = true
-                LSLegacy.SendEventToServer('interim:trailerAttached')
+                LSLegacy.Events.SendToServer('interim:trailerAttached')
                 Notify('Remorque attachée.', 'success')
             elseif Interim.Attached and not nowAttached then
                 Interim.Attached = false
-                LSLegacy.SendEventToServer('interim:trailerDetached')
+                LSLegacy.Events.SendToServer('interim:trailerDetached')
                 Notify('Remorque détachée, veuillez vous rendre à la raffinerie pour recommencer ou essayer de la rattacher.', 'error')
             end
         end

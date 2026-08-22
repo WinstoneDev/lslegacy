@@ -69,7 +69,7 @@ end
 
 -- Facture finale
 
-LSLegacy.RegisterServerEvent('atelier:requestInvoice', function(data)
+LSLegacy.Events.Register('atelier:requestInvoice', function(data)
     local src = source
     local ok = LSLegacy.Atelier.CanAct(src, 'billing')
     if not ok then return end
@@ -85,12 +85,12 @@ LSLegacy.RegisterServerEvent('atelier:requestInvoice', function(data)
         return
     end
 
-    LSLegacy.SendEventToClient('atelier:invoicePreview', src, {
+    LSLegacy.Events.SendToClient('atelier:invoicePreview', src, {
         plate = plate, lines = ticket.lines, total = ticket.total, customerName = ticket.customerName,
     })
 end)
 
-LSLegacy.RegisterServerEvent('atelier:finalizeInvoice', function(data)
+LSLegacy.Events.Register('atelier:finalizeInvoice', function(data)
     local src = source
     local ok = LSLegacy.Atelier.CanAct(src, 'billing')
     if not ok then return end

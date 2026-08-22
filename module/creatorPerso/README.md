@@ -117,7 +117,7 @@ Sauvegarde les données d'identité du personnage, après validation (longueurs,
 Le module s'intègre complètement avec le framework WinFrame :
 
 1. **Namespace LSLegacy** - Utilise `LSLegacy.CreatorPerso`
-2. **Système d'événements** - Utilise `LSLegacy.RegisterClientEvent` / `LSLegacy.RegisterServerEvent`
+2. **Système d'événements** - Utilise `LSLegacy.Events.Register` / `LSLegacy.Events.Register`
 3. **Sécurité** - Tokens, rate limiting (`LSLegacy.RateLimit`) et validation stricte des payloads côté serveur
 4. **Base de données** - Sauvegarde via MySQL
 5. **NUI** - Communication bidirectionnelle Lua ↔ JavaScript

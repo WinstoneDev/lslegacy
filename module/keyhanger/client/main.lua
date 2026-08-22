@@ -163,7 +163,7 @@ CreateThread(function()
     end
 end)
 
-LSLegacy.RegisterClientEvent('keyhanger:sync:all', function(boards)
+LSLegacy.Events.Register('keyhanger:sync:all', function(boards)
     KeyHanger.Boards = boards or {}
     local n = 0 ; for _ in pairs(KeyHanger.Boards) do n = n + 1 end
     dbg("sync:all -> " .. n .. " support(s)")
@@ -172,7 +172,7 @@ LSLegacy.RegisterClientEvent('keyhanger:sync:all', function(boards)
     end
 end)
 
-LSLegacy.RegisterClientEvent('keyhanger:sync:board', function(board)
+LSLegacy.Events.Register('keyhanger:sync:board', function(board)
     if not board or not board.id then return end
     dbg("sync:board #" .. tostring(board.id))
     KeyHanger.Boards[board.id] = board
@@ -185,7 +185,7 @@ LSLegacy.RegisterClientEvent('keyhanger:sync:board', function(board)
     end
 end)
 
-LSLegacy.RegisterClientEvent('keyhanger:sync:remove', function(id)
+LSLegacy.Events.Register('keyhanger:sync:remove', function(id)
     KeyHanger.Boards[id] = nil
     despawn(id)
 end)
@@ -193,7 +193,7 @@ end)
 CreateThread(function()
     while not (LSLegacy.PlayerData and LSLegacy.PlayerData.identifier) do Wait(500) end
     Wait(1000)
-    LSLegacy.SendEventToServer('keyhanger:requestBoards')
+    LSLegacy.Events.SendToServer('keyhanger:requestBoards')
 end)
 
 local function reachAnim()
@@ -207,11 +207,11 @@ end
 function KeyHanger.OpenBoard(id)
     if not KeyHanger.Boards[id] then return end
     reachAnim()
-    LSLegacy.SendEventToServer('keyhanger:open', id)
+    LSLegacy.Events.SendToServer('keyhanger:open', id)
 end
 
 -- Le serveur demande d'ouvrir l'inventaire du conteneur
-LSLegacy.RegisterClientEvent('keyhanger:openContainer', function(name, label, maxWeight)
+LSLegacy.Events.Register('keyhanger:openContainer', function(name, label, maxWeight)
     TriggerEvent('inventory:openContainer', name, KeyHanger.L('container_label', label or "?"), maxWeight)
 end)
 
@@ -230,7 +230,7 @@ local function renderManage()
         onSelected = function()
             local name = LSLegacy.KeyboardInput(KeyHanger.L('manage_rename_input'), 48)
             if name and name ~= "" then
-                LSLegacy.SendEventToServer('keyhanger:rename', board.id, name)
+                LSLegacy.Events.SendToServer('keyhanger:rename', board.id, name)
             end
         end,
     })
@@ -240,7 +240,7 @@ local function renderManage()
                 local closest = LSLegacy.GetClosestPlayer(PlayerPedId(), 4.0)
                 if closest and closest ~= 0 then
                     local serverId = GetPlayerServerId(NetworkGetPlayerIndexFromPed(closest))
-                    LSLegacy.SendEventToServer('keyhanger:share', board.id, serverId)
+                    LSLegacy.Events.SendToServer('keyhanger:share', board.id, serverId)
                 else
                     LSLegacy.ShowNotification(KeyHanger.L('title'), KeyHanger.L('share_none_nearby'), 'error')
                 end
@@ -253,7 +253,7 @@ local function renderManage()
     RageUI.Line()
     RageUI.Button(KeyHanger.L('manage_remove'), KeyHanger.L('manage_remove_desc'), {}, true, {
         onSelected = function()
-            LSLegacy.SendEventToServer('keyhanger:remove', board.id)
+            LSLegacy.Events.SendToServer('keyhanger:remove', board.id)
             RageUI.CloseAll()
         end,
     })
@@ -268,7 +268,7 @@ local function renderShares()
         any = true
         RageUI.Button(name, identifier, { RightLabel = "✖" }, true, {
             onSelected = function()
-                LSLegacy.SendEventToServer('keyhanger:unshare', board.id, identifier)
+                LSLegacy.Events.SendToServer('keyhanger:unshare', board.id, identifier)
             end,
         })
     end
@@ -297,7 +297,7 @@ end
 
 local function trim(s) return (s and s:gsub("%s+$", "")) or "" end
 
-LSLegacy.RegisterClientEvent('keyhanger:useKey', function(data)
+LSLegacy.Events.Register('keyhanger:useKey', function(data)
     if not data or not data.plate then return end
     local target = trim(data.plate)
     local ped = PlayerPedId()
@@ -338,7 +338,7 @@ LSLegacy.RegisterClientEvent('keyhanger:useKey', function(data)
     Citizen.SetTimeout(700, function() ClearPedTasks(ped) end)
 end)
 
-LSLegacy.RegisterClientEvent('keyhanger:createKeyForNearest', function()
+LSLegacy.Events.Register('keyhanger:createKeyForNearest', function()
     local ped = PlayerPedId()
     local veh = LSLegacy.GetClosestVehicle(GetEntityCoords(ped), 6.0)
     if not veh or veh == 0 or not DoesEntityExist(veh) then
@@ -348,7 +348,7 @@ LSLegacy.RegisterClientEvent('keyhanger:createKeyForNearest', function()
     local modelHash = GetEntityModel(veh)
     local display = GetLabelText(GetDisplayNameFromVehicleModel(modelHash))
     if not display or display == "NULL" then display = GetDisplayNameFromVehicleModel(modelHash) end
-    LSLegacy.SendEventToServer('keyhanger:createKey', plate, modelHash, display)
+    LSLegacy.Events.SendToServer('keyhanger:createKey', plate, modelHash, display)
 end)
 
 AddEventHandler('onResourceStop', function(resource)

@@ -2,7 +2,7 @@
 LSLegacy.Pickup = {}
 LSLegacy.PickupId = 0
 
-LSLegacy.RegisterServerEvent('addItemPickup', function(itemName, itemType, itemLabel, itemCount, itemCoords, uniqueId, data)
+LSLegacy.Events.Register('addItemPickup', function(itemName, itemType, itemLabel, itemCount, itemCoords, uniqueId, data)
 	local _src = source
     local player = LSLegacy.GetPlayerFromId(_src)
     if itemType == "item_standard" then
@@ -15,10 +15,10 @@ LSLegacy.RegisterServerEvent('addItemPickup', function(itemName, itemType, itemL
                 LSLegacy.Pickup[pickupId] = pTable
                 LSLegacy.PickupId = pickupId
                 LSLegacy.Inventory.RemoveItemInInventory(player, itemName, itemCount, itemLabel)
-                LSLegacy.SendEventToClient('interactItemPickup', -1, "create", pTable)
-                LSLegacy.SendEventToClient('notify', _src, nil, itemCount..' '..itemLabel..' ont été retiré(s) de votre inventaire.', 'success')
+                LSLegacy.Events.SendToClient('interactItemPickup', -1, "create", pTable)
+                LSLegacy.Events.SendToClient('notify', _src, nil, itemCount..' '..itemLabel..' ont été retiré(s) de votre inventaire.', 'success')
             else
-                LSLegacy.SendEventToClient('notify', _src, nil, 'Vous n\'avez pas assez de '..itemLabel..'.', 'error')
+                LSLegacy.Events.SendToClient('notify', _src, nil, 'Vous n\'avez pas assez de '..itemLabel..'.', 'error')
             end
         end
     end
@@ -32,10 +32,10 @@ LSLegacy.RegisterServerEvent('addItemPickup', function(itemName, itemType, itemL
                 LSLegacy.Pickup[pickupId] = pTable
                 LSLegacy.PickupId = pickupId
                 LSLegacy.Money.RemovePlayerMoney(player, itemCount)
-                LSLegacy.SendEventToClient('interactItemPickup', -1, "create", pTable)
-                LSLegacy.SendEventToClient('notify', _src, nil, itemCount..'$ ont été retiré(s) de votre inventaire.', 'success')
+                LSLegacy.Events.SendToClient('interactItemPickup', -1, "create", pTable)
+                LSLegacy.Events.SendToClient('notify', _src, nil, itemCount..'$ ont été retiré(s) de votre inventaire.', 'success')
             else
-                LSLegacy.SendEventToClient('notify', _src, nil, 'Vous n\'avez pas assez de $.', 'error')
+                LSLegacy.Events.SendToClient('notify', _src, nil, 'Vous n\'avez pas assez de $.', 'error')
             end
         end
         if itemName == 'item_dirty' then
@@ -46,16 +46,16 @@ LSLegacy.RegisterServerEvent('addItemPickup', function(itemName, itemType, itemL
                 LSLegacy.Pickup[pickupId] = pTable
                 LSLegacy.PickupId = pickupId
                 LSLegacy.Money.RemovePlayerDirtyMoney(player, itemCount)
-                LSLegacy.SendEventToClient('interactItemPickup', -1, "create", pTable)
-                LSLegacy.SendEventToClient('notify', _src, nil, itemCount..'$ ont été retiré(s) de votre inventaire.', 'success')
+                LSLegacy.Events.SendToClient('interactItemPickup', -1, "create", pTable)
+                LSLegacy.Events.SendToClient('notify', _src, nil, itemCount..'$ ont été retiré(s) de votre inventaire.', 'success')
             else
-                LSLegacy.SendEventToClient('notify', _src, nil, 'Vous n\'avez pas assez de $.', 'error')
+                LSLegacy.Events.SendToClient('notify', _src, nil, 'Vous n\'avez pas assez de $.', 'error')
             end
         end 
     end
 end)
 
-LSLegacy.RegisterServerEvent('removeItemPickup', function(data)
+LSLegacy.Events.Register('removeItemPickup', function(data)
     local _src = source
     local player = LSLegacy.GetPlayerFromId(_src)
 
@@ -64,29 +64,29 @@ LSLegacy.RegisterServerEvent('removeItemPickup', function(data)
                 if data.type == 'item_cash' then
                     LSLegacy.Pickup[data.id] = nil
                     LSLegacy.Money.AddPlayerMoney(player, data.count)
-                    LSLegacy.SendEventToClient('notify', _src, nil, data.count..'$ ont été ajouté(s) à votre inventaire.', 'success')
-                    LSLegacy.SendEventToClient('interactItemPickup', -1, "retrieve", data)
+                    LSLegacy.Events.SendToClient('notify', _src, nil, data.count..'$ ont été ajouté(s) à votre inventaire.', 'success')
+                    LSLegacy.Events.SendToClient('interactItemPickup', -1, "retrieve", data)
                 end
 
                 if data.type == 'item_dirty' then
                     LSLegacy.Pickup[data.id] = nil
                     LSLegacy.Money.AddPlayerDirtyMoney(player, data.count)
-                    LSLegacy.SendEventToClient('notify', _src, nil, data.count..'$ ont été ajouté(s) à votre inventaire.', 'success')
-                    LSLegacy.SendEventToClient('interactItemPickup', -1, "retrieve", data)
+                    LSLegacy.Events.SendToClient('notify', _src, nil, data.count..'$ ont été ajouté(s) à votre inventaire.', 'success')
+                    LSLegacy.Events.SendToClient('interactItemPickup', -1, "retrieve", data)
                 end
 
                 if data.type == "item_standard" then
                     if LSLegacy.Inventory.CanCarryItem(player, data.name, tonumber(data.count)) then
                         LSLegacy.Pickup[data.id] = nil
                         LSLegacy.Inventory.AddItemInInventory(player, data.name, tonumber(data.count), data.label, data.uniqueId, data.data)
-                        LSLegacy.SendEventToClient('interactItemPickup', -1, "retrieve", data)
-                        LSLegacy.SendEventToClient('notify', _src, nil, data.count..' '..data.label..' ont été ajouté(s) à votre inventaire.', 'success')
+                        LSLegacy.Events.SendToClient('interactItemPickup', -1, "retrieve", data)
+                        LSLegacy.Events.SendToClient('notify', _src, nil, data.count..' '..data.label..' ont été ajouté(s) à votre inventaire.', 'success')
                     else
-                        LSLegacy.SendEventToClient('notify', source, nil, 'Vous n\'avez plus de place.', 'error')
+                        LSLegacy.Events.SendToClient('notify', source, nil, 'Vous n\'avez plus de place.', 'error')
                     end
                 end
         else
-            LSLegacy.SendEventToClient('notify', source, nil, 'ERREUR.', 'error')
+            LSLegacy.Events.SendToClient('notify', source, nil, 'ERREUR.', 'error')
         end
     end
 end)

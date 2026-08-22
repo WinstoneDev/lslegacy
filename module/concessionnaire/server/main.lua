@@ -202,7 +202,7 @@ local function PersistDelivered(plate, netId)
 end
 
 -- Le client renvoie le netId du véhicule livré une fois spawn/coloré.
-LSLegacy.RegisterServerEvent('concessionnaire:persistDelivered', function(data)
+LSLegacy.Events.Register('concessionnaire:persistDelivered', function(data)
     local src = source
     if not GetPlayer(src) then return end
     if not data or not data.plate or not data.netId then return end
@@ -316,7 +316,7 @@ end
 
 -- ── Achat (neuf) ─────────────────────────────────────────────────────
 
-LSLegacy.RegisterServerEvent('concessionnaire:buy', function(data)
+LSLegacy.Events.Register('concessionnaire:buy', function(data)
     local src = source
     local player = GetPlayer(src)
     if not player then return end
@@ -347,7 +347,7 @@ end)
 
 -- ── Revente ──────────────────────────────────────────────────────────
 
-LSLegacy.RegisterServerEvent('concessionnaire:sell', function(data)
+LSLegacy.Events.Register('concessionnaire:sell', function(data)
     local src = source
     local player = GetPlayer(src)
     if not player then return end
@@ -426,7 +426,7 @@ end)
 
 -- ── Marché de l'occasion : liste ─────────────────────────────────────
 
-LSLegacy.RegisterServerEvent('concessionnaire:getOccasions', function()
+LSLegacy.Events.Register('concessionnaire:getOccasions', function()
     local src = source
     if not GetPlayer(src) then return end
     if not Config.Concessionnaire.Occasion.enabled then
@@ -451,7 +451,7 @@ end)
 
 -- ── Marché de l'occasion : achat ─────────────────────────────────────
 
-LSLegacy.RegisterServerEvent('concessionnaire:buyOccasion', function(data)
+LSLegacy.Events.Register('concessionnaire:buyOccasion', function(data)
     local src = source
     local player = GetPlayer(src)
     if not player then return end

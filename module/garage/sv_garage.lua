@@ -1,6 +1,6 @@
 LSLegacy.RegisterCommand('garageCreator', 2, function(xPlayer, args, showError)
     local source = xPlayer.source
-    LSLegacy.SendEventToClient('garageCreator:openMenu', source)
+    LSLegacy.Events.SendToClient('garageCreator:openMenu', source)
 end, false, {
     help = "Ouvrir le menu de création de garages",
     validate = true,

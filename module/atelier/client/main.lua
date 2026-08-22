@@ -61,14 +61,14 @@ local function ToggleDuty(companyId)
     pendingDutyToggle = true
 
     if Atelier.OnDuty then
-        LSLegacy.SendEventToServer('atelier:offDuty')
+        LSLegacy.Events.SendToServer('atelier:offDuty')
     else
-        LSLegacy.SendEventToServer('atelier:onDuty')
+        LSLegacy.Events.SendToServer('atelier:onDuty')
     end
 end
 
 -- Le flag local ne bascule QU'À la confirmation serveur, pour éviter une désynchronisation en cas de refus.
-LSLegacy.RegisterClientEvent('atelier:dutyResult', function(data)
+LSLegacy.Events.Register('atelier:dutyResult', function(data)
     pendingDutyToggle = false
     if not data or not data.success then return end
 
@@ -152,7 +152,7 @@ local function OpenGarageMenu(companyId, company)
                 icon = 'fa-solid fa-truck-pickup',
                 disabled = not available,
                 onSelect = function()
-                    LSLegacy.SendEventToServer('atelier:spawnVehicle', { model = veh.model, category = category, grade = veh.grade })
+                    LSLegacy.Events.SendToServer('atelier:spawnVehicle', { model = veh.model, category = category, grade = veh.grade })
                 end,
             }
         end
@@ -162,7 +162,7 @@ local function OpenGarageMenu(companyId, company)
     lib.showContext('atelier_garage_' .. companyId)
 end
 
-LSLegacy.RegisterClientEvent('atelier:spawnVehicleClient', function(data)
+LSLegacy.Events.Register('atelier:spawnVehicleClient', function(data)
     if not data or not data.model then return end
     local coords  = GetEntityCoords(PlayerPedId())
     local heading = GetEntityHeading(PlayerPedId())

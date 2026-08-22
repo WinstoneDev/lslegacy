@@ -1,6 +1,6 @@
 local lastVeh = nil
 
-LSLegacy.RegisterClientEvent("ap:vehicleSpawned", function(data)
+LSLegacy.Events.Register("ap:vehicleSpawned", function(data)
     local netId = data.netId
     local plate = data.plate
     local entity = NetworkGetEntityFromNetworkId(netId)
@@ -130,7 +130,7 @@ LSLegacy.RegisterClientEvent("ap:vehicleSpawned", function(data)
     end
 end)
 
-LSLegacy.RegisterClientEvent("ap:findAndDeleteVehicle", function()
+LSLegacy.Events.Register("ap:findAndDeleteVehicle", function()
     local ped = PlayerPedId()
     local vehicleToDelete = nil
 
@@ -150,10 +150,10 @@ LSLegacy.RegisterClientEvent("ap:findAndDeleteVehicle", function()
         local plate = GetVehicleNumberPlateText(vehicleToDelete)
 
         if NetworkDoesEntityExistWithNetworkId(netId) then
-            LSLegacy.SendEventToServer("ap:requestVehicleDeletion", netId, plate)
+            LSLegacy.Events.SendToServer("ap:requestVehicleDeletion", netId, plate)
         else
             DeleteEntity(vehicleToDelete)
-            LSLegacy.SendEventToServer("ap:requestVehicleDeletion", 0, plate)
+            LSLegacy.Events.SendToServer("ap:requestVehicleDeletion", 0, plate)
         end
     else
         LSLegacy.ShowNotification('Erreur', 'Aucun véhicule trouvé à proximité.', 'error')
@@ -168,7 +168,7 @@ CreateThread(function()
         if veh ~= 0 then
             lastVeh = veh
         elseif lastVeh ~= nil then
-            LSLegacy.SendEventToServer("ap:updateVehicle", VehToNet(lastVeh))
+            LSLegacy.Events.SendToServer("ap:updateVehicle", VehToNet(lastVeh))
             lastVeh = nil
         end
         Wait(500)
@@ -291,7 +291,7 @@ local function updateVehicleStatus(veh)
         deformation = deformation
     }
 
-    LSLegacy.SendEventToServer("ap:updateVehicleStatus", plate, status)
+    LSLegacy.Events.SendToServer("ap:updateVehicleStatus", plate, status)
 end
 
 CreateThread(function()

@@ -117,7 +117,7 @@ CreateThread(function()
     while true do
         if #outQueue > 0 then
             local e = table.remove(outQueue, 1)
-            LSLegacy.SendEventToServer(e.name, e.data)
+            LSLegacy.Events.SendToServer(e.name, e.data)
             Wait(SEND_SPACING)
         else
             Wait(100)
@@ -5465,14 +5465,14 @@ end)
 
 --  RÉCEPTION DES ÉVÉNEMENTS SERVEUR
 
-LSLegacy.RegisterClientEvent('police:callouts:registerState', function(state, crewId, crewLabel)
+LSLegacy.Events.Register('police:callouts:registerState', function(state, crewId, crewLabel)
     Registered = state == true
     MyCrew     = state and crewId or nil
     MyCrewLbl  = state and crewLabel or nil
     if not state then ClearPrompt() end
 end)
 
-LSLegacy.RegisterClientEvent('police:callouts:incoming', function(data)
+LSLegacy.Events.Register('police:callouts:incoming', function(data)
     Incoming = data
     Notify(data.message, 'info')
     PlaySoundFrontend(-1, 'Menu_Accept', 'Phone_SoundSet_Default', true)
@@ -5495,14 +5495,14 @@ LSLegacy.RegisterClientEvent('police:callouts:incoming', function(data)
     )
 end)
 
-LSLegacy.RegisterClientEvent('police:callouts:cancelled', function(data)
+LSLegacy.Events.Register('police:callouts:cancelled', function(data)
     if Incoming and data and Incoming.id == data.id then Incoming = nil end
     ClearPrompt()
     if data and data.taken then return end
     Notify(C.Dispatch.unpicked, 'warning')
 end)
 
-LSLegacy.RegisterClientEvent('police:callouts:backupRequested', function(data)
+LSLegacy.Events.Register('police:callouts:backupRequested', function(data)
     Notify(data.message, 'warning')
     PlaySoundFrontend(-1, 'Menu_Accept', 'Phone_SoundSet_Default', true)
     -- Un refus de renfort ne classe pas l'appel : l'équipage engagé
@@ -5517,7 +5517,7 @@ local function AdminAction(action, value)
     SendQ('police:callouts:adminAction', { action = action, value = value })
 end
 
-LSLegacy.RegisterClientEvent('police:callouts:adminMenuData', function(data)
+LSLegacy.Events.Register('police:callouts:adminMenuData', function(data)
     if not data then return end
 
     -- Dès la première ouverture, la touche L rouvre le menu sans passer
@@ -5633,7 +5633,7 @@ end)
 
 --  CHOIX DE L'ÉQUIPAGE (Police Secours)
 
-LSLegacy.RegisterClientEvent('police:callouts:crewState', function(data)
+LSLegacy.Events.Register('police:callouts:crewState', function(data)
     if not data or not data.crews then return end
 
     local options = {}
@@ -5659,7 +5659,7 @@ LSLegacy.RegisterClientEvent('police:callouts:crewState', function(data)
     lib.showContext('callout_crews')
 end)
 
-LSLegacy.RegisterClientEvent('police:callouts:sync', function(payload)
+LSLegacy.Events.Register('police:callouts:sync', function(payload)
     -- On compare l'IDENTIFIANT de l'appel, pas le simple fait que
     local first = (Callout == nil) or (Callout.id ~= payload.id)
     if first and Callout then
@@ -5693,7 +5693,7 @@ LSLegacy.RegisterClientEvent('police:callouts:sync', function(payload)
     RefreshCallerBlip()
 end)
 
-LSLegacy.RegisterClientEvent('police:callouts:brainAssigned', function(id)
+LSLegacy.Events.Register('police:callouts:brainAssigned', function(id)
     if Callout and Callout.id == id then
         IsBrain = true
         BrainState = {}
@@ -5701,7 +5701,7 @@ LSLegacy.RegisterClientEvent('police:callouts:brainAssigned', function(id)
 end)
 
 -- Tapage : l'individu désigné se dirige vers la voiture, coupe la sono
-LSLegacy.RegisterClientEvent('police:callouts:radioWalk', function(data)
+LSLegacy.Events.Register('police:callouts:radioWalk', function(data)
     if not data or not data.netId or not Callout then return end
 
     CreateThread(function()
@@ -5767,7 +5767,7 @@ LSLegacy.RegisterClientEvent('police:callouts:radioWalk', function(data)
 end)
 
 -- Prise en charge hospitalière : la personne et l'infirmière entrent
-LSLegacy.RegisterClientEvent('police:callouts:hospitalIntake', function(data)
+LSLegacy.Events.Register('police:callouts:hospitalIntake', function(data)
     if not data or not data.netId then return end
 
     StopEscort()
@@ -5816,7 +5816,7 @@ LSLegacy.RegisterClientEvent('police:callouts:hospitalIntake', function(data)
 end)
 
 -- Fin de mission : les figurants s'en vont d'eux-mêmes plutôt que de
-LSLegacy.RegisterClientEvent('police:callouts:releaseScene', function(list)
+LSLegacy.Events.Register('police:callouts:releaseScene', function(list)
     for _, item in ipairs(list or {}) do
         -- Coupe toute boucle d'ambiance encore active pour ce PNJ.
         SceneStop[item.netId] = true
@@ -5848,7 +5848,7 @@ LSLegacy.RegisterClientEvent('police:callouts:releaseScene', function(list)
     end
 end)
 
-LSLegacy.RegisterClientEvent('police:callouts:ended', function(data)
+LSLegacy.Events.Register('police:callouts:ended', function(data)
     StopEscort()
     -- La housse reste en place le temps que le serveur nettoie la scène,
     SetTimeout(C.CleanupDelay * 1000, ClearBodyBags)
@@ -5895,7 +5895,7 @@ LSLegacy.RegisterClientEvent('police:callouts:ended', function(data)
 end)
 
 -- Masquage du corps piloté par le cerveau pendant sa mise en scène.
-LSLegacy.RegisterClientEvent('police:callouts:corpseVisible', function(data)
+LSLegacy.Events.Register('police:callouts:corpseVisible', function(data)
     if not data or not data.netId then return end
     if not NetworkDoesNetworkIdExist(data.netId) then return end
     local e = NetworkGetEntityFromNetworkId(data.netId)
@@ -5928,11 +5928,11 @@ local function AmbEntity(netId, tries)
 end
 
 -- Diagnostic de la levée de corps, renvoyé par le serveur.
-LSLegacy.RegisterClientEvent('police:callouts:ambulanceDebug', function(msg)
+LSLegacy.Events.Register('police:callouts:ambulanceDebug', function(msg)
     print('^3[ambulance]^7 ' .. tostring(msg))
 end)
 
-LSLegacy.RegisterClientEvent('police:callouts:ambulance', function(data)
+LSLegacy.Events.Register('police:callouts:ambulance', function(data)
     if not data then return end
     print(('^2[ambulance]^7 Événement reçu — convoi #%s, meneur ici : %s')
         :format(tostring(data.id), tostring(data.driver)))
@@ -6230,12 +6230,12 @@ LSLegacy.RegisterClientEvent('police:callouts:ambulance', function(data)
 end)
 
 -- Déposition du mis en cause, recueillie sur place.
-LSLegacy.RegisterClientEvent('police:callouts:ownerStatement', function(data)
+LSLegacy.Events.Register('police:callouts:ownerStatement', function(data)
     if not data or not data.text then return end
     Notify((data.label or 'L\'individu') .. ' : « ' .. data.text .. ' »', 'info')
 end)
 
-LSLegacy.RegisterClientEvent('police:callouts:searchResult', function(data)
+LSLegacy.Events.Register('police:callouts:searchResult', function(data)
     if not data then return end
     if not data.items or #data.items == 0 then
         Notify('Fouille de ' .. (data.label or 'l\'individu') .. ' : rien à signaler.', 'info')
@@ -6306,7 +6306,7 @@ end, false)
 
 local IsAdminCached = false
 
-LSLegacy.RegisterClientEvent('police:callouts:adminState', function(state)
+LSLegacy.Events.Register('police:callouts:adminState', function(state)
     IsAdminCached = state == true
 end)
 
@@ -6384,7 +6384,7 @@ RegisterCommand('signalpnj', function()
 end, false)
 
 -- Confirmation du serveur : le PNJ a bien été enregistré au registre.
-LSLegacy.RegisterClientEvent('police:callouts:spawnReported', function(data)
+LSLegacy.Events.Register('police:callouts:spawnReported', function(data)
     if not data then return end
     print('^2[signalpnj]^7 ═══ PNJ SIGNALÉ ═══')
     print(('^2[signalpnj]^7 scénario  : %s'):format(tostring(data.scenario)))
@@ -6660,7 +6660,7 @@ TriggerEvent('chat:addSuggestion', '/pnjrepere',
         { name = 'scénario', help = 'braquage_superette, vol_etalage, … — vide pour arrêter' },
     })
 
-LSLegacy.RegisterClientEvent('police:callouts:anchorSurveyState', function(data)
+LSLegacy.Events.Register('police:callouts:anchorSurveyState', function(data)
     if not data or not data.active then
         Survey = nil
         if data and data.tooFar then
@@ -6813,7 +6813,7 @@ TriggerEvent('chat:addSuggestion', '/pnjannule',
         { name = 'rôle', help = 'vide pour le dernier point, ou requerant, individu, vehicule…' },
     })
 
-LSLegacy.RegisterClientEvent('police:callouts:anchorUndone', function(data)
+LSLegacy.Events.Register('police:callouts:anchorUndone', function(data)
     if not data then return end
 
     -- Les marques au sol sont reconstruites depuis la liste renvoyée :
@@ -6838,7 +6838,7 @@ TriggerEvent('chat:addSuggestion', '/pnjposition',
     })
 
 -- Rôle refusé : on restitue la liste entière, pas un extrait.
-LSLegacy.RegisterClientEvent('police:callouts:anchorRoles', function(data)
+LSLegacy.Events.Register('police:callouts:anchorRoles', function(data)
     if not data then return end
     print(('^1[ancrage]^7 « %s » n\'est pas un rôle connu.')
         :format(tostring(data.given)))
@@ -6848,7 +6848,7 @@ LSLegacy.RegisterClientEvent('police:callouts:anchorRoles', function(data)
     end
 end)
 
-LSLegacy.RegisterClientEvent('police:callouts:anchorSaved', function(data)
+LSLegacy.Events.Register('police:callouts:anchorSaved', function(data)
     if not data then return end
 
     -- Mémorisé pour l'affichage au sol : le relevé apparaît aussitôt,
@@ -6869,7 +6869,7 @@ LSLegacy.RegisterClientEvent('police:callouts:anchorSaved', function(data)
     print('^2[ancrage]^7 /pnjpositions pour obtenir le bloc complet.')
 end)
 
-LSLegacy.RegisterClientEvent('police:callouts:anchorDump', function(data)
+LSLegacy.Events.Register('police:callouts:anchorDump', function(data)
     if data and data.cleared then
         -- Le brouillon serveur est vidé : les marques de session aussi,
         SurveyDraft = {}
@@ -6900,7 +6900,7 @@ RegisterCommand('signallieu', function()
 end, false)
 
 -- Registre des placements ratés, renvoyé par le serveur.
-LSLegacy.RegisterClientEvent('police:callouts:spawnStats', function(data)
+LSLegacy.Events.Register('police:callouts:spawnStats', function(data)
     local rows = (data and data.rows) or {}
 
     if data and data.cleared then
@@ -6954,7 +6954,7 @@ end, false)
 TriggerEvent('chat:addSuggestion', '/signalscenario',
     'Signaler un type d\'intervention inadapté à ce lieu (le lieu reste bon)')
 
-LSLegacy.RegisterClientEvent('police:callouts:mismatchReported', function(data)
+LSLegacy.Events.Register('police:callouts:mismatchReported', function(data)
     if not data then return end
     print('^3[signalscenario]^7 ═══════════ À TRANSMETTRE ═══════════')
     print(('^3[signalscenario]^7 scénario inadapté : %s'):format(tostring(data.scenario)))
@@ -6972,7 +6972,7 @@ TriggerEvent('chat:addSuggestion', '/signallieu',
     'Signaler TOUTE l\'intervention : emplacement à supprimer')
 
 -- Rapport complet renvoyé par le serveur, prêt à être transmis.
-LSLegacy.RegisterClientEvent('police:callouts:locationReported', function(data)
+LSLegacy.Events.Register('police:callouts:locationReported', function(data)
     if not data then return end
     print('^1[signallieu]^7 ═══════════ À TRANSMETTRE ═══════════')
     print(('^1[signallieu]^7 scénario  : %s'):format(tostring(data.scenario)))
@@ -7274,7 +7274,7 @@ end)
 local pending = {}
 local reqSeq  = 0
 
-LSLegacy.RegisterClientEvent('mdtco:queryResult', function(payload)
+LSLegacy.Events.Register('mdtco:queryResult', function(payload)
     if not payload or not payload.reqId then return end
     local cb = pending[payload.reqId]
     if not cb then return end
@@ -7286,7 +7286,7 @@ local function coQuery(action, data, cb)
     reqSeq = reqSeq + 1
     local id = reqSeq
     pending[id] = cb
-    LSLegacy.SendEventToServer('mdtco:query', { reqId = id, action = action, data = data })
+    LSLegacy.Events.SendToServer('mdtco:query', { reqId = id, action = action, data = data })
     SetTimeout(15000, function()
         if pending[id] then pending[id] = nil cb(false) end
     end)

@@ -94,7 +94,7 @@ MySQL.Async.execute([[
 
 --  EMPREINTES
 
-LSLegacy.RegisterServerEvent('police:inv:collectFingerprints', function(data)
+LSLegacy.Events.Register('police:inv:collectFingerprints', function(data)
     local src = source
     if not HasInvPermission(src) then return end
     if not data or not data.target then return end
@@ -143,7 +143,7 @@ LSLegacy.RegisterServerEvent('police:inv:collectFingerprints', function(data)
 end)
 
 -- Comparaison empreintes
-LSLegacy.RegisterServerEvent('police:inv:compareFingerprints', function(data)
+LSLegacy.Events.Register('police:inv:compareFingerprints', function(data)
     local src = source
     if not HasInvPermission(src) then return end
     if not data or not data.ref then return end
@@ -166,7 +166,7 @@ end)
 
 --  ADN
 
-LSLegacy.RegisterServerEvent('police:inv:collectDNA', function(data)
+LSLegacy.Events.Register('police:inv:collectDNA', function(data)
     local src = source
     if not HasInvPermission(src) then return end
     if not data or not data.target then return end
@@ -201,7 +201,7 @@ LSLegacy.RegisterServerEvent('police:inv:collectDNA', function(data)
     )
 end)
 
-LSLegacy.RegisterServerEvent('police:inv:compareDNA', function(data)
+LSLegacy.Events.Register('police:inv:compareDNA', function(data)
     local src = source
     if not HasInvPermission(src) then return end
     if not data or not data.ref then return end
@@ -224,7 +224,7 @@ end)
 
 --  TRACES DE SANG
 
-LSLegacy.RegisterServerEvent('police:inv:collectBlood', function(data)
+LSLegacy.Events.Register('police:inv:collectBlood', function(data)
     local src = source
     if not HasInvPermission(src) then return end
     if not data then return end
@@ -254,7 +254,7 @@ end)
 
 --  SCÈNE DE CRIME
 
-LSLegacy.RegisterServerEvent('police:inv:createScene', function(data)
+LSLegacy.Events.Register('police:inv:createScene', function(data)
     local src = source
     if not HasInvPermission(src) then return end
     if not LSLegacy.MDT.HasPermission('police', tonumber(GetPlayer(src).job_grade) or 0, 'manage_evidence') then
@@ -290,14 +290,14 @@ end)
 
 local OfficerChannels = {}  -- { [src] = channelId }
 
-LSLegacy.RegisterServerEvent('police:radio:join', function(data)
+LSLegacy.Events.Register('police:radio:join', function(data)
     local src = source
     if not IsLawEnforcementOnDuty(src) then return end
     if not data or not data.channelId then return end
     OfficerChannels[src] = tonumber(data.channelId)
 end)
 
-LSLegacy.RegisterServerEvent('police:radio:leave', function()
+LSLegacy.Events.Register('police:radio:leave', function()
     local src = source
     OfficerChannels[src] = nil
 end)

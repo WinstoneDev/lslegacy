@@ -71,7 +71,7 @@ MySQL.Async.execute([[
 
 -- PRISE DE SERVICE
 
-LSLegacy.RegisterServerEvent('samu:onDuty', function()
+LSLegacy.Events.Register('samu:onDuty', function()
     local src = source
     if not IsSamuAgent(src) then return end
 
@@ -93,7 +93,7 @@ LSLegacy.RegisterServerEvent('samu:onDuty', function()
     )
 end)
 
-LSLegacy.RegisterServerEvent('samu:offDuty', function()
+LSLegacy.Events.Register('samu:offDuty', function()
     local src = source
     if not SamuAgents[src] then return end
 
@@ -111,7 +111,7 @@ end)
 -- Les cibles ox_target du SAMU ne dépendant que du flag client, elles
 -- disparaissaient alors en silence bien que le MDT affiche l'agent en
 -- service. Le client redemande donc son état au démarrage.
-LSLegacy.RegisterServerEvent('samu:requestDutyState', function()
+LSLegacy.Events.Register('samu:requestDutyState', function()
     local src = source
 
     if IsSamuOnDuty(src) then
@@ -145,7 +145,7 @@ end)
 
 -- SPAWN VÉHICULE
 
-LSLegacy.RegisterServerEvent('samu:spawnVehicle', function(data)
+LSLegacy.Events.Register('samu:spawnVehicle', function(data)
     local src = source
     if not IsSamuAgent(src) or not SamuAgents[src] then return end
     if not data or not data.model then return end

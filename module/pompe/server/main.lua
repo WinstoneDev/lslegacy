@@ -8,11 +8,11 @@ local CFG = Config.Pompe
 local function GetPlayer(src) return LSLegacy.Players.Get(src) end
 
 local function Notify(src, msg, t)
-    LSLegacy.SendEventToClient(CFG.NotifyEvent, src, 'Station essence', msg, 5000, t or 'info')
+    LSLegacy.Events.SendToClient(CFG.NotifyEvent, src, 'Station essence', msg, 5000, t or 'info')
 end
 
 -- Vérifie l'argent du joueur ET le stock de la station avant d'autoriser le client à délivrer de l'essence.
-LSLegacy.RegisterServerEvent('pompe:requestFill', function(data)
+LSLegacy.Events.Register('pompe:requestFill', function(data)
     local src = source
     local player = GetPlayer(src)
     if not player or type(data) ~= 'table' then return end
@@ -50,7 +50,7 @@ LSLegacy.RegisterServerEvent('pompe:requestFill', function(data)
             return Notify(src, 'Rien à ravitailler.', 'error')
         end
 
-        LSLegacy.SendEventToClient('pompe:fillAuthorized', src, {
+        LSLegacy.Events.SendToClient('pompe:fillAuthorized', src, {
             stationId = stationId,
             maxDeliverable = maxDeliverable,
         })
@@ -86,7 +86,7 @@ LSLegacy.Bank.RegisterPaymentResultHandler('pompe', function(token, success)
     end)
 end)
 
-LSLegacy.RegisterServerEvent('pompe:payFuel', function(data)
+LSLegacy.Events.Register('pompe:payFuel', function(data)
     local src = source
     local player = GetPlayer(src)
     if not player or type(data) ~= 'table' then return end

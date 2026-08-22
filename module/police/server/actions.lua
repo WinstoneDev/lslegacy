@@ -12,7 +12,7 @@ end
 --  MENOTTAGE
 
 -- Relaie le signal de début d'animation vers la cible
-LSLegacy.RegisterServerEvent('police:cuffStart', function(data)
+LSLegacy.Events.Register('police:cuffStart', function(data)
     local src = source
     if not IsLawEnforcementOnDuty(src) then return end
     if not data or not data.target then return end
@@ -21,7 +21,7 @@ LSLegacy.RegisterServerEvent('police:cuffStart', function(data)
     TriggerClientEvent('police:cuffAnimation', target, { duration = data.duration or 3000 })
 end)
 
-LSLegacy.RegisterServerEvent('police:cuff', function(data)
+LSLegacy.Events.Register('police:cuff', function(data)
     local src = source
     if not IsLawEnforcementOnDuty(src) then return end
     if not data or not data.target then return end
@@ -52,7 +52,7 @@ end)
 
 --  FOUILLE
 
-LSLegacy.RegisterServerEvent('police:search', function(data)
+LSLegacy.Events.Register('police:search', function(data)
     local src = source
     if not IsLawEnforcementOnDuty(src) then return end
     if not data or not data.target then return end
@@ -76,7 +76,7 @@ end)
 
 --  PALPATION DE SÉCURITÉ
 
-LSLegacy.RegisterServerEvent('police:palpation', function(data)
+LSLegacy.Events.Register('police:palpation', function(data)
     local src = source
     if not IsLawEnforcementOnDuty(src) then return end
     if not data or not data.target then return end
@@ -108,7 +108,7 @@ end)
 
 --  CONTRÔLE D'IDENTITÉ
 
-LSLegacy.RegisterServerEvent('police:idCheck', function(data)
+LSLegacy.Events.Register('police:idCheck', function(data)
     local src = source
     if not IsLawEnforcementOnDuty(src) then return end
     if not data or not data.target then return end
@@ -133,7 +133,7 @@ end)
 
 --  CONTRÔLE PERMIS
 
-LSLegacy.RegisterServerEvent('police:licenseCheck', function(data)
+LSLegacy.Events.Register('police:licenseCheck', function(data)
     local src = source
     if not IsLawEnforcementOnDuty(src) then return end
     if not data or not data.target then return end
@@ -163,7 +163,7 @@ end)
 
 --  ESCORTE
 
-LSLegacy.RegisterServerEvent('police:escort', function(data)
+LSLegacy.Events.Register('police:escort', function(data)
     local src = source
     if not IsLawEnforcementOnDuty(src) then return end
     if not data or not data.target then return end
@@ -182,7 +182,7 @@ end)
 
 --  MISE EN VÉHICULE
 
-LSLegacy.RegisterServerEvent('police:putInVehicle', function(data)
+LSLegacy.Events.Register('police:putInVehicle', function(data)
     local src = source
     if not IsLawEnforcementOnDuty(src) then return end
     if not data or not data.target or not data.vehNet then return end
@@ -199,7 +199,7 @@ LSLegacy.RegisterServerEvent('police:putInVehicle', function(data)
     Notify(src,    string.format(Lang.Police.put_in_veh, tName), 'success')
 end)
 
-LSLegacy.RegisterServerEvent('police:getOutVehicle', function(data)
+LSLegacy.Events.Register('police:getOutVehicle', function(data)
     local src = source
     if not IsLawEnforcementOnDuty(src) then return end
     if not data or not data.target then return end
@@ -213,7 +213,7 @@ end)
 
 --  SAISIE D'OBJET
 
-LSLegacy.RegisterServerEvent('police:seizeItem', function(data)
+LSLegacy.Events.Register('police:seizeItem', function(data)
     local src = source
     if not IsLawEnforcementOnDuty(src) then return end
     if not data or not data.target or not data.itemName then return end

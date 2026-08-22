@@ -26,7 +26,7 @@ if alwaysCheck then
 		end
 	end)
 else
-	LSLegacy.AddEventHandler("entityCreating", function(entity)
+	LSLegacy.Events.AddHandler("entityCreating", function(entity)
 		if DoesEntityExist(entity) and GetEntityType(entity) == 2 then
 			local myVehiclePlate = GetVehicleNumberPlateText(entity)
 			local myVehicleModel = GetEntityModel(entity)
@@ -194,7 +194,7 @@ function LSLegacy.AP.SpawnPersistedRow(row, target)
     a.doorsBroken  = status.doorsBroken or {}
     a.visualDamage = status.visualDamage or {}
 
-    LSLegacy.SendEventToClient("ap:vehicleSpawned", -1, {
+    LSLegacy.Events.SendToClient("ap:vehicleSpawned", -1, {
         netId        = a.netId,
         plate        = row.plate,
         extras       = status.extras or {},
@@ -213,7 +213,7 @@ function LSLegacy.AP.SpawnPersistentVehicle(model, pos, heading, targetPlayer)
     Wait(1000)
     if not DoesEntityExist(vehicle) then
         if targetPlayer then
-            LSLegacy.SendEventToClient('notify', targetPlayer, 'Erreur', 'Le véhicule n\'a pas pu être créé.', 'error')
+            LSLegacy.Events.SendToClient('notify', targetPlayer, 'Erreur', 'Le véhicule n\'a pas pu être créé.', 'error')
         end
         return
     end
@@ -228,7 +228,7 @@ function LSLegacy.AP.SpawnPersistentVehicle(model, pos, heading, targetPlayer)
         if DoesEntityExist(ped) then
             TaskWarpPedIntoVehicle(ped, vehicle, -1)
         end
-        LSLegacy.SendEventToClient("ap:vehicleSpawned", -1, { netId = netId, plate = plate, extras = {}, tankHealth = 1000.0, engineHealth = 1000.0, fuel = 50.0, windows = {} })
+        LSLegacy.Events.SendToClient("ap:vehicleSpawned", -1, { netId = netId, plate = plate, extras = {}, tankHealth = 1000.0, engineHealth = 1000.0, fuel = 50.0, windows = {} })
     end
 end
 
@@ -247,7 +247,7 @@ function LSLegacy.AP.DeleteVehicle(plate, entity)
     end
 end
 
-LSLegacy.RegisterServerEvent("ap:requestVehicleDeletion", function(netId, plate)
+LSLegacy.Events.Register("ap:requestVehicleDeletion", function(netId, plate)
     local source = source
     local player = LSLegacy.Players.Get(source)
     
@@ -257,21 +257,21 @@ LSLegacy.RegisterServerEvent("ap:requestVehicleDeletion", function(netId, plate)
 
     if DoesEntityExist(entity) then
         LSLegacy.AP.DeleteVehicle(plate, entity)
-        LSLegacy.SendEventToClient('notify', source, 'Succès', 'Le véhicule a été supprimé.', 'success')
+        LSLegacy.Events.SendToClient('notify', source, 'Succès', 'Le véhicule a été supprimé.', 'success')
     else
-        LSLegacy.SendEventToClient('notify', source, 'Erreur', 'Impossible de trouver le véhicule à supprimer.', 'error')
+        LSLegacy.Events.SendToClient('notify', source, 'Erreur', 'Impossible de trouver le véhicule à supprimer.', 'error')
     end
 end)
 
 LSLegacy.RegisterCommand('dv', 2, function(player, args, showError, rawCommand)
-    LSLegacy.SendEventToClient('ap:findAndDeleteVehicle', player.source) 
+    LSLegacy.Events.SendToClient('ap:findAndDeleteVehicle', player.source) 
 end,
 {
     help = "Supprime le véhicule que vous conduisez ou le plus proche (rayon de 3m).",
     validate = false
 }, false)
 
-LSLegacy.RegisterServerEvent("ap:updateVehicleStatus", function(plate, status)
+LSLegacy.Events.Register("ap:updateVehicleStatus", function(plate, status)
     if not plate or not status then return end
     if LSLegacy.AP.Active[plate] then
         LSLegacy.AP.Active[plate].fuel = status.fuel
@@ -284,12 +284,12 @@ LSLegacy.RegisterServerEvent("ap:updateVehicleStatus", function(plate, status)
     end
 end)
 
-LSLegacy.RegisterServerEvent("ap:updateVehicle", function(netId)
+LSLegacy.Events.Register("ap:updateVehicle", function(netId)
     local entity = NetworkGetEntityFromNetworkId(netId)
     if DoesEntityExist(entity) then saveVehicle(entity) end
 end)
 
-LSLegacy.AddEventHandler('ap:clientsetonSpawn', function(source)
+LSLegacy.Events.AddHandler('ap:clientsetonSpawn', function(source)
     MySQL.Async.fetchAll('SELECT * FROM persistent_vehicles', {}, function(rows)
         Citizen.CreateThread(function()
             for _, row in ipairs(rows) do
@@ -312,7 +312,7 @@ LSLegacy.AddEventHandler('ap:clientsetonSpawn', function(source)
                     timeout = timeout + 100
                     if timeout >= 10000 then goto continue end
                 end
-                LSLegacy.SendEventToClient("ap:vehicleSpawned", source, {
+                LSLegacy.Events.SendToClient("ap:vehicleSpawned", source, {
                     netId = LSLegacy.AP.Active[row.plate].netId,
                     plate = row.plate,
                     extras = status.extras or {},

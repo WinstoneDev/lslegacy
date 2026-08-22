@@ -33,7 +33,7 @@ local function PartCoversComponent(part, componentId)
     return false
 end
 
-LSLegacy.RegisterServerEvent('atelier:repairComponent', function(data)
+LSLegacy.Events.Register('atelier:repairComponent', function(data)
     local src = source
     if not data or not data.vehNet or not data.componentId then return end
 
@@ -77,7 +77,7 @@ LSLegacy.RegisterServerEvent('atelier:repairComponent', function(data)
 
         LSLegacy.Atelier.RepairComponent(plate, data.vehNet, data.componentId, function(success)
             if not success then
-                LSLegacy.SendEventToClient('atelier:repairResult', src, { success = false })
+                LSLegacy.Events.SendToClient('atelier:repairResult', src, { success = false })
                 return
             end
 
@@ -85,8 +85,8 @@ LSLegacy.RegisterServerEvent('atelier:repairComponent', function(data)
             LSLegacy.Atelier.AddInvoiceLine(plate, companyId, customerSrc,
                 'Réparation — ' .. def.label, price, item)
 
-            LSLegacy.SendEventToClient('atelier:partInstalled', src)
-            LSLegacy.SendEventToClient('atelier:repairResult', src, { success = true, componentId = data.componentId })
+            LSLegacy.Events.SendToClient('atelier:partInstalled', src)
+            LSLegacy.Events.SendToClient('atelier:repairResult', src, { success = true, componentId = data.componentId })
             LSLegacy.Atelier.Notify(customerSrc, string.format('%s réparé(e), en attente de facturation.', def.label), 'info')
         end)
     end)

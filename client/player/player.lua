@@ -1,7 +1,7 @@
 local playerLoaded = false
 LSLegacy.PlayerData = {}
 
-LSLegacy.RegisterClientEvent('InitPlayer', function(data)
+LSLegacy.Events.Register('InitPlayer', function(data)
     Config.Development.Print("[client] InitPlayer reçu, id=" .. tostring(data and data.id) .. " slot=" .. tostring(data and data.slot))
     LSLegacy.PlayerData = data
     playerLoaded = true
@@ -17,13 +17,13 @@ LSLegacy.RegisterClientEvent('InitPlayer', function(data)
     end
 end)
 
-LSLegacy.RegisterClientEvent('UpdatePlayer', function(data)
+LSLegacy.Events.Register('UpdatePlayer', function(data)
     LSLegacy.PlayerData = data
 end)
 
-LSLegacy.RegisterClientEvent('UpdateServerPlayer', function()
+LSLegacy.Events.Register('UpdateServerPlayer', function()
     local data = LSLegacy.PlayerData
-    LSLegacy.SendEventToServer('ReceiveUpdateServerPlayer', data)
+    LSLegacy.Events.SendToServer('ReceiveUpdateServerPlayer', data)
 end)
 
 function GetPlayerInventoryItems()
@@ -45,7 +45,7 @@ end
 Citizen.CreateThread( function()
     while true do
         if playerLoaded then
-            LSLegacy.TriggerLocalEvent('skinchanger:getSkin', function(skin)
+            LSLegacy.Events.TriggerLocal('skinchanger:getSkin', function(skin)
                 LSLegacy.PlayerData.skin = skin
             end)
        end
@@ -126,7 +126,7 @@ Citizen.CreateThread(function()
     end
 end)
 
-LSLegacy.RegisterClientEvent('debug', function()
+LSLegacy.Events.Register('debug', function()
    ExecuteCommand('p1')
    Wait(1000)
    ExecuteCommand('p2')

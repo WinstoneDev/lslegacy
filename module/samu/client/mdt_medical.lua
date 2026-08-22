@@ -4,7 +4,7 @@
 --  Même principe cependant (repris volontairement) :
 --    • lectures  → requête/réponse tokenisée
 --                  (mdtmed:query → mdtmed:queryResult)
---    • écritures → LSLegacy.SendEventToServer (events tokenisés)
+--    • écritures → LSLegacy.Events.SendToServer (events tokenisés)
 --
 --  La NUI est celle du MDT (même page HTML) : les callbacks enregistrés
 --  ici cohabitent avec ceux de module/mdt/client/main.lua sans conflit,
@@ -17,7 +17,7 @@
 local pendingQueries = {}
 local queryCounter   = 0
 
-LSLegacy.RegisterClientEvent('mdtmed:queryResult', function(payload)
+LSLegacy.Events.Register('mdtmed:queryResult', function(payload)
     if type(payload) ~= 'table' then return end
     local cb = pendingQueries[payload.reqId]
     if cb then
@@ -30,7 +30,7 @@ local function medQuery(action, data, cb)
     queryCounter = queryCounter + 1
     local reqId = queryCounter
     pendingQueries[reqId] = cb
-    LSLegacy.SendEventToServer('mdtmed:query', { reqId = reqId, action = action, data = data })
+    LSLegacy.Events.SendToServer('mdtmed:query', { reqId = reqId, action = action, data = data })
     -- Filet de sécurité : on débloque le fetch si le serveur ne répond pas.
     Citizen.SetTimeout(15000, function()
         if pendingQueries[reqId] then
@@ -62,7 +62,7 @@ readCallback('mdtmed:getDocs',        'getDocs')
 -- refresh ciblé), géré par le client du MDT — rien à dupliquer ici.
 local function writeCallback(name)
     RegisterNUICallback(name, function(data, cb)
-        LSLegacy.SendEventToServer(name, data)
+        LSLegacy.Events.SendToServer(name, data)
         cb('ok')
     end)
 end

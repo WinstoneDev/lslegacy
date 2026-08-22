@@ -154,6 +154,6 @@ garagemenu.openMainMenu = function()
     end)
 end
 
-LSLegacy.RegisterClientEvent("garageCreator:openMenu", function()
+LSLegacy.Events.Register("garageCreator:openMenu", function()
     garagemenu.openMainMenu()
 end)

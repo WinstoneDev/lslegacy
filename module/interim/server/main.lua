@@ -53,7 +53,7 @@ end)
 local function GetPlayer(src) return LSLegacy.Players.Get(src) end
 
 local function Notify(src, msg, t)
-    LSLegacy.SendEventToClient(CFG.NotifyEvent, src, 'Intérimaire', msg, 5000, t or 'info')
+    LSLegacy.Events.SendToClient(CFG.NotifyEvent, src, 'Intérimaire', msg, 5000, t or 'info')
 end
 
 local function findStation(id)
@@ -86,7 +86,7 @@ local function DeleteRig(session)
     DeleteNetEntity(session.trailerNetId)
 end
 
-LSLegacy.RegisterServerEvent('interim:startDuty', function()
+LSLegacy.Events.Register('interim:startDuty', function()
     local src = source
     local player = GetPlayer(src)
     if not player then return end
@@ -98,7 +98,7 @@ LSLegacy.RegisterServerEvent('interim:startDuty', function()
 
     -- TODO: appliquer la tenue intérimaire une fois créée sur le serveur.
 
-    LSLegacy.SendEventToClient('interim:spawnRig', src, {
+    LSLegacy.Events.SendToClient('interim:spawnRig', src, {
         truckModel     = CFG.Truck.model,
         truckCoords    = { x = CFG.Truck.coords.x, y = CFG.Truck.coords.y, z = CFG.Truck.coords.z },
         truckHeading   = CFG.Truck.coords.w,
@@ -109,7 +109,7 @@ LSLegacy.RegisterServerEvent('interim:startDuty', function()
     Notify(src, 'Vous avez pris votre service.', 'success')
 end)
 
-LSLegacy.RegisterServerEvent('interim:endDuty', function()
+LSLegacy.Events.Register('interim:endDuty', function()
     local src = source
     local player = GetPlayer(src)
     if not player then return end
@@ -118,11 +118,11 @@ LSLegacy.RegisterServerEvent('interim:endDuty', function()
 
     DeleteRig(session)
     Interim.Sessions[src] = nil
-    LSLegacy.SendEventToClient('interim:despawnRig', src, {})
+    LSLegacy.Events.SendToClient('interim:despawnRig', src, {})
     Notify(src, 'Fin de service.', 'info')
 end)
 
-LSLegacy.RegisterServerEvent('interim:rigSpawned', function(data)
+LSLegacy.Events.Register('interim:rigSpawned', function(data)
     local src = source
     if not GetPlayer(src) then return end
     local session = Interim.Sessions[src]
@@ -131,7 +131,7 @@ LSLegacy.RegisterServerEvent('interim:rigSpawned', function(data)
     session.trailerNetId = tonumber(data.trailerNetId)
 end)
 
-LSLegacy.RegisterServerEvent('interim:trailerAttached', function()
+LSLegacy.Events.Register('interim:trailerAttached', function()
     local src = source
     if not GetPlayer(src) then return end
     local session = Interim.Sessions[src]
@@ -140,22 +140,22 @@ LSLegacy.RegisterServerEvent('interim:trailerAttached', function()
     if session.attached then return end
 
     session.attached = true
-    LSLegacy.SendEventToClient('interim:syncState', src, BuildState(session))
+    LSLegacy.Events.SendToClient('interim:syncState', src, BuildState(session))
     Notify(src, 'Remorque attachée. Direction le point de remplissage.', 'success')
 end)
 
 -- Détache détectée côté client : coupe l'accès citerne/stations tant que non rattachée. Le message utilisateur est déjà affiché côté client, on se contente de resynchroniser l'état ici.
-LSLegacy.RegisterServerEvent('interim:trailerDetached', function()
+LSLegacy.Events.Register('interim:trailerDetached', function()
     local src = source
     if not GetPlayer(src) then return end
     local session = Interim.Sessions[src]
     if not session or not session.attached then return end
 
     session.attached = false
-    LSLegacy.SendEventToClient('interim:syncState', src, BuildState(session))
+    LSLegacy.Events.SendToClient('interim:syncState', src, BuildState(session))
 end)
 
-LSLegacy.RegisterServerEvent('interim:requestFillTank', function()
+LSLegacy.Events.Register('interim:requestFillTank', function()
     local src = source
     if not GetPlayer(src) then return end
     local session = Interim.Sessions[src]
@@ -167,12 +167,12 @@ LSLegacy.RegisterServerEvent('interim:requestFillTank', function()
     end
 
     session.trailerFuel = CFG.Economy.trailerCapacity
-    LSLegacy.SendEventToClient('interim:syncState', src, BuildState(session))
+    LSLegacy.Events.SendToClient('interim:syncState', src, BuildState(session))
     Notify(src, 'Citerne remplie.', 'success')
 end)
 
 -- Déclenché par les zones ci-dessous (canInteractFunc + interactFunc), qui envoient l'anim au client ; la station n'est débitée/créditée qu'une fois l'anim terminée côté client.
-LSLegacy.RegisterServerEvent('interim:stationFillComplete', function(data)
+LSLegacy.Events.Register('interim:stationFillComplete', function(data)
     local src = source
     local player = GetPlayer(src)
     if not player or type(data) ~= 'table' then return end
@@ -203,7 +203,7 @@ LSLegacy.RegisterServerEvent('interim:stationFillComplete', function(data)
             -- (AddTransaction/UpdateAccount capturent `source` pour le refresh NUI).
             source = src
             LSLegacy.Bank.PaySalary(player, pay, 'Salaire - Ravitaillement station-service')
-            LSLegacy.SendEventToClient('interim:syncState', src, BuildState(session))
+            LSLegacy.Events.SendToClient('interim:syncState', src, BuildState(session))
             if newLevel >= CFG.Economy.stationCapacity then
                 Notify(src, ('%s ravitaillée (+%d $).'):format(station.label, pay), 'success')
             else
@@ -238,7 +238,7 @@ for _, s in ipairs(CFG.Stations) do
             end
 
             local duration = math.random(CFG.StationFillDuration.min, CFG.StationFillDuration.max)
-            LSLegacy.SendEventToClient('interim:playStationFillAnim', src, {
+            LSLegacy.Events.SendToClient('interim:playStationFillAnim', src, {
                 stationId = s.id,
                 label = s.label,
                 duration = duration,

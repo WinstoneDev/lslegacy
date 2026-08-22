@@ -52,7 +52,7 @@ local function GoOnDuty()
     Gendarmerie.OnDuty = true
     Gendarmerie.Grade  = GetGrade()
 
-    LSLegacy.SendEventToServer('gendarmerie:onDuty')
+    LSLegacy.Events.SendToServer('gendarmerie:onDuty')
     Notify(Lang.Gendarmerie.duty_on, 'success')
     TriggerEvent('gendarmerie:dutyChanged', true)
 end
@@ -61,7 +61,7 @@ local function GoOffDuty()
     if not Gendarmerie.OnDuty then Notify(Lang.Gendarmerie.already_off_duty, 'error') return end
     Gendarmerie.OnDuty = false
 
-    LSLegacy.SendEventToServer('gendarmerie:offDuty')
+    LSLegacy.Events.SendToServer('gendarmerie:offDuty')
     Notify(Lang.Gendarmerie.duty_off, 'info')
     TriggerEvent('gendarmerie:dutyChanged', false)
 end

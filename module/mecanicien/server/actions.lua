@@ -37,7 +37,7 @@ end
 
 --  RÉPARATION MOTEUR
 
-LSLegacy.RegisterServerEvent('mecanicien:repairEngine', function(data)
+LSLegacy.Events.Register('mecanicien:repairEngine', function(data)
     local src = source
     if not IsMecanicien(src) or not IsMecanicienOnDuty(src) then return end
     if not data or not data.vehNet or not data.customer then return end
@@ -64,7 +64,7 @@ end)
 --  CHANGEMENT DE PNEU (consomme piece_pneu pris gratuitement au stock
 --  du garage — jamais facturé au mécanicien, seul le client paie)
 
-LSLegacy.RegisterServerEvent('mecanicien:changeTyre', function(data)
+LSLegacy.Events.Register('mecanicien:changeTyre', function(data)
     local src = source
     if not IsMecanicien(src) or not IsMecanicienOnDuty(src) then return end
     if not data or not data.vehNet or data.wheel == nil or not data.customer then return end
@@ -99,7 +99,7 @@ end)
 
 --  TUNING — facturé au client présent dans le véhicule
 
-LSLegacy.RegisterServerEvent('mecanicien:requestTuning', function(data)
+LSLegacy.Events.Register('mecanicien:requestTuning', function(data)
     local src = source
     if not IsMecanicien(src) or not IsMecanicienOnDuty(src) then return end
     if not data or not data.customer or not data.price or not data.kind then return end

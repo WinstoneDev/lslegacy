@@ -23,29 +23,29 @@ LSLegacy.Bank.OpenPaymentMenu = function(targetSrc, transactionMessage, price, o
         end
     end
 
-    LSLegacy.SendEventToClient('openPaymentMenu', targetSrc, transactionMessage, price, player.inventory, { allowCash = allowCash, meta = meta })
+    LSLegacy.Events.SendToClient('openPaymentMenu', targetSrc, transactionMessage, price, player.inventory, { allowCash = allowCash, meta = meta })
     return true
 end
 
-LSLegacy.RegisterServerEvent('attemptToPayMenu', function(transactionMessage, price)
+LSLegacy.Events.Register('attemptToPayMenu', function(transactionMessage, price)
     local _src = source
     LSLegacy.Bank.OpenPaymentMenu(_src, transactionMessage, price, nil)
 end)
 
 local function Finish(player, success, meta)
-    LSLegacy.SendEventToClient('doActionsPayment', player.source, success)
+    LSLegacy.Events.SendToClient('doActionsPayment', player.source, success)
     if meta and meta.type and LSLegacy.Bank.PaymentResultHandlers[meta.type] then
         LSLegacy.Bank.PaymentResultHandlers[meta.type](meta.refId, success)
     end
 end
 
-LSLegacy.RegisterServerEvent('pay', function(codePin, price, type, cardInfos, transactionMessage, contactless, meta)
+LSLegacy.Events.Register('pay', function(codePin, price, type, cardInfos, transactionMessage, contactless, meta)
     local _src = source
     local player = LSLegacy.Players.Get(_src)
 
     -- empêche un client modifié de payer en espèces un flux "carte uniquement"
     if meta and meta.cardOnly and type ~= "bank" then
-        LSLegacy.SendEventToClient('notify', player.source, nil, 'Paiement par carte obligatoire.', 'error')
+        LSLegacy.Events.SendToClient('notify', player.source, nil, 'Paiement par carte obligatoire.', 'error')
         Finish(player, false, meta)
         return
     end
@@ -55,10 +55,10 @@ LSLegacy.RegisterServerEvent('pay', function(codePin, price, type, cardInfos, tr
         if money >= tonumber(price) then
             LSLegacy.Money.RemovePlayerMoney(player, price)
             Finish(player, true, meta)
-            LSLegacy.SendEventToClient('notify', player.source, nil, 'Vous avez payé ' .. price .. '$', 'success')
+            LSLegacy.Events.SendToClient('notify', player.source, nil, 'Vous avez payé ' .. price .. '$', 'success')
         else
             Finish(player, false, meta)
-            LSLegacy.SendEventToClient('notify', player.source, nil, 'Vous n\'avez pas assez d\'argent', 'error')
+            LSLegacy.Events.SendToClient('notify', player.source, nil, 'Vous n\'avez pas assez d\'argent', 'error')
         end
     elseif type == "bank" then
         local account = LSLegacy.Bank.GetAccount(cardInfos.data.card_account)
@@ -72,7 +72,7 @@ LSLegacy.RegisterServerEvent('pay', function(codePin, price, type, cardInfos, tr
             -- sans contact : pas de PIN, mais plafond vérifié côté serveur
             local contactlessMax = (Config.Bank and Config.Bank.ContactlessMaxAmount) or 50
             if tonumber(price) > contactlessMax then
-                LSLegacy.SendEventToClient('notify', player.source, nil, 'Montant trop élevé pour le sans contact (max '..contactlessMax..'$).', 'error')
+                LSLegacy.Events.SendToClient('notify', player.source, nil, 'Montant trop élevé pour le sans contact (max '..contactlessMax..'$).', 'error')
                 Finish(player, false, meta)
                 return
             end
@@ -81,7 +81,7 @@ LSLegacy.RegisterServerEvent('pay', function(codePin, price, type, cardInfos, tr
             if account.card_infos.card_pin == codePin then
                 authorized = true
             else
-                LSLegacy.SendEventToClient('notify', player.source, nil, "Code pin incorrect", 'error')
+                LSLegacy.Events.SendToClient('notify', player.source, nil, "Code pin incorrect", 'error')
                 return
             end
         end
@@ -89,19 +89,19 @@ LSLegacy.RegisterServerEvent('pay', function(codePin, price, type, cardInfos, tr
         if authorized then
             local tierCfg = LSLegacy.Bank.GetCardTierConfig(account.card_tier)
             if (account.amountMoney + tierCfg.overdraft_limit) < price then
-                LSLegacy.SendEventToClient('notify', player.source, nil, 'La carte n\'a pas assez d\'argent', 'error')
+                LSLegacy.Events.SendToClient('notify', player.source, nil, 'La carte n\'a pas assez d\'argent', 'error')
                 Finish(player, false, meta)
             else
                 -- ne consommer le plafond que si le paiement a effectivement lieu
                 local ok, remaining = LSLegacy.Bank.CheckAndConsumeCeiling(account, 'payment', price, tierCfg.payment_ceiling, tierCfg.cost_period)
                 if not ok then
-                    LSLegacy.SendEventToClient('notify', player.source, nil, 'Plafond de paiement atteint : il reste '..math.max(0, math.floor(remaining))..'$ sur '..tierCfg.payment_ceiling..'$ sur la période en cours.', 'error')
+                    LSLegacy.Events.SendToClient('notify', player.source, nil, 'Plafond de paiement atteint : il reste '..math.max(0, math.floor(remaining))..'$ sur '..tierCfg.payment_ceiling..'$ sur la période en cours.', 'error')
                     Finish(player, false, meta)
                 else
                     LSLegacy.Bank.AddTransaction(account, price, transactionMessage .. (contactless and ' (sans contact)' or ''), 'Achat')
                     LSLegacy.Bank.UpdateAccount(account, account.amountMoney - price)
                     Finish(player, true, meta)
-                    LSLegacy.SendEventToClient('notify', player.source, nil, 'Vous avez payé ' .. price .. '$', 'success')
+                    LSLegacy.Events.SendToClient('notify', player.source, nil, 'Vous avez payé ' .. price .. '$', 'success')
                 end
             end
         end

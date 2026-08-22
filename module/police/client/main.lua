@@ -84,7 +84,7 @@ local function GoOnDuty()
 
     GiveWeapons(Police.Grade)
 
-    LSLegacy.SendEventToServer('police:onDuty', { service = nil, unit = nil })
+    LSLegacy.Events.SendToServer('police:onDuty', { service = nil, unit = nil })
     Notify(Lang.Police.duty_on, 'success')
     TriggerEvent('police:dutyChanged', true)
 end
@@ -100,7 +100,7 @@ local function GoOffDuty()
     Police.Unit    = nil
 
     RemoveAllPedWeapons(PlayerPedId(), true)
-    LSLegacy.SendEventToServer('police:offDuty')
+    LSLegacy.Events.SendToServer('police:offDuty')
     Notify(Lang.Police.duty_off, 'info')
     TriggerEvent('police:dutyChanged', false)
 end
@@ -182,7 +182,7 @@ local function OpenGarageMenu()
                 icon = 'fa-solid fa-car',
                 disabled = not available,
                 onSelect = function()
-                    LSLegacy.SendEventToServer('police:spawnVehicle', {
+                    LSLegacy.Events.SendToServer('police:spawnVehicle', {
                         model    = veh.model,
                         category = category,
                         grade    = veh.grade,
@@ -257,11 +257,11 @@ exports.ox_target:addBoxZone({
     },
 })
 
-LSLegacy.AddEventHandler('police:openGarageMenu', OpenGarageMenu)
+LSLegacy.Events.AddHandler('police:openGarageMenu', OpenGarageMenu)
 
 -- Events serveur → client
 
-LSLegacy.RegisterClientEvent('police:spawnVehicleClient', function(data)
+LSLegacy.Events.Register('police:spawnVehicleClient', function(data)
     if not data or not data.model then return end
     local coords  = GetEntityCoords(PlayerPedId())
     local heading = GetEntityHeading(PlayerPedId())

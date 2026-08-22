@@ -122,16 +122,16 @@ exports.ox_target:addBoxZone({
                 local d = CFG.TankFillDuration
                 local duration = math.random(d.min, d.max)
                 if not DoTankFillProgress('Remplissage de la citerne...', duration) then return end
-                LSLegacy.SendEventToServer('interim:requestFillTank')
+                LSLegacy.Events.SendToServer('interim:requestFillTank')
             end,
         },
     },
 })
 
 -- Stations essence : marker + prompt gérés par le système de zones serveur (canInteractFunc + dynamicFunc dans module/interim/server/main.lua), le serveur prévient le client quand il entre dans le rayon d'une zone.
-LSLegacy.RegisterClientEvent('interim:playStationFillAnim', function(data)
+LSLegacy.Events.Register('interim:playStationFillAnim', function(data)
     if not data then return end
     if DoFillProgress(('Remplissage de %s...'):format(data.label), data.duration) then
-        LSLegacy.SendEventToServer('interim:stationFillComplete', { stationId = data.stationId })
+        LSLegacy.Events.SendToServer('interim:stationFillComplete', { stationId = data.stationId })
     end
 end)

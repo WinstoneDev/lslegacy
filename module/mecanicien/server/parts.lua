@@ -65,7 +65,7 @@ local function SaveStock(item)
     )
 end
 
-LSLegacy.RegisterServerEvent('mecanicien:requestStock', function()
+LSLegacy.Events.Register('mecanicien:requestStock', function()
     local src = source
     if not IsMecanicien(src) then return end
     TriggerClientEvent('mecanicien:stockResult', src, Stock)
@@ -73,7 +73,7 @@ end)
 
 --  PRISE D'UNE PIÈCE AU DÉPÔT (depuis le stock du garage — gratuit)
 
-LSLegacy.RegisterServerEvent('mecanicien:buyPart', function(data)
+LSLegacy.Events.Register('mecanicien:buyPart', function(data)
     local src = source
     if not IsMecanicien(src) or not IsMecanicienOnDuty(src) then return end
     if not data or not data.item then return end
@@ -99,7 +99,7 @@ end)
 --  Le patron achète chez le grossiste IRL/RP (non simulé ici) puis
 --  rentre lui-même la quantité reçue, pièce par pièce.
 
-LSLegacy.RegisterServerEvent('mecanicien:restockDepot', function(data)
+LSLegacy.Events.Register('mecanicien:restockDepot', function(data)
     local src = source
     if not IsMecanicien(src) or not IsMecanicienOnDuty(src) then return end
     if GetGrade(src) < 3 then
@@ -119,7 +119,7 @@ end)
 
 --  POSE D'UNE PIÈCE PORTÉE EN MAIN
 
-LSLegacy.RegisterServerEvent('mecanicien:installPart', function(data)
+LSLegacy.Events.Register('mecanicien:installPart', function(data)
     local src = source
     if not IsMecanicien(src) or not IsMecanicienOnDuty(src) then return end
     if not data or not data.vehNet or not data.item then return end

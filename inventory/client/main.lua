@@ -148,7 +148,7 @@ Citizen.CreateThread(function()
 
                 if ammoNeeded > 0 then
                     if Config.AmmoForWeapon[currentWeapon] then
-                        LSLegacy.SendEventToServer('removeAmmo', Config.AmmoForWeapon[currentWeapon], ammoNeeded, currentWeapon)
+                        LSLegacy.Events.SendToServer('removeAmmo', Config.AmmoForWeapon[currentWeapon], ammoNeeded, currentWeapon)
                     end
                 end
             end
@@ -166,7 +166,7 @@ function ReverseSearchConfigAmmo(ammo)
     return nil
 end
 
-LSLegacy.RegisterClientEvent('setAmmo', function(name, count, forWeapon)
+LSLegacy.Events.Register('setAmmo', function(name, count, forWeapon)
     -- `forWeapon` transmis par le serveur = l'arme réellement rechargée.
     -- Repli sur la recherche inverse (ambiguë dès que plusieurs armes
     -- partagent la même munition) uniquement si absent, pour compatibilité.
@@ -174,7 +174,7 @@ LSLegacy.RegisterClientEvent('setAmmo', function(name, count, forWeapon)
     AddAmmoToPed(PlayerPedId(), GetHashKey(weaponName), count)
     Citizen.SetTimeout(100, function()
         local newAmmo = GetAmmoInPedWeapon(PlayerPedId(), GetHashKey(weaponName))
-        LSLegacy.SendEventToServer('updateWeaponAmmo', weaponName, newAmmo)
+        LSLegacy.Events.SendToServer('updateWeaponAmmo', weaponName, newAmmo)
     end)
 end)
 
@@ -661,7 +661,7 @@ end
 -- un changement de personnage en cours de session (module/multichar,
 -- "Retour à la sélection"), qui redéclenche InitPlayer pour le nouveau
 -- personnage choisi.
-LSLegacy.AddEventHandler('InitPlayer', function()
+LSLegacy.Events.AddHandler('InitPlayer', function()
     loadEquippedSlots()
     loadFastWeapons()
 end)
@@ -769,7 +769,7 @@ end)
 
 function unloadWeapon(name, count)
     if Config.AmmoForWeapon[name] then
-        LSLegacy.SendEventToServer('giveItem', Config.AmmoForWeapon[name], count)
+        LSLegacy.Events.SendToServer('giveItem', Config.AmmoForWeapon[name], count)
     end
 end
 
@@ -826,9 +826,9 @@ end
 
 function GramsOrKg(weight)
     if weight >= 1 then
-        return LSLegacy.Math.Round(weight, 1) .. 'KG'
+        return LSLegacy.Utils.Math.Round(weight, 1) .. 'KG'
     else
-        return LSLegacy.Math.Round(weight*1000, 1) .. 'G'
+        return LSLegacy.Utils.Math.Round(weight*1000, 1) .. 'G'
     end
 end
 
@@ -848,9 +848,9 @@ function useitem(num)
                 useWeapon(FastWeapons[num].name, FastWeapons[num].label, FastWeapons[num].ammo)
             else
                 if FastWeapons[num].data == nil then
-                    LSLegacy.SendEventToServer('useItem', FastWeapons[num].name)
+                    LSLegacy.Events.SendToServer('useItem', FastWeapons[num].name)
                 else
-                    LSLegacy.SendEventToServer('useItem', FastWeapons[num].name, FastWeapons[num].data, FastWeapons[num].uniqueId)
+                    LSLegacy.Events.SendToServer('useItem', FastWeapons[num].name, FastWeapons[num].data, FastWeapons[num].uniqueId)
                 end
             end
         end
@@ -1766,7 +1766,7 @@ RegisterNUICallback("GetNearPlayers", function(data, cb)
     if target then
         local transferData = data.item.data
         prepareWeaponTransfer(data.item.name, transferData)
-        LSLegacy.SendEventToServer('transfer', {
+        LSLegacy.Events.SendToServer('transfer', {
             name = data.item.name,
             count = data.number,
             label = data.item.label,
@@ -1799,7 +1799,7 @@ RegisterNUICallback("RenameItem", function(data, cb)
         if result ~= nil then
             local count = tonumber(data.number)
             if result ~= data.item.label and tonumber(count) and count ~= nil then
-                LSLegacy.SendEventToServer("renameItem", data.item.name, data.item.label, result, count, data.item.uniqueId)
+                LSLegacy.Events.SendToServer("renameItem", data.item.name, data.item.label, result, count, data.item.uniqueId)
             else
                 LSLegacy.ShowNotification(nil, "Impossible l'item a déjà ce label.", 'error')
             end
@@ -1810,7 +1810,7 @@ end)
 RegisterNUICallback("SwapItemPosition", function(data, cb)
     if viewOnlyMode then cb("ok") return end
     if data.itemA and data.itemB then
-        LSLegacy.SendEventToServer('swapItemPosition', data.itemA, data.itemB)
+        LSLegacy.Events.SendToServer('swapItemPosition', data.itemA, data.itemB)
     end
     cb("ok")
 end)
@@ -1837,7 +1837,7 @@ RegisterNUICallback("UnloadWeapon", function(data, cb)
                 FastWeapons[fastEntry.slot].ammo = 0
                 saveFastWeapons()
             end
-            LSLegacy.SendEventToServer('updateWeaponAmmo', data.item.name, 0)
+            LSLegacy.Events.SendToServer('updateWeaponAmmo', data.item.name, 0)
             cb('ok')
         end
     end
@@ -1872,21 +1872,21 @@ RegisterNUICallback("UseItem", function(data, cb)
                     end)
 
                     if skins[data.item.name][1] ~= data.item.data[1] or skins[data.item.name][2] ~= data.item.data[2] then
-                        LSLegacy.TriggerLocalEvent('skinchanger:change', data.item.name..'_1', data.item.data[1])
-                        LSLegacy.TriggerLocalEvent('skinchanger:change', data.item.name..'_2', data.item.data[2])
+                        LSLegacy.Events.TriggerLocal('skinchanger:change', data.item.name..'_1', data.item.data[1])
+                        LSLegacy.Events.TriggerLocal('skinchanger:change', data.item.name..'_2', data.item.data[2])
                         ExecuteCommand('p3')
                         loadPlayerInventory('clothes', CurrentVehicle)
                     else
-                        LSLegacy.TriggerLocalEvent('skinchanger:change', data.item.name..'_1', clothes[1])
-                        LSLegacy.TriggerLocalEvent('skinchanger:change', data.item.name..'_2', clothes[2])
+                        LSLegacy.Events.TriggerLocal('skinchanger:change', data.item.name..'_1', clothes[1])
+                        LSLegacy.Events.TriggerLocal('skinchanger:change', data.item.name..'_2', clothes[2])
                         ExecuteCommand('p3')
                         loadPlayerInventory('clothes', CurrentVehicle)
                     end
                 else
-                    LSLegacy.SendEventToServer('useItem', data.item.name, data.item.data, data.item.uniqueId)
+                    LSLegacy.Events.SendToServer('useItem', data.item.name, data.item.data, data.item.uniqueId)
                 end
             else
-                LSLegacy.SendEventToServer('useItem', data.item.name)
+                LSLegacy.Events.SendToServer('useItem', data.item.name)
             end
         end
     end
@@ -1903,12 +1903,12 @@ RegisterNUICallback("EquipClothing", function(data, cb)
         local drawable = data.item.data[1]
         local texture  = data.item.data[2]
         if isValidClothingVariation(data.item.name, drawable, texture) then
-            LSLegacy.TriggerLocalEvent('skinchanger:change', data.item.name..'_1', drawable)
-            LSLegacy.TriggerLocalEvent('skinchanger:change', data.item.name..'_2', texture)
+            LSLegacy.Events.TriggerLocal('skinchanger:change', data.item.name..'_1', drawable)
+            LSLegacy.Events.TriggerLocal('skinchanger:change', data.item.name..'_2', texture)
         else
             local def = getDefaultClothes()
-            LSLegacy.TriggerLocalEvent('skinchanger:change', data.item.name..'_1', def[data.item.name][1])
-            LSLegacy.TriggerLocalEvent('skinchanger:change', data.item.name..'_2', def[data.item.name][2])
+            LSLegacy.Events.TriggerLocal('skinchanger:change', data.item.name..'_1', def[data.item.name][1])
+            LSLegacy.Events.TriggerLocal('skinchanger:change', data.item.name..'_2', def[data.item.name][2])
             LSLegacy.ShowNotification(nil, "Ce vêtement n'est pas compatible avec ton modèle.", 'error')
         end
         EquippedClothSlots[data.item.name] = { name = data.item.name, uniqueId = data.item.uniqueId }
@@ -1923,11 +1923,11 @@ RegisterNUICallback("UnequipClothing", function(data, cb)
     local def = getDefaultClothes()
     local clothes = def[data.item.name]
     if clothes then
-        LSLegacy.TriggerLocalEvent('skinchanger:change', data.item.name..'_1', clothes[1])
-        LSLegacy.TriggerLocalEvent('skinchanger:change', data.item.name..'_2', clothes[2])
+        LSLegacy.Events.TriggerLocal('skinchanger:change', data.item.name..'_1', clothes[1])
+        LSLegacy.Events.TriggerLocal('skinchanger:change', data.item.name..'_2', clothes[2])
         if data.item.name == 'tshirt' or data.item.name == 'torso' then
-            LSLegacy.TriggerLocalEvent('skinchanger:change', 'arms_1', def['arms'][1])
-            LSLegacy.TriggerLocalEvent('skinchanger:change', 'arms_2', def['arms'][2])
+            LSLegacy.Events.TriggerLocal('skinchanger:change', 'arms_1', def['arms'][1])
+            LSLegacy.Events.TriggerLocal('skinchanger:change', 'arms_2', def['arms'][2])
         end
         EquippedClothSlots[data.item.name] = nil
         saveEquippedSlots()
@@ -1952,8 +1952,8 @@ RegisterNUICallback("EquipOutfit", function(data, cb)
             texture  = vals[2] or vals.texture  or 0
         end
         if isValidClothingVariation(slot, drawable, texture) then
-            LSLegacy.TriggerLocalEvent('skinchanger:change', slot..'_1', drawable)
-            LSLegacy.TriggerLocalEvent('skinchanger:change', slot..'_2', texture)
+            LSLegacy.Events.TriggerLocal('skinchanger:change', slot..'_1', drawable)
+            LSLegacy.Events.TriggerLocal('skinchanger:change', slot..'_2', texture)
         end
     end
 
@@ -1977,8 +1977,8 @@ RegisterNUICallback("UnequipOutfit", function(data, cb)
     if viewOnlyMode then cb("ok") return end
     local def = getDefaultClothes()
     for slot, values in pairs(def) do
-        LSLegacy.TriggerLocalEvent('skinchanger:change', slot..'_1', values[1])
-        LSLegacy.TriggerLocalEvent('skinchanger:change', slot..'_2', values[2])
+        LSLegacy.Events.TriggerLocal('skinchanger:change', slot..'_1', values[1])
+        LSLegacy.Events.TriggerLocal('skinchanger:change', slot..'_2', values[2])
     end
 
     local outfitKey = equippedOutfitKey()
@@ -1997,15 +1997,15 @@ RegisterNUICallback("SaveOutfitFromInventory", function(data, cb)
         local drawable = type(vals) == 'table' and (vals[1] or 0) or 0
         local texture  = type(vals) == 'table' and (vals[2] or 0) or 0
         if isValidClothingVariation(slot, drawable, texture) then
-            LSLegacy.TriggerLocalEvent('skinchanger:change', slot..'_1', drawable)
-            LSLegacy.TriggerLocalEvent('skinchanger:change', slot..'_2', texture)
+            LSLegacy.Events.TriggerLocal('skinchanger:change', slot..'_1', drawable)
+            LSLegacy.Events.TriggerLocal('skinchanger:change', slot..'_2', texture)
         end
     end
 
     for slot, _ in pairs(data.removedSlots or {}) do
         if def[slot] then
-            LSLegacy.TriggerLocalEvent('skinchanger:change', slot..'_1', def[slot][1])
-            LSLegacy.TriggerLocalEvent('skinchanger:change', slot..'_2', def[slot][2])
+            LSLegacy.Events.TriggerLocal('skinchanger:change', slot..'_1', def[slot][1])
+            LSLegacy.Events.TriggerLocal('skinchanger:change', slot..'_2', def[slot][2])
         end
     end
 
@@ -2021,7 +2021,7 @@ RegisterNUICallback("SaveOutfitFromInventory", function(data, cb)
         end
     end
 
-    LSLegacy.SendEventToServer('inventory:updateOutfitFromInventory', {
+    LSLegacy.Events.SendToServer('inventory:updateOutfitFromInventory', {
         outfitUniqueId = data.outfitUniqueId,
         outfitLabel    = data.outfitLabel,
         newSlots       = newSlots,
@@ -2043,8 +2043,8 @@ RegisterNUICallback("OutfitEditApplyDefault", function(data, cb)
     local def = getDefaultClothes()
     local slot = data.slotType
     if slot and def[slot] then
-        LSLegacy.TriggerLocalEvent('skinchanger:change', slot..'_1', def[slot][1])
-        LSLegacy.TriggerLocalEvent('skinchanger:change', slot..'_2', def[slot][2])
+        LSLegacy.Events.TriggerLocal('skinchanger:change', slot..'_1', def[slot][1])
+        LSLegacy.Events.TriggerLocal('skinchanger:change', slot..'_2', def[slot][2])
         ExecuteCommand('p3')
     end
     cb("ok")
@@ -2056,8 +2056,8 @@ RegisterNUICallback("OutfitEditApplySlot", function(data, cb)
     local drawable = tonumber(data.drawable) or 0
     local texture  = tonumber(data.texture)  or 0
     if slot and isValidClothingVariation(slot, drawable, texture) then
-        LSLegacy.TriggerLocalEvent('skinchanger:change', slot..'_1', drawable)
-        LSLegacy.TriggerLocalEvent('skinchanger:change', slot..'_2', texture)
+        LSLegacy.Events.TriggerLocal('skinchanger:change', slot..'_1', drawable)
+        LSLegacy.Events.TriggerLocal('skinchanger:change', slot..'_2', texture)
         ExecuteCommand('p3')
     end
     cb("ok")
@@ -2076,7 +2076,7 @@ RegisterNUICallback("DropItem", function(data, cb)
 
         if tonumber(data.number) then
             prepareWeaponTransfer(data.item.name, data.item.data)
-            LSLegacy.SendEventToServer('addItemPickup', data.item.name, data.item.type, data.item.label, data.number, {x = pCoords.x, y = pCoords.y, z = pCoords.z, w = pHeading}, data.item.uniqueId, data.item.data)
+            LSLegacy.Events.SendToServer('addItemPickup', data.item.name, data.item.type, data.item.label, data.number, {x = pCoords.x, y = pCoords.y, z = pCoords.z, w = pHeading}, data.item.uniqueId, data.item.data)
             TaskPlayAnim(PlayerPedId(), "random@domestic", "pickup_low" , 8.0, -8.0, 1780, 35, 0.0, false, false, false)
         end
     elseif data.item.type ~= 'item_standard' then
@@ -2085,7 +2085,7 @@ RegisterNUICallback("DropItem", function(data, cb)
         local pHeading = GetEntityHeading(pPed)
         
         if tonumber(data.number) then
-            LSLegacy.SendEventToServer('addItemPickup', data.item.type, nil, data.item.label, tonumber(data.number), {x = pCoords.x, y = pCoords.y, z = pCoords.z, w = pHeading})
+            LSLegacy.Events.SendToServer('addItemPickup', data.item.type, nil, data.item.label, tonumber(data.number), {x = pCoords.x, y = pCoords.y, z = pCoords.z, w = pHeading})
             TaskPlayAnim(PlayerPedId(), "random@domestic", "pickup_low" , 8.0, -8.0, 1780, 35, 0.0, false, false, false)
         end
     end
@@ -2131,7 +2131,7 @@ RegisterNUICallback("PutIntoTrunk", function(data, cb)
     if viewOnlyMode then cb("ok") return end
     if CurrentContainer then
         prepareWeaponTransfer(data.item.name, data.item.data)
-        LSLegacy.SendEventToServer('PutIntoTrunk', {
+        LSLegacy.Events.SendToServer('PutIntoTrunk', {
             name     = data.item.name,
             count    = data.number,
             label    = data.item.label,
@@ -2148,7 +2148,7 @@ RegisterNUICallback("PutIntoTrunk", function(data, cb)
         datastore = LSLegacy.DataStore.GetTrunk(GetVehicleNumberPlateText(CurrentVehicle))
         Wait(250)
         prepareWeaponTransfer(data.item.name, data.item.data)
-        LSLegacy.SendEventToServer('PutIntoTrunk', {
+        LSLegacy.Events.SendToServer('PutIntoTrunk', {
             name = data.item.name,
             count = data.number,
             label = data.item.label,
@@ -2162,7 +2162,7 @@ RegisterNUICallback("PutIntoTrunk", function(data, cb)
         datastore = LSLegacy.DataStore.GetBAG(GetVehicleNumberPlateText(CurrentVehicle))
         Wait(250)
         prepareWeaponTransfer(data.item.name, data.item.data)
-        LSLegacy.SendEventToServer('PutIntoTrunk', {
+        LSLegacy.Events.SendToServer('PutIntoTrunk', {
             name = data.item.name,
             count = data.number,
             label = data.item.label,
@@ -2179,7 +2179,7 @@ end)
 RegisterNUICallback("TakeFromTrunk", function(data, cb)
     if viewOnlyMode then cb("ok") return end
     if CurrentContainer then
-        LSLegacy.SendEventToServer('TakeFromTrunk', {
+        LSLegacy.Events.SendToServer('TakeFromTrunk', {
             name     = data.item.name,
             count    = data.number,
             label    = data.item.label,
@@ -2195,7 +2195,7 @@ RegisterNUICallback("TakeFromTrunk", function(data, cb)
     if BagOrTrunk(CurrentVehicle) == 'trunk' then
         datastore = LSLegacy.DataStore.GetTrunk(GetVehicleNumberPlateText(CurrentVehicle))
         Wait(250)
-        LSLegacy.SendEventToServer('TakeFromTrunk', {
+        LSLegacy.Events.SendToServer('TakeFromTrunk', {
             name = data.item.name,
             count = data.number,
             label = data.item.label,
@@ -2208,7 +2208,7 @@ RegisterNUICallback("TakeFromTrunk", function(data, cb)
     elseif BagOrTrunk(CurrentVehicle) == 'bag' then
         datastore = LSLegacy.DataStore.GetBAG(GetVehicleNumberPlateText(CurrentVehicle))
         Wait(250)
-        LSLegacy.SendEventToServer('TakeFromTrunk', {
+        LSLegacy.Events.SendToServer('TakeFromTrunk', {
             name = data.item.name,
             count = data.number,
             label = data.item.label,

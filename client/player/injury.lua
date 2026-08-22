@@ -262,7 +262,7 @@ local function syncWound(force)
     if not force and (now - lastWoundSync) < 8000 then return end
     lastWoundSync = now
     local category, zone = getWoundCategory()
-    LSLegacy.SendEventToServer("LSLegacy:injury:syncWound", { category = category, zone = zone })
+    LSLegacy.Events.SendToServer("LSLegacy:injury:syncWound", { category = category, zone = zone })
 end
 
 local function enterKO(ped)
@@ -270,7 +270,7 @@ local function enterKO(ped)
     isKO      = true
     koEndTime = GetGameTimer() + Config.Injury.KODuration * 1000
     syncWound(true)
-    LSLegacy.SendEventToServer("LSLegacy:injury:enterKO")
+    LSLegacy.Events.SendToServer("LSLegacy:injury:enterKO")
     stopLimp(ped)
     SetPedMoveRateOverride(ped, 1.0)
     SetPedToRagdoll(ped, Config.Injury.KODuration * 1000, Config.Injury.KODuration * 1000, 0, false, false, false)
@@ -316,7 +316,7 @@ local function enterKO(ped)
         ClearPedTasksImmediately(p)
         SetPedCanRagdoll(p, true)
         SetPedMoveRateOverride(p, 1.0)
-        LSLegacy.SendEventToServer("LSLegacy:injury:exitKO")
+        LSLegacy.Events.SendToServer("LSLegacy:injury:exitKO")
     end)
 end
 
@@ -363,7 +363,7 @@ local function runComaScreen(totalSeconds)
 
             if remaining <= 0 then
                 isComa = false
-                LSLegacy.SendEventToServer("LSLegacy:injury:respawn")
+                LSLegacy.Events.SendToServer("LSLegacy:injury:respawn")
             end
         end
 
@@ -373,7 +373,7 @@ local function runComaScreen(totalSeconds)
         -- téléportation et SetEntityHealth effectués. Sinon le joueur reste
         -- debout à 101 HP, vulnérable, pendant cette fenêtre — la moindre
         -- chute/ragdoll le refait retomber sous le seuil et relance le coma.
-        LSLegacy.SendEventToServer("LSLegacy:injury:exitComa")
+        LSLegacy.Events.SendToServer("LSLegacy:injury:exitComa")
     end)
 end
 
@@ -387,7 +387,7 @@ local function enterComa()
     SetPedMoveRateOverride(ped, 1.0)
     stopLimp(ped)
     syncWound(true)
-    LSLegacy.SendEventToServer("LSLegacy:injury:enterComa")
+    LSLegacy.Events.SendToServer("LSLegacy:injury:enterComa")
     -- Mettre explicitement au sol : on ne peut pas compter sur la ragdoll
     -- laissée par les dégâts (elle a pu se terminer, ou n'avoir jamais eu
     -- lieu sur un dégât non projetant). L'ancien code figeait la position
@@ -399,7 +399,7 @@ local function enterComa()
 end
 
 -- Reprise du coma après reconnexion : le serveur envoie le temps restant.
-LSLegacy.RegisterClientEvent("LSLegacy:injury:resumeComa", function(remaining)
+LSLegacy.Events.Register("LSLegacy:injury:resumeComa", function(remaining)
     if isComa then return end
     isComa     = true
     isKO       = false
@@ -414,7 +414,7 @@ LSLegacy.RegisterClientEvent("LSLegacy:injury:resumeComa", function(remaining)
     runComaScreen(remaining)
 end)
 
-LSLegacy.RegisterClientEvent("LSLegacy:injury:adminRevive", function(health)
+LSLegacy.Events.Register("LSLegacy:injury:adminRevive", function(health)
     isKO   = false
     isComa = false
     local ped = PlayerPedId()
@@ -437,7 +437,7 @@ LSLegacy.RegisterClientEvent("LSLegacy:injury:adminRevive", function(health)
     end)
 end)
 
-LSLegacy.RegisterClientEvent("LSLegacy:client:respawn", function()
+LSLegacy.Events.Register("LSLegacy:client:respawn", function()
     isKO   = false
     isComa = false
     local ped    = PlayerPedId()
@@ -468,12 +468,12 @@ end)
 Keys.Register("e", "callems_coma", "Appeler les EMS (état coma)", function()
     if not isComa or emsCallled then return end
     emsCallled = true
-    LSLegacy.SendEventToServer("LSLegacy:injury:callEMS")
+    LSLegacy.Events.SendToServer("LSLegacy:injury:callEMS")
     LSLegacy.ShowNotification("EMS", "Appel envoyé aux services médicaux d'urgence.", "info")
 end)
 
 -- Suivi de la dernière arme reçue, en fallback si GetPedCauseOfDeath échoue.
-LSLegacy.AddEventHandler("gameEventTriggered", function(name, args)
+LSLegacy.Events.AddHandler("gameEventTriggered", function(name, args)
     if name ~= "CEventNetworkEntityDamage" then return end
     local victim = args[1]
     if victim ~= PlayerPedId() then return end
@@ -563,7 +563,7 @@ CreateThread(function()
             woundDamageBuffer[key] = nil
         end
         if count > 0 then
-            LSLegacy.SendEventToServer('samu:hi:damage', { batch = batch })
+            LSLegacy.Events.SendToServer('samu:hi:damage', { batch = batch })
         end
     end
 end)

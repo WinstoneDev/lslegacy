@@ -80,7 +80,7 @@ local function GoOnDuty()
     SAMU.OnDuty = true
     SAMU.Grade  = GetGrade()
 
-    LSLegacy.SendEventToServer('samu:onDuty')
+    LSLegacy.Events.SendToServer('samu:onDuty')
     Notify(Lang.SAMU.duty_on, 'success')
     TriggerEvent('samu:dutyChanged', true)
 end
@@ -92,7 +92,7 @@ local function GoOffDuty()
     -- proposer), il ne conditionne simplement plus la fin de service.
     SAMU.OnDuty = false
 
-    LSLegacy.SendEventToServer('samu:offDuty')
+    LSLegacy.Events.SendToServer('samu:offDuty')
     Notify(Lang.SAMU.duty_off, 'info')
     TriggerEvent('samu:dutyChanged', false)
 end
@@ -169,7 +169,7 @@ local function OpenGarageMenu()
                 icon = 'fa-solid fa-truck-medical',
                 disabled = not available,
                 onSelect = function()
-                    LSLegacy.SendEventToServer('samu:spawnVehicle', {
+                    LSLegacy.Events.SendToServer('samu:spawnVehicle', {
                         model    = veh.model,
                         category = category,
                         grade    = veh.grade,
@@ -219,7 +219,7 @@ end
 
 local function RequestRestock()
     if not SAMU.OnDuty then Notify(Lang.SAMU.not_samu, 'error') return end
-    LSLegacy.SendEventToServer('samu:restock')
+    LSLegacy.Events.SendToServer('samu:restock')
 end
 
 -- Zones ox_target (Centre Médical)
@@ -290,7 +290,7 @@ exports.ox_target:addBoxZone({
 
 -- Events serveur → client
 
-LSLegacy.RegisterClientEvent('samu:spawnVehicleClient', function(data)
+LSLegacy.Events.Register('samu:spawnVehicleClient', function(data)
     if not data or not data.model then return end
     local coords  = GetEntityCoords(PlayerPedId())
     local heading = GetEntityHeading(PlayerPedId())
@@ -314,7 +314,7 @@ LSLegacy.RegisterClientEvent('samu:spawnVehicleClient', function(data)
 end)
 
 -- Notification d'appel patient (détresse vitale) reçue du serveur
-LSLegacy.RegisterClientEvent('samu:patientCallReceived', function(data)
+LSLegacy.Events.Register('samu:patientCallReceived', function(data)
     if not data or not data.coords then return end
     Notify(Lang.SAMU.patient_call_received, 'error')
     SetNewWaypoint(data.coords.x, data.coords.y)
@@ -325,7 +325,7 @@ end)
 -- Le serveur répond à `samu:requestDutyState` (et peut pousser l'état à tout
 -- moment) : c'est lui qui fait autorité sur la prise de service, le flag
 -- client n'en est qu'un cache — remis à false à chaque rechargement de script.
-LSLegacy.RegisterClientEvent('samu:setDutyState', function(state)
+LSLegacy.Events.Register('samu:setDutyState', function(state)
     local onDuty = state == true
     if onDuty == SAMU.OnDuty then return end
     SAMU.OnDuty = onDuty
@@ -348,7 +348,7 @@ Citizen.CreateThread(function()
     if not IsSamu() then return end
     CreateGarageBlip()
     -- Récupérer l'état de service réel (cf. samu:setDutyState ci-dessus)
-    LSLegacy.SendEventToServer('samu:requestDutyState')
+    LSLegacy.Events.SendToServer('samu:requestDutyState')
 end)
 
 -- Exporter l'état pour les autres sous-modules

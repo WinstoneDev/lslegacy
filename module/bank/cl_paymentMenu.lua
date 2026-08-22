@@ -44,7 +44,7 @@ local function ClosePaymentNUI()
     SendNUIMessage({ action = 'payment:hide' })
 end
 
-LSLegacy.RegisterClientEvent('openPaymentMenu', function(transactionMessage, price, inventory, options)
+LSLegacy.Events.Register('openPaymentMenu', function(transactionMessage, price, inventory, options)
     OpenPaymentNUI(transactionMessage, price, inventory, options)
 end)
 
@@ -60,25 +60,25 @@ RegisterNUICallback('payment:close', function(data, cb)
 end)
 
 RegisterNUICallback('payment:payCash', function(data, cb)
-    LSLegacy.SendEventToServer('pay', nil, paymentMenu.price, 'money', nil, paymentMenu.transactionMessage, nil, paymentMenu.meta)
+    LSLegacy.Events.SendToServer('pay', nil, paymentMenu.price, 'money', nil, paymentMenu.transactionMessage, nil, paymentMenu.meta)
     ClosePaymentNUI()
     cb('ok')
 end)
 
 RegisterNUICallback('payment:payContactless', function(data, cb)
-    LSLegacy.SendEventToServer('pay', nil, paymentMenu.price, 'bank', data.card, paymentMenu.transactionMessage, true, paymentMenu.meta)
+    LSLegacy.Events.SendToServer('pay', nil, paymentMenu.price, 'bank', data.card, paymentMenu.transactionMessage, true, paymentMenu.meta)
     ClosePaymentNUI()
     cb('ok')
 end)
 
 RegisterNUICallback('payment:payChip', function(data, cb)
-    LSLegacy.SendEventToServer('pay', data.pin, paymentMenu.price, 'bank', data.card, paymentMenu.transactionMessage, false, paymentMenu.meta)
+    LSLegacy.Events.SendToServer('pay', data.pin, paymentMenu.price, 'bank', data.card, paymentMenu.transactionMessage, false, paymentMenu.meta)
     ClosePaymentNUI()
     cb('ok')
 end)
 
 -- fire-and-forget : le feedback d'échec passe par 'notify', pas par ce NUI
-LSLegacy.RegisterClientEvent('doActionsPayment', function(sucess)
+LSLegacy.Events.Register('doActionsPayment', function(sucess)
     SendNUIMessage({ action = 'payment:sound', success = sucess })
 
     if sucess then

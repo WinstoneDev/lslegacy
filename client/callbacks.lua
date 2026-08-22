@@ -28,7 +28,7 @@ function Callbacks:Trigger(event, cb, invoker, ...)
     }
     local table = self.requests[self.id]
 
-    LSLegacy.SendEventToServer("triggerServerCallback", event, self.id, invoker, ...)
+    LSLegacy.Events.SendToServer("triggerServerCallback", event, self.id, invoker, ...)
 
     self.id += 1
 
@@ -57,7 +57,7 @@ function Callbacks:ClientRecieve(eventName, requestId, invoker, ...)
     end
 
     local returnCb = function(...)
-        LSLegacy.SendEventToServer("clientCallback", requestId, invoker, ...)
+        LSLegacy.Events.SendToServer("clientCallback", requestId, invoker, ...)
     end
     local callback = self.storage[eventName].cb
 
@@ -110,15 +110,15 @@ function LSLegacy.DoesClientCallbackExist(eventName)
     return Callbacks.storage[eventName] ~= nil
 end
 
-LSLegacy.RegisterClientEvent("serverCallback", function(...)
+LSLegacy.Events.Register("serverCallback", function(...)
     Callbacks:ServerRecieve(...)
 end)
 
-LSLegacy.RegisterClientEvent("triggerClientCallback", function(...)
+LSLegacy.Events.Register("triggerClientCallback", function(...)
     Callbacks:ClientRecieve(...)
 end)
 
-LSLegacy.AddEventHandler("onResourceStop", function(resource)
+LSLegacy.Events.AddHandler("onResourceStop", function(resource)
     for k, v in pairs(Callbacks.storage) do
         if v.resource == resource then
             Callbacks.storage[k] = nil

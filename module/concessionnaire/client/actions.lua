@@ -4,7 +4,7 @@ local function Notify(msg, type)
     TriggerEvent(Config.Concessionnaire.NotifyEvent, 'Concessionnaire', msg, 5000, type or 'info')
 end
 
-LSLegacy.RegisterClientEvent('concessionnaire:buyResult', function(data)
+LSLegacy.Events.Register('concessionnaire:buyResult', function(data)
     if not data then return end
     if data.success then
         Notify(string.format(Lang.Concessionnaire.bought, data.label or '?'), 'success')
@@ -14,7 +14,7 @@ LSLegacy.RegisterClientEvent('concessionnaire:buyResult', function(data)
     end
 end)
 
-LSLegacy.RegisterClientEvent('concessionnaire:deliverVehicle', function(data)
+LSLegacy.Events.Register('concessionnaire:deliverVehicle', function(data)
     if not data or not data.model then return end
     if Concessionnaire and Concessionnaire.ClearPreview then Concessionnaire.ClearPreview() end
 
@@ -77,7 +77,7 @@ LSLegacy.RegisterClientEvent('concessionnaire:deliverVehicle', function(data)
 
     local netId = NetworkGetNetworkIdFromEntity(veh)
     if netId and netId ~= 0 then
-        LSLegacy.SendEventToServer('concessionnaire:persistDelivered', {
+        LSLegacy.Events.SendToServer('concessionnaire:persistDelivered', {
             plate = data.plate,
             netId = netId,
         })
@@ -86,7 +86,7 @@ LSLegacy.RegisterClientEvent('concessionnaire:deliverVehicle', function(data)
     Notify(Lang.Concessionnaire.delivered, 'success')
 end)
 
-LSLegacy.RegisterClientEvent('concessionnaire:sellResult', function(data)
+LSLegacy.Events.Register('concessionnaire:sellResult', function(data)
     if not data then return end
     if not data.success then
         local msg = Lang.Concessionnaire[data.reason] or Lang.Concessionnaire.resale_failed

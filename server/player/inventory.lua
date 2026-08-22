@@ -186,7 +186,7 @@ LSLegacy.Inventory.AddItemInInventory = function(player, item, quantity, newlabe
             player:MarkDirty('inventory')
             local weight = LSLegacy.Inventory.GetInventoryWeight(player.inventory)
             player.weight = weight
-            LSLegacy.SendEventToClient('UpdatePlayer', player.source, player)
+            LSLegacy.Events.SendToClient('UpdatePlayer', player.source, player)
         end
     end
 end
@@ -243,7 +243,7 @@ LSLegacy.Inventory.RemoveItemInInventory = function(player, item, quantity, item
     player:MarkDirty('inventory')
     local weight = LSLegacy.Inventory.GetInventoryWeight(player.inventory)
     player.weight = weight
-    LSLegacy.SendEventToClient('UpdatePlayer', player.source, player)
+    LSLegacy.Events.SendToClient('UpdatePlayer', player.source, player)
 end
 
 ---RenameItemLabel
@@ -303,10 +303,10 @@ LSLegacy.Inventory.RenameItemLabel = function(player, name, lastLabel, newLabel,
     if not exist then
         table.insert(inventory, {name = itemName, label = newLabel, count = quantity})
     end
-    LSLegacy.SendEventToClient('notify', player.source, nil, "Vous avez changé le nom "..lastLabel.." en "..newLabel..".", 'success')
+    LSLegacy.Events.SendToClient('notify', player.source, nil, "Vous avez changé le nom "..lastLabel.." en "..newLabel..".", 'success')
     player.inventory = inventory
     player:MarkDirty('inventory')
-    LSLegacy.SendEventToClient('UpdatePlayer', player.source, player)
+    LSLegacy.Events.SendToClient('UpdatePlayer', player.source, player)
 end
 
 ---RegisterUsableItem
@@ -331,7 +331,7 @@ LSLegacy.UseItem = function(item, ...)
     end
 end
 
-LSLegacy.RegisterServerEvent('renameItem', function(name, lastLabel, newLabel, quantity, uniqueId)
+LSLegacy.Events.Register('renameItem', function(name, lastLabel, newLabel, quantity, uniqueId)
     local player = LSLegacy.GetPlayerFromId(source)
     LSLegacy.Inventory.RenameItemLabel(player, name, lastLabel, newLabel, quantity, uniqueId)
 end)
@@ -370,15 +370,15 @@ LSLegacy.Inventory.SwapItemsInInventory = function(player, itemA, itemB)
     inventory[idxA], inventory[idxB] = inventory[idxB], inventory[idxA]
     player.inventory = inventory
     player:MarkDirty('inventory')
-    LSLegacy.SendEventToClient('UpdatePlayer', player.source, player)
+    LSLegacy.Events.SendToClient('UpdatePlayer', player.source, player)
 end
 
-LSLegacy.RegisterServerEvent('swapItemPosition', function(itemA, itemB)
+LSLegacy.Events.Register('swapItemPosition', function(itemA, itemB)
     local player = LSLegacy.GetPlayerFromId(source)
     LSLegacy.Inventory.SwapItemsInInventory(player, itemA, itemB)
 end)
 
-LSLegacy.RegisterServerEvent('useItem', function(item, ...)
+LSLegacy.Events.Register('useItem', function(item, ...)
     local player = LSLegacy.GetPlayerFromId(source)
     if LSLegacy.Inventory.GetInventoryItem(player, item) ~= nil then
         if LSLegacy.Inventory.GetInventoryItem(player, item).count > 0 then
@@ -387,7 +387,7 @@ LSLegacy.RegisterServerEvent('useItem', function(item, ...)
     end
 end)
 
-LSLegacy.RegisterServerEvent('transfer', function(table)
+LSLegacy.Events.Register('transfer', function(table)
     local source = source
     local sourcePed = GetPlayerPed(source)
     local targetPed = GetPlayerPed(table.target)
@@ -402,11 +402,11 @@ LSLegacy.RegisterServerEvent('transfer', function(table)
                     if LSLegacy.Inventory.CanCarryItem(target, table.name, table.count) then
                         LSLegacy.Inventory.RemoveItemInInventory(player, table.name, table.count, table.label)
                         LSLegacy.Inventory.AddItemInInventory(target, table.name, table.count, table.label, sourceItem.uniqueId, sourceItem.data)
-                        LSLegacy.SendEventToClient('notify', table.target, nil, table.count..' '..table.label..' ont été ajouté(s) à votre inventaire.', 'success')
-                        LSLegacy.SendEventToClient('notify', source, nil, table.count..' '..table.label..' ont été retiré(s) de votre inventaire.', 'success')
+                        LSLegacy.Events.SendToClient('notify', table.target, nil, table.count..' '..table.label..' ont été ajouté(s) à votre inventaire.', 'success')
+                        LSLegacy.Events.SendToClient('notify', source, nil, table.count..' '..table.label..' ont été retiré(s) de votre inventaire.', 'success')
                     else
-                        LSLegacy.SendEventToClient('notify', table.target, nil, 'Vous ne pouvez pas transporter cet objet.', 'error')
-                        LSLegacy.SendEventToClient('notify', source, nil, 'La personne ne peut pas transporter cet objet.', 'error')
+                        LSLegacy.Events.SendToClient('notify', table.target, nil, 'Vous ne pouvez pas transporter cet objet.', 'error')
+                        LSLegacy.Events.SendToClient('notify', source, nil, 'La personne ne peut pas transporter cet objet.', 'error')
                     end
                 end
             end
@@ -414,27 +414,27 @@ LSLegacy.RegisterServerEvent('transfer', function(table)
             if LSLegacy.Money.GetPlayerMoney(player) >= table.count then
                 LSLegacy.Money.RemovePlayerMoney(player, table.count)
                 LSLegacy.Money.AddPlayerMoney(target, table.count)
-                LSLegacy.SendEventToClient('notify', table.target, nil, 'Vous avez reçu '..table.count..' $.', 'success')
-                LSLegacy.SendEventToClient('notify', source, nil, 'Vous avez donné '..table.count..' $ à la personne.', 'success')
+                LSLegacy.Events.SendToClient('notify', table.target, nil, 'Vous avez reçu '..table.count..' $.', 'success')
+                LSLegacy.Events.SendToClient('notify', source, nil, 'Vous avez donné '..table.count..' $ à la personne.', 'success')
             else
-                LSLegacy.SendEventToClient('notify', source, nil, 'Vous n\'avez pas assez d\'argent.', 'error')
+                LSLegacy.Events.SendToClient('notify', source, nil, 'Vous n\'avez pas assez d\'argent.', 'error')
             end
         elseif table.type == 'item_dirty' then
             if LSLegacy.Money.GetPlayerDirtyMoney(player) >= table.count then
                 LSLegacy.Money.RemovePlayerDirtyMoney(player, table.count)
                 LSLegacy.Money.AddPlayerDirtyMoney(target, table.count)
-                LSLegacy.SendEventToClient('notify', table.target, nil, 'Vous avez reçu '..table.count..' $.', 'success')
-                LSLegacy.SendEventToClient('notify', source, nil, 'Vous avez donné '..table.count..' $ à la personne.', 'success')
+                LSLegacy.Events.SendToClient('notify', table.target, nil, 'Vous avez reçu '..table.count..' $.', 'success')
+                LSLegacy.Events.SendToClient('notify', source, nil, 'Vous avez donné '..table.count..' $ à la personne.', 'success')
             else
-                LSLegacy.SendEventToClient('notify', source, nil, 'Vous n\'avez pas assez d\'argent sale.', 'error')
+                LSLegacy.Events.SendToClient('notify', source, nil, 'Vous n\'avez pas assez d\'argent sale.', 'error')
             end
         end
     else
-        LSLegacy.SendEventToClient('notify', source, nil, 'Il n\'y a aucune personne aux alentours de vous.', 'error')
+        LSLegacy.Events.SendToClient('notify', source, nil, 'Il n\'y a aucune personne aux alentours de vous.', 'error')
     end
 end)
 
-LSLegacy.RegisterServerEvent('giveItem', function(item, quantity, newlabel, uniqueId, data)
+LSLegacy.Events.Register('giveItem', function(item, quantity, newlabel, uniqueId, data)
     local _source = source
     local player = LSLegacy.GetPlayerFromId(_source)
     if player then
@@ -444,9 +444,9 @@ LSLegacy.RegisterServerEvent('giveItem', function(item, quantity, newlabel, uniq
                     durability = 100
                 }
                 LSLegacy.Inventory.AddItemInInventory(player, item, quantity, newlabel, uniqueId, dataFood)
-                LSLegacy.SendEventToClient('notify', player.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. 'x ' .. newlabel or LSLegacy.Inventory.GetInfosItem(item).label, 'success')
+                LSLegacy.Events.SendToClient('notify', player.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. 'x ' .. newlabel or LSLegacy.Inventory.GetInfosItem(item).label, 'success')
             else
-                LSLegacy.SendEventToClient('notify', player.source, 'Inventaire', 'Vous ne pouvez pas porter + de cet item.', 'error')
+                LSLegacy.Events.SendToClient('notify', player.source, 'Inventaire', 'Vous ne pouvez pas porter + de cet item.', 'error')
             end
             return
         end
@@ -454,9 +454,9 @@ LSLegacy.RegisterServerEvent('giveItem', function(item, quantity, newlabel, uniq
 		if not string.match(item, 'weapon_') then
             if LSLegacy.Inventory.CanCarryItem(player, item, quantity) then
                 LSLegacy.Inventory.AddItemInInventory(player, item, quantity, newlabel, uniqueId, data)
-                LSLegacy.SendEventToClient('notify', player.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. 'x ' .. newlabel or LSLegacy.Inventory.GetInfosItem(item).label, 'success')
+                LSLegacy.Events.SendToClient('notify', player.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. 'x ' .. newlabel or LSLegacy.Inventory.GetInfosItem(item).label, 'success')
             else
-                LSLegacy.SendEventToClient('notify', player.source, 'Inventaire', 'Vous ne pouvez pas porter + de cet item.', 'error')
+                LSLegacy.Events.SendToClient('notify', player.source, 'Inventaire', 'Vous ne pouvez pas porter + de cet item.', 'error')
             end
 		else
             if LSLegacy.Inventory.CanCarryItem(player, item, quantity) then
@@ -466,22 +466,22 @@ LSLegacy.RegisterServerEvent('giveItem', function(item, quantity, newlabel, uniq
                     serialNumber = LSLegacy.GenerateNumeroDeSerie()
                 }
                 LSLegacy.Inventory.AddItemInInventory(player, item, quantity, nil, nil, dataWeapon)
-                LSLegacy.SendEventToClient('notify', player.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. 'x ' .. LSLegacy.Inventory.GetInfosItem(item).label, 'success')
+                LSLegacy.Events.SendToClient('notify', player.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. 'x ' .. LSLegacy.Inventory.GetInfosItem(item).label, 'success')
             else
-                LSLegacy.SendEventToClient('notify', player.source, 'Inventaire', 'Vous ne pouvez pas porter + de cet item.', 'error')
+                LSLegacy.Events.SendToClient('notify', player.source, 'Inventaire', 'Vous ne pouvez pas porter + de cet item.', 'error')
             end
 		end
     end
 end)
 
-LSLegacy.RegisterServerEvent('removeItem', function(item, quantity, label)
+LSLegacy.Events.Register('removeItem', function(item, quantity, label)
     local _source = source
     local player = LSLegacy.GetPlayerFromId(_source)
     if player then
         if LSLegacy.Inventory.GetInventoryItem(player, item) then
             if LSLegacy.Inventory.GetInventoryItem(player, item).count >= quantity then
                 LSLegacy.Inventory.RemoveItemInInventory(player, item, quantity, label)
-                LSLegacy.SendEventToClient('notify', _source, nil, "Vous avez perdu "..quantity.." "..label or LSLegacy.Inventory.GetInfosItem(item).label, 'success')
+                LSLegacy.Events.SendToClient('notify', _source, nil, "Vous avez perdu "..quantity.." "..label or LSLegacy.Inventory.GetInfosItem(item).label, 'success')
             end
         end
     end

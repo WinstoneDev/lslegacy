@@ -4,7 +4,7 @@
 local TakingHostage = {} -- [aggressorSrc] = targetSrc
 local TakenHostage  = {} -- [targetSrc] = aggressorSrc
 
-LSLegacy.RegisterServerEvent('lslegacy_hostage:sync', function(targetServerId)
+LSLegacy.Events.Register('lslegacy_hostage:sync', function(targetServerId)
     local src = source
     local target = tonumber(targetServerId)
     if not target or GetPlayerName(target) == nil or target == src then return end
@@ -14,7 +14,7 @@ LSLegacy.RegisterServerEvent('lslegacy_hostage:sync', function(targetServerId)
     TakenHostage[target] = src
 end)
 
-LSLegacy.RegisterServerEvent('lslegacy_hostage:release', function(targetServerId)
+LSLegacy.Events.Register('lslegacy_hostage:release', function(targetServerId)
     local src = source
     local target = tonumber(targetServerId)
     if target and TakenHostage[target] == src then
@@ -24,7 +24,7 @@ LSLegacy.RegisterServerEvent('lslegacy_hostage:release', function(targetServerId
     end
 end)
 
-LSLegacy.RegisterServerEvent('lslegacy_hostage:kill', function(targetServerId)
+LSLegacy.Events.Register('lslegacy_hostage:kill', function(targetServerId)
     local src = source
     local target = tonumber(targetServerId)
     if target and TakenHostage[target] == src then
@@ -34,7 +34,7 @@ LSLegacy.RegisterServerEvent('lslegacy_hostage:kill', function(targetServerId)
     end
 end)
 
-LSLegacy.RegisterServerEvent('lslegacy_hostage:stop', function(targetServerId)
+LSLegacy.Events.Register('lslegacy_hostage:stop', function(targetServerId)
     local src = source
     local target = tonumber(targetServerId)
 

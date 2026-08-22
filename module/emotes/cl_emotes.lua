@@ -282,7 +282,7 @@ end
 
 local function cancelSharedByUser()
     if Shared.partner then
-        LSLegacy.SendEventToServer('lslegacy_emotes:cancelShared', Shared.partner)
+        LSLegacy.Events.SendToServer('lslegacy_emotes:cancelShared', Shared.partner)
     end
     stopShared()
 end
@@ -300,7 +300,7 @@ local function requestSharedEmote(item)
         return
     end
 
-    LSLegacy.SendEventToServer('lslegacy_emotes:requestShared', GetPlayerServerId(closest), item.id)
+    LSLegacy.Events.SendToServer('lslegacy_emotes:requestShared', GetPlayerServerId(closest), item.id)
     LSLegacy.ShowNotification("Emotes", ("Demande envoyée à %s (%s)."):format(GetPlayerName(closest), item.label), 'info')
 end
 
@@ -336,21 +336,21 @@ local function playSharedLocal(emoteId, otherServerId)
     end
 end
 
-LSLegacy.RegisterClientEvent('lslegacy_emotes:client:playShared', function(emoteId, otherServerId)
+LSLegacy.Events.Register('lslegacy_emotes:client:playShared', function(emoteId, otherServerId)
     playSharedLocal(emoteId, otherServerId)
 end)
 
-LSLegacy.RegisterClientEvent('lslegacy_emotes:client:playSharedTarget', function(emoteId, otherServerId)
+LSLegacy.Events.Register('lslegacy_emotes:client:playSharedTarget', function(emoteId, otherServerId)
     playSharedLocal(emoteId, otherServerId)
 end)
 
-LSLegacy.RegisterClientEvent('lslegacy_emotes:client:cancelShared', function(otherServerId)
+LSLegacy.Events.Register('lslegacy_emotes:client:cancelShared', function(otherServerId)
     if Shared.partner and Shared.partner == otherServerId then
         stopShared()
     end
 end)
 
-LSLegacy.RegisterClientEvent('lslegacy_emotes:client:requestShared', function(emoteId, requesterServerId)
+LSLegacy.Events.Register('lslegacy_emotes:client:requestShared', function(emoteId, requesterServerId)
     if Shared.awaitingResponse then return end
     local item = Shared.byId[emoteId]
     if not item then return end
@@ -364,7 +364,7 @@ LSLegacy.RegisterClientEvent('lslegacy_emotes:client:requestShared', function(em
             Wait(0)
             if IsControlJustPressed(1, 246) then -- Y
                 Shared.awaitingResponse = false
-                LSLegacy.SendEventToServer('lslegacy_emotes:confirmShared', requesterServerId, emoteId, item.target)
+                LSLegacy.Events.SendToServer('lslegacy_emotes:confirmShared', requesterServerId, emoteId, item.target)
             elseif IsControlJustPressed(1, 182) then -- L
                 Shared.awaitingResponse = false
                 LSLegacy.ShowNotification("Emotes", "Émote refusée.", 'info')
@@ -469,12 +469,12 @@ local function toggleFavorite(category, item)
     local key = favoriteKey(category, item)
     local nowFavorite = not Favorites.keys[key]
     Favorites.keys[key] = nowFavorite or nil
-    LSLegacy.SendEventToServer('lslegacy_emotes:toggleFavorite', key)
+    LSLegacy.Events.SendToServer('lslegacy_emotes:toggleFavorite', key)
     rebuildFavoritesData()
     LSLegacy.ShowNotification("Emotes", (nowFavorite and "Ajouté aux favoris : " or "Retiré des favoris : ") .. item.label, 'info')
 end
 
-LSLegacy.RegisterClientEvent('lslegacy_emotes:client:setFavorites', function(keys)
+LSLegacy.Events.Register('lslegacy_emotes:client:setFavorites', function(keys)
     Favorites.keys = {}
     for _, key in ipairs(keys) do
         Favorites.keys[key] = true
@@ -491,7 +491,7 @@ CreateThread(function()
         local characterId = LSLegacy.PlayerData and LSLegacy.PlayerData["boutique-id"]
         if characterId and characterId ~= lastCharacterId then
             lastCharacterId = characterId
-            LSLegacy.SendEventToServer('lslegacy_emotes:getFavorites')
+            LSLegacy.Events.SendToServer('lslegacy_emotes:getFavorites')
         end
     end
 end)

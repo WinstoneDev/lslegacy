@@ -33,7 +33,7 @@ MySQL.Async.execute("ALTER TABLE fourriere ADD COLUMN IF NOT EXISTS character_id
 local function GetPlayer(src) return LSLegacy.Players.Get(src) end
 
 local function Notify(src, msg, t)
-    LSLegacy.SendEventToClient(CFG.NotifyEvent, src, 'Fourrière', msg, 5000, t or 'info')
+    LSLegacy.Events.SendToClient(CFG.NotifyEvent, src, 'Fourrière', msg, 5000, t or 'info')
 end
 
 local function charName(player)
@@ -75,7 +75,7 @@ local function setMdtLocation(plate, location, officer)
     ]], { ['@plate'] = plate, ['@dep'] = CFG.Department, ['@loc'] = location, ['@oid'] = officer or '' })
 end
 
-LSLegacy.RegisterServerEvent('fourriere:impound', function(data)
+LSLegacy.Events.Register('fourriere:impound', function(data)
     local src = source
     local player = GetPlayer(src)
     if not player or type(data) ~= 'table' then return end
@@ -101,7 +101,7 @@ LSLegacy.RegisterServerEvent('fourriere:impound', function(data)
         LSLegacy.AP = LSLegacy.AP or { Active = {} }
         LSLegacy.AP.Active = LSLegacy.AP.Active or {}
         LSLegacy.AP.Active[plate] = nil
-        LSLegacy.SendEventToClient('fourriere:removeVehicle', src, { plate = plate })
+        LSLegacy.Events.SendToClient('fourriere:removeVehicle', src, { plate = plate })
     end
 
     -- Lu AVANT le despawn (qui supprime la ligne persistent_vehicles) pour restaurer à l'identique.
@@ -152,7 +152,7 @@ LSLegacy.RegisterServerEvent('fourriere:impound', function(data)
     end)
 end)
 
-LSLegacy.RegisterServerEvent('fourriere:requestList', function()
+LSLegacy.Events.Register('fourriere:requestList', function()
     local src = source
     local player = GetPlayer(src)
     if not player then return end
@@ -161,7 +161,7 @@ LSLegacy.RegisterServerEvent('fourriere:requestList', function()
                GREATEST(TIMESTAMPDIFF(SECOND, NOW(), release_at), 0) AS remaining_sec
         FROM fourriere WHERE character_id=@charId ORDER BY impounded_at DESC
     ]], { ['@charId'] = player["boutique-id"] }, function(rows)
-        LSLegacy.SendEventToClient('fourriere:list', src, rows or {})
+        LSLegacy.Events.SendToClient('fourriere:list', src, rows or {})
     end)
 end)
 
@@ -213,7 +213,7 @@ LSLegacy.Bank.RegisterPaymentResultHandler('fourriere', function(token, success)
     ReleaseVehicle(pending.src, pending.player, pending.plate, pending.rec)
 end)
 
-LSLegacy.RegisterServerEvent('fourriere:retrieve', function(data)
+LSLegacy.Events.Register('fourriere:retrieve', function(data)
     local src = source
     local player = GetPlayer(src)
     if not player or type(data) ~= 'table' then return end

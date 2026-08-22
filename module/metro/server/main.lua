@@ -23,7 +23,7 @@ LSLegacy.Bank.RegisterPaymentResultHandler('metro', function(token, success)
 
     local src = pending.src
     if not success then
-        LSLegacy.SendEventToClient('metro:ticketFailed', src, Lang.Metro.ticket_failed)
+        LSLegacy.Events.SendToClient('metro:ticketFailed', src, Lang.Metro.ticket_failed)
         return
     end
 
@@ -35,7 +35,7 @@ LSLegacy.Bank.RegisterPaymentResultHandler('metro', function(token, success)
 
     if not LSLegacy.Inventory.CanCarryItem(player, 'ticket', 1) then
         dbg('résultat paiement : inventaire plein pour src ' .. src)
-        LSLegacy.SendEventToClient('metro:ticketFailed', src, Lang.Metro.inventory_full)
+        LSLegacy.Events.SendToClient('metro:ticketFailed', src, Lang.Metro.inventory_full)
         return
     end
 
@@ -45,18 +45,18 @@ LSLegacy.Bank.RegisterPaymentResultHandler('metro', function(token, success)
         minute = pending.minute,
     })
     dbg('ticket "' .. label .. '" donné à src ' .. src)
-    LSLegacy.SendEventToClient('metro:ticketBought', src)
+    LSLegacy.Events.SendToClient('metro:ticketBought', src)
 end)
 
 -- Le ticket n'est associé à aucune station : achetable sur n'importe
 -- quelle borne (voir le ciblage global côté client), donc rien à
 -- vérifier ici hormis le paiement.
-LSLegacy.RegisterServerEvent('metro:buyTicket', function(hour, minute)
+LSLegacy.Events.Register('metro:buyTicket', function(hour, minute)
     local src = source
 
     if not MetroEnabled then
         dbg('buyTicket refusé : métro désactivé (src ' .. src .. ')')
-        LSLegacy.SendEventToClient('metro:ticketFailed', src, Lang.Metro.metro_disabled)
+        LSLegacy.Events.SendToClient('metro:ticketFailed', src, Lang.Metro.metro_disabled)
         return
     end
 
@@ -85,7 +85,7 @@ LSLegacy.RegisterCommand('metrotoggle', 2, function(player, args)
     local action = args and args.action
 
     if action ~= 'on' and action ~= 'off' then
-        LSLegacy.SendEventToClient('notify', src, 'Métro', 'Usage: /metrotoggle on|off', 'error')
+        LSLegacy.Events.SendToClient('notify', src, 'Métro', 'Usage: /metrotoggle on|off', 'error')
         return
     end
 
@@ -93,7 +93,7 @@ LSLegacy.RegisterCommand('metrotoggle', 2, function(player, args)
     dbg(('métro %s (par src %d)'):format(MetroEnabled and 'ACTIVÉ' or 'DÉSACTIVÉ', src))
 
     TriggerClientEvent('metro:setEnabled', -1, MetroEnabled)
-    LSLegacy.SendEventToClient('notify', src, 'Métro', 'Métro ' .. (MetroEnabled and 'activé.' or 'désactivé.'), 'success')
+    LSLegacy.Events.SendToClient('notify', src, 'Métro', 'Métro ' .. (MetroEnabled and 'activé.' or 'désactivé.'), 'success')
 end, {
     help = 'Active/désactive le métro (staff)',
     validate = true,
@@ -108,12 +108,12 @@ LSLegacy.RegisterCommand('metropos', 2, function(player)
     local coords = LSLegacy.GetEntityCoords(src)
     local msg = string.format('vector3(%.6f, %.6f, %.6f) heading=%.5f',
         coords.x, coords.y, coords.z, GetEntityHeading(GetPlayerPed(src)))
-    LSLegacy.SendEventToClient('notify', src, 'Métro', msg, 'success')
+    LSLegacy.Events.SendToClient('notify', src, 'Métro', msg, 'success')
     dbg(msg)
 end, { help = 'Position/heading du joueur (calibrage métro)' }, false)
 
 -- Blip de debug sur chaque rame ambiante trouvée sur la carte, pour
 -- vérifier où le moteur les fait effectivement apparaître/circuler.
 LSLegacy.RegisterCommand('metrotrainblips', 2, function(player)
-    LSLegacy.SendEventToClient('metro:toggleTrainBlips', player.source)
+    LSLegacy.Events.SendToClient('metro:toggleTrainBlips', player.source)
 end, { help = 'Active/désactive les blips de debug sur toutes les rames (calibrage métro)' }, false)

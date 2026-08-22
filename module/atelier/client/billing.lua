@@ -8,7 +8,7 @@ local function CanBill()
     return Atelier.IsOnDuty() and LSLegacy.Atelier.HasPermission(Atelier.GetCompanyId(), Atelier.GetGrade(), 'billing')
 end
 
-LSLegacy.RegisterClientEvent('atelier:invoicePreview', function(data)
+LSLegacy.Events.Register('atelier:invoicePreview', function(data)
     if not data then return end
 
     local options = {
@@ -22,7 +22,7 @@ LSLegacy.RegisterClientEvent('atelier:invoicePreview', function(data)
         description = 'Confirmer et envoyer au TPE / espèces du client',
         icon = 'fa-solid fa-file-invoice-dollar',
         onSelect = function()
-            LSLegacy.SendEventToServer('atelier:finalizeInvoice', { plate = data.plate })
+            LSLegacy.Events.SendToServer('atelier:finalizeInvoice', { plate = data.plate })
         end,
     }
 
@@ -35,7 +35,7 @@ exports.ox_target:addGlobalVehicle({
         name = 'atelier_invoice', icon = 'fa-solid fa-file-invoice-dollar', label = 'Facture',
         distance = 3.0, canInteract = CanBill,
         onSelect = function(data)
-            LSLegacy.SendEventToServer('atelier:requestInvoice', { vehNet = NetworkGetNetworkIdFromEntity(data.entity) })
+            LSLegacy.Events.SendToServer('atelier:requestInvoice', { vehNet = NetworkGetNetworkIdFromEntity(data.entity) })
         end,
     },
 })

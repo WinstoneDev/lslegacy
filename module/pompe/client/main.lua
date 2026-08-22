@@ -131,7 +131,7 @@ local function RunFillSequence(vehicle, currentLiters, capacity, station, maxDel
 
     SetVehicleFuelLevel(vehicle, ((currentLiters + finalLiters) / capacity) * 100.0)
 
-    LSLegacy.SendEventToServer('pompe:payFuel', {
+    LSLegacy.Events.SendToServer('pompe:payFuel', {
         stationId = station.id,
         liters = finalLiters,
     })
@@ -140,7 +140,7 @@ end
 -- Demande de plein en cours (une seule à la fois)
 local pendingFill = nil
 
-LSLegacy.RegisterClientEvent('pompe:fillAuthorized', function(data)
+LSLegacy.Events.Register('pompe:fillAuthorized', function(data)
     if not pendingFill or not data or pendingFill.station.id ~= data.stationId then return end
     local req = pendingFill
     pendingFill = nil
@@ -175,7 +175,7 @@ local function StartFuelPurchase(pumpEntity)
     end
 
     pendingFill = { vehicle = vehicle, currentLiters = currentLiters, capacity = capacity, station = station }
-    LSLegacy.SendEventToServer('pompe:requestFill', {
+    LSLegacy.Events.SendToServer('pompe:requestFill', {
         stationId = station.id,
         currentLiters = currentLiters,
         capacity = capacity,

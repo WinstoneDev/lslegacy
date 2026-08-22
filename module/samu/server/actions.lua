@@ -39,7 +39,7 @@ end
 
 --  HEALTH INSPECTION — mannequin par membre, trousse de soins
 
-LSLegacy.RegisterServerEvent('samu:hi:open', function(data)
+LSLegacy.Events.Register('samu:hi:open', function(data)
     local src = source
     if not IsSamu(src) or not IsSamuOnDuty(src) then return end
     if not data or not data.target then return end
@@ -70,7 +70,7 @@ LSLegacy.RegisterServerEvent('samu:hi:open', function(data)
     })
 end)
 
-LSLegacy.RegisterServerEvent('samu:hi:useItem', function(data)
+LSLegacy.Events.Register('samu:hi:useItem', function(data)
     local src = source
     if not IsSamu(src) or not IsSamuOnDuty(src) then return end
     if not data or not data.target or not data.item or not LSLegacy.Injury.IsValidPart(data.part) then return end
@@ -120,7 +120,7 @@ LSLegacy.RegisterServerEvent('samu:hi:useItem', function(data)
     TriggerClientEvent('samu:treatedByEms', target, itemDef.label)
 end)
 
-LSLegacy.RegisterServerEvent('samu:hi:poll', function(data)
+LSLegacy.Events.Register('samu:hi:poll', function(data)
     local src = source
     if not data or not data.reqId then return end
     local result = false
@@ -139,7 +139,7 @@ end)
 
 --  RÉASSORT DE LA TROUSSE (Centre Médical)
 
-LSLegacy.RegisterServerEvent('samu:restock', function()
+LSLegacy.Events.Register('samu:restock', function()
     local src = source
     if not IsSamu(src) or not IsSamuOnDuty(src) then return end
     local samuPlayer = GetPlayer(src)
@@ -162,7 +162,7 @@ end)
 
 --  RÉANIMER (sortie de KO / coma)
 
-LSLegacy.RegisterServerEvent('samu:revive', function(data)
+LSLegacy.Events.Register('samu:revive', function(data)
     local src = source
     if not IsSamu(src) or not IsSamuOnDuty(src) then return end
     if not HasPermission(src, 'revive_player') then

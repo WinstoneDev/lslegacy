@@ -67,7 +67,7 @@ LSLegacy.RegisterZone = function(
     end
 end
 
-LSLegacy.RegisterServerEvent('zones:haveInteract', function(zone)
+LSLegacy.Events.Register('zones:haveInteract', function(zone)
     local _source = source
 
     Citizen.CreateThread(function()
@@ -115,7 +115,7 @@ Citizen.CreateThread(function()
 
                         player.currentZone = name
 
-                        LSLegacy.SendEventToClient(
+                        LSLegacy.Events.SendToClient(
                             'zones:enteredZone',
                             player.source,
                             zone
@@ -154,7 +154,7 @@ Citizen.CreateThread(function()
                                     dyn.markerScale
                             end
 
-                            LSLegacy.SendEventToClient(
+                            LSLegacy.Events.SendToClient(
                                 'zones:updateZoneState',
                                 player.source,
                                 name,
@@ -192,7 +192,7 @@ Citizen.CreateThread(function()
                     oldZoneData.lastDynamicPush[player.source] = nil
                 end
 
-                LSLegacy.SendEventToClient(
+                LSLegacy.Events.SendToClient(
                     'zones:exitedZone',
                     player.source,
                     oldZone

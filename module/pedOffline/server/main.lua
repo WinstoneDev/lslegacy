@@ -34,7 +34,7 @@ end
 
 -- Cache du skin (mis a jour a chaque spawn et periodiquement)
 
-LSLegacy.AddEventHandler('ap:clientsetonSpawn', function(src)
+LSLegacy.Events.AddHandler('ap:clientsetonSpawn', function(src)
     local player = LSLegacy.Players.Get(src)
     if not player then return end
     local identifier = player.identifier
@@ -89,7 +89,7 @@ local function createSleepingPedFromCache(src, cached)
     return true
 end
 
-LSLegacy.AddEventHandler('playerDropped', function()
+LSLegacy.Events.AddHandler('playerDropped', function()
     local src    = source
     local cached = skinCache[src]
     skinCache[src] = nil
@@ -108,7 +108,7 @@ end
 
 -- Requete client : envoyer la liste des peds endormis + supprimer son propre ped
 
-LSLegacy.RegisterServerEvent("pedOffline:request:sleepingList", function()
+LSLegacy.Events.Register("pedOffline:request:sleepingList", function()
     local src = source
     Citizen.CreateThread(function()
         if not dataLoaded then while not dataLoaded do Wait(100) end end
@@ -127,7 +127,7 @@ LSLegacy.RegisterServerEvent("pedOffline:request:sleepingList", function()
             pedOfflineDebug("response:sleepingList -> includes", k)
         end
         pedOfflineDebug("response:sleepingList: envoi de", count, "ped(s) a", src)
-        LSLegacy.SendEventToClient("pedOffline:response:sleepingList", src, pedOfflineSleepingList)
+        LSLegacy.Events.SendToClient("pedOffline:response:sleepingList", src, pedOfflineSleepingList)
     end)
 end)
 
@@ -184,7 +184,7 @@ LSLegacy.RegisterCommand(pedOfflineCfg.testCommand.name, pedOfflineCfg.testComma
 
 -- Porter un ped
 
-LSLegacy.RegisterServerEvent('pedOffline:server:startCarrying', function(identifier, netId)
+LSLegacy.Events.Register('pedOffline:server:startCarrying', function(identifier, netId)
     local src = source
     local sp  = Sleeping.get(identifier)
     if not sp then return end
@@ -197,7 +197,7 @@ LSLegacy.RegisterServerEvent('pedOffline:server:startCarrying', function(identif
     pedOfflineDebug("startCarrying", identifier, netId)
 end)
 
-LSLegacy.RegisterServerEvent('pedOffline:server:stopCarrying', function(identifier, netId)
+LSLegacy.Events.Register('pedOffline:server:stopCarrying', function(identifier, netId)
     local src    = source
     local entity = NetworkGetEntityFromNetworkId(netId)
     if entity and DoesEntityExist(entity) then
@@ -222,18 +222,18 @@ end)
 
 -- Mettre dans un vehicule
 
-LSLegacy.RegisterServerEvent('pedOffline:server:putInVehicle', function(identifier, vehicleNetId, seatIndex)
+LSLegacy.Events.Register('pedOffline:server:putInVehicle', function(identifier, vehicleNetId, seatIndex)
     local sp = Sleeping.get(identifier)
     if not sp then return end
     sp:putInVehicle(vehicleNetId, seatIndex)
 end)
 
-LSLegacy.RegisterServerEvent('pedOffline:server:outVehicle', function(identifier)
+LSLegacy.Events.Register('pedOffline:server:outVehicle', function(identifier)
     local src = source
     local sp  = Sleeping.get(identifier)
     if not sp then return end
     sp:outVehicle()
-    LSLegacy.SendEventToClient("pedOffline:client:TargetCarryAction", src, identifier)
+    LSLegacy.Events.SendToClient("pedOffline:client:TargetCarryAction", src, identifier)
 end)
 
 -- Chargement initial depuis MySQL
@@ -292,7 +292,7 @@ end)
 
 -- Nettoyage a l'arret de la resource
 
-LSLegacy.AddEventHandler('onResourceStop', function(resourceName)
+LSLegacy.Events.AddHandler('onResourceStop', function(resourceName)
     if resourceName ~= GetCurrentResourceName() then return end
     for _, netId in pairs(entityList) do
         local entity = NetworkGetEntityFromNetworkId(netId)

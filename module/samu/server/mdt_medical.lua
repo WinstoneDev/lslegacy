@@ -187,7 +187,7 @@ end
 
 -- Réponse standardisée d'une écriture (notif + refresh ciblé côté NUI).
 local function result(src, ok, message, refresh)
-    LSLegacy.SendEventToClient('mdt:result', src, { ok = ok, message = message, refresh = refresh })
+    LSLegacy.Events.SendToClient('mdt:result', src, { ok = ok, message = message, refresh = refresh })
 end
 
 -- Quartier le plus proche d'un point (nom de secteur pour le dispatch).
@@ -536,12 +536,12 @@ local readPerms = {
     getDocs         = 'view_med_docs',
 }
 
-LSLegacy.RegisterServerEvent('mdtmed:query', function(data)
+LSLegacy.Events.Register('mdtmed:query', function(data)
     local src = source
     if type(data) ~= 'table' or not data.reqId or type(data.action) ~= 'string' then return end
 
     local function reply(res)
-        LSLegacy.SendEventToClient('mdtmed:queryResult', src, { reqId = data.reqId, result = res })
+        LSLegacy.Events.SendToClient('mdtmed:queryResult', src, { reqId = data.reqId, result = res })
     end
 
     local handler = readHandlers[data.action]
@@ -559,7 +559,7 @@ end)
 --  ÉCRITURES
 
 -- Fiche médicale : création si absente, mise à jour sinon.
-LSLegacy.RegisterServerEvent('mdtmed:saveRecord', function(data)
+LSLegacy.Events.Register('mdtmed:saveRecord', function(data)
     local src = source
     local player, grade = can(src, 'edit_med_records')
     if not player then return end
@@ -597,7 +597,7 @@ LSLegacy.RegisterServerEvent('mdtmed:saveRecord', function(data)
 end)
 
 -- Ajout d'une entrée (consultation, intervention…) au dossier.
-LSLegacy.RegisterServerEvent('mdtmed:addEntry', function(data)
+LSLegacy.Events.Register('mdtmed:addEntry', function(data)
     local src = source
     local player, grade = can(src, 'med_add_entry')
     if not player then return end
@@ -631,7 +631,7 @@ LSLegacy.RegisterServerEvent('mdtmed:addEntry', function(data)
 end)
 
 -- Suppression d'une entrée de dossier (chef de service uniquement).
-LSLegacy.RegisterServerEvent('mdtmed:deleteEntry', function(data)
+LSLegacy.Events.Register('mdtmed:deleteEntry', function(data)
     local src = source
     local player = can(src, 'med_delete_entry')
     if not player then return end
@@ -643,7 +643,7 @@ LSLegacy.RegisterServerEvent('mdtmed:deleteEntry', function(data)
 end)
 
 -- Prescription d'un traitement.
-LSLegacy.RegisterServerEvent('mdtmed:addTreatment', function(data)
+LSLegacy.Events.Register('mdtmed:addTreatment', function(data)
     local src = source
     local player = can(src, 'manage_treatments')
     if not player then return end
@@ -680,7 +680,7 @@ LSLegacy.RegisterServerEvent('mdtmed:addTreatment', function(data)
 end)
 
 -- Changement de statut d'un traitement (terminé / annulé / réactivé).
-LSLegacy.RegisterServerEvent('mdtmed:setTreatmentStatus', function(data)
+LSLegacy.Events.Register('mdtmed:setTreatmentStatus', function(data)
     local src = source
     local player = can(src, 'manage_treatments')
     if not player then return end
@@ -699,7 +699,7 @@ LSLegacy.RegisterServerEvent('mdtmed:setTreatmentStatus', function(data)
 end)
 
 -- Prise en charge d'un appel.
-LSLegacy.RegisterServerEvent('mdtmed:assignCall', function(data)
+LSLegacy.Events.Register('mdtmed:assignCall', function(data)
     local src = source
     local player = can(src, 'manage_dispatch')
     if not player then return end
@@ -719,7 +719,7 @@ LSLegacy.RegisterServerEvent('mdtmed:assignCall', function(data)
 end)
 
 -- Clôture d'un appel (traité ou annulé).
-LSLegacy.RegisterServerEvent('mdtmed:closeCall', function(data)
+LSLegacy.Events.Register('mdtmed:closeCall', function(data)
     local src = source
     local player = can(src, 'manage_dispatch')
     if not player then return end
@@ -735,7 +735,7 @@ LSLegacy.RegisterServerEvent('mdtmed:closeCall', function(data)
 end)
 
 -- Création / mise à jour d'un document interne.
-LSLegacy.RegisterServerEvent('mdtmed:saveDoc', function(data)
+LSLegacy.Events.Register('mdtmed:saveDoc', function(data)
     local src = source
     local player = can(src, 'manage_med_docs')
     if not player then return end
@@ -778,7 +778,7 @@ LSLegacy.RegisterServerEvent('mdtmed:saveDoc', function(data)
 end)
 
 -- Suppression d'un document interne.
-LSLegacy.RegisterServerEvent('mdtmed:deleteDoc', function(data)
+LSLegacy.Events.Register('mdtmed:deleteDoc', function(data)
     local src = source
     local player = can(src, 'manage_med_docs')
     if not player then return end
@@ -790,7 +790,7 @@ LSLegacy.RegisterServerEvent('mdtmed:deleteDoc', function(data)
 end)
 
 -- Publication du petit mot du dashboard (cheffes d'équipe).
-LSLegacy.RegisterServerEvent('mdtmed:postBoard', function(data)
+LSLegacy.Events.Register('mdtmed:postBoard', function(data)
     local src = source
     local player, grade = can(src, 'manage_board')
     if not player then return end
@@ -813,7 +813,7 @@ LSLegacy.RegisterServerEvent('mdtmed:postBoard', function(data)
 end)
 
 -- Retrait d'un petit mot.
-LSLegacy.RegisterServerEvent('mdtmed:removeBoard', function(data)
+LSLegacy.Events.Register('mdtmed:removeBoard', function(data)
     local src = source
     local player = can(src, 'manage_board')
     if not player then return end

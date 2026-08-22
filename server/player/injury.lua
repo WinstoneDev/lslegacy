@@ -1,4 +1,4 @@
-LSLegacy.RegisterServerEvent("LSLegacy:injury:enterComa", function()
+LSLegacy.Events.Register("LSLegacy:injury:enterComa", function()
     local src = source
     local player = LSLegacy.ServerPlayers[src]
     if not player then return end
@@ -8,7 +8,7 @@ LSLegacy.RegisterServerEvent("LSLegacy:injury:enterComa", function()
     Config.Development.Print(("[Injury] %s est en coma jusqu'à %d"):format(GetPlayerName(src), player.status.comaUntil))
 end)
 
-LSLegacy.RegisterServerEvent("LSLegacy:injury:exitComa", function()
+LSLegacy.Events.Register("LSLegacy:injury:exitComa", function()
     local src = source
     local player = LSLegacy.ServerPlayers[src]
     if not player then return end
@@ -16,7 +16,7 @@ LSLegacy.RegisterServerEvent("LSLegacy:injury:exitComa", function()
     player.status.comaUntil  = nil
 end)
 
-LSLegacy.RegisterServerEvent("LSLegacy:injury:respawn", function()
+LSLegacy.Events.Register("LSLegacy:injury:respawn", function()
     local src = source
     local player = LSLegacy.ServerPlayers[src]
     if not player then return end
@@ -25,11 +25,11 @@ LSLegacy.RegisterServerEvent("LSLegacy:injury:respawn", function()
     player.status.comaUntil  = nil
     player.health            = 125
     LSLegacy.Injury.SyncWoundsToHealth(src, 125) -- 125 = santé réelle appliquée par LSLegacy:client:respawn (25%)
-    LSLegacy.SendEventToClient("LSLegacy:client:respawn", src)
+    LSLegacy.Events.SendToClient("LSLegacy:client:respawn", src)
 end)
 
 -- Relayé au module SAMU via "samu:patientCall" pour notifier ses agents en service
-LSLegacy.RegisterServerEvent("LSLegacy:injury:callEMS", function()
+LSLegacy.Events.Register("LSLegacy:injury:callEMS", function()
     local src = source
     local player = LSLegacy.ServerPlayers[src]
     if not player or not player.isComa then return end
@@ -39,7 +39,7 @@ LSLegacy.RegisterServerEvent("LSLegacy:injury:callEMS", function()
     Config.Development.Print(("[Injury] %s appelle les EMS depuis le coma"):format(GetPlayerName(src)))
 end)
 
-LSLegacy.RegisterServerEvent("LSLegacy:injury:enterKO", function()
+LSLegacy.Events.Register("LSLegacy:injury:enterKO", function()
     local src = source
     local player = LSLegacy.ServerPlayers[src]
     if not player then return end
@@ -47,7 +47,7 @@ LSLegacy.RegisterServerEvent("LSLegacy:injury:enterKO", function()
     player.isComa = false
 end)
 
-LSLegacy.RegisterServerEvent("LSLegacy:injury:exitKO", function()
+LSLegacy.Events.Register("LSLegacy:injury:exitKO", function()
     local src = source
     local player = LSLegacy.ServerPlayers[src]
     if not player then return end
@@ -55,7 +55,7 @@ LSLegacy.RegisterServerEvent("LSLegacy:injury:exitKO", function()
 end)
 
 -- Utilisé par la trousse de soins SAMU/Pompiers
-LSLegacy.RegisterServerEvent("LSLegacy:injury:syncWound", function(data)
+LSLegacy.Events.Register("LSLegacy:injury:syncWound", function(data)
     local src = source
     local player = LSLegacy.ServerPlayers[src]
     if not player or not data then return end
@@ -162,7 +162,7 @@ end
 
 -- Le SERVEUR fait la conversion catégorie→type de blessure (jamais confiance
 -- au client) ; aucun SetEntityHealth ici, cf. ApplyDamage.
-LSLegacy.RegisterServerEvent('samu:hi:damage', function(data)
+LSLegacy.Events.Register('samu:hi:damage', function(data)
     local src = source
     if type(data) ~= 'table' then return end
 
@@ -198,7 +198,7 @@ LSLegacy.Injury.ClearState = function(src, health)
     player.isComa           = false
     player.status.comaUntil = nil
     LSLegacy.Injury.SyncWoundsToHealth(src, health or 200)
-    LSLegacy.SendEventToClient("LSLegacy:injury:adminRevive", src, health or 200)
+    LSLegacy.Events.SendToClient("LSLegacy:injury:adminRevive", src, health or 200)
 end
 
 ---GetWound

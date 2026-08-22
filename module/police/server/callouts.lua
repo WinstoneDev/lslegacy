@@ -2220,7 +2220,7 @@ local function DoRegister(src, crewId)
 end
 
 -- Le client demande la liste des équipages (clic sur Anna)
-LSLegacy.RegisterServerEvent('police:callouts:askCrews', function()
+LSLegacy.Events.Register('police:callouts:askCrews', function()
     local src = source
     if not IsLawEnforcementOnDuty(src) then
         Notify(src, "Vous devez être en service dans une force de l'ordre.", 'error')
@@ -2229,7 +2229,7 @@ LSLegacy.RegisterServerEvent('police:callouts:askCrews', function()
     SendCrewState(src)
 end)
 
-LSLegacy.RegisterServerEvent('police:callouts:register', function(data)
+LSLegacy.Events.Register('police:callouts:register', function(data)
     DoRegister(source, data and data.crew or nil)
 end)
 
@@ -2305,7 +2305,7 @@ local function AddAgent(co, src, asLeader)
     if asLeader then co.leader = src end
 end
 
-LSLegacy.RegisterServerEvent('police:callouts:accept', function(data)
+LSLegacy.Events.Register('police:callouts:accept', function(data)
     local src = source
     if not Registered[src] or not IsLawEnforcementOnDuty(src) then return end
     if not data then return end
@@ -2382,7 +2382,7 @@ LSLegacy.RegisterServerEvent('police:callouts:accept', function(data)
 end)
 
 -- Le cerveau remonte le nom de rue réel une fois sur place (non bloquant)
-LSLegacy.RegisterServerEvent('police:callouts:reposition', function(data)
+LSLegacy.Events.Register('police:callouts:reposition', function(data)
     local src = source
     local co = CalloutOf(src)
     if not co or not data or not data.netId then return end
@@ -2407,7 +2407,7 @@ LSLegacy.RegisterServerEvent('police:callouts:reposition', function(data)
 end)
 
 -- Relais de visibilité du corps. Le cerveau masque le cadavre pendant
-LSLegacy.RegisterServerEvent('police:callouts:corpseVisible', function(data)
+LSLegacy.Events.Register('police:callouts:corpseVisible', function(data)
     local src = source
     local co = CalloutOf(src)
     if not co or not data or not data.netId then return end
@@ -2426,7 +2426,7 @@ LSLegacy.RegisterServerEvent('police:callouts:corpseVisible', function(data)
     end
 end)
 
-LSLegacy.RegisterServerEvent('police:callouts:reportStreet', function(data)
+LSLegacy.Events.Register('police:callouts:reportStreet', function(data)
     local src = source
     local co = CalloutOf(src)
     if not co or co.brain ~= src then return end
@@ -2435,7 +2435,7 @@ LSLegacy.RegisterServerEvent('police:callouts:reportStreet', function(data)
 end)
 
 -- Refus explicite d'un appel. Sans ce retour, un appel décliné restait
-LSLegacy.RegisterServerEvent('police:callouts:refuse', function(data)
+LSLegacy.Events.Register('police:callouts:refuse', function(data)
     local src = source
     if not Registered[src] or not data then return end
 
@@ -2462,7 +2462,7 @@ LSLegacy.RegisterServerEvent('police:callouts:refuse', function(data)
     end
 end)
 
-LSLegacy.RegisterServerEvent('police:callouts:leave', function()
+LSLegacy.Events.Register('police:callouts:leave', function()
     local src = source
     local co = CalloutOf(src)
     if not co then return end
@@ -2483,7 +2483,7 @@ LSLegacy.RegisterServerEvent('police:callouts:leave', function()
     end
 end)
 
-LSLegacy.RegisterServerEvent('police:callouts:requestBackup', function()
+LSLegacy.Events.Register('police:callouts:requestBackup', function()
     local src = source
     local co = CalloutOf(src)
     if not co or co.state ~= 'active' then return end
@@ -2515,7 +2515,7 @@ LSLegacy.RegisterServerEvent('police:callouts:requestBackup', function()
     NotifyEngaged(co, 'Demande de renfort transmise au central.', 'info')
 end)
 
-LSLegacy.RegisterServerEvent('police:callouts:acceptBackup', function(data)
+LSLegacy.Events.Register('police:callouts:acceptBackup', function(data)
     local src = source
     if not Registered[src] or not IsLawEnforcementOnDuty(src) then return end
     if not data then return end
@@ -2547,7 +2547,7 @@ LSLegacy.RegisterServerEvent('police:callouts:acceptBackup', function(data)
     SyncEngaged(co)
 end)
 
-LSLegacy.RegisterServerEvent('police:callouts:setStatus', function(data)
+LSLegacy.Events.Register('police:callouts:setStatus', function(data)
     local src = source
     local co = CalloutOf(src)
     if not co or not data or not data.status then return end
@@ -2580,7 +2580,7 @@ local function AgentNear(src, ped, radius)
     return #(a - b) <= (radius or 5.0)
 end
 
-LSLegacy.RegisterServerEvent('police:callouts:suspectStunned', function(data)
+LSLegacy.Events.Register('police:callouts:suspectStunned', function(data)
     local src = source
     local p, co = GetPed(src, data)
     if not p or p.role == 'caller' then return end
@@ -2591,7 +2591,7 @@ LSLegacy.RegisterServerEvent('police:callouts:suspectStunned', function(data)
     SyncEngaged(co)
 end)
 
-LSLegacy.RegisterServerEvent('police:callouts:suspectCuffed', function(data)
+LSLegacy.Events.Register('police:callouts:suspectCuffed', function(data)
     local src = source
     local p, co = GetPed(src, data)
     if not p or (p.role ~= 'suspect' and p.role ~= 'wanderer') then return end
@@ -2604,7 +2604,7 @@ LSLegacy.RegisterServerEvent('police:callouts:suspectCuffed', function(data)
     SyncEngaged(co)
 end)
 
-LSLegacy.RegisterServerEvent('police:callouts:suspectIdentify', function(data)
+LSLegacy.Events.Register('police:callouts:suspectIdentify', function(data)
     local src = source
     local p, co = GetPed(src, data)
     if not p or p.identified then return end
@@ -2622,7 +2622,7 @@ LSLegacy.RegisterServerEvent('police:callouts:suspectIdentify', function(data)
 end)
 
 -- Faire circuler un individu. Alternative à l'interpellation sur les
-LSLegacy.RegisterServerEvent('police:callouts:moveAlong', function(data)
+LSLegacy.Events.Register('police:callouts:moveAlong', function(data)
     local src = source
     local p, co = GetPed(src, data)
     if not p or p.role ~= 'suspect' then return end
@@ -2730,7 +2730,7 @@ local function PickVictimLine(co, healed)
 end
 
 -- Recueil du témoignage d'une victime.
-LSLegacy.RegisterServerEvent('police:callouts:victimStatement', function(data)
+LSLegacy.Events.Register('police:callouts:victimStatement', function(data)
     local src = source
     local p, co = GetPed(src, data)
     if not p or p.role ~= 'victim' then return end
@@ -2749,7 +2749,7 @@ LSLegacy.RegisterServerEvent('police:callouts:victimStatement', function(data)
     SyncEngaged(co)
 end)
 
-LSLegacy.RegisterServerEvent('police:callouts:interrogate', function(data)
+LSLegacy.Events.Register('police:callouts:interrogate', function(data)
     local src = source
     local p, co = GetPed(src, data)
     if not p or p.role ~= 'suspect' then return end
@@ -2789,7 +2789,7 @@ LSLegacy.RegisterServerEvent('police:callouts:interrogate', function(data)
     SyncEngaged(co)
 end)
 
-LSLegacy.RegisterServerEvent('police:callouts:suspectSearched', function(data)
+LSLegacy.Events.Register('police:callouts:suspectSearched', function(data)
     local src = source
     local p, co = GetPed(src, data)
     if not p or p.role ~= 'suspect' then return end
@@ -2836,7 +2836,7 @@ LSLegacy.RegisterServerEvent('police:callouts:suspectSearched', function(data)
     SyncEngaged(co)
 end)
 
-LSLegacy.RegisterServerEvent('police:callouts:suspectDropWeapon', function(data)
+LSLegacy.Events.Register('police:callouts:suspectDropWeapon', function(data)
     local src = source
     local co = CalloutOf(src)
     if not co or co.brain ~= src then return end
@@ -2849,7 +2849,7 @@ LSLegacy.RegisterServerEvent('police:callouts:suspectDropWeapon', function(data)
     SyncEngaged(co)
 end)
 
-LSLegacy.RegisterServerEvent('police:callouts:pickupWeapon', function(data)
+LSLegacy.Events.Register('police:callouts:pickupWeapon', function(data)
     local src = source
     local p, co = GetPed(src, data)
     if not p or not p.droppedWeapon then return end
@@ -2878,7 +2878,7 @@ local function IsNonLethalCause(hash)
     return NonLethalCause[hash] == true
 end
 
-LSLegacy.RegisterServerEvent('police:callouts:suspectDead', function(data)
+LSLegacy.Events.Register('police:callouts:suspectDead', function(data)
     local src = source
     local co = CalloutOf(src)
     if not co or co.state ~= 'active' then return end
@@ -2992,7 +2992,7 @@ LSLegacy.RegisterServerEvent('police:callouts:suspectDead', function(data)
     CheckResolution(co)
 end)
 
-LSLegacy.RegisterServerEvent('police:callouts:suspectCombat', function(data)
+LSLegacy.Events.Register('police:callouts:suspectCombat', function(data)
     local src = source
     local co = CalloutOf(src)
     if not co or co.brain ~= src then return end
@@ -3001,7 +3001,7 @@ LSLegacy.RegisterServerEvent('police:callouts:suspectCombat', function(data)
     p.combat = (data.combat == true)
 end)
 
-LSLegacy.RegisterServerEvent('police:callouts:suspectSurrender', function(data)
+LSLegacy.Events.Register('police:callouts:suspectSurrender', function(data)
     local src = source
     local co = CalloutOf(src)
     if not co or co.brain ~= src then return end
@@ -3019,7 +3019,7 @@ LSLegacy.RegisterServerEvent('police:callouts:suspectSurrender', function(data)
     SyncEngaged(co)
 end)
 
-LSLegacy.RegisterServerEvent('police:callouts:suspectEscaped', function(data)
+LSLegacy.Events.Register('police:callouts:suspectEscaped', function(data)
     local src = source
     local co = CalloutOf(src)
     if not co or co.brain ~= src then return end
@@ -3037,7 +3037,7 @@ LSLegacy.RegisterServerEvent('police:callouts:suspectEscaped', function(data)
     CheckResolution(co)
 end)
 
-LSLegacy.RegisterServerEvent('police:callouts:suspectDelivered', function(data)
+LSLegacy.Events.Register('police:callouts:suspectDelivered', function(data)
     local src = source
     local p, co = GetPed(src, data)
     if not p then return end
@@ -3156,7 +3156,7 @@ local function ClearAmbulance(id)
 end
 
 -- Retire les corps pris en charge par les brancardiers.
-LSLegacy.RegisterServerEvent('police:callouts:ambulanceLoaded', function(data)
+LSLegacy.Events.Register('police:callouts:ambulanceLoaded', function(data)
     local id = data and tonumber(data.id)
     local amb = id and Ambulances[id]
     if not amb or amb.loaded then return end
@@ -3332,7 +3332,7 @@ MaybeFinishMassIncident = function(co, src)
     end
 end
 
-LSLegacy.RegisterServerEvent('police:callouts:objectiveDone', function(data)
+LSLegacy.Events.Register('police:callouts:objectiveDone', function(data)
     local src = source
     local co = CalloutOf(src)
     if not co or co.state ~= 'active' then return end
@@ -3445,7 +3445,7 @@ LSLegacy.RegisterServerEvent('police:callouts:objectiveDone', function(data)
     CheckResolution(co)
 end)
 
-LSLegacy.RegisterServerEvent('police:callouts:firstAid', function(data)
+LSLegacy.Events.Register('police:callouts:firstAid', function(data)
     local src = source
     local p, co = GetPed(src, data)
     if not p or p.role ~= 'victim' or p.state == 'healed' then return end
@@ -3468,7 +3468,7 @@ LSLegacy.RegisterServerEvent('police:callouts:firstAid', function(data)
 end)
 
 -- Tapage : on demande à un fêtard de couper la musique. Il s'exécute,
-LSLegacy.RegisterServerEvent('police:callouts:askRadioOff', function(data)
+LSLegacy.Events.Register('police:callouts:askRadioOff', function(data)
     local src = source
     local p, co = GetPed(src, data)
     if not p or p.role ~= 'suspect' then return end
@@ -3487,7 +3487,7 @@ LSLegacy.RegisterServerEvent('police:callouts:askRadioOff', function(data)
     end
 end)
 
-LSLegacy.RegisterServerEvent('police:callouts:radioOff', function()
+LSLegacy.Events.Register('police:callouts:radioOff', function()
     local src = source
     local co = CalloutOf(src)
     if not co or co.state ~= 'active' then return end
@@ -3500,7 +3500,7 @@ LSLegacy.RegisterServerEvent('police:callouts:radioOff', function()
     CheckResolution(co)
 end)
 
-LSLegacy.RegisterServerEvent('police:callouts:dismissBystander', function(data)
+LSLegacy.Events.Register('police:callouts:dismissBystander', function(data)
     local src = source
     local p, co = GetPed(src, data)
     if not p or p.role ~= 'bystander' then return end
@@ -3509,7 +3509,7 @@ LSLegacy.RegisterServerEvent('police:callouts:dismissBystander', function(data)
 end)
 
 -- Le client rapporte l'heure in-game (le serveur n'a pas d'horloge)
-LSLegacy.RegisterServerEvent('police:callouts:reportHour', function(hour)
+LSLegacy.Events.Register('police:callouts:reportHour', function(hour)
     local h = tonumber(hour)
     if h and h >= 0 and h <= 23 then CurrentHour = math.floor(h) end
 end)
@@ -3568,12 +3568,12 @@ Suggest('callouts', 'Activer ou désactiver les missions PNJ (admin)',
 local RunCommand   -- forward declaration, défini après les commandes
 
 -- Le client demande s'il a le droit d'utiliser les commandes admin, pour
-LSLegacy.RegisterServerEvent('police:callouts:askAdmin', function()
+LSLegacy.Events.Register('police:callouts:askAdmin', function()
     local src = source
     TriggerClientEvent('police:callouts:adminState', src, IsAdmin(src))
 end)
 
-LSLegacy.RegisterServerEvent('police:callouts:command', function(data)
+LSLegacy.Events.Register('police:callouts:command', function(data)
     local src = source
     if not data or type(data.cmd) ~= 'string' then return end
     local args = {}
@@ -3889,7 +3889,7 @@ local function RecordSpawnFail(scenarioId, zone, reason, x, y, z, manual, role)
 end
 
 -- Client → serveur : le validateur n'a pas trouvé de position correcte.
-LSLegacy.RegisterServerEvent('police:callouts:spawnFail', function(data)
+LSLegacy.Events.Register('police:callouts:spawnFail', function(data)
     local src = source
     local co = CalloutOf(src)
     if not co or not data then return end
@@ -3900,7 +3900,7 @@ LSLegacy.RegisterServerEvent('police:callouts:spawnFail', function(data)
 end)
 
 -- Signalement manuel par un agent : le PNJ le plus proche est enregistré
-LSLegacy.RegisterServerEvent('police:callouts:reportSpawn', function()
+LSLegacy.Events.Register('police:callouts:reportSpawn', function()
     local src = source
     local co = CalloutOf(src)
     if not co then
@@ -3939,7 +3939,7 @@ LSLegacy.RegisterServerEvent('police:callouts:reportSpawn', function()
 end)
 
 -- Signalement d'une intervention ENTIÈRE. Complémentaire de
-LSLegacy.RegisterServerEvent('police:callouts:reportLocation', function()
+LSLegacy.Events.Register('police:callouts:reportLocation', function()
     local src = source
     local co = CalloutOf(src)
     if not co then
@@ -3995,7 +3995,7 @@ LSLegacy.RegisterServerEvent('police:callouts:reportLocation', function()
 end)
 
 -- Signalement d'une INADÉQUATION scénario / emplacement.
-LSLegacy.RegisterServerEvent('police:callouts:reportMismatch', function()
+LSLegacy.Events.Register('police:callouts:reportMismatch', function()
     local src = source
     local co = CalloutOf(src)
     if not co then
@@ -4203,7 +4203,7 @@ local function NearestLocation(pos, category)
     return bestKey, bestLoc, bestDist
 end
 
-LSLegacy.RegisterServerEvent('police:callouts:anchorSurvey', function(data)
+LSLegacy.Events.Register('police:callouts:anchorSurvey', function(data)
     local src = source
     if not IsAdmin(src) then DenyAdmin(src) return end
 
@@ -4269,7 +4269,7 @@ AddEventHandler('playerDropped', function()
 end)
 
 -- Relevé d'une position pour un rôle, sur l'emplacement en cours.
-LSLegacy.RegisterServerEvent('police:callouts:anchorHere', function(data)
+LSLegacy.Events.Register('police:callouts:anchorHere', function(data)
     local src = source
     -- Même garde que /pnjrepere (anchorSurvey) : sans elle, n'importe
     if not IsAdmin(src) then DenyAdmin(src) return end
@@ -4339,7 +4339,7 @@ LSLegacy.RegisterServerEvent('police:callouts:anchorHere', function(data)
 end)
 
 -- Annulation du dernier relevé.
-LSLegacy.RegisterServerEvent('police:callouts:anchorUndo', function(data)
+LSLegacy.Events.Register('police:callouts:anchorUndo', function(data)
     local src = source
     if not IsAdmin(src) then DenyAdmin(src) return end
     local co = CalloutOf(src)
@@ -4566,7 +4566,7 @@ RegisterCommand('callouts',        CmdCallouts,        false)
 RegisterCommand('callout',         CmdCallout,         false)
 
 -- Actions du menu d'administration
-LSLegacy.RegisterServerEvent('police:callouts:adminAction', function(data)
+LSLegacy.Events.Register('police:callouts:adminAction', function(data)
     local src = source
     if not IsAdmin(src) then DenyAdmin(src) return end
     if not data or not data.action then return end
@@ -4829,23 +4829,23 @@ MdtQueries.getSummary = function(src, data, cb)
     )
 end
 
-LSLegacy.RegisterServerEvent('mdtco:query', function(data)
+LSLegacy.Events.Register('mdtco:query', function(data)
     local src = source
     if not data or not data.action or not data.reqId then return end
     if not IsLawEnforcement(src) then return end
     if not HasPermission(src, 'view_callouts') then
-        LSLegacy.SendEventToClient('mdtco:queryResult', src, { reqId = data.reqId, result = false })
+        LSLegacy.Events.SendToClient('mdtco:queryResult', src, { reqId = data.reqId, result = false })
         return
     end
 
     local handler = MdtQueries[data.action]
     if not handler then
-        LSLegacy.SendEventToClient('mdtco:queryResult', src, { reqId = data.reqId, result = false })
+        LSLegacy.Events.SendToClient('mdtco:queryResult', src, { reqId = data.reqId, result = false })
         return
     end
 
     handler(src, data.data or {}, function(res)
-        LSLegacy.SendEventToClient('mdtco:queryResult', src, { reqId = data.reqId, result = res })
+        LSLegacy.Events.SendToClient('mdtco:queryResult', src, { reqId = data.reqId, result = res })
     end)
 end)
 

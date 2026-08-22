@@ -46,7 +46,7 @@ local function DropHeldPart(silent)
     end
     Atelier.HeldPart = nil
     Atelier.HeldProp = nil
-    LSLegacy.SendEventToServer('atelier:dropPart')
+    LSLegacy.Events.SendToServer('atelier:dropPart')
     if not silent then Notify('Pièce restituée au dépôt.', 'info') end
 end
 
@@ -65,7 +65,7 @@ end
 
 -- Consommée par le module réparation/carrosserie après une pose validée :
 -- ne restitue PAS au stock (la pièce a déjà été consommée côté serveur).
-LSLegacy.RegisterClientEvent('atelier:partInstalled', function()
+LSLegacy.Events.Register('atelier:partInstalled', function()
     Atelier.ClearHeldPartSilent()
 end)
 
@@ -77,10 +77,10 @@ local function OpenPartsDepot(companyId)
     if not CanUseDepot(companyId) then Notify(Lang.Atelier.not_on_duty, 'error') return end
     if Atelier.HeldPart then Notify(Lang.Atelier.depot_already_holding, 'error') return end
     pendingCompany = companyId
-    LSLegacy.SendEventToServer('atelier:requestStock')
+    LSLegacy.Events.SendToServer('atelier:requestStock')
 end
 
-LSLegacy.RegisterClientEvent('atelier:stockResult', function(stock)
+LSLegacy.Events.Register('atelier:stockResult', function(stock)
     stock = stock or {}
     local companyId = pendingCompany
     local options = {}
@@ -95,7 +95,7 @@ LSLegacy.RegisterClientEvent('atelier:stockResult', function(stock)
             icon = part.carried and 'fa-solid fa-hand-holding' or 'fa-solid fa-circle-dot',
             disabled = not available,
             onSelect = function()
-                LSLegacy.SendEventToServer('atelier:takePart', { item = itemName })
+                LSLegacy.Events.SendToServer('atelier:takePart', { item = itemName })
             end,
         }
     end
@@ -117,7 +117,7 @@ LSLegacy.RegisterClientEvent('atelier:stockResult', function(stock)
                             local qtyStr = LSLegacy.KeyboardInput('Quantité à ajouter au stock', 4)
                             local qty    = tonumber(qtyStr)
                             if not qty or qty <= 0 then return end
-                            LSLegacy.SendEventToServer('atelier:restockStock', { item = itemName, amount = math.floor(qty) })
+                            LSLegacy.Events.SendToServer('atelier:restockStock', { item = itemName, amount = math.floor(qty) })
                         end,
                     }
                 end
@@ -131,7 +131,7 @@ LSLegacy.RegisterClientEvent('atelier:stockResult', function(stock)
     lib.showContext('atelier_depot')
 end)
 
-LSLegacy.RegisterClientEvent('atelier:restockResult', function(data)
+LSLegacy.Events.Register('atelier:restockResult', function(data)
     if not data then return end
     if data.success then
         local label = Config.Items[data.item] and Config.Items[data.item].label or data.item
@@ -139,7 +139,7 @@ LSLegacy.RegisterClientEvent('atelier:restockResult', function(data)
     end
 end)
 
-LSLegacy.RegisterClientEvent('atelier:partTaken', function(data)
+LSLegacy.Events.Register('atelier:partTaken', function(data)
     if not data then return end
     local label = Config.Items[data.item] and Config.Items[data.item].label or data.item
     Notify(string.format(Lang.Atelier.depot_part_bought, label), 'success')

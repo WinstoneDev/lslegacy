@@ -92,8 +92,8 @@ local function stripPedClothes()
     local def = getDefaultClothes()
     if def then
         for slot, values in pairs(def) do
-            LSLegacy.TriggerLocalEvent('skinchanger:change', slot..'_1', values[1] or 0)
-            LSLegacy.TriggerLocalEvent('skinchanger:change', slot..'_2', values[2] or 0)
+            LSLegacy.Events.TriggerLocal('skinchanger:change', slot..'_1', values[1] or 0)
+            LSLegacy.Events.TriggerLocal('skinchanger:change', slot..'_2', values[2] or 0)
         end
     else
         local ped = PlayerPedId()
@@ -198,13 +198,13 @@ function OpenClothShopNUI(header, type, coords)
 
     Citizen.CreateThread(function()
         -- Capture skin BEFORE any preview changes can happen
-        LSLegacy.TriggerLocalEvent('skinchanger:getSkin', function(skin)
+        LSLegacy.Events.TriggerLocal('skinchanger:getSkin', function(skin)
             shopState.lastSkin = skin
         end)
         Wait(100)  -- let the callback fire (getSkin may be async)
 
         local maxVals = {}
-        LSLegacy.TriggerLocalEvent('skinchanger:getData', function(components, max)
+        LSLegacy.Events.TriggerLocal('skinchanger:getData', function(components, max)
             maxVals = max or {}
             shopState.maxVals = maxVals
         end)
@@ -277,8 +277,8 @@ RegisterNUICallback('clothshop:preview', function(data, cb)
                 ClearPedProp(PlayerPedId(), propIdx)
             end
         else
-            LSLegacy.TriggerLocalEvent('skinchanger:change', data.name..'_1', data.drawable)
-            LSLegacy.TriggerLocalEvent('skinchanger:change', data.name..'_2', data.texture)
+            LSLegacy.Events.TriggerLocal('skinchanger:change', data.name..'_1', data.drawable)
+            LSLegacy.Events.TriggerLocal('skinchanger:change', data.name..'_2', data.texture)
             local ped    = PlayerPedId()
             local compId = COMP_MAP[data.name]
             local propId = PROP_MAP[data.name]
@@ -303,12 +303,12 @@ RegisterNUICallback('clothshop:revertSlot', function(data, cb)
         if not origDraw or origDraw <= 0 then
             ClearPedProp(PlayerPedId(), propId)
         else
-            LSLegacy.TriggerLocalEvent('skinchanger:change', slot..'_1', origDraw)
-            LSLegacy.TriggerLocalEvent('skinchanger:change', slot..'_2', shopState.lastSkin[field..'_2'] or 0)
+            LSLegacy.Events.TriggerLocal('skinchanger:change', slot..'_1', origDraw)
+            LSLegacy.Events.TriggerLocal('skinchanger:change', slot..'_2', shopState.lastSkin[field..'_2'] or 0)
         end
     else
-        LSLegacy.TriggerLocalEvent('skinchanger:change', slot..'_1', shopState.lastSkin[slot..'_1'] or 0)
-        LSLegacy.TriggerLocalEvent('skinchanger:change', slot..'_2', shopState.lastSkin[slot..'_2'] or 0)
+        LSLegacy.Events.TriggerLocal('skinchanger:change', slot..'_1', shopState.lastSkin[slot..'_1'] or 0)
+        LSLegacy.Events.TriggerLocal('skinchanger:change', slot..'_2', shopState.lastSkin[slot..'_2'] or 0)
     end
     cb('ok')
 end)
@@ -344,13 +344,13 @@ RegisterNUICallback('clothshop:checkout', function(data, cb)
     end
     local message = 'Achat: ' .. table.concat(names, ', ')
 
-    LSLegacy.SendEventToServer('attemptToPayMenu', message, data.total)
+    LSLegacy.Events.SendToServer('attemptToPayMenu', message, data.total)
 
     paymentMenu.actions = {
         onSucess = function()
             Citizen.CreateThread(function()
                 for _, item in ipairs(shopState.pendingCart) do
-                    LSLegacy.SendEventToServer('AddClothesInInventory', item.name, item.label, {item.drawable, item.texture})
+                    LSLegacy.Events.SendToServer('AddClothesInInventory', item.name, item.label, {item.drawable, item.texture})
                     Wait(100)
                 end
                 shopState.pendingCart = nil
@@ -374,24 +374,24 @@ RegisterNUICallback('clothshop:createOutfit', function(data, cb)
         stripPedClothes()
     end)
 
-    LSLegacy.SendEventToServer('clothshop:createOutfit', data.name, data.items, data.itemIds)
+    LSLegacy.Events.SendToServer('clothshop:createOutfit', data.name, data.items, data.itemIds)
     cb('ok')
 end)
 
 RegisterNUICallback('clothshop:splitOutfit', function(data, cb)
-    LSLegacy.SendEventToServer('clothshop:splitOutfit', data.outfit)
+    LSLegacy.Events.SendToServer('clothshop:splitOutfit', data.outfit)
     cb('ok')
 end)
 
 RegisterNUICallback('clothshop:modifyOutfit', function(data, cb)
-    LSLegacy.SendEventToServer('clothshop:modifyOutfit', data)
+    LSLegacy.Events.SendToServer('clothshop:modifyOutfit', data)
     CloseClothShopNUI()
     cb('ok')
 end)
 
 -- ── Server confirmation events ────────────────────
 
-LSLegacy.RegisterClientEvent('clothshop:outfitCreated', function()
+LSLegacy.Events.Register('clothshop:outfitCreated', function()
     Wait(300)
     local clothingItems = getPlayerClothingItems()
     local outfitItems   = getPlayerOutfitItems()
@@ -402,7 +402,7 @@ LSLegacy.RegisterClientEvent('clothshop:outfitCreated', function()
     })
 end)
 
-LSLegacy.RegisterClientEvent('clothshop:outfitSplit', function()
+LSLegacy.Events.Register('clothshop:outfitSplit', function()
     Wait(300)
     local clothingItems = getPlayerClothingItems()
     local outfitItems   = getPlayerOutfitItems()
@@ -413,13 +413,13 @@ LSLegacy.RegisterClientEvent('clothshop:outfitSplit', function()
     })
 end)
 
-LSLegacy.RegisterClientEvent('clothshop:outfitModified', function()
+LSLegacy.Events.Register('clothshop:outfitModified', function()
     -- Shop déjà fermé, rien à faire
 end)
 
 -- ── Zone trigger ──────────────────────────────────
 
-LSLegacy.RegisterClientEvent('openClothMenu', function(header, type, coords)
+LSLegacy.Events.Register('openClothMenu', function(header, type, coords)
     OpenClothShopNUI(header, type, coords)
     LSLegacy.Status.Displayed = false
 end)

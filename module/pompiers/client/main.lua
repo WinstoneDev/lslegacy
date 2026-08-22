@@ -51,7 +51,7 @@ local function GoOnDuty()
     Pompiers.OnDuty = true
     Pompiers.Grade  = GetGrade()
 
-    LSLegacy.SendEventToServer('pompiers:onDuty')
+    LSLegacy.Events.SendToServer('pompiers:onDuty')
     Notify(Lang.Pompiers.duty_on, 'success')
     TriggerEvent('pompiers:dutyChanged', true)
 end
@@ -64,7 +64,7 @@ local function GoOffDuty()
     end
     Pompiers.OnDuty = false
 
-    LSLegacy.SendEventToServer('pompiers:offDuty')
+    LSLegacy.Events.SendToServer('pompiers:offDuty')
     Notify(Lang.Pompiers.duty_off, 'info')
     TriggerEvent('pompiers:dutyChanged', false)
 end
@@ -141,7 +141,7 @@ local function OpenGarageMenu()
                 icon = 'fa-solid fa-truck-pickup',
                 disabled = not available,
                 onSelect = function()
-                    LSLegacy.SendEventToServer('pompiers:spawnVehicle', {
+                    LSLegacy.Events.SendToServer('pompiers:spawnVehicle', {
                         model    = veh.model,
                         category = category,
                         grade    = veh.grade,
@@ -214,7 +214,7 @@ exports.ox_target:addBoxZone({
 
 -- Events serveur → client
 
-LSLegacy.RegisterClientEvent('pompiers:spawnVehicleClient', function(data)
+LSLegacy.Events.Register('pompiers:spawnVehicleClient', function(data)
     if not data or not data.model then return end
     local coords  = GetEntityCoords(PlayerPedId())
     local heading = GetEntityHeading(PlayerPedId())

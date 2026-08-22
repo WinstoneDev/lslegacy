@@ -19,16 +19,16 @@ local pendingIdentityResult = nil
 -- coroutines concurrentes, l'ordre d'arrivée réseau ne suffit pas).
 local pendingSkinSaved = nil
 
-LSLegacy.RegisterClientEvent('creatorPerso:skinSaved', function(success)
+LSLegacy.Events.Register('creatorPerso:skinSaved', function(success)
     pendingSkinSaved = success
 end)
 
-LSLegacy.RegisterClientEvent('creatorPerso:identityResult', function(success, outfitData)
+LSLegacy.Events.Register('creatorPerso:identityResult', function(success, outfitData)
     pendingIdentityResult = success
     if success and outfitData then
         for slot, vals in pairs(outfitData) do
-            LSLegacy.TriggerLocalEvent('skinchanger:change', slot..'_1', vals[1])
-            LSLegacy.TriggerLocalEvent('skinchanger:change', slot..'_2', vals[2])
+            LSLegacy.Events.TriggerLocal('skinchanger:change', slot..'_1', vals[1])
+            LSLegacy.Events.TriggerLocal('skinchanger:change', slot..'_2', vals[2])
         end
     end
 end)
@@ -91,15 +91,15 @@ local sliderMap = {
 local function ApplySpecial(id, value)
     if id == 'eyeOpening' then
         -- Ouverture inversée : 0 = fermé (squint max), 10 = ouvert (squint 0)
-        LSLegacy.TriggerLocalEvent('skinchanger:change', 'eye_squint', 10 - value)
+        LSLegacy.Events.TriggerLocal('skinchanger:change', 'eye_squint', 10 - value)
         return true
     elseif id == 'resemblance' then
         -- Ressemblance : 0 = tout mère, 10 = tout père
-        LSLegacy.TriggerLocalEvent('skinchanger:change', 'face_md_weight', value * 10)
+        LSLegacy.Events.TriggerLocal('skinchanger:change', 'face_md_weight', value * 10)
         return true
     elseif id == 'skinTone' then
         -- Teint : 0 = tout mère, 10 = tout père
-        LSLegacy.TriggerLocalEvent('skinchanger:change', 'skin_md_weight', value * 10)
+        LSLegacy.Events.TriggerLocal('skinchanger:change', 'skin_md_weight', value * 10)
         return true
     end
     return false
@@ -116,14 +116,14 @@ function LSLegacy.CreatorPerso.Open()
     while not IsInteriorReady(interior) do
         Wait(0)
     end
-    LSLegacy.SendEventToServer("SetBucket", true)
+    LSLegacy.Events.SendToServer("SetBucket", true)
     -- Force le modèle freemode masculin (loadDefaultModel attend que le model soit streamé)
     local modelLoaded = false
-    LSLegacy.TriggerLocalEvent('skinchanger:loadDefaultModel', true, function()
+    LSLegacy.Events.TriggerLocal('skinchanger:loadDefaultModel', true, function()
         modelLoaded = true
     end)
     while not modelLoaded do Wait(0) end
-    LSLegacy.TriggerLocalEvent('skinchanger:loadSkin', {
+    LSLegacy.Events.TriggerLocal('skinchanger:loadSkin', {
         sex      = 0,
         tshirt_1 = 15,
         tshirt_2 = 0,
@@ -170,7 +170,7 @@ function LSLegacy.CreatorPerso.Open()
     LSLegacy.PlayerData.inCreation = true
     SendNUIMessage({ action = "show", data = {} })
     SetNuiFocus(true, true)
-    LSLegacy.TriggerLocalEvent('skinchanger:getData', function(_, maxVals)
+    LSLegacy.Events.TriggerLocal('skinchanger:getData', function(_, maxVals)
         print('[CreatorPerso][DEBUG] Open() maxVals = ' .. json.encode(maxVals or {}))
         print('[CreatorPerso][DEBUG] Open() hair_1 max = ' .. tostring(maxVals and maxVals.hair_1))
         SendNUIMessage({ action = "setSliderMaxValues", data = maxVals })
@@ -194,7 +194,7 @@ function LSLegacy.CreatorPerso.Close()
     FreezeEntityPosition(PlayerPedId(), false)
     ClearPedTasksImmediately(PlayerPedId())
     DeleteBoard()
-    LSLegacy.SendEventToServer("SetBucket", false)
+    LSLegacy.Events.SendToServer("SetBucket", false)
     LSLegacy.CreatorPerso.isOpen = false
     LSLegacy.Status.Displayed = true
     LSLegacy.PlayerData.inCreation = false
@@ -204,17 +204,17 @@ end
 function LSLegacy.CreatorPerso.ApplySexChange(sex)
     LSLegacy.CreatorPerso.playerSex = sex
     DeleteBoard()
-    LSLegacy.TriggerLocalEvent('skinchanger:change', 'sex', sex)
+    LSLegacy.Events.TriggerLocal('skinchanger:change', 'sex', sex)
     -- Le modèle de ped change avec le sexe : les max réels (nombre de
     -- coiffures/barbes/etc. dispo) diffèrent aussi, il faut les rafraîchir.
-    LSLegacy.TriggerLocalEvent('skinchanger:getData', function(_, maxVals)
+    LSLegacy.Events.TriggerLocal('skinchanger:getData', function(_, maxVals)
         print('[CreatorPerso][DEBUG] ApplySexChange(' .. tostring(sex) .. ') maxVals = ' .. json.encode(maxVals or {}))
         print('[CreatorPerso][DEBUG] ApplySexChange hair_1 max = ' .. tostring(maxVals and maxVals.hair_1))
         SendNUIMessage({ action = "setSliderMaxValues", data = maxVals })
     end)
 
     if sex == 1 then
-        LSLegacy.TriggerLocalEvent('skinchanger:loadSkin', {
+        LSLegacy.Events.TriggerLocal('skinchanger:loadSkin', {
             sex      = 1,
             tshirt_1 = 15,
             tshirt_2 = 0,
@@ -238,7 +238,7 @@ function LSLegacy.CreatorPerso.ApplySexChange(sex)
             bags_2 = 0
         })
     else
-        LSLegacy.TriggerLocalEvent('skinchanger:loadSkin', {
+        LSLegacy.Events.TriggerLocal('skinchanger:loadSkin', {
             sex      = 0,
             tshirt_1 = 15,
             tshirt_2 = 0,
@@ -273,7 +273,7 @@ function LSLegacy.CreatorPerso.ApplySexChange(sex)
 end
 
 function LSLegacy.CreatorPerso.ApplySkinChange(property, value)
-    LSLegacy.TriggerLocalEvent('skinchanger:change', property, value)
+    LSLegacy.Events.TriggerLocal('skinchanger:change', property, value)
     LSLegacy.CreatorPerso.skinData[property] = value
 end
 
@@ -330,10 +330,10 @@ AddEventHandler('__cfx_nui:creatorAction', function(data, cb)
     elseif action == 'updateHeritage' then
         local h = data.data
         LSLegacy.CreatorPerso.heritageData = h
-        LSLegacy.TriggerLocalEvent('skinchanger:change', 'mom', h.mother)
-        LSLegacy.TriggerLocalEvent('skinchanger:change', 'dad', h.father)
-        LSLegacy.TriggerLocalEvent('skinchanger:change', 'face_md_weight', (h.resemblance or 5) * 10)
-        LSLegacy.TriggerLocalEvent('skinchanger:change', 'skin_md_weight', 100 - (h.skinTone or 5) * 10)
+        LSLegacy.Events.TriggerLocal('skinchanger:change', 'mom', h.mother)
+        LSLegacy.Events.TriggerLocal('skinchanger:change', 'dad', h.father)
+        LSLegacy.Events.TriggerLocal('skinchanger:change', 'face_md_weight', (h.resemblance or 5) * 10)
+        LSLegacy.Events.TriggerLocal('skinchanger:change', 'skin_md_weight', 100 - (h.skinTone or 5) * 10)
 
     elseif action == 'updateIdentity' then
         LSLegacy.CreatorPerso.identityData = data.data
@@ -354,8 +354,8 @@ AddEventHandler('__cfx_nui:creatorAction', function(data, cb)
         local sexString = LSLegacy.CreatorPerso.playerSex == 0 and "M" or "F"
 
         pendingSkinSaved = nil
-        LSLegacy.TriggerLocalEvent('skinchanger:getSkin', function(skin)
-            LSLegacy.SendEventToServer('saveskin', skin)
+        LSLegacy.Events.TriggerLocal('skinchanger:getSkin', function(skin)
+            LSLegacy.Events.SendToServer('saveskin', skin)
         end)
 
         -- Attend la confirmation serveur que le skin est bien committé en
@@ -374,7 +374,7 @@ AddEventHandler('__cfx_nui:creatorAction', function(data, cb)
         end
 
         pendingIdentityResult = nil
-        LSLegacy.SendEventToServer('SetIdentity',
+        LSLegacy.Events.SendToServer('SetIdentity',
             identity.lastName,
             identity.firstName,
             identity.dateOfBirth,
@@ -414,7 +414,7 @@ AddEventHandler('__cfx_nui:creatorAction', function(data, cb)
         DoScreenFadeIn(1500)
         LSLegacy.ShowNotification("Création", "Vous avez créé votre personnage.", 'success')
         DeleteBoard()
-        LSLegacy.SendEventToServer("SetBucket", false)
+        LSLegacy.Events.SendToServer("SetBucket", false)
         cb('ok')
 
     elseif action == 'resetCharacter' then
@@ -431,12 +431,12 @@ AddEventHandler('__cfx_nui:creatorAction', function(data, cb)
 end)
 
 -- ─── Événements ──────────────────────────────────────────────────────────────
-LSLegacy.RegisterClientEvent('CreatePerso', function()
+LSLegacy.Events.Register('CreatePerso', function()
     LSLegacy.CreatorPerso.Open()
     LSLegacy.PlayerData.inCreation = true
 end)
 
-LSLegacy.RegisterClientEvent('closeCreatorPerso', function()
+LSLegacy.Events.Register('closeCreatorPerso', function()
     LSLegacy.CreatorPerso.Close()
     LSLegacy.PlayerData.inCreation = false
 end)

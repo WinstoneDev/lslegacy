@@ -172,7 +172,7 @@ local function SendBuy()
     ClearPreview()
     lib.hideContext()
     if sel.occasionId then
-        LSLegacy.SendEventToServer('concessionnaire:buyOccasion', {
+        LSLegacy.Events.SendToServer('concessionnaire:buyOccasion', {
             id        = sel.occasionId,
             paint     = paint,
             primary   = paint and sel.primary or nil,
@@ -180,7 +180,7 @@ local function SendBuy()
             plate     = sel.plate,
         })
     else
-        LSLegacy.SendEventToServer('concessionnaire:buy', {
+        LSLegacy.Events.SendToServer('concessionnaire:buy', {
             model     = sel.model,
             paint     = paint,
             primary   = paint and sel.primary or nil,
@@ -346,10 +346,10 @@ end
 
 function Concessionnaire.OpenOccasions()
     if not C.Occasion.enabled then return end
-    LSLegacy.SendEventToServer('concessionnaire:getOccasions')   -- réponse : concessionnaire:occasionsList
+    LSLegacy.Events.SendToServer('concessionnaire:getOccasions')   -- réponse : concessionnaire:occasionsList
 end
 
-LSLegacy.RegisterClientEvent('concessionnaire:occasionsList', function(list)
+LSLegacy.Events.Register('concessionnaire:occasionsList', function(list)
     local options = {}
     if not list or #list == 0 then
         options[1] = { title = Lang.Concessionnaire.occasion_none, icon = 'fa-solid fa-ban', disabled = true }
@@ -462,7 +462,7 @@ function Concessionnaire.OpenResale()
             cancel   = true,
         })
         if confirm == 'confirm' then
-            LSLegacy.SendEventToServer('concessionnaire:sell', { plate = plate })
+            LSLegacy.Events.SendToServer('concessionnaire:sell', { plate = plate })
         end
     end)
 end

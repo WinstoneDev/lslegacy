@@ -88,14 +88,14 @@ local function SpawnAnimal(model, coords)
     return ped
 end
 
-LSLegacy.RegisterClientEvent('farm:spawnZoneAnimal', function(data)
+LSLegacy.Events.Register('farm:spawnZoneAnimal', function(data)
     if not data then return end
     local ped   = SpawnAnimal(data.model, RandomPointInRadius(data.coords, data.radius))
     local netId = ped and EnsureNetworked(ped) or nil
-    LSLegacy.SendEventToServer('farm:animalSpawned', { reqId = data.reqId, netId = netId })
+    LSLegacy.Events.SendToServer('farm:animalSpawned', { reqId = data.reqId, netId = netId })
 end)
 
-LSLegacy.RegisterClientEvent('farm:spawnAmbientAnimal', function(data)
+LSLegacy.Events.Register('farm:spawnAmbientAnimal', function(data)
     if not data then return end
     local netId
 
@@ -105,7 +105,7 @@ LSLegacy.RegisterClientEvent('farm:spawnAmbientAnimal', function(data)
         netId = ped and EnsureNetworked(ped) or nil
     end
 
-    LSLegacy.SendEventToServer('farm:animalSpawned', { reqId = data.reqId, netId = netId })
+    LSLegacy.Events.SendToServer('farm:animalSpawned', { reqId = data.reqId, netId = netId })
 end)
 
 AddEventHandler('onResourceStop', function(res)
@@ -355,22 +355,22 @@ local function StartGather(activityKey, nodeIndex, entity)
     end
 
     Farm.Busy = true
-    LSLegacy.SendEventToServer('farm:requestGather', payload)
+    LSLegacy.Events.SendToServer('farm:requestGather', payload)
 end
 
-LSLegacy.RegisterClientEvent('farm:gatherDenied', function(reason)
+LSLegacy.Events.Register('farm:gatherDenied', function(reason)
     Farm.Busy = false
     if reason then Notify(reason, 'error') end
 end)
 
-LSLegacy.RegisterClientEvent('farm:gatherAuthorized', function(data)
+LSLegacy.Events.Register('farm:gatherAuthorized', function(data)
     if not data then Farm.Busy = false return end
 
     local activity = Config.Farm.Activities[data.activity]
     if not activity then Farm.Busy = false return end
 
     local function SendComplete(hits, rounds)
-        LSLegacy.SendEventToServer('farm:completeGather', {
+        LSLegacy.Events.SendToServer('farm:completeGather', {
             activity  = data.activity,
             nodeIndex = data.nodeIndex,
             hits      = hits,
@@ -395,7 +395,7 @@ LSLegacy.RegisterClientEvent('farm:gatherAuthorized', function(data)
     end
 end)
 
-LSLegacy.RegisterClientEvent('farm:gatherResult', function(data)
+LSLegacy.Events.Register('farm:gatherResult', function(data)
     Farm.Busy = false
     -- L'outil custom (pioche, etc.) disparaît des mains dès la récolte
     -- terminée — il se rééquipera automatiquement au prochain coup.
@@ -435,10 +435,10 @@ local function StartPoach(activityKey, entity)
         Notify('Ce cadavre ne peut pas être dépouillé.', 'error')
         return
     end
-    LSLegacy.SendEventToServer('farm:requestPoach', { activity = activityKey, netId = netId })
+    LSLegacy.Events.SendToServer('farm:requestPoach', { activity = activityKey, netId = netId })
 end
 
-LSLegacy.RegisterClientEvent('farm:poachResult', function(data)
+LSLegacy.Events.Register('farm:poachResult', function(data)
     if not data then return end
     if data.success then
         if data.netId then SkinnedCorpses[data.netId] = true end
@@ -449,7 +449,7 @@ LSLegacy.RegisterClientEvent('farm:poachResult', function(data)
     end
 end)
 
-LSLegacy.RegisterClientEvent('farm:poachingAlertReceived', function(data)
+LSLegacy.Events.Register('farm:poachingAlertReceived', function(data)
     if not data or not data.coords then return end
     Notify('Braconnage signalé aux forces de l\'ordre.', 'error')
     SetNewWaypoint(data.coords.x, data.coords.y)
@@ -469,15 +469,15 @@ local function StartProcess(activityKey)
     end
 
     Farm.Busy = true
-    LSLegacy.SendEventToServer('farm:requestProcess', { activity = activityKey })
+    LSLegacy.Events.SendToServer('farm:requestProcess', { activity = activityKey })
 end
 
-LSLegacy.RegisterClientEvent('farm:processDenied', function(reason)
+LSLegacy.Events.Register('farm:processDenied', function(reason)
     Farm.Busy = false
     if reason then Notify(reason, 'error') end
 end)
 
-LSLegacy.RegisterClientEvent('farm:processAuthorized', function(data)
+LSLegacy.Events.Register('farm:processAuthorized', function(data)
     if not data then Farm.Busy = false return end
 
     local activity = Config.Farm.Activities[data.activity]
@@ -485,7 +485,7 @@ LSLegacy.RegisterClientEvent('farm:processAuthorized', function(data)
     Notify(Lang.Farm.process_start, 'info')
 
     Farm.RunMinigame(function(hits, rounds, success)
-        LSLegacy.SendEventToServer('farm:completeProcess', {
+        LSLegacy.Events.SendToServer('farm:completeProcess', {
             activity = data.activity,
             hits     = hits,
             rounds   = rounds,
@@ -493,7 +493,7 @@ LSLegacy.RegisterClientEvent('farm:processAuthorized', function(data)
     end, activity and (activity.processAnim or activity.gatherAnim))
 end)
 
-LSLegacy.RegisterClientEvent('farm:processResult', function(data)
+LSLegacy.Events.Register('farm:processResult', function(data)
     Farm.Busy = false
     if not data then return end
 
@@ -541,10 +541,10 @@ local function SellProcessed(activityKey)
         return
     end
 
-    LSLegacy.SendEventToServer('farm:sellProcessed', { activity = activityKey })
+    LSLegacy.Events.SendToServer('farm:sellProcessed', { activity = activityKey })
 end
 
-LSLegacy.RegisterClientEvent('farm:sellResult', function(data)
+LSLegacy.Events.Register('farm:sellResult', function(data)
     if not data or not data.success then return end
 
     local parts = {}
@@ -556,12 +556,12 @@ LSLegacy.RegisterClientEvent('farm:sellResult', function(data)
     Notify(string.format(Lang.Farm.sell_done, table.concat(parts, ' + '), data.total), 'success')
 end)
 
-LSLegacy.RegisterClientEvent('farm:compactStonesResult', function(data)
+LSLegacy.Events.Register('farm:compactStonesResult', function(data)
     if not data or not data.success then return end
     Notify(string.format('%d sac(s) de pierres fabriqué(s).', data.bags), 'success')
 end)
 
-LSLegacy.RegisterClientEvent('farm:shopStockResult', function(stock)
+LSLegacy.Events.Register('farm:shopStockResult', function(stock)
     stock = stock or {}
     local options = {}
     local seen = {} -- évite les doublons : plusieurs espèces partagent les mêmes `shopItem` (viande, tripes, graisse)
@@ -580,7 +580,7 @@ LSLegacy.RegisterClientEvent('farm:shopStockResult', function(stock)
                 local qtyStr = LSLegacy.KeyboardInput('Quantité à acheter', 4)
                 local amount = tonumber(qtyStr)
                 if not amount or amount <= 0 then return end
-                LSLegacy.SendEventToServer('farm:buyShopItem', { item = entry.shopItem, amount = math.floor(amount) })
+                LSLegacy.Events.SendToServer('farm:buyShopItem', { item = entry.shopItem, amount = math.floor(amount) })
             end,
         }
     end
@@ -599,7 +599,7 @@ LSLegacy.RegisterClientEvent('farm:shopStockResult', function(stock)
     lib.showContext('farm_shop')
 end)
 
-LSLegacy.RegisterClientEvent('farm:buyResult', function(data)
+LSLegacy.Events.Register('farm:buyResult', function(data)
     if not data then return end
     if not data.success then
         local reasons = {
@@ -615,7 +615,7 @@ LSLegacy.RegisterClientEvent('farm:buyResult', function(data)
 end)
 
 local function OpenShopMenu()
-    LSLegacy.SendEventToServer('farm:requestShopStock')
+    LSLegacy.Events.SendToServer('farm:requestShopStock')
 end
 
 if Config.Farm.StoneBagStation then
@@ -631,7 +631,7 @@ if Config.Farm.StoneBagStation then
                 label = 'Compacter les pierres (sac de 20)',
                 distance = Config.Farm.ZoneDistance,
                 canInteract = function() return not Farm.Busy end,
-                onSelect = function() LSLegacy.SendEventToServer('farm:compactStones') end,
+                onSelect = function() LSLegacy.Events.SendToServer('farm:compactStones') end,
             },
         },
     })
@@ -816,7 +816,7 @@ for activityKey, activity in pairs(Config.Farm.Activities) do
                 label = 'Receleur — Vendre les peaux',
                 distance = Config.Farm.ZoneDistance,
                 canInteract = function() return not Farm.Busy end,
-                onSelect = function() LSLegacy.SendEventToServer('farm:sellPoaching', { activity = activityKey }) end,
+                onSelect = function() LSLegacy.Events.SendToServer('farm:sellPoaching', { activity = activityKey }) end,
             },
         })
     end

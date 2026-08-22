@@ -57,12 +57,12 @@ local function Revive(targetSrc)
 
     PlayAnim('mini@cpr@char_a@cpr_str', 'cpr_pumpchest', Config.SAMU.Actions.reviveDuration, 49)
 
-    LSLegacy.SendEventToServer('samu:revive', { target = targetSrc })
+    LSLegacy.Events.SendToServer('samu:revive', { target = targetSrc })
 end
 
 -- Résultats serveur
 
-LSLegacy.RegisterClientEvent('samu:reviveResult', function(data)
+LSLegacy.Events.Register('samu:reviveResult', function(data)
     if not data then return end
     if data.success then
         Notify(Lang.SAMU.revive_done, 'success')
@@ -71,15 +71,15 @@ LSLegacy.RegisterClientEvent('samu:reviveResult', function(data)
     end
 end)
 
-LSLegacy.RegisterClientEvent('samu:revivedByEms', function()
+LSLegacy.Events.Register('samu:revivedByEms', function()
     Notify(Lang.SAMU.revived_by, 'success')
 end)
 
-LSLegacy.RegisterClientEvent('samu:treatedByEms', function(label)
+LSLegacy.Events.Register('samu:treatedByEms', function(label)
     Notify(string.format('Les secours vous ont soigné : %s.', label or '?'), 'success')
 end)
 
-LSLegacy.RegisterClientEvent('samu:restockResult', function(data)
+LSLegacy.Events.Register('samu:restockResult', function(data)
     if not data then return end
     if data.success then
         Notify(Lang.SAMU.restock_done, 'success')

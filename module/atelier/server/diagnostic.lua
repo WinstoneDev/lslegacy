@@ -1,6 +1,6 @@
 -- Lecture seule : recale puis renvoie l'état complet du véhicule, ne répare rien.
 
-LSLegacy.RegisterServerEvent('atelier:requestDiagnostic', function(data)
+LSLegacy.Events.Register('atelier:requestDiagnostic', function(data)
     local src = source
     local ok = LSLegacy.Atelier.CanAct(src, 'diagnostic')
     if not ok then return end
@@ -16,7 +16,7 @@ LSLegacy.RegisterServerEvent('atelier:requestDiagnostic', function(data)
     LSLegacy.Atelier.ReconcileVehicleState(plate, snapshot)
 
     LSLegacy.Atelier.GetVehicleState(plate, function(state)
-        LSLegacy.SendEventToClient('atelier:diagnosticResult', src, {
+        LSLegacy.Events.SendToClient('atelier:diagnosticResult', src, {
             plate      = plate,
             components = state.components,
         })

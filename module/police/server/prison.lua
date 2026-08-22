@@ -100,7 +100,7 @@ end)
 
 -- GARDE À VUE
 
-LSLegacy.RegisterServerEvent('police:custody', function(data)
+LSLegacy.Events.Register('police:custody', function(data)
     local src = source
     if not IsLawEnforcementOnDuty(src) then return end
     if not LSLegacy.MDT.HasPermission('police', tonumber(GetPlayer(src).job_grade) or 0, 'manage_custody') then
@@ -183,7 +183,7 @@ end)
 
 -- PRISON
 
-LSLegacy.RegisterServerEvent('police:prison', function(data)
+LSLegacy.Events.Register('police:prison', function(data)
     local src = source
     if not IsLawEnforcementOnDuty(src) then return end
     if not LSLegacy.MDT.HasPermission('police', tonumber(GetPlayer(src).job_grade) or 0, 'manage_custody') then

@@ -4,7 +4,7 @@
 --   • Toute action revalide job/grade/permission depuis ServerPlayers,
 --     jamais depuis le payload client.
 --   • Communication client→serveur via le SEUL mécanisme fiable du
---     framework : events tokenisés (LSLegacy.RegisterServerEvent +
+--     framework : events tokenisés (LSLegacy.Events.Register +
 --     SendEventToServer), plutôt que LSLegacy.Callbacks (aller-retour).
 --   • Lectures  : event 'mdt:query' (dispatcher) → réponse 'mdt:queryResult'.
 --   • Écritures : un event par action → réponse 'mdt:result'.
@@ -544,7 +544,7 @@ end
 
 -- Envoi standardisé d'un résultat d'écriture au client (notif + refresh éventuel).
 local function result(src, ok, message, refresh)
-    LSLegacy.SendEventToClient('mdt:result', src, { ok = ok, message = message, refresh = refresh })
+    LSLegacy.Events.SendToClient('mdt:result', src, { ok = ok, message = message, refresh = refresh })
 end
 
 -- Log Discord MDT (no-op si webhook vide).
@@ -608,7 +608,7 @@ end
 local function openMDT(src)
     local player, depName, grade = ctx(src)
     if not player then
-        LSLegacy.SendEventToClient('notify', src, nil, "Vous n'avez pas accès au MDT.", 'error')
+        LSLegacy.Events.SendToClient('notify', src, nil, "Vous n'avez pas accès au MDT.", 'error')
         return
     end
     local dep = LSLegacy.MDT.GetDepartment(depName)
@@ -677,7 +677,7 @@ local function openMDT(src)
             trainingCodes    = dep.trainingCodes or Config.MDT.TrainingCodes,
             skillRecycleDays = Config.MDT.SkillRecycleDays,
         }
-        LSLegacy.SendEventToClient('mdt:open', src, payload)
+        LSLegacy.Events.SendToClient('mdt:open', src, payload)
     end)
 end
 
@@ -699,7 +699,7 @@ LSLegacy.RegisterCommand('givemdt', 3, function(player, args, showError, rawComm
     end
     if not target then return end
     LSLegacy.Inventory.AddItemInInventory(target, Config.MDT.Item, 1, 'Tablette MDT', nil, nil)
-    LSLegacy.SendEventToClient('notify', target.source, nil, 'Tablette MDT ajoutée à votre inventaire.', 'success')
+    LSLegacy.Events.SendToClient('notify', target.source, nil, 'Tablette MDT ajoutée à votre inventaire.', 'success')
 end, { help = 'Se donner une tablette MDT (ID joueur optionnel)' }, false)
 
 --  LECTURES — dispatcher 'mdt:query' → réponse 'mdt:queryResult'
@@ -1056,11 +1056,11 @@ readHandlers.getEvidence = function(player, depName, grade, data, reply)
     end
 end
 
-LSLegacy.RegisterServerEvent('mdt:query', function(payload)
+LSLegacy.Events.Register('mdt:query', function(payload)
     local src = source
     if type(payload) ~= 'table' or not payload.action then return end
     local reply = function(res)
-        LSLegacy.SendEventToClient('mdt:queryResult', src, { reqId = payload.reqId, result = res })
+        LSLegacy.Events.SendToClient('mdt:queryResult', src, { reqId = payload.reqId, result = res })
     end
     local player, depName, grade = ctx(src)
     if not player then return reply(false) end
@@ -1087,7 +1087,7 @@ LSLegacy.Bank.RegisterPaymentResultHandler('fine', function(refId, success)
 end)
 
 -- Créer une amende
-LSLegacy.RegisterServerEvent('mdt:createFine', function(data)
+LSLegacy.Events.Register('mdt:createFine', function(data)
     local src = source
     local player, depName = can(src, 'create_fine')
     if not player or type(data) ~= 'table' then return end
@@ -1125,7 +1125,7 @@ LSLegacy.RegisterServerEvent('mdt:createFine', function(data)
 end)
 
 -- Marquer une amende payée / impayée
-LSLegacy.RegisterServerEvent('mdt:toggleFinePaid', function(data)
+LSLegacy.Events.Register('mdt:toggleFinePaid', function(data)
     local src = source
     local player, depName = can(src, 'create_fine')
     if not player or type(data) ~= 'table' then return end
@@ -1138,7 +1138,7 @@ LSLegacy.RegisterServerEvent('mdt:toggleFinePaid', function(data)
 end)
 
 -- Supprimer une amende
-LSLegacy.RegisterServerEvent('mdt:deleteFine', function(data)
+LSLegacy.Events.Register('mdt:deleteFine', function(data)
     local src = source
     local player, depName = can(src, 'delete_records')
     if not player or type(data) ~= 'table' then return end
@@ -1150,7 +1150,7 @@ LSLegacy.RegisterServerEvent('mdt:deleteFine', function(data)
 end)
 
 -- Ajouter une entrée au casier judiciaire
-LSLegacy.RegisterServerEvent('mdt:addCriminalRecord', function(data)
+LSLegacy.Events.Register('mdt:addCriminalRecord', function(data)
     local src = source
     local player, depName = can(src, 'manage_records')
     if not player or type(data) ~= 'table' then return end
@@ -1174,7 +1174,7 @@ LSLegacy.RegisterServerEvent('mdt:addCriminalRecord', function(data)
 end)
 
 -- Supprimer une entrée de casier
-LSLegacy.RegisterServerEvent('mdt:deleteCriminalRecord', function(data)
+LSLegacy.Events.Register('mdt:deleteCriminalRecord', function(data)
     local src = source
     local player, depName = can(src, 'delete_records')
     if not player or type(data) ~= 'table' then return end
@@ -1211,7 +1211,7 @@ end
 -- Créer une enquête. Seuls le titre et le contenu sont demandés : tout le
 -- reste (rapports, preuves, armes, véhicules, personnes) se rattache
 -- ensuite, au fil de l'instruction.
-LSLegacy.RegisterServerEvent('mdt:createReport', function(data)
+LSLegacy.Events.Register('mdt:createReport', function(data)
     local src = source
     local player, depName = can(src, 'create_report')
     if not player or type(data) ~= 'table' then return end
@@ -1230,7 +1230,7 @@ LSLegacy.RegisterServerEvent('mdt:createReport', function(data)
 end)
 
 -- Modifier une enquête (titre / contenu)
-LSLegacy.RegisterServerEvent('mdt:updateReport', function(data)
+LSLegacy.Events.Register('mdt:updateReport', function(data)
     local src = source
     local player, depName = can(src, 'create_report')
     if not player or type(data) ~= 'table' then return end
@@ -1304,7 +1304,7 @@ readHandlers.getInterventionReport = function(player, depName, grade, data, repl
     end)
 end
 
-LSLegacy.RegisterServerEvent('mdt:createInterventionReport', function(data)
+LSLegacy.Events.Register('mdt:createInterventionReport', function(data)
     local src = source
     local player, depName = can(src, 'create_report')
     if not player or type(data) ~= 'table' then return end
@@ -1327,7 +1327,7 @@ LSLegacy.RegisterServerEvent('mdt:createInterventionReport', function(data)
     end)
 end)
 
-LSLegacy.RegisterServerEvent('mdt:updateInterventionReport', function(data)
+LSLegacy.Events.Register('mdt:updateInterventionReport', function(data)
     local src = source
     local player, depName = can(src, 'create_report')
     if not player or type(data) ~= 'table' then return end
@@ -1355,7 +1355,7 @@ LSLegacy.RegisterServerEvent('mdt:updateInterventionReport', function(data)
     end)
 end)
 
-LSLegacy.RegisterServerEvent('mdt:deleteInterventionReport', function(data)
+LSLegacy.Events.Register('mdt:deleteInterventionReport', function(data)
     local src = source
     local player, depName = can(src, 'delete_records')
     if not player or type(data) ~= 'table' then return end
@@ -1420,7 +1420,7 @@ readHandlers.getReportLinks = function(player, depName, grade, data, reply)
     end)
 end
 
-LSLegacy.RegisterServerEvent('mdt:linkReportItem', function(data)
+LSLegacy.Events.Register('mdt:linkReportItem', function(data)
     local src = source
     local player, depName = can(src, 'create_report')
     if not player or type(data) ~= 'table' then return end
@@ -1457,7 +1457,7 @@ LSLegacy.RegisterServerEvent('mdt:linkReportItem', function(data)
     end)
 end)
 
-LSLegacy.RegisterServerEvent('mdt:unlinkReportItem', function(data)
+LSLegacy.Events.Register('mdt:unlinkReportItem', function(data)
     local src = source
     local player, depName = can(src, 'create_report')
     if not player or type(data) ~= 'table' then return end
@@ -1471,7 +1471,7 @@ LSLegacy.RegisterServerEvent('mdt:unlinkReportItem', function(data)
 end)
 
 -- Supprimer une enquête (et ses rattachements, qui n'ont plus d'objet)
-LSLegacy.RegisterServerEvent('mdt:deleteReport', function(data)
+LSLegacy.Events.Register('mdt:deleteReport', function(data)
     local src = source
     local player, depName = can(src, 'delete_records')
     if not player or type(data) ~= 'table' then return end
@@ -1567,7 +1567,7 @@ readHandlers.getCaseLinks = function(player, depName, grade, data, reply)
 end
 
 -- Rattacher un élément à l'enquête
-LSLegacy.RegisterServerEvent('mdt:linkCaseItem', function(data)
+LSLegacy.Events.Register('mdt:linkCaseItem', function(data)
     local src = source
     local player, depName = can(src, 'create_report')
     if not player or type(data) ~= 'table' then return end
@@ -1619,7 +1619,7 @@ LSLegacy.RegisterServerEvent('mdt:linkCaseItem', function(data)
 end)
 
 -- Détacher un élément de l'enquête
-LSLegacy.RegisterServerEvent('mdt:unlinkCaseItem', function(data)
+LSLegacy.Events.Register('mdt:unlinkCaseItem', function(data)
     local src = source
     local player, depName = can(src, 'create_report')
     if not player or type(data) ~= 'table' then return end
@@ -1633,7 +1633,7 @@ LSLegacy.RegisterServerEvent('mdt:unlinkCaseItem', function(data)
 end)
 
 -- Créer un avis de recherche
-LSLegacy.RegisterServerEvent('mdt:createWarrant', function(data)
+LSLegacy.Events.Register('mdt:createWarrant', function(data)
     local src = source
     local player, depName = can(src, 'manage_warrants')
     if not player or type(data) ~= 'table' then return end
@@ -1663,7 +1663,7 @@ LSLegacy.RegisterServerEvent('mdt:createWarrant', function(data)
 end)
 
 -- Modifier un avis de recherche
-LSLegacy.RegisterServerEvent('mdt:updateWarrant', function(data)
+LSLegacy.Events.Register('mdt:updateWarrant', function(data)
     local src = source
     local player, depName = can(src, 'manage_warrants')
     if not player or type(data) ~= 'table' then return end
@@ -1694,7 +1694,7 @@ LSLegacy.RegisterServerEvent('mdt:updateWarrant', function(data)
 end)
 
 -- Supprimer un avis de recherche
-LSLegacy.RegisterServerEvent('mdt:deleteWarrant', function(data)
+LSLegacy.Events.Register('mdt:deleteWarrant', function(data)
     local src = source
     local player, depName = can(src, 'manage_warrants')
     if not player or type(data) ~= 'table' then return end
@@ -1706,7 +1706,7 @@ LSLegacy.RegisterServerEvent('mdt:deleteWarrant', function(data)
 end)
 
 -- Marquer / lever "recherché par les autorités" sur un véhicule (par plaque)
-LSLegacy.RegisterServerEvent('mdt:setVehicleWanted', function(data)
+LSLegacy.Events.Register('mdt:setVehicleWanted', function(data)
     local src = source
     local player, depName = can(src, 'manage_warrants')
     if not player or type(data) ~= 'table' then return end
@@ -1728,7 +1728,7 @@ end)
 
 -- Définir la localisation administrative d'un véhicule
 local VEHICLE_LOCATIONS = { circulation = true, concessionnaire = true, saisie = true, detruit = true }
-LSLegacy.RegisterServerEvent('mdt:setVehicleLocation', function(data)
+LSLegacy.Events.Register('mdt:setVehicleLocation', function(data)
     local src = source
     local player, depName = can(src, 'manage_warrants')
     if not player or type(data) ~= 'table' then return end
@@ -1750,7 +1750,7 @@ end)
 
 -- Enregistrer une garde à vue (mise en cellule = système physique à venir ;
 -- ici enregistrement + procès-verbal, persistants)
-LSLegacy.RegisterServerEvent('mdt:createCustody', function(data)
+LSLegacy.Events.Register('mdt:createCustody', function(data)
     local src = source
     local player, depName = can(src, 'manage_custody')
     if not player or type(data) ~= 'table' then return end
@@ -1774,7 +1774,7 @@ LSLegacy.RegisterServerEvent('mdt:createCustody', function(data)
 end)
 
 -- Ajouter une preuve (collecte physique à venir ; table prête pour persistance)
-LSLegacy.RegisterServerEvent('mdt:addEvidence', function(data)
+LSLegacy.Events.Register('mdt:addEvidence', function(data)
     local src = source
     local player, depName = can(src, 'manage_evidence')
     if not player or type(data) ~= 'table' then return end
@@ -1906,7 +1906,7 @@ readHandlers.getReportWeapons = function(player, depName, grade, data, reply)
 end
 
 -- Enregistrer une arme (numéro de série auto pour les armes à feu)
-LSLegacy.RegisterServerEvent('mdt:registerWeapon', function(data)
+LSLegacy.Events.Register('mdt:registerWeapon', function(data)
     local src = source
     local player, depName = can(src, 'manage_weapons')
     if not player or type(data) ~= 'table' then return end
@@ -1941,7 +1941,7 @@ LSLegacy.RegisterServerEvent('mdt:registerWeapon', function(data)
 end)
 
 -- Modifier une arme (désignation / notes)
-LSLegacy.RegisterServerEvent('mdt:updateWeapon', function(data)
+LSLegacy.Events.Register('mdt:updateWeapon', function(data)
     local src = source
     local player, depName = can(src, 'manage_weapons')
     if not player or type(data) ~= 'table' then return end
@@ -1955,7 +1955,7 @@ LSLegacy.RegisterServerEvent('mdt:updateWeapon', function(data)
 end)
 
 -- Supprimer une arme + ses liaisons
-LSLegacy.RegisterServerEvent('mdt:deleteWeapon', function(data)
+LSLegacy.Events.Register('mdt:deleteWeapon', function(data)
     local src = source
     local player, depName = can(src, 'manage_weapons')
     if not player or type(data) ~= 'table' then return end
@@ -1969,7 +1969,7 @@ LSLegacy.RegisterServerEvent('mdt:deleteWeapon', function(data)
 end)
 
 -- Saisir / relâcher une arme (pièce à conviction)
-LSLegacy.RegisterServerEvent('mdt:seizeWeapon', function(data)
+LSLegacy.Events.Register('mdt:seizeWeapon', function(data)
     local src = source
     local player, depName = can(src, 'manage_weapons')
     if not player or type(data) ~= 'table' then return end
@@ -1987,7 +1987,7 @@ LSLegacy.RegisterServerEvent('mdt:seizeWeapon', function(data)
 end)
 
 -- Lier une personne à une arme
-LSLegacy.RegisterServerEvent('mdt:linkWeaponPerson', function(data)
+LSLegacy.Events.Register('mdt:linkWeaponPerson', function(data)
     local src = source
     local player, depName = can(src, 'manage_weapons')
     if not player or type(data) ~= 'table' then return end
@@ -2007,7 +2007,7 @@ LSLegacy.RegisterServerEvent('mdt:linkWeaponPerson', function(data)
 end)
 
 -- Délier une personne d'une arme
-LSLegacy.RegisterServerEvent('mdt:unlinkWeaponPerson', function(data)
+LSLegacy.Events.Register('mdt:unlinkWeaponPerson', function(data)
     local src = source
     local player, depName = can(src, 'manage_weapons')
     if not player or type(data) ~= 'table' then return end
@@ -2019,7 +2019,7 @@ LSLegacy.RegisterServerEvent('mdt:unlinkWeaponPerson', function(data)
 end)
 
 -- Lier une arme à un dossier via son numéro de série
-LSLegacy.RegisterServerEvent('mdt:linkWeaponReport', function(data)
+LSLegacy.Events.Register('mdt:linkWeaponReport', function(data)
     local src = source
     -- gestion des armes d'un dossier = compétence PTS (manage_evidence / CS037)
     local player, depName = can(src, 'manage_evidence')
@@ -2036,7 +2036,7 @@ LSLegacy.RegisterServerEvent('mdt:linkWeaponReport', function(data)
 end)
 
 -- Délier une arme d'un dossier
-LSLegacy.RegisterServerEvent('mdt:unlinkWeaponReport', function(data)
+LSLegacy.Events.Register('mdt:unlinkWeaponReport', function(data)
     local src = source
     local player, depName = can(src, 'manage_evidence')
     if not player or type(data) ~= 'table' then return end
@@ -2252,7 +2252,7 @@ readHandlers.getLaws = function(player, depName, grade, data, reply)
 end
 
 -- Créer une loi
-LSLegacy.RegisterServerEvent('mdt:createLaw', function(data)
+LSLegacy.Events.Register('mdt:createLaw', function(data)
     local src = source
     local player, depName = can(src, 'manage_laws')
     if not player or type(data) ~= 'table' then return end
@@ -2271,7 +2271,7 @@ LSLegacy.RegisterServerEvent('mdt:createLaw', function(data)
 end)
 
 -- Modifier une loi
-LSLegacy.RegisterServerEvent('mdt:updateLaw', function(data)
+LSLegacy.Events.Register('mdt:updateLaw', function(data)
     local src = source
     local player, depName = can(src, 'manage_laws')
     if not player or type(data) ~= 'table' then return end
@@ -2289,7 +2289,7 @@ LSLegacy.RegisterServerEvent('mdt:updateLaw', function(data)
 end)
 
 -- Supprimer une loi
-LSLegacy.RegisterServerEvent('mdt:deleteLaw', function(data)
+LSLegacy.Events.Register('mdt:deleteLaw', function(data)
     local src = source
     local player, depName = can(src, 'manage_laws')
     if not player or type(data) ~= 'table' then return end
@@ -2324,7 +2324,7 @@ readHandlers.getTrainingSignups = function(player, depName, grade, data, reply)
 end
 
 -- Créer une formation
-LSLegacy.RegisterServerEvent('mdt:createTraining', function(data)
+LSLegacy.Events.Register('mdt:createTraining', function(data)
     local src = source
     local player, depName = can(src, 'manage_trainings')
     if not player or type(data) ~= 'table' then return end
@@ -2343,7 +2343,7 @@ LSLegacy.RegisterServerEvent('mdt:createTraining', function(data)
 end)
 
 -- Modifier une formation
-LSLegacy.RegisterServerEvent('mdt:updateTraining', function(data)
+LSLegacy.Events.Register('mdt:updateTraining', function(data)
     local src = source
     local player, depName = can(src, 'manage_trainings')
     if not player or type(data) ~= 'table' then return end
@@ -2359,7 +2359,7 @@ LSLegacy.RegisterServerEvent('mdt:updateTraining', function(data)
 end)
 
 -- Supprimer / annuler une formation (+ ses inscriptions)
-LSLegacy.RegisterServerEvent('mdt:deleteTraining', function(data)
+LSLegacy.Events.Register('mdt:deleteTraining', function(data)
     local src = source
     local player, depName = can(src, 'manage_trainings')
     if not player or type(data) ~= 'table' then return end
@@ -2372,7 +2372,7 @@ LSLegacy.RegisterServerEvent('mdt:deleteTraining', function(data)
 end)
 
 -- S'inscrire (place vérifiée + une seule inscription)
-LSLegacy.RegisterServerEvent('mdt:signupTraining', function(data)
+LSLegacy.Events.Register('mdt:signupTraining', function(data)
     local src = source
     local player, depName, grade = can(src, 'view_trainings')
     if not player or type(data) ~= 'table' then return end
@@ -2393,7 +2393,7 @@ LSLegacy.RegisterServerEvent('mdt:signupTraining', function(data)
 end)
 
 -- Se désinscrire
-LSLegacy.RegisterServerEvent('mdt:unsignupTraining', function(data)
+LSLegacy.Events.Register('mdt:unsignupTraining', function(data)
     local src = source
     local player, depName = can(src, 'view_trainings')
     if not player or type(data) ~= 'table' then return end
@@ -2405,7 +2405,7 @@ LSLegacy.RegisterServerEvent('mdt:unsignupTraining', function(data)
 end)
 
 -- Retirer une inscription (gestionnaire)
-LSLegacy.RegisterServerEvent('mdt:removeSignup', function(data)
+LSLegacy.Events.Register('mdt:removeSignup', function(data)
     local src = source
     local player, depName = can(src, 'manage_trainings')
     if not player or type(data) ~= 'table' then return end
@@ -2423,7 +2423,7 @@ end)
 -- leurs équivalents côté gendarmerie) : la GAV reste consultable et
 -- gérable par tous les grades qui en ont déjà le droit, mais sa
 -- suppression est une décision de commandement.
-LSLegacy.RegisterServerEvent('mdt:deleteCustody', function(data)
+LSLegacy.Events.Register('mdt:deleteCustody', function(data)
     local src = source
     local player, depName = can(src, 'delete_custody')
     if not player or type(data) ~= 'table' then return end
@@ -2435,7 +2435,7 @@ LSLegacy.RegisterServerEvent('mdt:deleteCustody', function(data)
 end)
 
 -- Lier une arme à un citoyen depuis sa fiche (par n° de série)
-LSLegacy.RegisterServerEvent('mdt:linkPersonWeapon', function(data)
+LSLegacy.Events.Register('mdt:linkPersonWeapon', function(data)
     local src = source
     local player, depName = can(src, 'manage_weapons')
     if not player or type(data) ~= 'table' then return end
@@ -2458,7 +2458,7 @@ LSLegacy.RegisterServerEvent('mdt:linkPersonWeapon', function(data)
 end)
 
 -- Valider / refuser la formation d'un inscrit (valide → compétence auto)
-LSLegacy.RegisterServerEvent('mdt:validateSignup', function(data)
+LSLegacy.Events.Register('mdt:validateSignup', function(data)
     local src = source
     local player, depName = can(src, 'manage_trainings')
     if not player or type(data) ~= 'table' then return end
@@ -2490,7 +2490,7 @@ end)
 local EVIDENCE_TABLES = { fingerprint = 'police_fingerprints', dna = 'police_dna', blood = 'police_blood_traces' }
 
 -- Renseigner / modifier la description détaillée d'une preuve
-LSLegacy.RegisterServerEvent('mdt:updateEvidence', function(data)
+LSLegacy.Events.Register('mdt:updateEvidence', function(data)
     local src = source
     local player, depName = can(src, 'manage_evidence')
     if not player or type(data) ~= 'table' then return end
@@ -2503,7 +2503,7 @@ LSLegacy.RegisterServerEvent('mdt:updateEvidence', function(data)
 end)
 
 -- Lier une preuve (par référence) à un dossier
-LSLegacy.RegisterServerEvent('mdt:linkReportEvidence', function(data)
+LSLegacy.Events.Register('mdt:linkReportEvidence', function(data)
     local src = source
     local player, depName = can(src, 'view_evidence')
     if not player or type(data) ~= 'table' then return end
@@ -2524,7 +2524,7 @@ LSLegacy.RegisterServerEvent('mdt:linkReportEvidence', function(data)
 end)
 
 -- Délier une preuve d'un dossier
-LSLegacy.RegisterServerEvent('mdt:unlinkReportEvidence', function(data)
+LSLegacy.Events.Register('mdt:unlinkReportEvidence', function(data)
     local src = source
     local player = can(src, 'view_evidence')
     if not player or type(data) ~= 'table' then return end
@@ -2612,7 +2612,7 @@ readHandlers.getAgentFile = function(player, depName, grade, data, reply)
 end
 
 -- Infos RH (date entrée, titularisation, arme de service)
-LSLegacy.RegisterServerEvent('mdt:saveAgentMeta', function(data)
+LSLegacy.Events.Register('mdt:saveAgentMeta', function(data)
     local src = source
     local player, depName = can(src, 'manage_personnel')
     if not player or type(data) ~= 'table' then return end
@@ -2625,7 +2625,7 @@ LSLegacy.RegisterServerEvent('mdt:saveAgentMeta', function(data)
 end)
 
 -- Historique de carrière (dates par grade, enregistré en bloc)
-LSLegacy.RegisterServerEvent('mdt:saveCareer', function(data)
+LSLegacy.Events.Register('mdt:saveCareer', function(data)
     local src = source
     local player, depName = can(src, 'manage_personnel')
     if not player or type(data) ~= 'table' then return end
@@ -2645,7 +2645,7 @@ LSLegacy.RegisterServerEvent('mdt:saveCareer', function(data)
 end)
 
 -- Affectations
-LSLegacy.RegisterServerEvent('mdt:addAssignment', function(data)
+LSLegacy.Events.Register('mdt:addAssignment', function(data)
     local src = source
     local player, depName = can(src, 'manage_personnel')
     if not player or type(data) ~= 'table' then return end
@@ -2659,7 +2659,7 @@ LSLegacy.RegisterServerEvent('mdt:addAssignment', function(data)
     }, function() result(src, true, 'Affectation ajoutée.', { view = 'agent', id = characterId }) end)
 end)
 
-LSLegacy.RegisterServerEvent('mdt:updateAssignment', function(data)
+LSLegacy.Events.Register('mdt:updateAssignment', function(data)
     local src = source
     local player = can(src, 'manage_personnel')
     if not player or type(data) ~= 'table' then return end
@@ -2670,7 +2670,7 @@ LSLegacy.RegisterServerEvent('mdt:updateAssignment', function(data)
     }, function() result(src, true, 'Affectation mise à jour.', { view = 'agent', id = data.character_id }) end)
 end)
 
-LSLegacy.RegisterServerEvent('mdt:deleteAssignment', function(data)
+LSLegacy.Events.Register('mdt:deleteAssignment', function(data)
     local src = source
     local player = can(src, 'manage_personnel')
     if not player or type(data) ~= 'table' then return end
@@ -2682,7 +2682,7 @@ LSLegacy.RegisterServerEvent('mdt:deleteAssignment', function(data)
 end)
 
 -- Félicitations / sanctions
-LSLegacy.RegisterServerEvent('mdt:addCommendation', function(data)
+LSLegacy.Events.Register('mdt:addCommendation', function(data)
     local src = source
     local player, depName = can(src, 'manage_personnel')
     if not player or type(data) ~= 'table' then return end
@@ -2702,7 +2702,7 @@ LSLegacy.RegisterServerEvent('mdt:addCommendation', function(data)
     end)
 end)
 
-LSLegacy.RegisterServerEvent('mdt:deleteCommendation', function(data)
+LSLegacy.Events.Register('mdt:deleteCommendation', function(data)
     local src = source
     local player = can(src, 'manage_personnel')
     if not player or type(data) ~= 'table' then return end
@@ -2714,7 +2714,7 @@ LSLegacy.RegisterServerEvent('mdt:deleteCommendation', function(data)
 end)
 
 -- Ajouter une compétence manuellement (Commissaire / Commandant)
-LSLegacy.RegisterServerEvent('mdt:addSkill', function(data)
+LSLegacy.Events.Register('mdt:addSkill', function(data)
     local src = source
     local player, depName = can(src, 'manage_personnel')
     if not player or type(data) ~= 'table' then return end
@@ -2729,7 +2729,7 @@ LSLegacy.RegisterServerEvent('mdt:addSkill', function(data)
 end)
 
 -- Supprimer une compétence
-LSLegacy.RegisterServerEvent('mdt:deleteSkill', function(data)
+LSLegacy.Events.Register('mdt:deleteSkill', function(data)
     local src = source
     local player = can(src, 'manage_personnel')
     if not player or type(data) ~= 'table' then return end
@@ -2741,7 +2741,7 @@ LSLegacy.RegisterServerEvent('mdt:deleteSkill', function(data)
 end)
 
 -- Modifier la date d'obtention d'une compétence (Commissaire / Commandant)
-LSLegacy.RegisterServerEvent('mdt:updateSkillDate', function(data)
+LSLegacy.Events.Register('mdt:updateSkillDate', function(data)
     local src = source
     local player = can(src, 'manage_personnel')
     if not player or type(data) ~= 'table' then return end

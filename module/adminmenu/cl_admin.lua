@@ -48,7 +48,7 @@ local function AM_SyncTracking()
     local needed = AM.Tools.showIds or AM.Tools.blips
     if needed ~= AM.Tracking then
         AM.Tracking = needed
-        LSLegacy.SendEventToServer('admin:trackPlayers', needed)
+        LSLegacy.Events.SendToServer('admin:trackPlayers', needed)
         if not needed then AM.PlayersSnapshot = {} end
     end
 end
@@ -211,20 +211,20 @@ local Actions = {}
 
 -- Entrée d'onglet (mêmes effets de bord que les anciens boutons du menu principal)
 Actions.enterPlayers = function()
-    LSLegacy.SendEventToServer('AdminServerPlayers')
+    LSLegacy.Events.SendToServer('AdminServerPlayers')
     AM.WarnsList = {}
     return { ok = true }
 end
 
 Actions.enterTickets = function()
     AM.OpenTickets, AM.TakenTickets, AM.ClosedTickets, AM.AvgProcessingTime = {}, {}, {}, nil
-    LSLegacy.SendEventToServer('admin:getTickets', '')
-    LSLegacy.SendEventToServer('admin:getTicketStats')
+    LSLegacy.Events.SendToServer('admin:getTickets', '')
+    LSLegacy.Events.SendToServer('admin:getTicketStats')
     return { ok = true }
 end
 
 Actions.enterStaffOnline = function()
-    LSLegacy.SendEventToServer('admin:getOnlineStaff')
+    LSLegacy.Events.SendToServer('admin:getOnlineStaff')
     return { ok = true }
 end
 
@@ -242,8 +242,8 @@ Actions.selectPlayer = function(data)
     AM.NameSelected = found.characterInfos and (found.characterInfos.Prenom .. ' ' .. found.characterInfos.NDF) or ('Joueur ' .. source)
     AM.SelectedData = found
     AM.WarnsList    = {}
-    LSLegacy.SendEventToServer('admin:getWarns', source)
-    LSLegacy.SendEventToServer('admin:getBankInfo', source)
+    LSLegacy.Events.SendToServer('admin:getWarns', source)
+    LSLegacy.Events.SendToServer('admin:getBankInfo', source)
 
     local nav = 'playerActions'
     if AM.EcoSelect then
@@ -256,7 +256,7 @@ end
 -- Informations / actions joueur
 Actions.logIdentifiers = function()
     if GetMyLevel() < 3 or not AM.IdSelected then return { error = 'Action refusée.' } end
-    LSLegacy.SendEventToServer('admin:logIdentifiers', AM.IdSelected)
+    LSLegacy.Events.SendToServer('admin:logIdentifiers', AM.IdSelected)
     return { ok = true }
 end
 
@@ -265,27 +265,27 @@ Actions.viewInventory = function()
     AM.PendingInventoryReopen = true
     AM.opened = false
     AM:HideAllMenus()
-    LSLegacy.SendEventToServer('admin:getPlayerInventory', AM.IdSelected)
+    LSLegacy.Events.SendToServer('admin:getPlayerInventory', AM.IdSelected)
     return { ok = true }
 end
 
 Actions.tpToPlayer = function()
     if GetMyLevel() < 2 or not AM.IdSelected then return { error = 'Action refusée.' } end
-    LSLegacy.SendEventToServer('TeleportPlayers', 'tp', AM.IdSelected)
+    LSLegacy.Events.SendToServer('TeleportPlayers', 'tp', AM.IdSelected)
     LSLegacy.ShowNotification("Administration", "Téléportation vers le joueur.", "success")
     return { ok = true }
 end
 
 Actions.bringPlayer = function()
     if GetMyLevel() < 2 or not AM.IdSelected then return { error = 'Action refusée.' } end
-    LSLegacy.SendEventToServer('TeleportPlayers', 'bring', AM.IdSelected)
+    LSLegacy.Events.SendToServer('TeleportPlayers', 'bring', AM.IdSelected)
     LSLegacy.ShowNotification("Administration", "Joueur téléporté vers vous.", "success")
     return { ok = true }
 end
 
 Actions.freezePlayer = function(data)
     if GetMyLevel() < 2 or not AM.IdSelected then return { error = 'Action refusée.' } end
-    LSLegacy.SendEventToServer('admin:freeze', AM.IdSelected, not not data.state)
+    LSLegacy.Events.SendToServer('admin:freeze', AM.IdSelected, not not data.state)
     return { ok = true }
 end
 
@@ -313,39 +313,39 @@ end
 
 Actions.healPlayer = function()
     if GetMyLevel() < 2 or not AM.IdSelected then return { error = 'Action refusée.' } end
-    LSLegacy.SendEventToServer('admin:heal', AM.IdSelected)
+    LSLegacy.Events.SendToServer('admin:heal', AM.IdSelected)
     return { ok = true }
 end
 
 Actions.revivePlayer = function()
     if GetMyLevel() < 2 or not AM.IdSelected then return { error = 'Action refusée.' } end
-    LSLegacy.SendEventToServer('admin:revive', AM.IdSelected)
+    LSLegacy.Events.SendToServer('admin:revive', AM.IdSelected)
     return { ok = true }
 end
 
 Actions.resetNeeds = function()
     if GetMyLevel() < 2 or not AM.IdSelected then return { error = 'Action refusée.' } end
-    LSLegacy.SendEventToServer('admin:resetNeeds', AM.IdSelected)
+    LSLegacy.Events.SendToServer('admin:resetNeeds', AM.IdSelected)
     LSLegacy.ShowNotification("Administration", "Besoins réinitialisés.", "success")
     return { ok = true }
 end
 
 Actions.resetSkin = function()
     if GetMyLevel() < 3 or not AM.IdSelected then return { error = 'Action refusée.' } end
-    LSLegacy.SendEventToServer('admin:resetSkin', AM.IdSelected)
+    LSLegacy.Events.SendToServer('admin:resetSkin', AM.IdSelected)
     return { ok = true }
 end
 
 -- Véhicule joueur
 Actions.repairVehicle = function()
     if GetMyLevel() < 3 or not AM.IdSelected then return { error = 'Action refusée.' } end
-    LSLegacy.SendEventToServer('admin:repairVehicle', AM.IdSelected)
+    LSLegacy.Events.SendToServer('admin:repairVehicle', AM.IdSelected)
     return { ok = true }
 end
 
 Actions.deletePlayerVehicle = function()
     if GetMyLevel() < 3 or not AM.IdSelected then return { error = 'Action refusée.' } end
-    LSLegacy.SendEventToServer('admin:deletePlayerVehicle', AM.IdSelected)
+    LSLegacy.Events.SendToServer('admin:deletePlayerVehicle', AM.IdSelected)
     return { ok = true }
 end
 
@@ -353,7 +353,7 @@ Actions.spawnVehicleForPlayer = function(data)
     if GetMyLevel() < 3 or not AM.IdSelected then return { error = 'Action refusée.' } end
     local model = tostring(data.model or '')
     if model == '' then return { error = 'Modèle invalide.' } end
-    LSLegacy.SendEventToServer('admin:spawnVehicleForPlayer', AM.IdSelected, model)
+    LSLegacy.Events.SendToServer('admin:spawnVehicleForPlayer', AM.IdSelected, model)
     AM.opened = false
     AM:HideAllMenus()
     return { ok = true }
@@ -364,9 +364,9 @@ Actions.warnPlayer = function(data)
     if GetMyLevel() < 2 or not AM.IdSelected then return { error = 'Action refusée.' } end
     local reason = tostring(data.reason or '')
     if reason == '' then return { error = 'Raison requise.' } end
-    LSLegacy.SendEventToServer('admin:warn', AM.IdSelected, reason)
+    LSLegacy.Events.SendToServer('admin:warn', AM.IdSelected, reason)
     LSLegacy.ShowNotification("Sanction", "Warn envoyé.", "success")
-    LSLegacy.SendEventToServer('admin:getWarns', AM.IdSelected)
+    LSLegacy.Events.SendToServer('admin:getWarns', AM.IdSelected)
     return { ok = true }
 end
 
@@ -374,7 +374,7 @@ Actions.deleteWarn = function(data)
     if GetMyLevel() < 4 or not AM.IdSelected then return { error = 'Action refusée.' } end
     local warnId = tonumber(data.warnId)
     if not warnId then return { error = 'Warn invalide.' } end
-    LSLegacy.SendEventToServer('admin:deleteWarn', warnId, AM.IdSelected)
+    LSLegacy.Events.SendToServer('admin:deleteWarn', warnId, AM.IdSelected)
     LSLegacy.ShowNotification("Sanctions", "Warn #" .. tostring(warnId) .. " supprimé.", "success")
     return { ok = true }
 end
@@ -383,7 +383,7 @@ Actions.kickPlayer = function(data)
     if GetMyLevel() < 2 or not AM.IdSelected then return { error = 'Action refusée.' } end
     local reason = tostring(data.reason or '')
     if reason == '' then return { error = 'Raison requise.' } end
-    LSLegacy.SendEventToServer('admin:kick', AM.IdSelected, reason)
+    LSLegacy.Events.SendToServer('admin:kick', AM.IdSelected, reason)
     return { ok = true }
 end
 
@@ -392,7 +392,7 @@ Actions.tempbanPlayer = function(data)
     local hours  = tonumber(data.hours)
     local reason = tostring(data.reason or '')
     if not hours or reason == '' then return { error = 'Durée/raison invalide.' } end
-    LSLegacy.SendEventToServer('admin:tempban', AM.IdSelected, hours, reason)
+    LSLegacy.Events.SendToServer('admin:tempban', AM.IdSelected, hours, reason)
     LSLegacy.ShowNotification("Sanction", "Tempban appliqué.", "success")
     return { ok = true }
 end
@@ -401,14 +401,14 @@ Actions.permabanPlayer = function(data)
     if GetMyLevel() < 4 or not AM.IdSelected then return { error = 'Action refusée.' } end
     local reason = tostring(data.reason or '')
     if reason == '' then return { error = 'Raison requise.' } end
-    LSLegacy.SendEventToServer('admin:permaban', AM.IdSelected, reason)
+    LSLegacy.Events.SendToServer('admin:permaban', AM.IdSelected, reason)
     LSLegacy.ShowNotification("Sanction", "Ban permanent appliqué.", "success")
     return { ok = true }
 end
 
 Actions.screenshotPlayer = function()
     if GetMyLevel() < 2 or not AM.IdSelected then return { error = 'Action refusée.' } end
-    LSLegacy.SendEventToServer('admin:screenshot', AM.IdSelected)
+    LSLegacy.Events.SendToServer('admin:screenshot', AM.IdSelected)
     LSLegacy.ShowNotification("Administration", "Screenshot en cours...", "info")
     return { ok = true }
 end
@@ -418,35 +418,35 @@ Actions.openTickets = function(data)
     local status = tostring(data.status or '')
     local minLvl = (status == 'closed') and 2 or 1
     if GetMyLevel() < minLvl then return { error = 'Action refusée.' } end
-    LSLegacy.SendEventToServer('admin:getTickets', status)
+    LSLegacy.Events.SendToServer('admin:getTickets', status)
     return { ok = true }
 end
 
 Actions.takeTicket = function(data)
     local ticketId = tonumber(data.ticketId)
     if GetMyLevel() < 1 or not ticketId then return { error = 'Action refusée.' } end
-    LSLegacy.SendEventToServer('admin:takeTicket', ticketId)
+    LSLegacy.Events.SendToServer('admin:takeTicket', ticketId)
     return { ok = true }
 end
 
 Actions.closeTicket = function(data)
     local ticketId = tonumber(data.ticketId)
     if GetMyLevel() < 1 or not ticketId then return { error = 'Action refusée.' } end
-    LSLegacy.SendEventToServer('admin:closeTicket', ticketId)
+    LSLegacy.Events.SendToServer('admin:closeTicket', ticketId)
     return { ok = true }
 end
 
 Actions.tpToTicket = function(data)
     local ticketId = tonumber(data.ticketId)
     if GetMyLevel() < 1 or not ticketId then return { error = 'Action refusée.' } end
-    LSLegacy.SendEventToServer('admin:tpToTicket', ticketId)
+    LSLegacy.Events.SendToServer('admin:tpToTicket', ticketId)
     return { ok = true }
 end
 
 Actions.bringTicketPlayer = function(data)
     local ticketId = tonumber(data.ticketId)
     if GetMyLevel() < 1 or not ticketId then return { error = 'Action refusée.' } end
-    LSLegacy.SendEventToServer('admin:bringTicketPlayer', ticketId)
+    LSLegacy.Events.SendToServer('admin:bringTicketPlayer', ticketId)
     return { ok = true }
 end
 
@@ -455,7 +455,7 @@ Actions.messageTicketPlayer = function(data)
     if GetMyLevel() < 1 or not playerId then return { error = 'Action refusée.' } end
     local msg = tostring(data.msg or '')
     if msg == '' then return { error = 'Message requis.' } end
-    LSLegacy.SendEventToServer('MessageAdmin', playerId, msg)
+    LSLegacy.Events.SendToServer('MessageAdmin', playerId, msg)
     return { ok = true }
 end
 
@@ -464,7 +464,7 @@ Actions.spawnVehicle = function(data)
     if GetMyLevel() < 3 then return { error = 'Action refusée.' } end
     local model = tostring(data.model or '')
     if model == '' then return { error = 'Modèle invalide.' } end
-    LSLegacy.SendEventToServer('admin:spawnVehicle', model)
+    LSLegacy.Events.SendToServer('admin:spawnVehicle', model)
     AM.opened = false
     AM:HideAllMenus()
     return { ok = true }
@@ -474,7 +474,7 @@ Actions.deleteVehiclesZone = function(data)
     local radius = tonumber(data.radius) or 0
     local needLvl = radius >= 150 and 4 or 3
     if GetMyLevel() < needLvl then return { error = 'Action refusée.' } end
-    LSLegacy.SendEventToServer('admin:deleteVehiclesInZone', radius)
+    LSLegacy.Events.SendToServer('admin:deleteVehiclesInZone', radius)
     return { ok = true }
 end
 
@@ -486,7 +486,7 @@ Actions.setTime = function(data)
     if GetMyLevel() < 2 then return { error = 'Action refusée.' } end
     local h = tonumber(data.h) or 0
     local m = tonumber(data.m) or 0
-    LSLegacy.SendEventToServer('admin:setWorldTime', h, m)
+    LSLegacy.Events.SendToServer('admin:setWorldTime', h, m)
     return { ok = true }
 end
 
@@ -496,7 +496,7 @@ Actions.toggleTimeFrozen = function(data)
     if GetMyLevel() < 2 then return { error = 'Action refusée.' } end
     local state = not not data.state
     AM.TimeFrozen = state
-    LSLegacy.SendEventToServer('admin:setTimeFrozen', state)
+    LSLegacy.Events.SendToServer('admin:setTimeFrozen', state)
     SendNUIMessage({ action = 'admin:state', key = 'timeFrozen', data = AM.TimeFrozen })
     return { ok = true }
 end
@@ -513,7 +513,7 @@ end
 
 Actions.ecoSelectTarget = function()
     AM.EcoSelect = true
-    LSLegacy.SendEventToServer('AdminServerPlayers')
+    LSLegacy.Events.SendToServer('AdminServerPlayers')
     return { ok = true }
 end
 
@@ -522,7 +522,7 @@ Actions.giveMoney = function(data)
     if gate then return gate end
     local amount = tonumber(data.amount)
     if not amount or amount <= 0 then return { error = 'Montant invalide.' } end
-    LSLegacy.SendEventToServer('admin:giveMoney', AM.IdSelected, amount, not not data.bank)
+    LSLegacy.Events.SendToServer('admin:giveMoney', AM.IdSelected, amount, not not data.bank)
     return { ok = true }
 end
 
@@ -531,7 +531,7 @@ Actions.removeMoney = function(data)
     if gate then return gate end
     local amount = tonumber(data.amount)
     if not amount or amount <= 0 then return { error = 'Montant invalide.' } end
-    LSLegacy.SendEventToServer('admin:removeMoney', AM.IdSelected, amount, not not data.bank)
+    LSLegacy.Events.SendToServer('admin:removeMoney', AM.IdSelected, amount, not not data.bank)
     return { ok = true }
 end
 
@@ -541,7 +541,7 @@ Actions.giveItem = function(data)
     local name = tostring(data.name or '')
     local qty  = tonumber(data.qty)
     if name == '' or not qty or qty <= 0 then return { error = 'Item/quantité invalide.' } end
-    LSLegacy.SendEventToServer('admin:giveItem', AM.IdSelected, name, qty)
+    LSLegacy.Events.SendToServer('admin:giveItem', AM.IdSelected, name, qty)
     return { ok = true }
 end
 
@@ -550,14 +550,14 @@ Actions.giveWeapon = function(data)
     if gate then return gate end
     local name = tostring(data.name or '')
     if name == '' then return { error = 'Arme invalide.' } end
-    LSLegacy.SendEventToServer('admin:giveWeapon', AM.IdSelected, name, tonumber(data.ammo) or 50)
+    LSLegacy.Events.SendToServer('admin:giveWeapon', AM.IdSelected, name, tonumber(data.ammo) or 50)
     return { ok = true }
 end
 
 Actions.loadJobsFactions = function()
     local gate = AM_EconGate()
     if gate then return gate end
-    LSLegacy.SendEventToServer('admin:getJobsFactions')
+    LSLegacy.Events.SendToServer('admin:getJobsFactions')
     return { ok = true }
 end
 
@@ -567,7 +567,7 @@ Actions.setPlayerJob = function(data)
     local jobKey   = tostring(data.jobKey or '')
     local gradeKey = tonumber(data.gradeKey)
     if jobKey == '' or not gradeKey then return { error = 'Job/grade invalide.' } end
-    LSLegacy.SendEventToServer('admin:setPlayerJob', AM.IdSelected, jobKey, gradeKey)
+    LSLegacy.Events.SendToServer('admin:setPlayerJob', AM.IdSelected, jobKey, gradeKey)
     return { ok = true }
 end
 
@@ -577,7 +577,7 @@ Actions.setPlayerFaction = function(data)
     local factionKey = tostring(data.factionKey or '')
     local gradeKey    = tonumber(data.gradeKey)
     if factionKey == '' or not gradeKey then return { error = 'Faction/grade invalide.' } end
-    LSLegacy.SendEventToServer('admin:setPlayerFaction', AM.IdSelected, factionKey, gradeKey)
+    LSLegacy.Events.SendToServer('admin:setPlayerFaction', AM.IdSelected, factionKey, gradeKey)
     return { ok = true }
 end
 
@@ -586,7 +586,7 @@ Actions.toggleDuty = function(data)
     if GetMyLevel() < 1 then return { error = 'Action refusée.' } end
     local state = not not data.state
     AM.OnDuty = state
-    LSLegacy.SendEventToServer('admin:setDuty', state)
+    LSLegacy.Events.SendToServer('admin:setDuty', state)
 
     if state then
         LSLegacy.ShowNotification("Administration", "Vous êtes en service (staff).", "success")
@@ -602,7 +602,7 @@ Actions.toggleDuty = function(data)
         end
         if AM.Tools.godmode then
             AM.Tools.godmode = false
-            LSLegacy.SendEventToServer('admin:setGodmode', false)
+            LSLegacy.Events.SendToServer('admin:setGodmode', false)
         end
         AM.Tools.showIds    = false
         AM.Tools.showCoords = false
@@ -648,7 +648,7 @@ Actions.toggleGodmode = function(data)
     if GetMyLevel() < 3 or not AM.OnDuty then return { error = 'Action refusée.' } end
     local state = not not data.state
     AM.Tools.godmode = state
-    LSLegacy.SendEventToServer('admin:setGodmode', state)
+    LSLegacy.Events.SendToServer('admin:setGodmode', state)
     LSLegacy.ShowNotification("Outils", state and "Godmode activé." or "Godmode désactivé.", state and "success" or "warning")
     AM_PushTools()
     return { ok = true }
@@ -697,7 +697,7 @@ end
 
 Actions.showMyPos = function()
     if GetMyLevel() < 1 or not AM.OnDuty then return { error = 'Action refusée.' } end
-    LSLegacy.SendEventToServer('admin:pos')
+    LSLegacy.Events.SendToServer('admin:pos')
     return { ok = true }
 end
 
@@ -705,7 +705,7 @@ Actions.returnToCharSelect = function()
     if GetMyLevel() < 1 then return { error = 'Action refusée.' } end
     AM.opened = false
     AM:HideAllMenus()
-    LSLegacy.SendEventToServer('admin:multichar:returnToSelection')
+    LSLegacy.Events.SendToServer('admin:multichar:returnToSelection')
     return { ok = true }
 end
 
@@ -857,7 +857,7 @@ function Administration:StartSpectate(player)
     RenderScriptCams(false, false, 0, false, false)
     SetScaleformParams(Administration.Scalform, Administration:ActiveScalform(true))
     ClearFocus()
-    LSLegacy.SendEventToServer('AdminServerPlayers')
+    LSLegacy.Events.SendToServer('AdminServerPlayers')
 end
 
 function Administration:StartSpectateList(ped)
@@ -885,7 +885,7 @@ end
 function Administration:ScalformSpectate()
     if IsControlJustPressed(0, Administration.DetailsInSpec.exit.control) then
         Administration:ExitSpectate()
-        LSLegacy.SendEventToServer('AdminServerPlayers')
+        LSLegacy.Events.SendToServer('AdminServerPlayers')
     end
     if IsControlJustPressed(0, Administration.DetailsInSpec.openmenu.control) then
         local serverId = Administration.CamTarget.id and GetPlayerServerId(Administration.CamTarget.id) or 0
@@ -1046,36 +1046,36 @@ end
 
 --   EVENTS REÇUS DU SERVEUR
 
-LSLegacy.RegisterClientEvent('AdminServerPlayers', function(data)
+LSLegacy.Events.Register('AdminServerPlayers', function(data)
     AM.AllPlayers = data
     SendNUIMessage({ action = 'admin:state', key = 'players', data = data })
 end)
 
-LSLegacy.RegisterClientEvent('admin:playersSnapshot', function(snapshot)
+LSLegacy.Events.Register('admin:playersSnapshot', function(snapshot)
     AM.PlayersSnapshot = snapshot or {}
 end)
 
-LSLegacy.RegisterClientEvent('admin:onlineStaffList', function(list)
+LSLegacy.Events.Register('admin:onlineStaffList', function(list)
     AM.OnlineStaff = list or {}
     SendNUIMessage({ action = 'admin:state', key = 'onlineStaff', data = AM.OnlineStaff })
 end)
 
-LSLegacy.RegisterClientEvent('admin:jobsFactionsList', function(data)
+LSLegacy.Events.Register('admin:jobsFactionsList', function(data)
     AM.Jobs     = (data and data.jobs) or {}
     AM.Factions = (data and data.factions) or {}
     SendNUIMessage({ action = 'admin:state', key = 'jobsFactions', data = { jobs = AM.Jobs, factions = AM.Factions } })
 end)
 
-LSLegacy.RegisterClientEvent('admin:receiveWarns', function(warns)
+LSLegacy.Events.Register('admin:receiveWarns', function(warns)
     AM.WarnsList = warns or {}
     SendNUIMessage({ action = 'admin:state', key = 'warns', data = AM.WarnsList })
 end)
 
-LSLegacy.RegisterClientEvent('admin:bankInfo', function(info)
+LSLegacy.Events.Register('admin:bankInfo', function(info)
     SendNUIMessage({ action = 'admin:state', key = 'bankInfo', data = info or { hasAccount = false, balance = 0 } })
 end)
 
-LSLegacy.RegisterClientEvent('admin:receiveTicketStats', function(avgSeconds)
+LSLegacy.Events.Register('admin:receiveTicketStats', function(avgSeconds)
     if not avgSeconds or avgSeconds <= 0 then
         AM.AvgProcessingTime = 'Aucun'
     else
@@ -1093,7 +1093,7 @@ LSLegacy.RegisterClientEvent('admin:receiveTicketStats', function(avgSeconds)
     AM_PushTickets()
 end)
 
-LSLegacy.RegisterClientEvent('admin:receiveTickets', function(tickets)
+LSLegacy.Events.Register('admin:receiveTickets', function(tickets)
     AM.OpenTickets   = {}
     AM.TakenTickets  = {}
     AM.ClosedTickets = {}
@@ -1105,7 +1105,7 @@ LSLegacy.RegisterClientEvent('admin:receiveTickets', function(tickets)
     AM_PushTickets()
 end)
 
-LSLegacy.RegisterClientEvent('admin:receiveInventory', function(inventory, characterInfos, cash, dirty)
+LSLegacy.Events.Register('admin:receiveInventory', function(inventory, characterInfos, cash, dirty)
     TriggerEvent('inventory:viewExternal', inventory, characterInfos, cash or 0, dirty or 0)
 end)
 
@@ -1119,7 +1119,7 @@ AddEventHandler('admin:inventoryViewClosed', function()
     end
 end)
 
-LSLegacy.RegisterClientEvent('admin:applyGodmode', function(state)
+LSLegacy.Events.Register('admin:applyGodmode', function(state)
     SetEntityInvincible(PlayerPedId(), state)
 end)
 
@@ -1134,7 +1134,7 @@ local AM_FreezeActive       = false
 local AM_FreezeThreadAlive  = false
 local AM_FreezePin          = { coords = nil, heading = nil }
 
-LSLegacy.RegisterClientEvent('admin:setFreeze', function(state)
+LSLegacy.Events.Register('admin:setFreeze', function(state)
     if state then
         local ped = PlayerPedId()
         AM_FreezePin.coords  = GetEntityCoords(ped)
@@ -1163,7 +1163,7 @@ LSLegacy.RegisterClientEvent('admin:setFreeze', function(state)
     end
 end)
 
-LSLegacy.RegisterClientEvent('admin:revive', function()
+LSLegacy.Events.Register('admin:revive', function()
     local ped    = PlayerPedId()
     local coords = GetEntityCoords(ped)
     -- NetworkResurrectLocalPlayer attend x, y, z séparés — passer un vector3 décale tous les params
@@ -1172,7 +1172,7 @@ LSLegacy.RegisterClientEvent('admin:revive', function()
     SetEntityHealth(ped, 200)
 end)
 
-LSLegacy.RegisterClientEvent('admin:doRepairVehicle', function()
+LSLegacy.Events.Register('admin:doRepairVehicle', function()
     local ped = PlayerPedId()
     if IsPedInAnyVehicle(ped, false) then
         local veh = GetVehiclePedIsIn(ped, false)
@@ -1189,7 +1189,7 @@ end)
 
 -- Suppression visuelle des véhicules non-persistants restants (trafic NPC, etc.)
 -- Les véhicules AP ont déjà été supprimés côté serveur via AP.DeleteVehicle
-LSLegacy.RegisterClientEvent('admin:doDeleteVehiclesInZone', function(radius)
+LSLegacy.Events.Register('admin:doDeleteVehiclesInZone', function(radius)
     local myCoords = GetEntityCoords(PlayerPedId())
     local count    = 0
 
@@ -1325,7 +1325,7 @@ local function AM_OpenPlayerActionsFor(targetId)
     -- referme aussitôt (toggle) au lieu de l'ouvrir. C'est ce qui rendait
     -- "Ouvrir la fiche" muet depuis ox_target.
     AM:HideAllMenus()
-    LSLegacy.SendEventToServer('AdminServerPlayers')
+    LSLegacy.Events.SendToServer('AdminServerPlayers')
 
     local timeout = GetGameTimer()
     while AM.AllPlayers == nil do
@@ -1346,8 +1346,8 @@ local function AM_OpenPlayerActionsFor(targetId)
         end
     end
     AM.WarnsList = {}
-    LSLegacy.SendEventToServer('admin:getWarns', targetId)
-    LSLegacy.SendEventToServer('admin:getBankInfo', targetId)
+    LSLegacy.Events.SendToServer('admin:getWarns', targetId)
+    LSLegacy.Events.SendToServer('admin:getBankInfo', targetId)
 
     AM.PendingNavPlayerActions = true
     AM:OpenMenu()
@@ -1369,7 +1369,7 @@ exports.ox_target:addGlobalPlayer({
             local sid = AM_GetServerIdFromPed(data.entity)
             if not sid then return end
             local msg = LSLegacy.KeyboardInput('Message', 100)
-            if msg and msg ~= '' then LSLegacy.SendEventToServer('MessageAdmin', sid, msg) end
+            if msg and msg ~= '' then LSLegacy.Events.SendToServer('MessageAdmin', sid, msg) end
         end,
     },
     {
@@ -1377,7 +1377,7 @@ exports.ox_target:addGlobalPlayer({
         distance = 100, canInteract = AM_CanTarget(2),
         onSelect = function(data)
             local sid = AM_GetServerIdFromPed(data.entity)
-            if sid then LSLegacy.SendEventToServer('admin:heal', sid) end
+            if sid then LSLegacy.Events.SendToServer('admin:heal', sid) end
         end,
     },
     {
@@ -1385,7 +1385,7 @@ exports.ox_target:addGlobalPlayer({
         distance = 100, canInteract = AM_CanTarget(2),
         onSelect = function(data)
             local sid = AM_GetServerIdFromPed(data.entity)
-            if sid then LSLegacy.SendEventToServer('admin:revive', sid) end
+            if sid then LSLegacy.Events.SendToServer('admin:revive', sid) end
         end,
     },
     {
@@ -1393,7 +1393,7 @@ exports.ox_target:addGlobalPlayer({
         distance = 100, canInteract = AM_CanTarget(2),
         onSelect = function(data)
             local sid = AM_GetServerIdFromPed(data.entity)
-            if sid then LSLegacy.SendEventToServer('admin:freeze', sid, true) end
+            if sid then LSLegacy.Events.SendToServer('admin:freeze', sid, true) end
         end,
     },
     {
@@ -1401,7 +1401,7 @@ exports.ox_target:addGlobalPlayer({
         distance = 100, canInteract = AM_CanTarget(2),
         onSelect = function(data)
             local sid = AM_GetServerIdFromPed(data.entity)
-            if sid then LSLegacy.SendEventToServer('admin:freeze', sid, false) end
+            if sid then LSLegacy.Events.SendToServer('admin:freeze', sid, false) end
         end,
     },
     {
@@ -1409,7 +1409,7 @@ exports.ox_target:addGlobalPlayer({
         distance = 100, canInteract = AM_CanTarget(2),
         onSelect = function(data)
             local sid = AM_GetServerIdFromPed(data.entity)
-            if sid then LSLegacy.SendEventToServer('TeleportPlayers', 'bring', sid) end
+            if sid then LSLegacy.Events.SendToServer('TeleportPlayers', 'bring', sid) end
         end,
     },
     {
@@ -1417,7 +1417,7 @@ exports.ox_target:addGlobalPlayer({
         distance = 100, canInteract = AM_CanTarget(2),
         onSelect = function(data)
             local sid = AM_GetServerIdFromPed(data.entity)
-            if sid then LSLegacy.SendEventToServer('TeleportPlayers', 'tp', sid) end
+            if sid then LSLegacy.Events.SendToServer('TeleportPlayers', 'tp', sid) end
         end,
     },
     {
@@ -1439,7 +1439,7 @@ exports.ox_target:addGlobalPlayer({
             local sid = AM_GetServerIdFromPed(data.entity)
             if not sid then return end
             local reason = LSLegacy.KeyboardInput('Raison de l\'avertissement', 100)
-            if reason and reason ~= '' then LSLegacy.SendEventToServer('admin:warn', sid, reason) end
+            if reason and reason ~= '' then LSLegacy.Events.SendToServer('admin:warn', sid, reason) end
         end,
     },
     {
@@ -1449,7 +1449,7 @@ exports.ox_target:addGlobalPlayer({
             local sid = AM_GetServerIdFromPed(data.entity)
             if not sid then return end
             local reason = LSLegacy.KeyboardInput('Raison du kick', 100)
-            if reason and reason ~= '' then LSLegacy.SendEventToServer('admin:kick', sid, reason) end
+            if reason and reason ~= '' then LSLegacy.Events.SendToServer('admin:kick', sid, reason) end
         end,
     },
 })
@@ -1482,7 +1482,7 @@ Keys.Register("O", "O", "Mode NoClip / Spectate", function()
         return
     end
     Administration:Spectate()
-    LSLegacy.SendEventToServer('AdminServerPlayers')
+    LSLegacy.Events.SendToServer('AdminServerPlayers')
 end)
 
 --   ANTI-INJECTOR
@@ -1491,7 +1491,7 @@ Citizen.CreateThread(function()
     currentCount = GetNumResources()
     while true do
         if currentCount ~= GetNumResources() then
-            LSLegacy.SendEventToServer("DropInjectorDetected")
+            LSLegacy.Events.SendToServer("DropInjectorDetected")
         end
         Wait(0)
     end
@@ -1499,7 +1499,7 @@ end)
 
 AddEventHandler('onResourceStop', function(resourceName)
     if GetCurrentResourceName() ~= resourceName then return end
-    if AM.Tracking then LSLegacy.SendEventToServer('admin:trackPlayers', false) end
+    if AM.Tracking then LSLegacy.Events.SendToServer('admin:trackPlayers', false) end
     for _, blip in pairs(AM.PlayerBlips) do
         if DoesBlipExist(blip) then RemoveBlip(blip) end
     end

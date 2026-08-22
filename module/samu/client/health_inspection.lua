@@ -49,10 +49,10 @@ end
 -- Appelée depuis client/actions.lua (cible ox_target samu_bag), après
 -- vérification du cooldown 'bag'.
 function SAMU.OpenHealthInspection(targetSrc)
-    LSLegacy.SendEventToServer('samu:hi:open', { target = targetSrc })
+    LSLegacy.Events.SendToServer('samu:hi:open', { target = targetSrc })
 end
 
-LSLegacy.RegisterClientEvent('samu:hi:openResult', function(payload)
+LSLegacy.Events.Register('samu:hi:openResult', function(payload)
     if type(payload) ~= 'table' or not payload.success then return end
     openHI(payload)
 end)
@@ -74,7 +74,7 @@ end)
 
 RegisterNUICallback('hi:useItem', function(data, cb)
     if type(data) == 'table' and hiTarget then
-        LSLegacy.SendEventToServer('samu:hi:useItem', {
+        LSLegacy.Events.SendToServer('samu:hi:useItem', {
             target = hiTarget,
             part   = data.part,
             item   = data.item,
@@ -83,7 +83,7 @@ RegisterNUICallback('hi:useItem', function(data, cb)
     cb('ok') -- la réponse arrive de façon asynchrone via samu:hi:useItemResult
 end)
 
-LSLegacy.RegisterClientEvent('samu:hi:useItemResult', function(payload)
+LSLegacy.Events.Register('samu:hi:useItemResult', function(payload)
     if type(payload) ~= 'table' then return end
     SendNUIMessage({ action = 'hi:useItemResult', data = payload })
 
@@ -102,7 +102,7 @@ end)
 
 local pendingPolls, pollCounter = {}, 0
 
-LSLegacy.RegisterClientEvent('samu:hi:pollResult', function(payload)
+LSLegacy.Events.Register('samu:hi:pollResult', function(payload)
     if type(payload) ~= 'table' then return end
     local cb = pendingPolls[payload.reqId]
     if cb then
@@ -116,7 +116,7 @@ RegisterNUICallback('hi:poll', function(_, cb)
     pollCounter = pollCounter + 1
     local reqId = pollCounter
     pendingPolls[reqId] = function(res) cb(res == nil and false or res) end
-    LSLegacy.SendEventToServer('samu:hi:poll', { reqId = reqId, target = hiTarget })
+    LSLegacy.Events.SendToServer('samu:hi:poll', { reqId = reqId, target = hiTarget })
     Citizen.SetTimeout(15000, function()
         if pendingPolls[reqId] then
             pendingPolls[reqId] = nil

@@ -2,7 +2,7 @@ LSLegacy.Security.RegisterRateLimit('applyNeedEffect', 20)
 
 for item, _ in pairs(Config.NeedsItems) do
     LSLegacy.RegisterUsableItem(item, function(data, uniqueId)
-        LSLegacy.SendEventToClient('useNeed', source, item, data, uniqueId)
+        LSLegacy.Events.SendToClient('useNeed', source, item, data, uniqueId)
     end)
 end
 
@@ -12,13 +12,13 @@ function UpdateInventoryItem(player, name, uniqueId, durability)
     for i, item in pairs(inventory) do
         if item.name == name and item.uniqueId == uniqueId then
             item.data.durability = durability
-            LSLegacy.SendEventToClient("UpdatePlayer", player.source, LSLegacy.Players.Get(player.source))
+            LSLegacy.Events.SendToClient("UpdatePlayer", player.source, LSLegacy.Players.Get(player.source))
             break
         end
     end
 end
 
-LSLegacy.RegisterServerEvent('applyNeedEffect', function(name, data, uniqueId)
+LSLegacy.Events.Register('applyNeedEffect', function(name, data, uniqueId)
     local src = source
     local xPlayer = LSLegacy.Players.Get(src)
     local itemCfg = Config.NeedsItems[name]
@@ -44,9 +44,9 @@ LSLegacy.RegisterServerEvent('applyNeedEffect', function(name, data, uniqueId)
     local newDurability = durability - (ratio * 100)
     if newDurability > 0 then
         UpdateInventoryItem(xPlayer, name, uniqueId, newDurability)
-        LSLegacy.SendEventToClient("updateFoodDurability", src, uniqueId, newDurability)
+        LSLegacy.Events.SendToClient("updateFoodDurability", src, uniqueId, newDurability)
     else
         LSLegacy.Inventory.RemoveItemInInventory(xPlayer, name, 1)
-        LSLegacy.SendEventToClient("updateFoodDurability", src, uniqueId, 0)
+        LSLegacy.Events.SendToClient("updateFoodDurability", src, uniqueId, 0)
     end
 end)

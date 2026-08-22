@@ -86,7 +86,7 @@ local function engageHandbrake(veh)
     PlaySoundFrontend(-1, "SELECT", "HUD_FRONTEND_DEFAULT_SOUNDSET", 1)
     LSLegacy.ShowNotification("Frein à main", "Frein à main engagé", "info")
     Entity(veh).state:set("handbrake", true, true)
-    LSLegacy.SendEventToServer("handbrake:broadcastSound", VehToNet(veh), true)
+    LSLegacy.Events.SendToServer("handbrake:broadcastSound", VehToNet(veh), true)
 end
 
 local function releaseHandbrake(veh)
@@ -96,7 +96,7 @@ local function releaseHandbrake(veh)
     PlaySoundFrontend(-1, "BACK", "HUD_FRONTEND_DEFAULT_SOUNDSET", 1)
     LSLegacy.ShowNotification("Frein à main", "Frein à main désengagé", "error")
     Entity(veh).state:set("handbrake", false, true)
-    LSLegacy.SendEventToServer("handbrake:broadcastSound", VehToNet(veh), false)
+    LSLegacy.Events.SendToServer("handbrake:broadcastSound", VehToNet(veh), false)
 end
 
 -- NOTE : aucune force de pente n'est appliquée ici ; GTA V gère le freinage via les pédales quand le joueur est au volant. Le roulement libre ne s'active que hors véhicule sans frein à main.
@@ -247,7 +247,7 @@ CreateThread(function()
 end)
 
 -- Relaie le son du frein à main pour les joueurs proches (positionnel sur l'entité).
-LSLegacy.RegisterClientEvent("handbrake:playSound", function(netId, isEngage)
+LSLegacy.Events.Register("handbrake:playSound", function(netId, isEngage)
     local entity = NetworkGetEntityFromNetworkId(netId)
     if not DoesEntityExist(entity) then return end
 

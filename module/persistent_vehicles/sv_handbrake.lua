@@ -1,6 +1,6 @@
 -- Relaie le son de serrage/desserrage aux joueurs dans un rayon de 50m autour du véhicule.
 LSLegacy.Security.RegisterRateLimit('handbrake:broadcastSound', 30)
-LSLegacy.RegisterServerEvent("handbrake:broadcastSound", function(netId, isEngage)
+LSLegacy.Events.Register("handbrake:broadcastSound", function(netId, isEngage)
     local _source = source
 
     local entity = NetworkGetEntityFromNetworkId(netId)
@@ -17,7 +17,7 @@ LSLegacy.RegisterServerEvent("handbrake:broadcastSound", function(netId, isEngag
             if DoesEntityExist(playerPed) then
                 local playerPos = GetEntityCoords(playerPed)
                 if #(vehPos - playerPos) <= 50.0 then
-                    LSLegacy.SendEventToClient("handbrake:playSound", playerId, netId, isEngage)
+                    LSLegacy.Events.SendToClient("handbrake:playSound", playerId, netId, isEngage)
                 end
             end
         end

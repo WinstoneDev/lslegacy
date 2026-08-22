@@ -1,5 +1,5 @@
 -- ─── Résolution des slots ────────────────────────────────────────────────
--- Événements non passés par LSLegacy.RegisterServerEvent (RegisterNetEvent
+-- Événements non passés par LSLegacy.Events.Register (RegisterNetEvent
 -- brut + TriggerServerEvent côté client) : comme pour `registerPlayer`, le
 -- système de jetons anti-triche n'existe pas encore à ce stade de la
 -- connexion (LSLegacy.GeneratorTokenConnecting n'a pas encore tourné).
@@ -267,7 +267,7 @@ LSLegacy.Multichar = LSLegacy.Multichar or {}
 function LSLegacy.Multichar.ReturnToSelection(source)
     local identifier = GetPlayerIdentifierMC(source)
     if not identifier or GetMaxSlots(identifier) <= 1 then
-        LSLegacy.SendEventToClient('notify', source, "LSLegacy", "Vous n'avez pas accès au multicharacter.", "error")
+        LSLegacy.Events.SendToClient('notify', source, "LSLegacy", "Vous n'avez pas accès au multicharacter.", "error")
         return
     end
 
@@ -287,7 +287,7 @@ TriggerClientEvent('chat:addSuggestion', -1, '/multichar', "Revenir à la sélec
 -- Bouton du menu admin (module/adminmenu/cl_admin.lua) : passe par le système
 -- de jetons sécurisé, puisqu'il n'est utilisable qu'une fois le personnage
 -- déjà chargé (contrairement à /multichar, utilisable dès la connexion).
-LSLegacy.RegisterServerEvent('admin:multichar:returnToSelection', function()
+LSLegacy.Events.Register('admin:multichar:returnToSelection', function()
     local source = source
     LSLegacy.Multichar.ReturnToSelection(source)
 end)

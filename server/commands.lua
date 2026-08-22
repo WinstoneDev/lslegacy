@@ -103,7 +103,7 @@ LSLegacy.RegisterCommand = function(name, group, callback, suggestion, console)
 				if source == 0 and command.console then
 					Config.Development.Print(error)
 				else
-                    LSLegacy.SendEventToClient('notify', player.source, 'LSLegacy', error, 'error')
+                    LSLegacy.Events.SendToClient('notify', player.source, 'LSLegacy', error, 'error')
 				end
 			else
                 if source ~= 0 and player ~= nil then
@@ -112,11 +112,11 @@ LSLegacy.RegisterCommand = function(name, group, callback, suggestion, console)
                             if source == 0 and command.console then
                                 Config.Development.Print(msg)
                             else
-                                LSLegacy.SendEventToClient('notify', player.source, 'LSLegacy', msg, 'success')
+                                LSLegacy.Events.SendToClient('notify', player.source, 'LSLegacy', msg, 'success')
                             end
                         end, rawCommand)
                     else
-                        LSLegacy.SendEventToClient('notify', player.source, 'LSLegacy', "Vous n'avez pas les permissions pour utiliser cette commande", 'error')
+                        LSLegacy.Events.SendToClient('notify', player.source, 'LSLegacy', "Vous n'avez pas les permissions pour utiliser cette commande", 'error')
                     end
 				elseif source == 0 and command.console then
 					command.callback(player or false, args, function(msg)
@@ -131,11 +131,11 @@ LSLegacy.RegisterCommand = function(name, group, callback, suggestion, console)
 end
 
 LSLegacy.RegisterCommand('clear', 0, function(player, args, showError, rawCommand)
-	LSLegacy.SendEventToClient('chat:clear', player.source)
+	LSLegacy.Events.SendToClient('chat:clear', player.source)
 end, {help = "Clear le chat"}, false)
 
 LSLegacy.RegisterCommand('clearall', 1, function(player, args, showError, rawCommand)
-	LSLegacy.SendEventToClient('chat:clear', -1)
+	LSLegacy.Events.SendToClient('chat:clear', -1)
 end, {help = "Clear le chat pour tout le monde"}, false)
 
 LSLegacy.RegisterCommand('announce', 2, function(player, args, showError, rawCommand)
@@ -144,7 +144,7 @@ LSLegacy.RegisterCommand('announce', 2, function(player, args, showError, rawCom
     for i = 2, #sm do
         text = text ..sm[i].. " " 
     end
-	LSLegacy.SendEventToClient('notify', -1, 'Administration', text, 'warning')
+	LSLegacy.Events.SendToClient('notify', -1, 'Administration', text, 'warning')
 end, {help = "Affiche un message pour tout le serveur", validate = false, arguments = {{name = 'message', help = 'Message', type = 'fullstring'}}}, true)
 
 LSLegacy.RegisterCommand('kick', 2, function(player, args, showError, rawCommand)
@@ -175,17 +175,17 @@ LSLegacy.RegisterCommand('sync', 0, function(player, args, showError, rawCommand
 		['@faction'] = LSLegacy.ServerPlayers[source].faction,
 		['@faction_grade'] = LSLegacy.ServerPlayers[source].faction_grade
     })
-	LSLegacy.SendEventToClient('UpdateServerPlayer', source)
-	LSLegacy.SendEventToClient('UpdateDatastore', source, LSLegacy.DataStore)
+	LSLegacy.Events.SendToClient('UpdateServerPlayer', source)
+	LSLegacy.Events.SendToClient('UpdateDatastore', source, LSLegacy.DataStore)
 	Wait(500)
-	LSLegacy.SendEventToClient('UpdatePlayer', source, LSLegacy.ServerPlayers[source])
-	LSLegacy.SendEventToClient('notify', source, 'Sync', 'Vous avez bien synchronisé votre personnage.', 'success')
+	LSLegacy.Events.SendToClient('UpdatePlayer', source, LSLegacy.ServerPlayers[source])
+	LSLegacy.Events.SendToClient('notify', source, 'Sync', 'Vous avez bien synchronisé votre personnage.', 'success')
 end, {help = "Permet de synchroniser son joueur"}, false)
 
 LSLegacy.RegisterCommand('debug', 0, function(player, args, showError, rawCommand)
 	local source = player.source
-	LSLegacy.SendEventToClient('debug', source)
-	LSLegacy.SendEventToClient('notify', source, nil, 'Vous avez bien débug votre personnage.', 'success')
+	LSLegacy.Events.SendToClient('debug', source)
+	LSLegacy.Events.SendToClient('notify', source, nil, 'Vous avez bien débug votre personnage.', 'success')
 end, {help = "Permet de débug son joueur"}, false)
 
 LSLegacy.RegisterCommand('ban', 2, function(player, args, showError, rawCommand)
@@ -224,7 +224,7 @@ LSLegacy.RegisterCommand('giveitem', 3, function(player, args, showError, rawCom
 					durability = 100
 				}
 				LSLegacy.Inventory.AddItemInInventory(targetPlayer, item, quantity, nil, nil, dataFood)
-				LSLegacy.SendEventToClient('notify', targetPlayer.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. 'x ' .. LSLegacy.Inventory.GetInfosItem(item).label, 'success')
+				LSLegacy.Events.SendToClient('notify', targetPlayer.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. 'x ' .. LSLegacy.Inventory.GetInfosItem(item).label, 'success')
 			else
 				showError('Vous ne pouvez pas porter + de cet item.')
 			end
@@ -235,7 +235,7 @@ LSLegacy.RegisterCommand('giveitem', 3, function(player, args, showError, rawCom
 		if not string.match(item, 'weapon_') then
 			if LSLegacy.Inventory.CanCarryItem(targetPlayer, item, quantity) then
 				LSLegacy.Inventory.AddItemInInventory(targetPlayer, item, quantity)
-				LSLegacy.SendEventToClient('notify', targetPlayer.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. 'x ' .. LSLegacy.Inventory.GetInfosItem(item).label, 'success')
+				LSLegacy.Events.SendToClient('notify', targetPlayer.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. 'x ' .. LSLegacy.Inventory.GetInfosItem(item).label, 'success')
 			else
 				showError('Vous ne pouvez pas porter + de cet item.')
 			end
@@ -247,7 +247,7 @@ LSLegacy.RegisterCommand('giveitem', 3, function(player, args, showError, rawCom
 					serialNumber = LSLegacy.GenerateNumeroDeSerie()
 				}
 				LSLegacy.Inventory.AddItemInInventory(targetPlayer, item, quantity, nil, nil, data)
-				LSLegacy.SendEventToClient('notify', targetPlayer.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. 'x ' .. LSLegacy.Inventory.GetInfosItem(item).label, 'success')
+				LSLegacy.Events.SendToClient('notify', targetPlayer.source, 'Inventaire', 'Vous avez reçu ' .. quantity .. 'x ' .. LSLegacy.Inventory.GetInfosItem(item).label, 'success')
 			else
 				showError('Vous ne pouvez pas porter + de cet item.')
 			end
@@ -269,7 +269,7 @@ LSLegacy.RegisterCommand('car', 3, function(player, args, showError, rawCommand)
     local heading = GetEntityHeading(playerPed)
 
     LSLegacy.AP.SpawnPersistentVehicle(modelName, pos, heading, player.source)
-    LSLegacy.SendEventToClient('notify', player.source, 'Véhicule', 'Votre véhicule a été spawn.', 'success')
+    LSLegacy.Events.SendToClient('notify', player.source, 'Véhicule', 'Votre véhicule a été spawn.', 'success')
 end,
 {
     help = "Spawn un véhicule devant vous",
@@ -278,19 +278,19 @@ end,
 }, false)
 
 LSLegacy.RegisterCommand('tpm', 3, function(player, args, showError, rawCommand)
-    LSLegacy.SendEventToClient('admin:doTpm', player.source)
+    LSLegacy.Events.SendToClient('admin:doTpm', player.source)
 end, {help = "Téléportation au marqueur de la carte"}, false)
 
 LSLegacy.RegisterCommand('pos', 0, function(player, args, showError, rawCommand)
     local coords = LSLegacy.GetEntityCoords(player.source)
     local heading = GetEntityHeading(GetPlayerPed(player.source))
-    LSLegacy.SendEventToClient('admin:showPos', player.source, coords.x, coords.y, coords.z, heading)
+    LSLegacy.Events.SendToClient('admin:showPos', player.source, coords.x, coords.y, coords.z, heading)
 end, {help = "Affiche votre position actuelle"}, false)
 
 LSLegacy.RegisterCommand('tp', 3, function(player, args, showError, rawCommand)
     local x, y, z = args.x, args.y, args.z
     SetEntityCoords(GetPlayerPed(player.source), x, y, z)
-    LSLegacy.SendEventToClient('notify', player.source, 'Administration', 'Téléportation effectuée.', 'success')
+    LSLegacy.Events.SendToClient('notify', player.source, 'Administration', 'Téléportation effectuée.', 'success')
 end, {
     help = "Téléportation aux coordonnées",
     validate = true,
@@ -309,7 +309,7 @@ LSLegacy.RegisterCommand('goto', 2, function(player, args, showError, rawCommand
 	end
 	local coords = GetEntityCoords(GetPlayerPed(targetPlayer.source))
 	SetEntityCoords(GetPlayerPed(player.source), coords.x, coords.y, coords.z)
-	LSLegacy.SendEventToClient('notify', player.source, 'Administration', 'Téléporté vers le joueur ' .. targetPlayer.source .. '.', 'success')
+	LSLegacy.Events.SendToClient('notify', player.source, 'Administration', 'Téléporté vers le joueur ' .. targetPlayer.source .. '.', 'success')
 end, {help = "Téléporte vous vers un joueur", validate = true, arguments = {{name = 'playerId', help = 'ID du joueur cible', type = 'player'}}}, false)
 
 LSLegacy.RegisterCommand('bring', 2, function(player, args, showError, rawCommand)
@@ -320,7 +320,7 @@ LSLegacy.RegisterCommand('bring', 2, function(player, args, showError, rawComman
 	end
 	local coords = GetEntityCoords(GetPlayerPed(player.source))
 	SetEntityCoords(GetPlayerPed(targetPlayer.source), coords.x, coords.y + 1.5, coords.z)
-	LSLegacy.SendEventToClient('notify', targetPlayer.source, 'Administration', 'Vous avez été téléporté par un membre du staff.', 'warning')
+	LSLegacy.Events.SendToClient('notify', targetPlayer.source, 'Administration', 'Vous avez été téléporté par un membre du staff.', 'warning')
 end, {help = "Téléporte un joueur vers vous", validate = true, arguments = {{name = 'playerId', help = 'ID du joueur cible', type = 'player'}}}, false)
 
 LSLegacy.RegisterCommand('revive', 2, function(player, args, showError, rawCommand)
@@ -330,8 +330,8 @@ LSLegacy.RegisterCommand('revive', 2, function(player, args, showError, rawComma
 		return
 	end
 	if LSLegacy.Injury then LSLegacy.Injury.ClearState(targetPlayer.source) end
-	LSLegacy.SendEventToClient('admin:revive', targetPlayer.source)
-	LSLegacy.SendEventToClient('notify', targetPlayer.source, 'Administration', 'Vous avez été réanimé.', 'success')
+	LSLegacy.Events.SendToClient('admin:revive', targetPlayer.source)
+	LSLegacy.Events.SendToClient('notify', targetPlayer.source, 'Administration', 'Vous avez été réanimé.', 'success')
 end, {help = "Réanime un joueur", validate = true, arguments = {{name = 'playerId', help = 'ID du joueur cible', type = 'player'}}}, false)
 
 LSLegacy.RegisterCommand('heal', 2, function(player, args, showError, rawCommand)
@@ -341,7 +341,7 @@ LSLegacy.RegisterCommand('heal', 2, function(player, args, showError, rawCommand
 		return
 	end
 	if LSLegacy.Injury then LSLegacy.Injury.ClearState(targetPlayer.source) end
-	LSLegacy.SendEventToClient('notify', targetPlayer.source, 'Administration', 'Vous avez été soigné.', 'success')
+	LSLegacy.Events.SendToClient('notify', targetPlayer.source, 'Administration', 'Vous avez été soigné.', 'success')
 end, {help = "Soigne un joueur", validate = true, arguments = {{name = 'playerId', help = 'ID du joueur cible', type = 'player'}}}, false)
 
 LSLegacy.RegisterCommand('freeze', 2, function(player, args, showError, rawCommand)
@@ -350,8 +350,8 @@ LSLegacy.RegisterCommand('freeze', 2, function(player, args, showError, rawComma
 		showError('Veuillez spécifier un joueur cible.')
 		return
 	end
-	LSLegacy.SendEventToClient('admin:setFreeze', targetPlayer.source, true)
-	LSLegacy.SendEventToClient('notify', targetPlayer.source, 'Administration', 'Vous avez été freeze.', 'warning')
+	LSLegacy.Events.SendToClient('admin:setFreeze', targetPlayer.source, true)
+	LSLegacy.Events.SendToClient('notify', targetPlayer.source, 'Administration', 'Vous avez été freeze.', 'warning')
 end, {help = "Freeze un joueur", validate = true, arguments = {{name = 'playerId', help = 'ID du joueur cible', type = 'player'}}}, false)
 
 LSLegacy.RegisterCommand('unfreeze', 2, function(player, args, showError, rawCommand)
@@ -360,8 +360,8 @@ LSLegacy.RegisterCommand('unfreeze', 2, function(player, args, showError, rawCom
 		showError('Veuillez spécifier un joueur cible.')
 		return
 	end
-	LSLegacy.SendEventToClient('admin:setFreeze', targetPlayer.source, false)
-	LSLegacy.SendEventToClient('notify', targetPlayer.source, 'Administration', 'Vous avez été unfreeze.', 'warning')
+	LSLegacy.Events.SendToClient('admin:setFreeze', targetPlayer.source, false)
+	LSLegacy.Events.SendToClient('notify', targetPlayer.source, 'Administration', 'Vous avez été unfreeze.', 'warning')
 end, {help = "Unfreeze un joueur", validate = true, arguments = {{name = 'playerId', help = 'ID du joueur cible', type = 'player'}}}, false)
 
 LSLegacy.RegisterCommand('setjob', 2, function(player, args, showError, rawCommand)
@@ -373,7 +373,7 @@ LSLegacy.RegisterCommand('setjob', 2, function(player, args, showError, rawComma
 		if LSLegacy.Jobs.DoesJobExist(job) and LSLegacy.Jobs.DoesJobGradeExist(job, grade) then
 			LSLegacy.Jobs.SetJob(targetPlayer, job)
 			LSLegacy.Jobs.SetJobGrade(targetPlayer, grade)
-			LSLegacy.SendEventToClient('notify', targetPlayer.source, nil, 'Votre métier a été mis à jour en ' .. LSLegacy.Jobs.GetJobLabel(job) .. ' - ' .. LSLegacy.Jobs.GetJobGradeLabel(job, grade) .. '.', 'success')
+			LSLegacy.Events.SendToClient('notify', targetPlayer.source, nil, 'Votre métier a été mis à jour en ' .. LSLegacy.Jobs.GetJobLabel(job) .. ' - ' .. LSLegacy.Jobs.GetJobGradeLabel(job, grade) .. '.', 'success')
 			showError('Le métier du joueur a été mis à jour.')
 		else
 			showError('Le métier ou le grade spécifié n\'existe pas.')
@@ -397,10 +397,10 @@ LSLegacy.RegisterCommand('setfaction', 2, function(player, args, showError, rawC
 	local grade = args.grade
 
 	if targetPlayer and faction and grade then
-		if LSLegacy.Jobs.DoesFactionExist(faction) and LSLegacy.Jobs.DoesFactionGradeExist(faction, grade) then
-			LSLegacy.Jobs.SetFaction(targetPlayer, faction)
-			LSLegacy.Jobs.SetFactionGrade(targetPlayer, grade)
-			LSLegacy.SendEventToClient('notify', targetPlayer.source, nil, 'Votre faction a été mis à jour en ' .. LSLegacy.Jobs.GetFactionLabel(faction) .. ' - ' .. LSLegacy.Jobs.GetFactionGradeLabel(faction, grade) .. '.', 'success')
+		if LSLegacy.Factions.Exists(faction) and LSLegacy.Factions.GradeExists(faction, grade) then
+			LSLegacy.Factions.Set(targetPlayer, faction)
+			LSLegacy.Factions.SetGrade(targetPlayer, grade)
+			LSLegacy.Events.SendToClient('notify', targetPlayer.source, nil, 'Votre faction a été mis à jour en ' .. LSLegacy.Factions.GetLabel(faction) .. ' - ' .. LSLegacy.Factions.GetGradeLabel(faction, grade) .. '.', 'success')
 			showError('La faction du joueur a été mis à jour.')
 		else
 			showError('La faction ou le grade spécifié n\'existe pas.')
