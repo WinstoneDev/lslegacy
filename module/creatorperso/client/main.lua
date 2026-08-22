@@ -7,23 +7,23 @@ LSLegacy.CreatorPerso = {
     identityData = {}
 }
 
--- Réponse du serveur à SetIdentity (validation) : nil = pas encore reçue,
+-- Réponse du serveur à creatorperso:setIdentity (validation) : nil = pas encore reçue,
 -- true = accepté, false = rejeté. Utilisé pour bloquer la fermeture du
 -- créateur tant que le serveur n'a pas confirmé que l'identité est valide.
 local pendingIdentityResult = nil
 
--- Ack du serveur pour 'saveskin' : nil = pas encore reçue. SetIdentity ne
+-- Ack du serveur pour 'saveskin' : nil = pas encore reçue. creatorperso:setIdentity ne
 -- doit être envoyé qu'une fois ce skin réellement committé en BDD, sinon
--- SetIdentity peut le relire avant l'écriture et écraser le skin fraîchement
+-- creatorperso:setIdentity peut le relire avant l'écriture et écraser le skin fraîchement
 -- créé avec une valeur périmée (les deux handlers serveur tournent en
 -- coroutines concurrentes, l'ordre d'arrivée réseau ne suffit pas).
 local pendingSkinSaved = nil
 
-LSLegacy.Events.Register('creatorPerso:skinSaved', function(success)
+LSLegacy.Events.Register('creatorperso:skinSaved', function(success)
     pendingSkinSaved = success
 end)
 
-LSLegacy.Events.Register('creatorPerso:identityResult', function(success, outfitData)
+LSLegacy.Events.Register('creatorperso:identityResult', function(success, outfitData)
     pendingIdentityResult = success
     if success and outfitData then
         for slot, vals in pairs(outfitData) do
@@ -116,7 +116,7 @@ function LSLegacy.CreatorPerso.Open()
     while not IsInteriorReady(interior) do
         Wait(0)
     end
-    LSLegacy.Events.SendToServer("SetBucket", true)
+    LSLegacy.Events.SendToServer("creatorperso:setBucket", true)
     -- Force le modèle freemode masculin (loadDefaultModel attend que le model soit streamé)
     local modelLoaded = false
     LSLegacy.Events.TriggerLocal('skinchanger:loadDefaultModel', true, function()
@@ -194,7 +194,7 @@ function LSLegacy.CreatorPerso.Close()
     FreezeEntityPosition(PlayerPedId(), false)
     ClearPedTasksImmediately(PlayerPedId())
     DeleteBoard()
-    LSLegacy.Events.SendToServer("SetBucket", false)
+    LSLegacy.Events.SendToServer("creatorperso:setBucket", false)
     LSLegacy.CreatorPerso.isOpen = false
     LSLegacy.Status.Displayed = true
     LSLegacy.PlayerData.inCreation = false
@@ -359,8 +359,8 @@ AddEventHandler('__cfx_nui:creatorAction', function(data, cb)
         end)
 
         -- Attend la confirmation serveur que le skin est bien committé en
-        -- BDD avant d'envoyer SetIdentity (voir déclaration de
-        -- pendingSkinSaved). Même borne que l'attente de SetIdentity :
+        -- BDD avant d'envoyer creatorperso:setIdentity (voir déclaration de
+        -- pendingSkinSaved). Même borne que l'attente de creatorperso:setIdentity :
         -- pire cas du retry serveur (SaveWithRetry : jusqu'à 10 × 500ms).
         local skinWaitUntil = GetGameTimer() + 15000
         while pendingSkinSaved == nil and GetGameTimer() < skinWaitUntil do
@@ -374,7 +374,7 @@ AddEventHandler('__cfx_nui:creatorAction', function(data, cb)
         end
 
         pendingIdentityResult = nil
-        LSLegacy.Events.SendToServer('SetIdentity',
+        LSLegacy.Events.SendToServer('creatorperso:setIdentity',
             identity.lastName,
             identity.firstName,
             identity.dateOfBirth,
@@ -414,7 +414,7 @@ AddEventHandler('__cfx_nui:creatorAction', function(data, cb)
         DoScreenFadeIn(1500)
         LSLegacy.ShowNotification("Création", "Vous avez créé votre personnage.", 'success')
         DeleteBoard()
-        LSLegacy.Events.SendToServer("SetBucket", false)
+        LSLegacy.Events.SendToServer("creatorperso:setBucket", false)
         cb('ok')
 
     elseif action == 'resetCharacter' then
@@ -431,7 +431,7 @@ AddEventHandler('__cfx_nui:creatorAction', function(data, cb)
 end)
 
 -- ─── Événements ──────────────────────────────────────────────────────────────
-LSLegacy.Events.Register('CreatePerso', function()
+LSLegacy.Events.Register('creatorperso:create', function()
     LSLegacy.CreatorPerso.Open()
     LSLegacy.PlayerData.inCreation = true
 end)

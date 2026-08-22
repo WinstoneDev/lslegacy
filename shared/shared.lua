@@ -611,7 +611,7 @@ Shared.Anticheat.WhitelistedEvents = {
 
     -- Events client LSLegacy enregistrés via LSLegacy.RegisterClientEvent (système sécurisé par token)
     "admin:serverPlayers",
-    "CreatePerso",
+    "creatorperso:create",
     "lslegacy:initPlayer",
     "lslegacy:client:respawn",
     "lslegacy:injury:adminRevive",

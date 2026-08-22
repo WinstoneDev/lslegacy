@@ -60,10 +60,10 @@ module/creatorperso/
 
 ```lua
 -- Déclencher l'événement client
-TriggerEvent('CreatePerso')
+TriggerEvent('creatorperso:create')
 
 -- Ou depuis le serveur
-TriggerClientEvent('CreatePerso', playerId)
+TriggerClientEvent('creatorperso:create', playerId)
 ```
 
 ### Fermer le Créateur
@@ -93,13 +93,13 @@ TriggerEvent('closeCreatorPerso')
 
 ## 🔧 Événements Serveur
 
-### `SetBucket`
+### `creatorperso:setBucket`
 Isole le joueur dans un routing bucket dédié pendant la création. Le client envoie uniquement `true` (entrée) / `false` (sortie) ; le serveur calcule lui-même un bucket unique dérivé du server id (`10000 + source`), pour éviter toute collision entre joueurs et empêcher un client de choisir arbitrairement le bucket.
 
 ### `saveskin`
 Sauvegarde les données de skin en base de données, après validation stricte (clés whitelistées, types numériques, plages de valeurs).
 
-### `SetIdentity`
+### `creatorperso:setIdentity`
 Sauvegarde les données d'identité du personnage, après validation (longueurs, caractères interdits, format de date, sexe, taille).
 
 ## 🎨 Personnalisation du Design

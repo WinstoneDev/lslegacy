@@ -422,7 +422,7 @@ LSLegacy.Events.Register('admin:resetSkin', function(target)
     local tp = LSLegacy.Players.Get(target)
     if not tp then return end
 
-    LSLegacy.Events.SendToClient('CreatePerso', target)
+    LSLegacy.Events.SendToClient('creatorperso:create', target)
     Admin.Log('staff', LSLegacy.Players.Get(_source), 'Reset skin joueur', tp)
 end)
 
