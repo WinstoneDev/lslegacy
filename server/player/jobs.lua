@@ -292,6 +292,19 @@ end
 LSLegacy.Jobs.Get = LSLegacy.Jobs.GetJob
 LSLegacy.Jobs.GetGrade = LSLegacy.Jobs.GetJobGrade
 
+---LSLegacy.Factions — même mécanique que les jobs (grade hiérarchique), API dédiée pour l'appelant.
+LSLegacy.Factions = {
+    GetAvailable = LSLegacy.Jobs.GetAvailableFactions,
+    GetLabel = LSLegacy.Jobs.GetFactionLabel,
+    GetGradeLabel = LSLegacy.Jobs.GetFactionGradeLabel,
+    Exists = LSLegacy.Jobs.DoesFactionExist,
+    GradeExists = LSLegacy.Jobs.DoesFactionGradeExist,
+    Get = LSLegacy.Jobs.GetFaction,
+    GetGrade = LSLegacy.Jobs.GetFactionGrade,
+    Set = LSLegacy.Jobs.SetFaction,
+    SetGrade = LSLegacy.Jobs.SetFactionGrade,
+}
+
 ---Is / Require — vrai si le joueur a un des jobs attendus (et un grade
 ---suffisant). À utiliser à la place de `player.job == ...` /
 ---`player.job_grade >= ...` dispersés dans les modules.

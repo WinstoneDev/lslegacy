@@ -367,3 +367,16 @@ end)
 exports('getRageUI', function()
     return RageUI
 end)
+
+---LSLegacy.Events — API réseau côté client, regroupe les fonctions déjà en place sur LSLegacy.*.
+LSLegacy.Events = {
+    Register = LSLegacy.RegisterClientEvent,
+    TriggerLocal = LSLegacy.TriggerLocalEvent,
+    SendToServer = LSLegacy.SendEventToServer,
+    AddHandler = LSLegacy.AddEventHandler,
+}
+
+---LSLegacy.Utils — utilitaires génériques (regroupe LSLegacy.Math pour l'instant).
+LSLegacy.Utils = {
+    Math = LSLegacy.Math,
+}

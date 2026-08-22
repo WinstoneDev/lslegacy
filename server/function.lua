@@ -505,3 +505,17 @@ end)
 exports('getSharedObject', function()
     return LSLegacy
 end)
+
+---LSLegacy.Events — API réseau côté serveur, regroupe les fonctions déjà en place sur LSLegacy.*.
+LSLegacy.Events = {
+    Register = LSLegacy.RegisterServerEvent,
+    Use = LSLegacy.UseServerEvent,
+    TriggerLocal = LSLegacy.TriggerLocalEvent,
+    SendToClient = LSLegacy.SendEventToClient,
+    AddHandler = LSLegacy.AddEventHandler,
+}
+
+---LSLegacy.Utils — utilitaires génériques (regroupe LSLegacy.Math pour l'instant).
+LSLegacy.Utils = {
+    Math = LSLegacy.Math,
+}
