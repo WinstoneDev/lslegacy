@@ -34,6 +34,7 @@ LSLegacy.Money.SetPlayerMoney = function(player, amount)
     amount = LSLegacy.Validate.PositiveInteger(amount, {allowZero = true})
     if not amount then return false end
     player.cash = amount
+    player:MarkDirty('money')
     LSLegacy.SendEventToClient('UpdatePlayer', player.source, player)
     return true
 end
@@ -49,6 +50,7 @@ LSLegacy.Money.AddPlayerMoney = function(player, amount)
     amount = LSLegacy.Validate.PositiveInteger(amount)
     if not amount then return false end
     player.cash = player.cash + amount
+    player:MarkDirty('money')
     LSLegacy.SendEventToClient('UpdatePlayer', player.source, player)
     return true
 end
@@ -65,6 +67,7 @@ LSLegacy.Money.RemovePlayerMoney = function(player, amount)
     if not amount then return false end
     if player.cash < amount then return false end
     player.cash = player.cash - amount
+    player:MarkDirty('money')
     LSLegacy.SendEventToClient('UpdatePlayer', player.source, player)
     return true
 end
@@ -80,6 +83,7 @@ LSLegacy.Money.SetPlayerDirtyMoney = function(player, amount)
     amount = LSLegacy.Validate.PositiveInteger(amount, {allowZero = true})
     if not amount then return false end
     player.dirty = amount
+    player:MarkDirty('money')
     LSLegacy.SendEventToClient('UpdatePlayer', player.source, player)
     return true
 end
@@ -95,6 +99,7 @@ LSLegacy.Money.AddPlayerDirtyMoney = function(player, amount)
     amount = LSLegacy.Validate.PositiveInteger(amount)
     if not amount then return false end
     player.dirty = player.dirty + amount
+    player:MarkDirty('money')
     LSLegacy.SendEventToClient('UpdatePlayer', player.source, player)
     return true
 end
@@ -111,6 +116,7 @@ LSLegacy.Money.RemovePlayerDirtyMoney = function(player, amount)
     if not amount then return false end
     if player.dirty < amount then return false end
     player.dirty = player.dirty - amount
+    player:MarkDirty('money')
     LSLegacy.SendEventToClient('UpdatePlayer', player.source, player)
     return true
 end

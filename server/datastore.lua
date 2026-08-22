@@ -2,9 +2,37 @@
 LSLegacy.DataStore = {}
 LSLegacy.DataStores = {}
 
+-- Mêmes MarkDirty/SaveDirty que côté joueur (voir server/player/player.lua) :
+-- seuls les datastores réellement modifiés depuis le dernier tick sont réécrits.
+local DataStoreMethods = {}
+LSLegacy.DataStoreMeta = {__index = DataStoreMethods}
+
+DataStoreMethods.MarkDirty = function(self)
+    self._dirty = true
+end
+
+DataStoreMethods.SaveDirty = function(self, id)
+    if not self._dirty then return end
+    if type(self.inventory) ~= "table" then
+        self.inventory = json.decode(self.inventory)
+    end
+    MySQL.Async.execute(
+        'UPDATE datastore SET inventory = @inventory, money = @money, dirty = @dirty, weight = @weight WHERE id = @id',
+        {
+            ['@id'] = id,
+            ['@inventory'] = json.encode(self.inventory),
+            ['@money'] = self.money or 0,
+            ['@dirty'] = self.dirty or 0,
+            ['@weight'] = self.maxWeight or 0
+        }
+    )
+    self._dirty = false
+end
+
 Citizen.CreateThread(function()
     MySQL.Async.fetchAll('SELECT * FROM datastore', {}, function(result)
         for k, v in pairs(result) do
+            setmetatable(v, LSLegacy.DataStoreMeta)
             LSLegacy.DataStores[v.name] = v
             -- La colonne BDD se nomme 'weight' mais le code utilise 'maxWeight' :
             -- on remappe au chargement pour éviter les comparaisons number/nil.
@@ -31,16 +59,10 @@ Citizen.CreateThread(function()
                     { ['@name'] = name, ['@type'] = datastore.type },
                     function(id)
                         if id then
-                            MySQL.Async.execute(
-                                'UPDATE datastore SET inventory = @inventory, money = @money, dirty = @dirty, weight = @weight WHERE id = @id',
-                                {
-                                    ['@id'] = id,
-                                    ['@inventory'] = json.encode(datastore.inventory),
-                                    ['@money'] = datastore.money or 0,
-                                    ['@dirty'] = datastore.dirty or 0,
-                                    ['@weight'] = datastore.maxWeight or 0
-                                }
-                            )
+                            -- Ligne déjà en base : on ne réécrit que si le datastore a
+                            -- réellement changé depuis le dernier tick (voir MarkDirty
+                            -- dans LSLegacy.DataStore.Add/Remove*).
+                            datastore:SaveDirty(id)
                         else
                             MySQL.Async.execute(
                                 'INSERT INTO datastore (type, name, inventory, money, dirty, weight) VALUES (@type, @name, @inventory, @money, @dirty, @weight)',
@@ -53,6 +75,7 @@ Citizen.CreateThread(function()
                                     ['@weight'] = datastore.maxWeight or 0
                                 }
                             )
+                            datastore._dirty = false
                         end
                     end
                 )
@@ -124,6 +147,7 @@ LSLegacy.DataStore.AddMoney = function(datastore, amount)
     if not amount then return false end
     if not datastore.money then datastore.money = 0 end
     datastore.money = datastore.money + amount
+    datastore:MarkDirty()
     LSLegacy.SendEventToClient('UpdateDatastore', source, LSLegacy.DataStores)
     return true
 end
@@ -140,6 +164,7 @@ LSLegacy.DataStore.AddDirtyMoney = function(datastore, amount)
     if not amount then return false end
     if not datastore.dirty then datastore.dirty = 0 end
     datastore.dirty = datastore.dirty + amount
+    datastore:MarkDirty()
     LSLegacy.SendEventToClient('UpdateDatastore', source, LSLegacy.DataStores)
     return true
 end
@@ -157,6 +182,7 @@ LSLegacy.DataStore.RemoveMoney = function(datastore, amount)
     if not datastore.money then datastore.money = 0 end
     if datastore.money >= amount then
         datastore.money = datastore.money - amount
+        datastore:MarkDirty()
         LSLegacy.SendEventToClient('UpdateDatastore', source, LSLegacy.DataStores)
         return true
     end
@@ -176,6 +202,7 @@ LSLegacy.DataStore.RemoveDirtyMoney = function(datastore, amount)
     if not datastore.dirty then datastore.dirty = 0 end
     if datastore.dirty >= amount then
         datastore.dirty = datastore.dirty - amount
+        datastore:MarkDirty()
         LSLegacy.SendEventToClient('UpdateDatastore', source, LSLegacy.DataStores)
         return true
     end
@@ -273,6 +300,7 @@ LSLegacy.DataStore.AddItemInInventory = function(datastore, item, quantity, newL
                 end
             end
             datastore.inventory = inventory
+            datastore:MarkDirty()
             LSLegacy.SendEventToClient('UpdateDatastore', source, LSLegacy.DataStores)
         end
     end
@@ -327,6 +355,7 @@ LSLegacy.DataStore.RemoveItemInInventory = function(datastore, item, quantity, i
         end
     end
     datastore.inventory = inventory
+    datastore:MarkDirty()
     LSLegacy.SendEventToClient('UpdateDatastore', source, LSLegacy.DataStores)
 end
 
@@ -342,6 +371,7 @@ LSLegacy.DataStore.RegisterDataStore = function(name, data)
         Config.Development.Print("DataStore " .. name .. " already exists.")
         return
     end
+    setmetatable(data, LSLegacy.DataStoreMeta)
     LSLegacy.DataStores[name] = data
     LSLegacy.SendEventToClient('UpdateDatastore', source, LSLegacy.DataStores)
 end

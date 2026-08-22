@@ -19,8 +19,58 @@ LSLegacy.RegisterServerEvent('ReceiveUpdateServerPlayer', function(data)
     if not LSLegacy.ServerPlayers[source] then return end
     for _, field in ipairs(ClientWritableFields) do
         LSLegacy.ServerPlayers[source][field] = data[field]
+        LSLegacy.ServerPlayers[source]:MarkDirty(field)
     end
 end)
+
+-- Colonnes SQL pilotées par player:MarkDirty(field)/player:SaveDirty() : évite
+-- de resauvegarder tous les champs à chaque tick périodique, seulement ceux
+-- réellement modifiés depuis la dernière sauvegarde.
+local DirtyColumns = {
+    coords        = {column = 'coords',        get = function(p) return json.encode(p.coords) end},
+    skin          = {column = 'skin',          get = function(p) return json.encode(p.skin) end},
+    inventory     = {column = 'inventory',     get = function(p) return json.encode(p.inventory) end},
+    money         = {column = 'money',         get = function(p) return json.encode({cash = p.cash, dirty = p.dirty}) end},
+    health        = {column = 'health',        get = function(p) return p.health end},
+    status        = {column = 'status',        get = function(p) return json.encode(p.status) end},
+    skills        = {column = 'skills',        get = function(p) return json.encode(p.skills or {}) end},
+    job           = {column = 'job',           get = function(p) return p.job end},
+    job_grade     = {column = 'job_grade',     get = function(p) return p.job_grade end},
+    faction       = {column = 'faction',       get = function(p) return p.faction end},
+    faction_grade = {column = 'faction_grade', get = function(p) return p.faction_grade end},
+}
+
+local PlayerMethods = {}
+LSLegacy.PlayerMeta = {__index = PlayerMethods}
+
+---MarkDirty — signale qu'un champ du joueur doit être resauvegardé au prochain SaveDirty.
+---@type function
+---@param self table
+---@param field string
+---@public
+PlayerMethods.MarkDirty = function(self, field)
+    if not DirtyColumns[field] then return end
+    self._dirtyFields = self._dirtyFields or {}
+    self._dirtyFields[field] = true
+end
+
+---SaveDirty — sauvegarde uniquement les champs marqués dirty depuis le dernier appel.
+---@type function
+---@param self table
+---@public
+PlayerMethods.SaveDirty = function(self)
+    if not self._dirtyFields or not next(self._dirtyFields) then return end
+    if not self["boutique-id"] then return end
+    local sets, params = {}, {['@id'] = self["boutique-id"]}
+    for field in pairs(self._dirtyFields) do
+        local def = DirtyColumns[field]
+        local param = '@' .. field
+        sets[#sets + 1] = def.column .. ' = ' .. param
+        params[param] = def.get(self)
+    end
+    MySQL.Async.execute('UPDATE players SET ' .. table.concat(sets, ', ') .. ' WHERE `boutique-id` = @id', params)
+    self._dirtyFields = {}
+end
 
 local function GetPlayerDiscord(source)
     local _source = source
@@ -110,6 +160,7 @@ AddEventHandler("registerPlayer", function(characterId)
             faction = row.faction,
             faction_grade = row.faction_grade
         }
+        setmetatable(LSLegacy.ServerPlayers[source], LSLegacy.PlayerMeta)
         -- Accès command.doorlock (ox_doorlock) pour tout personnage superadmin,
         -- sans passer par une liste d'identifiants figée dans server.cfg
         -- (voir "add_ace group.superadmin command.doorlock allow").
@@ -202,6 +253,7 @@ AddEventHandler("registerPlayer", function(characterId)
             faction = "unemployed",
             faction_grade = 0
         }
+        setmetatable(LSLegacy.ServerPlayers[source], LSLegacy.PlayerMeta)
         local insertReceived, insertId = false, nil
         MySQL.Async.insert('INSERT INTO players (identifier, slot, discordId, token, characterInfos, coords, status) VALUES(@identifier, @slot, @discordId, @token, @characterInfos, @coords, @status)', {
             ['@identifier'] = LSLegacy.ServerPlayers[source].identifier,
@@ -292,20 +344,18 @@ Citizen.CreateThread(function()
                 coords = player.coords
             end
             if not LSLegacy.ServerPlayers[_source] then goto continue end
-            MySQL.Async.execute('UPDATE players SET coords = @coords, skin = @skin, inventory = @inventory, money = @money, health = @health, status = @status, skills = @skills, job = @job, job_grade = @job_grade, faction = @faction, faction_grade = @faction_grade WHERE `boutique-id` = @id', {
-                ['@coords'] = json.encode(coords),
-                ['@id'] = LSLegacy.ServerPlayers[_source]["boutique-id"],
-                ["@skin"] = json.encode(LSLegacy.ServerPlayers[_source].skin),
-                ['@inventory'] = json.encode(LSLegacy.ServerPlayers[_source].inventory),
-                ['@money'] = json.encode({cash = LSLegacy.ServerPlayers[_source].cash, dirty = LSLegacy.ServerPlayers[_source].dirty}),
-                ['@health'] = ped and ped ~= 0 and DoesEntityExist(ped) and GetEntityHealth(ped) or player.health,
-                ['@status'] = json.encode(LSLegacy.ServerPlayers[_source].status),
-                ['@skills'] = json.encode(LSLegacy.ServerPlayers[_source].skills or {}),
-                ['@job'] = LSLegacy.ServerPlayers[_source].job,
-                ['@job_grade'] = LSLegacy.ServerPlayers[_source].job_grade,
-                ['@faction'] = LSLegacy.ServerPlayers[_source].faction,
-                ['@faction_grade'] = LSLegacy.ServerPlayers[_source].faction_grade
-            })
+            if ped and ped ~= 0 and DoesEntityExist(ped) then
+                LSLegacy.ServerPlayers[_source].health = GetEntityHealth(ped)
+            end
+            -- coords/health/status/skills changent en continu en jeu : on les
+            -- resauvegarde à chaque tick comme avant. money/inventory/skin/
+            -- job/faction ne partent que s'ils ont réellement été modifiés
+            -- (voir player:MarkDirty dans money.lua/inventory.lua/jobs.lua).
+            LSLegacy.ServerPlayers[_source]:MarkDirty('coords')
+            LSLegacy.ServerPlayers[_source]:MarkDirty('health')
+            LSLegacy.ServerPlayers[_source]:MarkDirty('status')
+            LSLegacy.ServerPlayers[_source]:MarkDirty('skills')
+            LSLegacy.ServerPlayers[_source]:SaveDirty()
             LSLegacy.SendEventToClient('UpdateServerPlayer', _source)
             LSLegacy.SendEventToClient('UpdateDatastore', _source, LSLegacy.DataStores)
             Wait(500)

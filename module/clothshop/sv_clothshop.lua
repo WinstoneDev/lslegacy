@@ -19,6 +19,7 @@ local function RemoveItemByUniqueId(player, uniqueId)
         end
     end
     player.inventory = inventory
+    player:MarkDirty('inventory')
     player.weight    = LSLegacy.Inventory.GetInventoryWeight(player.inventory)
     LSLegacy.SendEventToClient('UpdatePlayer', player.source, player)
 end
@@ -143,6 +144,7 @@ LSLegacy.RegisterServerEvent('inventory:updateOutfitFromInventory', function(upd
         end
     end
     player.inventory = inventory
+    player:MarkDirty('inventory')
 
     -- Retirer les vêtements individuels consommés (ajoutés à la tenue)
     for _, entry in ipairs(updateData.consumedItems or {}) do

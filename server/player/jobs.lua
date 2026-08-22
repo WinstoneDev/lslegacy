@@ -253,6 +253,7 @@ end
 ---@param job string
 LSLegacy.Jobs.SetJob = function(player, job)
     player.job = job
+    player:MarkDirty('job')
     LSLegacy.SendEventToClient('UpdatePlayer', player.source, LSLegacy.ServerPlayers[player.source])
 end
 
@@ -262,6 +263,7 @@ end
 ---@param grade number
 LSLegacy.Jobs.SetJobGrade = function(player, grade)
     player.job_grade = grade
+    player:MarkDirty('job_grade')
     LSLegacy.SendEventToClient('UpdatePlayer', player.source, LSLegacy.ServerPlayers[player.source])
 end
 
@@ -271,6 +273,7 @@ end
 ---@param faction string
 LSLegacy.Jobs.SetFaction = function(player, faction)
     player.faction = faction
+    player:MarkDirty('faction')
     LSLegacy.SendEventToClient('UpdatePlayer', player.source, LSLegacy.ServerPlayers[player.source])
 end
 
@@ -280,6 +283,7 @@ end
 ---@param grade number
 LSLegacy.Jobs.SetFactionGrade = function(player, grade)
     player.faction_grade = grade
+    player:MarkDirty('faction_grade')
     LSLegacy.SendEventToClient('UpdatePlayer', player.source, LSLegacy.ServerPlayers[player.source])
 end
 

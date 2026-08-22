@@ -183,6 +183,7 @@ LSLegacy.Inventory.AddItemInInventory = function(player, item, quantity, newlabe
             end
 
             player.inventory = inventory
+            player:MarkDirty('inventory')
             local weight = LSLegacy.Inventory.GetInventoryWeight(player.inventory)
             player.weight = weight
             LSLegacy.SendEventToClient('UpdatePlayer', player.source, player)
@@ -239,6 +240,7 @@ LSLegacy.Inventory.RemoveItemInInventory = function(player, item, quantity, item
     end
 
     player.inventory = inventory
+    player:MarkDirty('inventory')
     local weight = LSLegacy.Inventory.GetInventoryWeight(player.inventory)
     player.weight = weight
     LSLegacy.SendEventToClient('UpdatePlayer', player.source, player)
@@ -303,6 +305,7 @@ LSLegacy.Inventory.RenameItemLabel = function(player, name, lastLabel, newLabel,
     end
     LSLegacy.SendEventToClient('notify', player.source, nil, "Vous avez changé le nom "..lastLabel.." en "..newLabel..".", 'success')
     player.inventory = inventory
+    player:MarkDirty('inventory')
     LSLegacy.SendEventToClient('UpdatePlayer', player.source, player)
 end
 
@@ -366,6 +369,7 @@ LSLegacy.Inventory.SwapItemsInInventory = function(player, itemA, itemB)
 
     inventory[idxA], inventory[idxB] = inventory[idxB], inventory[idxA]
     player.inventory = inventory
+    player:MarkDirty('inventory')
     LSLegacy.SendEventToClient('UpdatePlayer', player.source, player)
 end
 
