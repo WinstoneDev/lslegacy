@@ -27,7 +27,7 @@ LSLegacy.Inventory.GiveUniqueId = function()
         LSLegacy.ItemsId[uniqueId] = uniqueId
         return uniqueId
     else
-        LSLegacy.Inventory.GiveUniqueId()
+        return LSLegacy.Inventory.GiveUniqueId()
     end
 end
 
