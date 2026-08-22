@@ -175,7 +175,7 @@ Citizen.CreateThread(function()
 end)
 
 local function GetPlayer(src)
-    return LSLegacy.ServerPlayers[src]
+    return LSLegacy.Players.Get(src)
 end
 
 local function Notify(src, msg, t)

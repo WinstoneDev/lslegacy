@@ -4,7 +4,7 @@
 
 local Stock = {}   -- { [item] = quantity } — chargé depuis mecanicien_stock
 
-local function GetPlayer(src)   return LSLegacy.ServerPlayers[src] end
+local function GetPlayer(src)   return LSLegacy.Players.Get(src) end
 local function IsMecanicien(src) return GetPlayer(src) and GetPlayer(src).job == Config.Mecanicien.Job end
 local function GetGrade(src)     return GetPlayer(src) and tonumber(GetPlayer(src).job_grade) or 0 end
 

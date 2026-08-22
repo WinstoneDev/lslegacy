@@ -1,7 +1,7 @@
 --  MODULE SAPEURS-POMPIERS — Actions de secours (serveur)
 --  Validation stricte : job/grade depuis ServerPlayers, jamais client
 
-local function GetPlayer(src)   return LSLegacy.ServerPlayers[src] end
+local function GetPlayer(src)   return LSLegacy.Players.Get(src) end
 local function IsPompier(src)   return GetPlayer(src) and GetPlayer(src).job == Config.Pompiers.Job end
 local function GetGrade(src)    return GetPlayer(src) and tonumber(GetPlayer(src).job_grade) or 0 end
 

@@ -11,7 +11,7 @@ local Gendarmes = {}   -- { [source] = { onDuty, grade, name } }
 -- Helpers sécurité
 
 local function GetPlayerGN(src)
-    return LSLegacy.ServerPlayers[src]
+    return LSLegacy.Players.Get(src)
 end
 
 local function IsGendarmeAgent(src)

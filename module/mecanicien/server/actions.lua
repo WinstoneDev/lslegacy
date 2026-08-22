@@ -1,7 +1,7 @@
 --  MODULE MÉCANICIEN — Actions de réparation / tuning (serveur)
 --  Validation stricte : job/grade depuis ServerPlayers, jamais client
 
-local function GetPlayer(src)   return LSLegacy.ServerPlayers[src] end
+local function GetPlayer(src)   return LSLegacy.Players.Get(src) end
 local function IsMecanicien(src) return GetPlayer(src) and GetPlayer(src).job == Config.Mecanicien.Job end
 
 local function Notify(src, msg, t)

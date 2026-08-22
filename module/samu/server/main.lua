@@ -16,7 +16,7 @@ local SamuAgents = {}   -- { [source] = { onDuty, grade, name } }
 -- Helpers sécurité
 
 local function GetPlayer(src)
-    return LSLegacy.ServerPlayers[src]
+    return LSLegacy.Players.Get(src)
 end
 
 local function IsSamuAgent(src)

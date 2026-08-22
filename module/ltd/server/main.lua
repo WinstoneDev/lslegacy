@@ -12,7 +12,7 @@ end
 local LtdAgents = {}   -- { [source] = { onDuty, grade, storeId } }
 
 local function GetPlayer(src)
-    return LSLegacy.ServerPlayers[src]
+    return LSLegacy.Players.Get(src)
 end
 
 local function IsEmployee(src)

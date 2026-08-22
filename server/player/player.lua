@@ -342,3 +342,69 @@ LSLegacy.AddEventHandler('playerDropped', function()
         Config.Development.Print("Player " .. _source .. " disconnected")
     end
 end)
+
+---LSLegacy.Players — API d'accès aux joueurs, à préférer aux accès directs à
+---LSLegacy.ServerPlayers dispersés dans les modules. Enveloppe l'existant
+---(LSLegacy.GetPlayerFromId, etc.) sans le remplacer : l'ancienne API reste
+---disponible pour les modules non encore migrés.
+LSLegacy.Players = LSLegacy.Players or {}
+
+---Get — résout un source en joueur serveur réel.
+---@type function
+---@param source any
+---@return table|nil
+---@public
+LSLegacy.Players.Get = function(source)
+    return LSLegacy.GetPlayerFromId(source)
+end
+
+---GetByIdentifier
+---@type function
+---@param identifier string
+---@return table|nil
+---@public
+LSLegacy.Players.GetByIdentifier = function(identifier)
+    return LSLegacy.GetPlayerFromIdentifier(identifier)
+end
+
+---GetAll — renvoie la table brute { [source] = player }, à ne pas muter directement.
+---@type function
+---@return table
+---@public
+LSLegacy.Players.GetAll = function()
+    return LSLegacy.ServerPlayers
+end
+
+---SetJob — délègue à LSLegacy.Jobs.SetJob/SetJobGrade, résolu depuis un source plutôt qu'un player déjà en main.
+---@type function
+---@param source any
+---@param job string
+---@param grade number|nil
+---@return boolean
+---@public
+LSLegacy.Players.SetJob = function(source, job, grade)
+    local player = LSLegacy.Players.Get(source)
+    if not player then return false end
+    LSLegacy.Jobs.SetJob(player, job)
+    if grade ~= nil then
+        LSLegacy.Jobs.SetJobGrade(player, grade)
+    end
+    return true
+end
+
+---SetFaction — délègue à LSLegacy.Jobs.SetFaction/SetFactionGrade, résolu depuis un source plutôt qu'un player déjà en main.
+---@type function
+---@param source any
+---@param faction string
+---@param grade number|nil
+---@return boolean
+---@public
+LSLegacy.Players.SetFaction = function(source, faction, grade)
+    local player = LSLegacy.Players.Get(source)
+    if not player then return false end
+    LSLegacy.Jobs.SetFaction(player, faction)
+    if grade ~= nil then
+        LSLegacy.Jobs.SetFactionGrade(player, grade)
+    end
+    return true
+end

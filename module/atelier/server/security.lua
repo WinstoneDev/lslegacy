@@ -6,7 +6,7 @@ LSLegacy.Atelier = LSLegacy.Atelier or {}
 LSLegacy.Atelier.Agents = LSLegacy.Atelier.Agents or {}
 
 function LSLegacy.Atelier.GetPlayer(src)
-    return LSLegacy.ServerPlayers[src]
+    return LSLegacy.Players.Get(src)
 end
 
 -- Renvoie (companyId, company) si le job du joueur appartient à l'atelier, sinon nil.

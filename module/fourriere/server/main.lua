@@ -30,7 +30,7 @@ MySQL.Async.execute("ALTER TABLE fourriere ADD COLUMN IF NOT EXISTS release_at T
 MySQL.Async.execute("ALTER TABLE fourriere ADD COLUMN IF NOT EXISTS props LONGTEXT DEFAULT NULL", {})
 MySQL.Async.execute("ALTER TABLE fourriere ADD COLUMN IF NOT EXISTS character_id INT DEFAULT NULL", {})
 
-local function GetPlayer(src) return LSLegacy.ServerPlayers[src] end
+local function GetPlayer(src) return LSLegacy.Players.Get(src) end
 
 local function Notify(src, msg, t)
     LSLegacy.SendEventToClient(CFG.NotifyEvent, src, 'Fourrière', msg, 5000, t or 'info')

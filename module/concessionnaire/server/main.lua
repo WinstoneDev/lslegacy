@@ -13,7 +13,7 @@ for eventName, limit in pairs(rateLimits) do
 end
 -- ═══════════════════════════════════════════════════════════════════
 
-local function GetPlayer(src) return LSLegacy.ServerPlayers[src] end
+local function GetPlayer(src) return LSLegacy.Players.Get(src) end
 
 local function Notify(src, msg, t)
     TriggerClientEvent(Config.Concessionnaire.NotifyEvent, src, 'Concessionnaire', msg, 5000, t or 'info')
