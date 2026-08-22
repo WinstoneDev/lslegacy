@@ -7281,7 +7281,7 @@ LSLegacy.Events.Register('mdtco:queryResult', function(payload)
     cb(payload.result)
 end)
 
-local function coQuery(action, data, cb)
+local function CoQuery(action, data, cb)
     reqSeq = reqSeq + 1
     local id = reqSeq
     pending[id] = cb
@@ -7291,21 +7291,21 @@ local function coQuery(action, data, cb)
     end)
 end
 
-local function readCallback(nuiName, action)
+local function ReadCallback(nuiName, action)
     RegisterNUICallback(nuiName, function(data, cb)
-        coQuery(action, type(data) == 'table' and data or {}, function(res)
+        CoQuery(action, type(data) == 'table' and data or {}, function(res)
             cb(res == nil and false or res)
         end)
     end)
 end
 
-readCallback('mdtco:getHistory',    'getHistory')
-readCallback('mdtco:getStats',      'getStats')
-readCallback('mdtco:getSummary',    'getSummary')
-readCallback('mdtco:deleteCallout', 'deleteCallout')
-readCallback('mdtco:resetStats',    'resetStats')
-readCallback('mdtco:saveReport',    'saveReport')
-readCallback('mdtco:closeCase',     'closeCase')
+ReadCallback('mdtco:getHistory',    'getHistory')
+ReadCallback('mdtco:getStats',      'getStats')
+ReadCallback('mdtco:getSummary',    'getSummary')
+ReadCallback('mdtco:deleteCallout', 'deleteCallout')
+ReadCallback('mdtco:resetStats',    'resetStats')
+ReadCallback('mdtco:saveReport',    'saveReport')
+ReadCallback('mdtco:closeCase',     'closeCase')
 
 --  NETTOYAGE
 

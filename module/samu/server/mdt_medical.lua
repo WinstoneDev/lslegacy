@@ -144,7 +144,7 @@ MySQL.Async.execute([[
 local DEPARTMENT = 'samu'
 
 -- Nom RP d'un joueur.
-local function charName(player)
+local function CharName(player)
     if player and player.characterInfos then
         local ci = player.characterInfos
         return ((ci.Prenom or '') .. ' ' .. (ci.NDF or '')):gsub('^%s+', ''):gsub('%s+$', '')
@@ -154,7 +154,7 @@ end
 
 -- Contexte médical : (player, grade) si le joueur est bien du département
 -- SAMU, nil sinon. Un policier qui déclencherait ces events est rejeté ici.
-local function medCtx(src)
+local function MedCtx(src)
     local player = LSLegacy.Players.Get(src)
     if not player then return nil end
     local depName = LSLegacy.MDT.GetDepartmentForJob(player.job)
@@ -163,14 +163,14 @@ local function medCtx(src)
 end
 
 -- Garde de permission. Renvoie (player, grade) ou nil.
-local function can(src, perm)
-    local player, grade = medCtx(src)
+local function Can(src, perm)
+    local player, grade = MedCtx(src)
     if not player then return nil end
     if perm and not LSLegacy.MDT.HasPermission(DEPARTMENT, grade, perm) then return nil end
     return player, grade
 end
 
-local function safeText(v, maxLen)
+local function SafeText(v, maxLen)
     if type(v) ~= 'string' then return '' end
     v = v:gsub('%z', '')
     local m = maxLen or L.MaxTextLength
@@ -179,20 +179,20 @@ local function safeText(v, maxLen)
 end
 
 -- Identifier valide (chaîne non vide, longueur plausible).
-local function safeIdentifier(v)
+local function SafeIdentifier(v)
     if type(v) ~= 'string' then return nil end
     if v == '' or #v > 60 then return nil end
     return v
 end
 
 -- Réponse standardisée d'une écriture (notif + refresh ciblé côté NUI).
-local function result(src, ok, message, refresh)
+local function Result(src, ok, message, refresh)
     LSLegacy.Events.SendToClient('mdt:result', src, { ok = ok, message = message, refresh = refresh })
 end
 
 -- Quartier le plus proche d'un point (nom de secteur pour le dispatch).
 -- Comparaison au carré : pas besoin de racine pour un simple minimum.
-local function nearestDistrict(x, y)
+local function NearestDistrict(x, y)
     x, y = tonumber(x), tonumber(y)
     if not x or not y then return nil end
     local best, bestDist
@@ -207,7 +207,7 @@ local function nearestDistrict(x, y)
 end
 
 -- Une valeur appartient-elle à une liste de clés autorisées ?
-local function isAllowed(list, value, key)
+local function IsAllowed(list, value, key)
     for _, v in ipairs(list or {}) do
         if (key and v[key] or v) == value then return true end
     end
@@ -319,7 +319,7 @@ end
 -- Traitements actifs, tous patients confondus (onglet Traitements).
 readHandlers.getTreatments = function(player, grade, data, reply)
     local status = type(data.status) == 'string' and data.status or 'actif'
-    if not isAllowed(Config.Medical.TreatmentStatuses, status, 'id') then status = 'actif' end
+    if not IsAllowed(Config.Medical.TreatmentStatuses, status, 'id') then status = 'actif' end
     MySQL.Async.fetchAll([[
         SELECT t.*, p.characterInfos
         FROM mdt_med_treatments t
@@ -355,7 +355,7 @@ readHandlers.getDashboard = function(player, grade, data, reply)
             if agent and agent.onDuty then
                 local p = LSLegacy.Players.Get(src)
                 onDuty[#onDuty + 1] = {
-                    name       = agent.name or (p and charName(p)) or '?',
+                    name       = agent.name or (p and CharName(p)) or '?',
                     grade      = agent.grade or 0,
                     gradeLabel = LSLegacy.MDT.GetGradeLabel(DEPARTMENT, agent.grade or 0),
                 }
@@ -382,7 +382,7 @@ readHandlers.getDashboard = function(player, grade, data, reply)
                 c.characterInfos = nil
             end
             c.callerName = c.callerName or c.caller_name or 'Inconnu'
-            c.zone = nearestDistrict(c.x, c.y)
+            c.zone = NearestDistrict(c.x, c.y)
             recentCalls[#recentCalls + 1] = c
         end
 
@@ -446,7 +446,7 @@ readHandlers.getDispatch = function(player, grade, data, reply)
                 r.characterInfos = nil
             end
             r.callerName = r.callerName or r.caller_name or 'Inconnu'
-            r.zone = nearestDistrict(r.x, r.y)
+            r.zone = NearestDistrict(r.x, r.y)
             calls[#calls + 1] = r
 
             if r.status == 'assigned' and r.assigned_identifier then
@@ -470,10 +470,10 @@ readHandlers.getDispatch = function(player, grade, data, reply)
                     local veh = ped and ped ~= 0 and GetVehiclePedIsIn(ped) or nil
 
                     units[#units + 1] = {
-                        name       = agent.name or (up and charName(up)) or '?',
+                        name       = agent.name or (up and CharName(up)) or '?',
                         gradeLabel = LSLegacy.MDT.GetGradeLabel(DEPARTMENT, agent.grade or 0),
                         grade      = agent.grade or 0,
-                        zone       = coords and nearestDistrict(coords.x, coords.y) or nil,
+                        zone       = coords and NearestDistrict(coords.x, coords.y) or nil,
                         inVehicle  = (veh ~= nil and veh ~= 0),
                         status     = onCall and 'inter' or 'patrouille',
                         callId     = onCall and onCall.id or nil,
@@ -511,7 +511,7 @@ end
 -- Documents internes (liste, filtrable par catégorie).
 readHandlers.getDocs = function(player, grade, data, reply)
     local category = type(data.category) == 'string' and data.category or ''
-    if category ~= '' and not isAllowed(Config.Medical.DocCategories, category) then category = '' end
+    if category ~= '' and not IsAllowed(Config.Medical.DocCategories, category) then category = '' end
     local sql = 'SELECT * FROM mdt_med_docs'
     local params = {}
     if category ~= '' then
@@ -547,7 +547,7 @@ LSLegacy.Events.Register('mdtmed:query', function(data)
     local handler = readHandlers[data.action]
     if not handler then return reply(false) end
 
-    local player, grade = medCtx(src)
+    local player, grade = MedCtx(src)
     if not player then return reply(false) end
 
     local perm = readPerms[data.action]
@@ -561,25 +561,25 @@ end)
 -- Fiche médicale : création si absente, mise à jour sinon.
 LSLegacy.Events.Register('mdtmed:saveRecord', function(data)
     local src = source
-    local player, grade = can(src, 'edit_med_records')
+    local player, grade = Can(src, 'edit_med_records')
     if not player then return end
     if type(data) ~= 'table' then return end
 
-    local ident = safeIdentifier(data.identifier)
-    if not ident then return result(src, false, 'Patient invalide.') end
+    local ident = SafeIdentifier(data.identifier)
+    if not ident then return Result(src, false, 'Patient invalide.') end
 
     local blood = type(data.blood_group) == 'string' and data.blood_group or ''
-    if blood ~= '' and not isAllowed(Config.Medical.BloodGroups, blood) then blood = '' end
+    if blood ~= '' and not IsAllowed(Config.Medical.BloodGroups, blood) then blood = '' end
 
     local params = {
         ['@id']    = ident,
         ['@bg']    = blood ~= '' and blood or nil,
-        ['@al']    = safeText(data.allergies, L.MaxTextLength),
-        ['@an']    = safeText(data.antecedents, L.MaxTextLength),
-        ['@on']    = safeText(data.ongoing, L.MaxTextLength),
-        ['@no']    = safeText(data.notes, L.MaxTextLength),
+        ['@al']    = SafeText(data.allergies, L.MaxTextLength),
+        ['@an']    = SafeText(data.antecedents, L.MaxTextLength),
+        ['@on']    = SafeText(data.ongoing, L.MaxTextLength),
+        ['@no']    = SafeText(data.notes, L.MaxTextLength),
         ['@dnr']   = data.dnr and 1 or 0,
-        ['@by']    = charName(player),
+        ['@by']    = CharName(player),
     }
 
     LSLegacy.ResolveCharacterId(ident, function(charId)
@@ -591,7 +591,7 @@ LSLegacy.Events.Register('mdtmed:saveRecord', function(data)
                 blood_group = @bg, allergies = @al, antecedents = @an,
                 ongoing = @on, notes = @no, dnr = @dnr, updated_by = @by
         ]], params, function()
-            result(src, true, 'Dossier médical enregistré.', { view = 'med_patient', id = ident })
+            Result(src, true, 'Dossier médical enregistré.', { view = 'med_patient', id = ident })
         end)
     end)
 end)
@@ -599,18 +599,18 @@ end)
 -- Ajout d'une entrée (consultation, intervention…) au dossier.
 LSLegacy.Events.Register('mdtmed:addEntry', function(data)
     local src = source
-    local player, grade = can(src, 'med_add_entry')
+    local player, grade = Can(src, 'med_add_entry')
     if not player then return end
     if type(data) ~= 'table' then return end
 
-    local ident = safeIdentifier(data.identifier)
-    if not ident then return result(src, false, 'Patient invalide.') end
+    local ident = SafeIdentifier(data.identifier)
+    if not ident then return Result(src, false, 'Patient invalide.') end
 
-    local title = safeText(data.title, L.MaxTitleLength)
-    if title == '' then return result(src, false, 'Le titre est obligatoire.') end
+    local title = SafeText(data.title, L.MaxTitleLength)
+    if title == '' then return Result(src, false, 'Le titre est obligatoire.') end
 
     local etype = type(data.type) == 'string' and data.type or 'consultation'
-    if not isAllowed(Config.Medical.EntryTypes, etype, 'id') then etype = 'consultation' end
+    if not IsAllowed(Config.Medical.EntryTypes, etype, 'id') then etype = 'consultation' end
 
     LSLegacy.ResolveCharacterId(ident, function(charId)
         MySQL.Async.execute([[
@@ -621,11 +621,11 @@ LSLegacy.Events.Register('mdtmed:addEntry', function(data)
             ['@charId'] = charId,
             ['@ty'] = etype,
             ['@ti'] = title,
-            ['@co'] = safeText(data.content, L.MaxTextLength),
+            ['@co'] = SafeText(data.content, L.MaxTextLength),
             ['@ai'] = player.identifier,
-            ['@an'] = charName(player),
+            ['@an'] = CharName(player),
         }, function()
-            result(src, true, 'Entrée ajoutée au dossier.', { view = 'med_patient', id = ident })
+            Result(src, true, 'Entrée ajoutée au dossier.', { view = 'med_patient', id = ident })
         end)
     end)
 end)
@@ -633,30 +633,30 @@ end)
 -- Suppression d'une entrée de dossier (chef de service uniquement).
 LSLegacy.Events.Register('mdtmed:deleteEntry', function(data)
     local src = source
-    local player = can(src, 'med_delete_entry')
+    local player = Can(src, 'med_delete_entry')
     if not player then return end
     local id = tonumber(type(data) == 'table' and data.id)
     if not id then return end
     MySQL.Async.execute('DELETE FROM mdt_med_entries WHERE id = @i', { ['@i'] = id }, function()
-        result(src, true, 'Entrée supprimée.', { view = 'med_patient' })
+        Result(src, true, 'Entrée supprimée.', { view = 'med_patient' })
     end)
 end)
 
 -- Prescription d'un traitement.
 LSLegacy.Events.Register('mdtmed:addTreatment', function(data)
     local src = source
-    local player = can(src, 'manage_treatments')
+    local player = Can(src, 'manage_treatments')
     if not player then return end
     if type(data) ~= 'table' then return end
 
-    local ident = safeIdentifier(data.identifier)
-    if not ident then return result(src, false, 'Patient invalide.') end
+    local ident = SafeIdentifier(data.identifier)
+    if not ident then return Result(src, false, 'Patient invalide.') end
 
-    local label = safeText(data.label, L.MaxTitleLength)
-    if label == '' then return result(src, false, 'Le libellé du traitement est obligatoire.') end
+    local label = SafeText(data.label, L.MaxTitleLength)
+    if label == '' then return Result(src, false, 'Le libellé du traitement est obligatoire.') end
 
     local code = type(data.code) == 'string' and data.code or ''
-    if code ~= '' and not isAllowed(Config.Medical.Treatments, code, 'code') then code = '' end
+    if code ~= '' and not IsAllowed(Config.Medical.Treatments, code, 'code') then code = '' end
 
     LSLegacy.ResolveCharacterId(ident, function(charId)
         MySQL.Async.execute([[
@@ -668,13 +668,13 @@ LSLegacy.Events.Register('mdtmed:addTreatment', function(data)
             ['@charId'] = charId,
             ['@cd'] = code ~= '' and code or nil,
             ['@la'] = label,
-            ['@do'] = safeText(data.dosage, L.MaxShortLength),
-            ['@du'] = safeText(data.duration, L.MaxShortLength),
-            ['@no'] = safeText(data.notes, L.MaxTextLength),
+            ['@do'] = SafeText(data.dosage, L.MaxShortLength),
+            ['@du'] = SafeText(data.duration, L.MaxShortLength),
+            ['@no'] = SafeText(data.notes, L.MaxTextLength),
             ['@pi'] = player.identifier,
-            ['@pn'] = charName(player),
+            ['@pn'] = CharName(player),
         }, function()
-            result(src, true, 'Traitement prescrit.', { view = 'med_treatments', id = ident })
+            Result(src, true, 'Traitement prescrit.', { view = 'med_treatments', id = ident })
         end)
     end)
 end)
@@ -682,26 +682,26 @@ end)
 -- Changement de statut d'un traitement (terminé / annulé / réactivé).
 LSLegacy.Events.Register('mdtmed:setTreatmentStatus', function(data)
     local src = source
-    local player = can(src, 'manage_treatments')
+    local player = Can(src, 'manage_treatments')
     if not player then return end
     if type(data) ~= 'table' then return end
 
     local id = tonumber(data.id)
     local status = type(data.status) == 'string' and data.status or ''
-    if not id or not isAllowed(Config.Medical.TreatmentStatuses, status, 'id') then return end
+    if not id or not IsAllowed(Config.Medical.TreatmentStatuses, status, 'id') then return end
 
     local ended = (status == 'actif') and 'NULL' or 'NOW()'
     MySQL.Async.execute(
         'UPDATE mdt_med_treatments SET status = @s, ended_at = ' .. ended .. ' WHERE id = @i',
         { ['@s'] = status, ['@i'] = id }, function()
-        result(src, true, 'Traitement mis à jour.', { view = 'med_treatments' })
+        Result(src, true, 'Traitement mis à jour.', { view = 'med_treatments' })
     end)
 end)
 
 -- Prise en charge d'un appel.
 LSLegacy.Events.Register('mdtmed:assignCall', function(data)
     local src = source
-    local player = can(src, 'manage_dispatch')
+    local player = Can(src, 'manage_dispatch')
     if not player then return end
     local id = tonumber(type(data) == 'table' and data.id)
     if not id then return end
@@ -712,16 +712,16 @@ LSLegacy.Events.Register('mdtmed:assignCall', function(data)
     ]], {
         ['@i']  = id,
         ['@ai'] = player.identifier,
-        ['@an'] = charName(player),
+        ['@an'] = CharName(player),
     }, function()
-        result(src, true, 'Appel pris en charge.', { view = 'med_dispatch' })
+        Result(src, true, 'Appel pris en charge.', { view = 'med_dispatch' })
     end)
 end)
 
 -- Clôture d'un appel (traité ou annulé).
 LSLegacy.Events.Register('mdtmed:closeCall', function(data)
     local src = source
-    local player = can(src, 'manage_dispatch')
+    local player = Can(src, 'manage_dispatch')
     if not player then return end
     if type(data) ~= 'table' then return end
     local id = tonumber(data.id)
@@ -730,22 +730,22 @@ LSLegacy.Events.Register('mdtmed:closeCall', function(data)
     MySQL.Async.execute(
         "UPDATE mdt_med_calls SET status = @s, closed_at = NOW() WHERE id = @i AND status IN ('pending','assigned')",
         { ['@s'] = status, ['@i'] = id }, function()
-        result(src, true, status == 'done' and 'Appel clôturé.' or 'Appel annulé.', { view = 'med_dispatch' })
+        Result(src, true, status == 'done' and 'Appel clôturé.' or 'Appel annulé.', { view = 'med_dispatch' })
     end)
 end)
 
 -- Création / mise à jour d'un document interne.
 LSLegacy.Events.Register('mdtmed:saveDoc', function(data)
     local src = source
-    local player = can(src, 'manage_med_docs')
+    local player = Can(src, 'manage_med_docs')
     if not player then return end
     if type(data) ~= 'table' then return end
 
-    local title = safeText(data.title, L.MaxTitleLength)
-    if title == '' then return result(src, false, 'Le titre est obligatoire.') end
+    local title = SafeText(data.title, L.MaxTitleLength)
+    if title == '' then return Result(src, false, 'Le titre est obligatoire.') end
 
     local category = type(data.category) == 'string' and data.category or 'Général'
-    if not isAllowed(Config.Medical.DocCategories, category) then category = 'Général' end
+    if not IsAllowed(Config.Medical.DocCategories, category) then category = 'Général' end
 
     local id = tonumber(data.id)
     if id then
@@ -755,10 +755,10 @@ LSLegacy.Events.Register('mdtmed:saveDoc', function(data)
             ['@i']  = id,
             ['@ca'] = category,
             ['@ti'] = title,
-            ['@co'] = safeText(data.content, L.MaxTextLength),
+            ['@co'] = SafeText(data.content, L.MaxTextLength),
             ['@pi'] = data.pinned and 1 or 0,
         }, function()
-            result(src, true, 'Document mis à jour.', { view = 'med_docs' })
+            Result(src, true, 'Document mis à jour.', { view = 'med_docs' })
         end)
     else
         MySQL.Async.execute([[
@@ -767,12 +767,12 @@ LSLegacy.Events.Register('mdtmed:saveDoc', function(data)
         ]], {
             ['@ca'] = category,
             ['@ti'] = title,
-            ['@co'] = safeText(data.content, L.MaxTextLength),
+            ['@co'] = SafeText(data.content, L.MaxTextLength),
             ['@ai'] = player.identifier,
-            ['@an'] = charName(player),
+            ['@an'] = CharName(player),
             ['@pi'] = data.pinned and 1 or 0,
         }, function()
-            result(src, true, 'Document créé.', { view = 'med_docs' })
+            Result(src, true, 'Document créé.', { view = 'med_docs' })
         end)
     end
 end)
@@ -780,47 +780,47 @@ end)
 -- Suppression d'un document interne.
 LSLegacy.Events.Register('mdtmed:deleteDoc', function(data)
     local src = source
-    local player = can(src, 'manage_med_docs')
+    local player = Can(src, 'manage_med_docs')
     if not player then return end
     local id = tonumber(type(data) == 'table' and data.id)
     if not id then return end
     MySQL.Async.execute('DELETE FROM mdt_med_docs WHERE id = @i', { ['@i'] = id }, function()
-        result(src, true, 'Document supprimé.', { view = 'med_docs' })
+        Result(src, true, 'Document supprimé.', { view = 'med_docs' })
     end)
 end)
 
 -- Publication du petit mot du dashboard (cheffes d'équipe).
 LSLegacy.Events.Register('mdtmed:postBoard', function(data)
     local src = source
-    local player, grade = can(src, 'manage_board')
+    local player, grade = Can(src, 'manage_board')
     if not player then return end
     if type(data) ~= 'table' then return end
 
-    local message = safeText(data.message, L.MaxBoardLength)
-    if message == '' then return result(src, false, 'Le message est vide.') end
+    local message = SafeText(data.message, L.MaxBoardLength)
+    if message == '' then return Result(src, false, 'Le message est vide.') end
 
     MySQL.Async.execute([[
         INSERT INTO mdt_med_board (author_identifier, author_name, author_grade, message)
         VALUES (@ai, @an, @ag, @me)
     ]], {
         ['@ai'] = player.identifier,
-        ['@an'] = charName(player),
+        ['@an'] = CharName(player),
         ['@ag'] = LSLegacy.MDT.GetGradeLabel(DEPARTMENT, grade),
         ['@me'] = message,
     }, function()
-        result(src, true, 'Message publié.', { view = 'med_dashboard' })
+        Result(src, true, 'Message publié.', { view = 'med_dashboard' })
     end)
 end)
 
 -- Retrait d'un petit mot.
 LSLegacy.Events.Register('mdtmed:removeBoard', function(data)
     local src = source
-    local player = can(src, 'manage_board')
+    local player = Can(src, 'manage_board')
     if not player then return end
     local id = tonumber(type(data) == 'table' and data.id)
     if not id then return end
     MySQL.Async.execute('UPDATE mdt_med_board SET active = 0 WHERE id = @i', { ['@i'] = id }, function()
-        result(src, true, 'Message retiré.', { view = 'med_dashboard' })
+        Result(src, true, 'Message retiré.', { view = 'med_dashboard' })
     end)
 end)
 

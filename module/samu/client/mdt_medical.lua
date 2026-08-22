@@ -26,7 +26,7 @@ LSLegacy.Events.Register('mdtmed:queryResult', function(payload)
     end
 end)
 
-local function medQuery(action, data, cb)
+local function MedQuery(action, data, cb)
     queryCounter = queryCounter + 1
     local reqId = queryCounter
     pendingQueries[reqId] = cb
@@ -41,43 +41,43 @@ local function medQuery(action, data, cb)
 end
 
 -- Callback de LECTURE : la NUI reçoit la réponse du serveur.
-local function readCallback(nuiName, action)
+local function ReadCallback(nuiName, action)
     RegisterNUICallback(nuiName, function(data, cb)
-        medQuery(action, type(data) == 'table' and data or {}, function(res)
+        MedQuery(action, type(data) == 'table' and data or {}, function(res)
             cb(res == nil and false or res)
         end)
     end)
 end
 
-readCallback('mdtmed:getMedConfig',   'getMedConfig')
-readCallback('mdtmed:searchPatients', 'searchPatients')
-readCallback('mdtmed:getPatient',     'getPatient')
-readCallback('mdtmed:getTreatments',  'getTreatments')
-readCallback('mdtmed:getDashboard',   'getDashboard')
-readCallback('mdtmed:getDispatch',    'getDispatch')
-readCallback('mdtmed:getCallHistory', 'getCallHistory')
-readCallback('mdtmed:getDocs',        'getDocs')
+ReadCallback('mdtmed:getMedConfig',   'getMedConfig')
+ReadCallback('mdtmed:searchPatients', 'searchPatients')
+ReadCallback('mdtmed:getPatient',     'getPatient')
+ReadCallback('mdtmed:getTreatments',  'getTreatments')
+ReadCallback('mdtmed:getDashboard',   'getDashboard')
+ReadCallback('mdtmed:getDispatch',    'getDispatch')
+ReadCallback('mdtmed:getCallHistory', 'getCallHistory')
+ReadCallback('mdtmed:getDocs',        'getDocs')
 
 -- Callback d'ÉCRITURE : le serveur répond via 'mdt:result' (notif +
 -- refresh ciblé), géré par le client du MDT — rien à dupliquer ici.
-local function writeCallback(name)
+local function WriteCallback(name)
     RegisterNUICallback(name, function(data, cb)
         LSLegacy.Events.SendToServer(name, data)
         cb('ok')
     end)
 end
 
-writeCallback('mdtmed:saveRecord')
-writeCallback('mdtmed:addEntry')
-writeCallback('mdtmed:deleteEntry')
-writeCallback('mdtmed:addTreatment')
-writeCallback('mdtmed:setTreatmentStatus')
-writeCallback('mdtmed:assignCall')
-writeCallback('mdtmed:closeCall')
-writeCallback('mdtmed:saveDoc')
-writeCallback('mdtmed:deleteDoc')
-writeCallback('mdtmed:postBoard')
-writeCallback('mdtmed:removeBoard')
+WriteCallback('mdtmed:saveRecord')
+WriteCallback('mdtmed:addEntry')
+WriteCallback('mdtmed:deleteEntry')
+WriteCallback('mdtmed:addTreatment')
+WriteCallback('mdtmed:setTreatmentStatus')
+WriteCallback('mdtmed:assignCall')
+WriteCallback('mdtmed:closeCall')
+WriteCallback('mdtmed:saveDoc')
+WriteCallback('mdtmed:deleteDoc')
+WriteCallback('mdtmed:postBoard')
+WriteCallback('mdtmed:removeBoard')
 
 -- Prise / fin de service depuis le dashboard
 -- Purement local : on réutilise SAMU.ToggleDuty() (client/main.lua), qui

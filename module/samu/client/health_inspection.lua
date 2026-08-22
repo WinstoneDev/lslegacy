@@ -30,7 +30,7 @@ local hiTarget = nil
 
 --  Ouverture / fermeture
 
-local function openHI(payload)
+local function OpenHI(payload)
     if hiOpen then return end
     hiOpen   = true
     hiTarget = payload.target
@@ -38,7 +38,7 @@ local function openHI(payload)
     SendNUIMessage({ action = 'hi:open', data = payload })
 end
 
-local function closeHI()
+local function CloseHI()
     if not hiOpen then return end
     hiOpen   = false
     hiTarget = nil
@@ -54,11 +54,11 @@ end
 
 LSLegacy.Events.Register('samu:hiOpenResult', function(payload)
     if type(payload) ~= 'table' or not payload.success then return end
-    openHI(payload)
+    OpenHI(payload)
 end)
 
 RegisterNUICallback('hi:close', function(_, cb)
-    closeHI()
+    CloseHI()
     cb('ok')
 end)
 
@@ -128,5 +128,5 @@ end)
 --  Filet de sécurité : ne jamais laisser le focus NUI bloqué
 
 AddEventHandler('onResourceStop', function(res)
-    if res == GetCurrentResourceName() and hiOpen then closeHI() end
+    if res == GetCurrentResourceName() and hiOpen then CloseHI() end
 end)
