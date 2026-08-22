@@ -1,7 +1,7 @@
 -- Rendu physique des supports + clés, ciblage ox_target, synchronisation, et utilisation de la clé de véhicule.
 
 local C = KeyHanger.Config
-local ox_target = exports['ox_target']
+local oxTarget = exports['ox_target']
 
 KeyHanger.Boards = {}     -- [id] = board (synchronisé serveur, contient .keys pour les props)
 local spawned   = {}      -- [id] = { board = handle, keys = {handle...}, sig = string }
@@ -44,7 +44,7 @@ end
 
 -- Ciblage sur l'entité du support (le prop a sa collision, le raycast s'arrête dessus) : une zone sphère serait inutile ici.
 local function AddBoardTarget(id, handle)
-    ox_target:addLocalEntity(handle, {
+    oxTarget:addLocalEntity(handle, {
         {
             name     = "keyhanger:open:" .. id,
             label    = KeyHanger.L('target_open'),
@@ -65,7 +65,7 @@ end
 
 local function RemoveBoardTarget(id, handle)
     if handle and DoesEntityExist(handle) then
-        ox_target:removeLocalEntity(handle, { "keyhanger:open:" .. id, "keyhanger:manage:" .. id })
+        oxTarget:removeLocalEntity(handle, { "keyhanger:open:" .. id, "keyhanger:manage:" .. id })
     end
 end
 

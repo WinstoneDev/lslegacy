@@ -13,8 +13,8 @@ function AnimationIntro()
     TaskPlayAnim(GetPlayerPed(-1), "mp_character_creation@customise@male_a", "loop", 1.0, -1.0,-1, 2, 0, 0, 0, 0)
 end
 
-local board_model = GetHashKey("prop_police_id_board")
-local overlay_model = GetHashKey("prop_police_id_text")
+local boardModel = GetHashKey("prop_police_id_board")
+local overlayModel = GetHashKey("prop_police_id_text")
 
 -- Cadrage "vue d'ensemble" validé en jeu (relevé via spectate/debug :
 -- vec3(402.975830, -999.257141, -97.700317), heading 0.0). Personnage et
@@ -49,7 +49,7 @@ end
 
 Citizen.CreateThread(function()
 	board_scaleform = LoadScaleform("mugshot_board_01")
-	handle = CreateNamedRenderTargetForModel("ID_Text", overlay_model)
+	handle = CreateNamedRenderTargetForModel("ID_Text", overlayModel)
 
 	while handle do
 		SetTextRenderId(handle)
@@ -91,12 +91,12 @@ end
 local BoardInPerso = {}
 
 function CreateBoard()
-    RequestModel(board_model)
-    while not HasModelLoaded(board_model) do Wait(0) end
-    RequestModel(overlay_model)
-    while not HasModelLoaded(overlay_model) do Wait(0) end
-    BoardInPerso.board = CreateObject(board_model, GetEntityCoords(PlayerPedId()), false, true, false)
-    BoardInPerso.overlay = CreateObject(overlay_model, GetEntityCoords(PlayerPedId()), false, true, false)
+    RequestModel(boardModel)
+    while not HasModelLoaded(boardModel) do Wait(0) end
+    RequestModel(overlayModel)
+    while not HasModelLoaded(overlayModel) do Wait(0) end
+    BoardInPerso.board = CreateObject(boardModel, GetEntityCoords(PlayerPedId()), false, true, false)
+    BoardInPerso.overlay = CreateObject(overlayModel, GetEntityCoords(PlayerPedId()), false, true, false)
     AttachEntityToEntity(BoardInPerso.overlay, BoardInPerso.board, -1, 4103, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, false, false, false, false, 2, true)
     ClearPedWetness(PlayerPedId())
     ClearPedBloodDamage(PlayerPedId())
