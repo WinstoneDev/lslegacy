@@ -14,8 +14,8 @@ end
 local function StartCarry(carrierSrc, carriedSrc)
     Links[carrierSrc] = carriedSrc
     Links[carriedSrc] = carrierSrc
-    TriggerClientEvent('lslegacy_carry:client:start', carrierSrc, carrierSrc, carriedSrc)
-    TriggerClientEvent('lslegacy_carry:client:start', carriedSrc, carrierSrc, carriedSrc)
+    TriggerClientEvent('lslegacy_carry:clientStart', carrierSrc, carrierSrc, carriedSrc)
+    TriggerClientEvent('lslegacy_carry:clientStart', carriedSrc, carrierSrc, carriedSrc)
 end
 
 local function StopCarry(src)
@@ -23,9 +23,9 @@ local function StopCarry(src)
     Links[src] = nil
     if partner then
         Links[partner] = nil
-        TriggerClientEvent('lslegacy_carry:client:stop', partner)
+        TriggerClientEvent('lslegacy_carry:clientStop', partner)
     end
-    TriggerClientEvent('lslegacy_carry:client:stop', src)
+    TriggerClientEvent('lslegacy_carry:clientStop', src)
 end
 
 LSLegacy.Events.Register('lslegacy_carry:request', function(targetServerId)
@@ -41,7 +41,7 @@ LSLegacy.Events.Register('lslegacy_carry:request', function(targetServerId)
         -- Inconscient : pas besoin de consentement.
         StartCarry(src, target)
     else
-        TriggerClientEvent('lslegacy_carry:client:request', target, src)
+        TriggerClientEvent('lslegacy_carry:clientRequest', target, src)
     end
 end)
 

@@ -129,7 +129,7 @@ RegisterCommand('otage', function()
     callTakeHostage(nil)
 end, false)
 
-LSLegacy.Events.Register('lslegacy_hostage:client:syncTarget', function(aggressorSrc)
+LSLegacy.Events.Register('lslegacy_hostage:clientSyncTarget', function(aggressorSrc)
     local aggressorPed = GetPlayerPed(GetPlayerFromServerId(aggressorSrc))
     if aggressorPed == 0 then return end
 
@@ -144,7 +144,7 @@ LSLegacy.Events.Register('lslegacy_hostage:client:syncTarget', function(aggresso
         0.5, 0.5, 0.0, false, false, false, false, 2, false)
 end)
 
-LSLegacy.Events.Register('lslegacy_hostage:client:release', function()
+LSLegacy.Events.Register('lslegacy_hostage:clientRelease', function()
     Hostage.inProgress = false
     Hostage.type       = ''
     LSLegacy.IsHostageTaker, LSLegacy.IsHostage = false, false
@@ -153,7 +153,7 @@ LSLegacy.Events.Register('lslegacy_hostage:client:release', function()
     playReactionOnce(PlayerPedId(), 'reaction@shove', 'shoved_back', 0, 1000)
 end)
 
-LSLegacy.Events.Register('lslegacy_hostage:client:kill', function()
+LSLegacy.Events.Register('lslegacy_hostage:clientKill', function()
     Hostage.inProgress = false
     Hostage.type       = ''
     LSLegacy.IsHostageTaker, LSLegacy.IsHostage = false, false
@@ -167,7 +167,7 @@ LSLegacy.Events.Register('lslegacy_hostage:client:kill', function()
     SetEntityHealth(PlayerPedId(), 0)
 end)
 
-LSLegacy.Events.Register('lslegacy_hostage:client:stop', function()
+LSLegacy.Events.Register('lslegacy_hostage:clientStop', function()
     Hostage.inProgress = false
     Hostage.type       = ''
     LSLegacy.IsHostageTaker, LSLegacy.IsHostage = false, false

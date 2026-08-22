@@ -35,7 +35,7 @@ LSLegacy.Events.Register('lslegacy_emotes:getFavorites', function()
         for _, row in ipairs(rows) do
             keys[#keys + 1] = row.emote_key
         end
-        TriggerClientEvent('lslegacy_emotes:client:setFavorites', src, keys)
+        TriggerClientEvent('lslegacy_emotes:clientSetFavorites', src, keys)
     end)
 end)
 
@@ -76,7 +76,7 @@ LSLegacy.Events.Register('lslegacy_emotes:requestShared', function(targetServerI
     if not target or GetPlayerName(target) == nil then return end
     if playerDistance(src, target) > MAX_DISTANCE then return end
 
-    TriggerClientEvent('lslegacy_emotes:client:requestShared', target, emoteId, src)
+    TriggerClientEvent('lslegacy_emotes:clientRequestShared', target, emoteId, src)
 end)
 
 LSLegacy.Events.Register('lslegacy_emotes:confirmShared', function(requesterServerId, emoteId, targetEmoteId)
@@ -85,13 +85,13 @@ LSLegacy.Events.Register('lslegacy_emotes:confirmShared', function(requesterServ
     if not requester or GetPlayerName(requester) == nil then return end
     if playerDistance(src, requester) > MAX_DISTANCE then return end
 
-    TriggerClientEvent('lslegacy_emotes:client:playShared', requester, emoteId, src)
-    TriggerClientEvent('lslegacy_emotes:client:playSharedTarget', src, targetEmoteId, requester)
+    TriggerClientEvent('lslegacy_emotes:clientPlayShared', requester, emoteId, src)
+    TriggerClientEvent('lslegacy_emotes:clientPlaySharedTarget', src, targetEmoteId, requester)
 end)
 
 LSLegacy.Events.Register('lslegacy_emotes:cancelShared', function(otherServerId)
     local src = source
     local target = tonumber(otherServerId)
     if not target or GetPlayerName(target) == nil then return end
-    TriggerClientEvent('lslegacy_emotes:client:cancelShared', target, src)
+    TriggerClientEvent('lslegacy_emotes:clientCancelShared', target, src)
 end)

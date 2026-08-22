@@ -9,7 +9,7 @@ LSLegacy.Events.Register('lslegacy_hostage:sync', function(targetServerId)
     local target = tonumber(targetServerId)
     if not target or GetPlayerName(target) == nil or target == src then return end
 
-    TriggerClientEvent('lslegacy_hostage:client:syncTarget', target, src)
+    TriggerClientEvent('lslegacy_hostage:clientSyncTarget', target, src)
     TakingHostage[src]   = target
     TakenHostage[target] = src
 end)
@@ -18,7 +18,7 @@ LSLegacy.Events.Register('lslegacy_hostage:release', function(targetServerId)
     local src = source
     local target = tonumber(targetServerId)
     if target and TakenHostage[target] == src then
-        TriggerClientEvent('lslegacy_hostage:client:release', target)
+        TriggerClientEvent('lslegacy_hostage:clientRelease', target)
         TakingHostage[src]   = nil
         TakenHostage[target] = nil
     end
@@ -28,7 +28,7 @@ LSLegacy.Events.Register('lslegacy_hostage:kill', function(targetServerId)
     local src = source
     local target = tonumber(targetServerId)
     if target and TakenHostage[target] == src then
-        TriggerClientEvent('lslegacy_hostage:client:kill', target)
+        TriggerClientEvent('lslegacy_hostage:clientKill', target)
         TakingHostage[src]   = nil
         TakenHostage[target] = nil
     end
@@ -39,11 +39,11 @@ LSLegacy.Events.Register('lslegacy_hostage:stop', function(targetServerId)
     local target = tonumber(targetServerId)
 
     if TakingHostage[src] then
-        TriggerClientEvent('lslegacy_hostage:client:stop', target or TakingHostage[src])
+        TriggerClientEvent('lslegacy_hostage:clientStop', target or TakingHostage[src])
         TakenHostage[TakingHostage[src]] = nil
         TakingHostage[src] = nil
     elseif TakenHostage[src] then
-        TriggerClientEvent('lslegacy_hostage:client:stop', target or TakenHostage[src])
+        TriggerClientEvent('lslegacy_hostage:clientStop', target or TakenHostage[src])
         TakingHostage[TakenHostage[src]] = nil
         TakenHostage[src] = nil
     end
@@ -53,13 +53,13 @@ AddEventHandler('playerDropped', function()
     local src = source
 
     if TakingHostage[src] then
-        TriggerClientEvent('lslegacy_hostage:client:stop', TakingHostage[src])
+        TriggerClientEvent('lslegacy_hostage:clientStop', TakingHostage[src])
         TakenHostage[TakingHostage[src]] = nil
         TakingHostage[src] = nil
     end
 
     if TakenHostage[src] then
-        TriggerClientEvent('lslegacy_hostage:client:stop', TakenHostage[src])
+        TriggerClientEvent('lslegacy_hostage:clientStop', TakenHostage[src])
         TakingHostage[TakenHostage[src]] = nil
         TakenHostage[src] = nil
     end

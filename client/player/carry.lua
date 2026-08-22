@@ -73,7 +73,7 @@ local function PlayCarried(carrierSrc)
     LSLegacy.IsBeingCarried = true
 end
 
-LSLegacy.Events.Register('lslegacy_carry:client:start', function(carrierSrc, carriedSrc)
+LSLegacy.Events.Register('lslegacy_carry:clientStart', function(carrierSrc, carriedSrc)
     local mySrc = GetPlayerServerId(PlayerId())
     if mySrc == carrierSrc then
         PlayCarrier(carriedSrc)
@@ -82,7 +82,7 @@ LSLegacy.Events.Register('lslegacy_carry:client:start', function(carrierSrc, car
     end
 end)
 
-LSLegacy.Events.Register('lslegacy_carry:client:stop', function()
+LSLegacy.Events.Register('lslegacy_carry:clientStop', function()
     StopCarry()
 end)
 
@@ -153,7 +153,7 @@ end, false)
 
 -- Demande de portage : la cible (consciente) doit accepter
 
-LSLegacy.Events.Register('lslegacy_carry:client:request', function(requesterServerId)
+LSLegacy.Events.Register('lslegacy_carry:clientRequest', function(requesterServerId)
     local requesterName = GetPlayerName(GetPlayerFromServerId(requesterServerId)) or 'Un joueur'
     Notify(('%s souhaite vous porter. Y pour accepter, L pour refuser.'):format(requesterName), 'info')
 
