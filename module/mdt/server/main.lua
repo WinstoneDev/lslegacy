@@ -477,7 +477,7 @@ MySQL.Async.execute("ALTER TABLE mdt_warrants MODIFY COLUMN danger_level INT NOT
 --  Helpers
 
 -- Nom RP d'un objet joueur (Prénom NOM).
-local function charName(player)
+local function CharName(player)
     if player and player.characterInfos then
         return ((player.characterInfos.Prenom or '') .. ' ' .. (player.characterInfos.NDF or '')):gsub('^%s+', ''):gsub('%s+$', '')
     end
@@ -485,7 +485,7 @@ local function charName(player)
 end
 
 -- Contexte MDT d'un joueur : (player, department, grade) ou nil.
-local function ctx(src)
+local function Ctx(src)
     local player = LSLegacy.Players.Get(src)
     if not player then return nil end
     local depName = LSLegacy.MDT.GetDepartmentForJob(player.job)
@@ -500,7 +500,7 @@ end
 -- un avis de recherche émis par un pôle serait invisible pour l'autre.
 -- L'implémentation vit dans shared/permissions.lua, partagée avec les
 -- modules métier (le pont MDT des interventions s'en sert aussi).
-local function scopeClause(depName, tableName, column)
+local function ScopeClause(depName, tableName, column)
     return LSLegacy.MDT.ScopeClause(depName, tableName, column)
 end
 
@@ -511,7 +511,7 @@ end
 local grantedPerms = {}
 
 -- Permission effective : grade OU débloquée par compétence.
-local function mdtHasPerm(player, depName, grade, perm)
+local function MdtHasPerm(player, depName, grade, perm)
     if not perm then return true end
     if LSLegacy.MDT.HasPermission(depName, grade, perm) then return true end
     local g = player and grantedPerms[player["boutique-id"]]
@@ -519,15 +519,15 @@ local function mdtHasPerm(player, depName, grade, perm)
 end
 
 -- Garde de permission pour les écritures. Renvoie (player, department, grade) ou nil.
-local function can(src, perm)
-    local player, depName, grade = ctx(src)
+local function Can(src, perm)
+    local player, depName, grade = Ctx(src)
     if not player then return nil end
-    if perm and not mdtHasPerm(player, depName, grade, perm) then return nil end
+    if perm and not MdtHasPerm(player, depName, grade, perm) then return nil end
     return player, depName, grade
 end
 
 -- Texte sûr : string tronquée à maxLen, sinon ''.
-local function safeText(v, maxLen)
+local function SafeText(v, maxLen)
     if type(v) ~= 'string' then return '' end
     v = v:gsub('%z', '')
     if #v > (maxLen or L.MaxTextLength) then v = v:sub(1, maxLen or L.MaxTextLength) end
@@ -535,7 +535,7 @@ local function safeText(v, maxLen)
 end
 
 -- Plaque normalisée (A-Z 0-9, max 12) ou nil.
-local function safePlate(v)
+local function SafePlate(v)
     if type(v) ~= 'string' then return nil end
     v = v:upper():gsub('[^A-Z0-9 ]', ''):gsub('%s+', ''):sub(1, 12)
     if v == '' then return nil end
@@ -543,12 +543,12 @@ local function safePlate(v)
 end
 
 -- Envoi standardisé d'un résultat d'écriture au client (notif + refresh éventuel).
-local function result(src, ok, message, refresh)
+local function Result(src, ok, message, refresh)
     LSLegacy.Events.SendToClient('mdt:result', src, { ok = ok, message = message, refresh = refresh })
 end
 
 -- Log Discord MDT (no-op si webhook vide).
-local function mdtLog(title, desc, fields)
+local function MdtLog(title, desc, fields)
     local hook = Config.MDT.Webhook
     if not hook or hook == '' then return end
     local body = json.encode({
@@ -564,10 +564,10 @@ local function mdtLog(title, desc, fields)
 end
 
 -- Résout le nom RP d'un citoyen (online ou BDD) puis appelle cb(name|nil).
-local function resolveCitizenName(identifier, cb)
+local function ResolveCitizenName(identifier, cb)
     if type(identifier) ~= 'string' or identifier == '' then return cb(nil) end
     for _, p in pairs(LSLegacy.Players.GetAll()) do
-        if p.identifier == identifier then return cb(charName(p)) end
+        if p.identifier == identifier then return cb(CharName(p)) end
     end
     MySQL.Async.fetchAll('SELECT characterInfos FROM players WHERE identifier = @id LIMIT 1', { ['@id'] = identifier }, function(rows)
         if rows and rows[1] then
@@ -583,7 +583,7 @@ end
 --  Ouverture du MDT (item tablette)
 
 -- Construit la liste des grades pour l'onglet Organisation.
-local function buildGrades(depName, dep)
+local function BuildGrades(depName, dep)
     local out = {}
     if not dep or not dep.grades then return out end
     for i = 0, 30 do
@@ -605,8 +605,8 @@ local function buildGrades(depName, dep)
     return out
 end
 
-local function openMDT(src)
-    local player, depName, grade = ctx(src)
+local function OpenMDT(src)
+    local player, depName, grade = Ctx(src)
     if not player then
         LSLegacy.Events.SendToClient('notify', src, nil, "Vous n'avez pas accès au MDT.", 'error')
         return
@@ -629,7 +629,7 @@ local function openMDT(src)
             local unlock = code and Config.MDT.SkillUnlocks[code]
             if unlock then for _, p in ipairs(unlock) do perms[p] = true end end
         end
-        -- cache des permissions effectives (consulté par mdtHasPerm côté serveur)
+        -- cache des permissions effectives (consulté par MdtHasPerm côté serveur)
         grantedPerms[player["boutique-id"]] = perms
         -- Onglets visibles selon le set de permissions FINAL (grade + déblocages)
         local tabs = {}
@@ -662,12 +662,12 @@ local function openMDT(src)
             job              = player.job,
             grade            = grade,
             gradeLabel       = LSLegacy.MDT.GetGradeLabel(depName, grade),
-            officerName      = charName(player),
+            officerName      = CharName(player),
             myIdentifier     = player.identifier,
             permissions      = perms,
             tabs             = tabs,
             services         = dep.services or {},
-            grades           = buildGrades(depName, dep),
+            grades           = BuildGrades(depName, dep),
             reportTypes      = Config.MDT.ReportTypes,
             dangerLevels     = Config.MDT.DangerLevels,
             lawCategories    = Config.MDT.LawCategories,
@@ -683,7 +683,7 @@ end
 
 LSLegacy.RegisterUsableItem(Config.MDT.Item, function()
     local src = source
-    openMDT(src)
+    OpenMDT(src)
 end)
 
 -- Commande admin de test : se donner (ou donner) la tablette MDT.
@@ -710,7 +710,7 @@ local readHandlers = {}
 
 -- Recherche de citoyens par nom/prénom
 readHandlers.searchCitizens = function(player, depName, grade, data, reply)
-    if not mdtHasPerm(player, depName, grade, 'view_citizens') then return reply(false) end
+    if not MdtHasPerm(player, depName, grade, 'view_citizens') then return reply(false) end
     local query = type(data.query) == 'string' and data.query or ''
     if #query < L.SearchMinChars then return reply({}) end
     -- LOWER des deux côtés : JSON_EXTRACT renvoie une collation binaire
@@ -725,7 +725,7 @@ readHandlers.searchCitizens = function(player, depName, grade, data, reply)
         LIMIT ]] .. limit, { ['@q'] = like }, function(rows)
         rows = rows or {}
         MySQL.Async.fetchAll("SELECT DISTINCT identifier FROM mdt_warrants WHERE status = 'active' AND "
-            .. scopeClause(depName, 'mdt_warrants'), {}, function(wrows)
+            .. ScopeClause(depName, 'mdt_warrants'), {}, function(wrows)
             local wanted = {}
             for _, w in ipairs(wrows or {}) do if w.identifier then wanted[w.identifier] = true end end
             local out = {}
@@ -747,7 +747,7 @@ end
 
 -- Fiche complète d'un citoyen
 readHandlers.getCitizen = function(player, depName, grade, data, reply)
-    if not mdtHasPerm(player, depName, grade, 'view_citizens') then return reply(false) end
+    if not MdtHasPerm(player, depName, grade, 'view_citizens') then return reply(false) end
     local identifier = type(data.identifier) == 'string' and data.identifier or ''
     if identifier == '' then return reply(false) end
     MySQL.Async.fetchAll('SELECT identifier, characterInfos, job, job_grade, inventory FROM players WHERE identifier = @id LIMIT 1', { ['@id'] = identifier }, function(prows)
@@ -781,10 +781,10 @@ readHandlers.getCitizen = function(player, depName, grade, data, reply)
         -- que soit le pôle qui les a saisis. Chaque ligne porte sa colonne
         -- `department`, qui sert d'estampille d'origine côté NUI.
         local p = { ['@id'] = identifier }
-        MySQL.Async.fetchAll('SELECT * FROM mdt_criminal_records WHERE identifier=@id AND ' .. scopeClause(depName, 'mdt_criminal_records') .. ' ORDER BY created_at DESC', p, function(records)
-            MySQL.Async.fetchAll('SELECT * FROM mdt_fines WHERE identifier=@id AND ' .. scopeClause(depName, 'mdt_fines') .. ' ORDER BY created_at DESC', p, function(fines)
-                MySQL.Async.fetchAll('SELECT * FROM mdt_warrants WHERE identifier=@id AND ' .. scopeClause(depName, 'mdt_warrants') .. ' ORDER BY created_at DESC', p, function(warrants)
-                    MySQL.Async.fetchAll('SELECT * FROM mdt_custody WHERE identifier=@id AND ' .. scopeClause(depName, 'mdt_custody') .. ' ORDER BY started_at DESC', p, function(custody)
+        MySQL.Async.fetchAll('SELECT * FROM mdt_criminal_records WHERE identifier=@id AND ' .. ScopeClause(depName, 'mdt_criminal_records') .. ' ORDER BY created_at DESC', p, function(records)
+            MySQL.Async.fetchAll('SELECT * FROM mdt_fines WHERE identifier=@id AND ' .. ScopeClause(depName, 'mdt_fines') .. ' ORDER BY created_at DESC', p, function(fines)
+                MySQL.Async.fetchAll('SELECT * FROM mdt_warrants WHERE identifier=@id AND ' .. ScopeClause(depName, 'mdt_warrants') .. ' ORDER BY created_at DESC', p, function(warrants)
+                    MySQL.Async.fetchAll('SELECT * FROM mdt_custody WHERE identifier=@id AND ' .. ScopeClause(depName, 'mdt_custody') .. ' ORDER BY started_at DESC', p, function(custody)
                         reply({
                             identity = identity,
                             records = records or {}, fines = fines or {},
@@ -800,7 +800,7 @@ end
 -- Maps résolus paresseusement depuis la config du concessionnaire (chargée
 -- en shared dans lslegacy) : hash de modèle → nom lisible, id couleur → nom.
 local vehLabelByHash, colorLabelById
-local function ensureVehicleMaps()
+local function EnsureVehicleMaps()
     if not vehLabelByHash then
         vehLabelByHash = {}
         local cat = (Config.Concessionnaire and Config.Concessionnaire.Catalog) or {}
@@ -822,8 +822,8 @@ end
 -- (+ characterInfos du propriétaire jointe). Modèle/couleur viennent de
 -- persistent_vehicles (pv.model, pv.tuning), seule source de vérité tenue à
 -- jour en continu — owned_vehicles ne porte que la possession.
-local function buildVehicleRow(r)
-    ensureVehicleMaps()
+local function BuildVehicleRow(r)
+    EnsureVehicleMaps()
     local modelName, colorName
     if r.model then
         modelName = vehLabelByHash[math.tointeger(r.model) or r.model]
@@ -860,8 +860,8 @@ end
 -- Construit une ligne véhicule depuis une occasion (véhicule au concessionnaire).
 -- La localisation est forcée à 'concessionnaire' (auto-détection).
 -- Couleur dérivée de o.props (snapshot tuning+status repris à la reprise).
-local function buildOccasionRow(o)
-    ensureVehicleMaps()
+local function BuildOccasionRow(o)
+    EnsureVehicleMaps()
     local ownerName
     if o.characterInfos then
         local ok, info = pcall(json.decode, o.characterInfos)
@@ -894,7 +894,7 @@ end
 
 -- Recherche de véhicules possédés (plaque OU propriétaire) dans owned_vehicles
 readHandlers.searchVehicles = function(player, depName, grade, data, reply)
-    if not mdtHasPerm(player, depName, grade, 'view_vehicles') then return reply(false) end
+    if not MdtHasPerm(player, depName, grade, 'view_vehicles') then return reply(false) end
     local query = type(data.query) == 'string' and data.query or ''
     if #query < L.SearchMinChars then return reply({}) end
     local plateLike = '%' .. query:upper():gsub('[%%_\\]', '') .. '%'
@@ -907,7 +907,7 @@ readHandlers.searchVehicles = function(player, depName, grade, data, reply)
         FROM owned_vehicles ov
         LEFT JOIN players p ON p.`boutique-id` = ov.character_id
         LEFT JOIN persistent_vehicles pv ON pv.plate = ov.plate
-        LEFT JOIN mdt_vehicle_flags vf ON vf.plate = ov.plate AND ]] .. scopeClause(depName, 'mdt_vehicle_flags', 'vf.department') .. [[
+        LEFT JOIN mdt_vehicle_flags vf ON vf.plate = ov.plate AND ]] .. ScopeClause(depName, 'mdt_vehicle_flags', 'vf.department') .. [[
 
         WHERE UPPER(ov.plate) LIKE @plate
            OR LOWER(JSON_UNQUOTE(JSON_EXTRACT(p.characterInfos, '$.NDF'))) LIKE @name
@@ -915,7 +915,7 @@ readHandlers.searchVehicles = function(player, depName, grade, data, reply)
         LIMIT ]] .. limit, { ['@plate'] = plateLike, ['@name'] = nameLike }, function(rows)
         local out = {}
         for _, r in ipairs(rows or {}) do
-            out[#out + 1] = buildVehicleRow(r)
+            out[#out + 1] = BuildVehicleRow(r)
         end
         -- Véhicules actuellement en vente au concessionnaire (occasions)
         MySQL.Async.fetchAll([[
@@ -923,7 +923,7 @@ readHandlers.searchVehicles = function(player, depName, grade, data, reply)
                    vf.wanted, vf.reason AS wanted_reason
             FROM concessionnaire_occasions o
             LEFT JOIN players p ON p.`boutique-id` = o.character_id
-            LEFT JOIN mdt_vehicle_flags vf ON vf.plate = o.plate AND ]] .. scopeClause(depName, 'mdt_vehicle_flags', 'vf.department') .. [[
+            LEFT JOIN mdt_vehicle_flags vf ON vf.plate = o.plate AND ]] .. ScopeClause(depName, 'mdt_vehicle_flags', 'vf.department') .. [[
 
             WHERE o.plate IS NOT NULL AND (
                    UPPER(o.plate) LIKE @plate
@@ -931,7 +931,7 @@ readHandlers.searchVehicles = function(player, depName, grade, data, reply)
                 OR LOWER(JSON_UNQUOTE(JSON_EXTRACT(p.characterInfos, '$.Prenom'))) LIKE @name)
             LIMIT ]] .. limit, { ['@plate'] = plateLike, ['@name'] = nameLike }, function(orows)
             for _, o in ipairs(orows or {}) do
-                out[#out + 1] = buildOccasionRow(o)
+                out[#out + 1] = BuildOccasionRow(o)
             end
             reply(out)
         end)
@@ -940,8 +940,8 @@ end
 
 -- Fiche véhicule (propriétaire) + historique d'infractions (amendes par plaque)
 readHandlers.getVehicle = function(player, depName, grade, data, reply)
-    if not mdtHasPerm(player, depName, grade, 'view_vehicles') then return reply(false) end
-    local plate = safePlate(data.plate)
+    if not MdtHasPerm(player, depName, grade, 'view_vehicles') then return reply(false) end
+    local plate = SafePlate(data.plate)
     if not plate then return reply(false) end
     MySQL.Async.fetchAll([[
         SELECT ov.plate, ov.type, ov.stored, ov.owner, ov.bought_at, p.characterInfos,
@@ -950,7 +950,7 @@ readHandlers.getVehicle = function(player, depName, grade, data, reply)
         FROM owned_vehicles ov
         LEFT JOIN players p ON p.`boutique-id` = ov.character_id
         LEFT JOIN persistent_vehicles pv ON pv.plate = ov.plate
-        LEFT JOIN mdt_vehicle_flags vf ON vf.plate = ov.plate AND ]] .. scopeClause(depName, 'mdt_vehicle_flags', 'vf.department') .. [[
+        LEFT JOIN mdt_vehicle_flags vf ON vf.plate = ov.plate AND ]] .. ScopeClause(depName, 'mdt_vehicle_flags', 'vf.department') .. [[
 
         WHERE UPPER(ov.plate)=@p LIMIT 1
     ]], { ['@p'] = plate }, function(vrows)
@@ -964,12 +964,12 @@ readHandlers.getVehicle = function(player, depName, grade, data, reply)
             else
                 vehicle = { plate = plate, model_name = nil, wanted = false, location = 'circulation' }
             end
-            MySQL.Async.fetchAll('SELECT * FROM mdt_fines WHERE plate=@p AND ' .. scopeClause(depName, 'mdt_fines') .. ' ORDER BY created_at DESC', { ['@p'] = plate }, function(fines)
+            MySQL.Async.fetchAll('SELECT * FROM mdt_fines WHERE plate=@p AND ' .. ScopeClause(depName, 'mdt_fines') .. ' ORDER BY created_at DESC', { ['@p'] = plate }, function(fines)
                 reply({ vehicle = vehicle, owner = owner, fines = fines or {} })
             end)
         end
         if vrows and vrows[1] then
-            finish(buildVehicleRow(vrows[1]))
+            finish(BuildVehicleRow(vrows[1]))
         else
             -- Pas dans owned_vehicles : peut-être en vente au concessionnaire.
             MySQL.Async.fetchAll([[
@@ -977,11 +977,11 @@ readHandlers.getVehicle = function(player, depName, grade, data, reply)
                        vf.wanted, vf.reason AS wanted_reason
                 FROM concessionnaire_occasions o
                 LEFT JOIN players p ON p.`boutique-id` = o.character_id
-                LEFT JOIN mdt_vehicle_flags vf ON vf.plate = o.plate AND ]] .. scopeClause(depName, 'mdt_vehicle_flags', 'vf.department') .. [[
+                LEFT JOIN mdt_vehicle_flags vf ON vf.plate = o.plate AND ]] .. ScopeClause(depName, 'mdt_vehicle_flags', 'vf.department') .. [[
 
                 WHERE UPPER(o.plate) = @p LIMIT 1
             ]], { ['@p'] = plate }, function(orows)
-                finish(orows and orows[1] and buildOccasionRow(orows[1]) or nil)
+                finish(orows and orows[1] and BuildOccasionRow(orows[1]) or nil)
             end)
         end
     end)
@@ -989,9 +989,9 @@ end
 
 -- Liste des dossiers (option : type)
 readHandlers.getReports = function(player, depName, grade, data, reply)
-    if not mdtHasPerm(player, depName, grade, 'view_reports') then return reply(false) end
+    if not MdtHasPerm(player, depName, grade, 'view_reports') then return reply(false) end
     local reportType = data.type
-    local scope = scopeClause(depName, 'mdt_reports')
+    local scope = ScopeClause(depName, 'mdt_reports')
     if type(reportType) == 'string' and reportType ~= '' and reportType ~= 'all' then
         MySQL.Async.fetchAll('SELECT * FROM mdt_reports WHERE ' .. scope .. ' AND type=@t ORDER BY updated_at DESC LIMIT 100',
             { ['@t'] = reportType }, function(rows) reply(rows or {}) end)
@@ -1003,16 +1003,16 @@ end
 
 -- Un dossier précis + preuves liées
 readHandlers.getReport = function(player, depName, grade, data, reply)
-    if not mdtHasPerm(player, depName, grade, 'view_reports') then return reply(false) end
+    if not MdtHasPerm(player, depName, grade, 'view_reports') then return reply(false) end
     local reportId = tonumber(data.id)
     if not reportId then return reply(false) end
-    MySQL.Async.fetchAll('SELECT * FROM mdt_reports WHERE id=@id AND ' .. scopeClause(depName, 'mdt_reports') .. ' LIMIT 1', { ['@id'] = reportId }, function(rows)
+    MySQL.Async.fetchAll('SELECT * FROM mdt_reports WHERE id=@id AND ' .. ScopeClause(depName, 'mdt_reports') .. ' LIMIT 1', { ['@id'] = reportId }, function(rows)
         if not rows or not rows[1] then return reply(false) end
         local report = rows[1]
         -- Seul l'auteur peut modifier titre/contenu/personnes. Un dossier
         -- rédigé par l'autre pôle est donc consultable, jamais modifiable.
         report.canEdit = (report.author_identifier == player.identifier)
-        if mdtHasPerm(player, depName, grade, 'view_evidence') then
+        if MdtHasPerm(player, depName, grade, 'view_evidence') then
             MySQL.Async.fetchAll('SELECT * FROM mdt_report_evidence WHERE report_id=@id ORDER BY created_at DESC', { ['@id'] = reportId }, function(ev)
                 report.evidence = ev or {}
                 reply(report)
@@ -1026,27 +1026,27 @@ end
 
 -- Avis de recherche (option : status)
 readHandlers.getWarrants = function(player, depName, grade, data, reply)
-    if not mdtHasPerm(player, depName, grade, 'view_warrants') then return reply(false) end
+    if not MdtHasPerm(player, depName, grade, 'view_warrants') then return reply(false) end
     local status = (data.status == 'closed') and 'closed' or 'active'
-    MySQL.Async.fetchAll('SELECT * FROM mdt_warrants WHERE ' .. scopeClause(depName, 'mdt_warrants') .. ' AND status=@s ORDER BY danger_level DESC, created_at DESC LIMIT 100',
+    MySQL.Async.fetchAll('SELECT * FROM mdt_warrants WHERE ' .. ScopeClause(depName, 'mdt_warrants') .. ' AND status=@s ORDER BY danger_level DESC, created_at DESC LIMIT 100',
         { ['@s'] = status }, function(rows) reply(rows or {}) end)
 end
 
 -- Historique des gardes à vue
 readHandlers.getCustodyHistory = function(player, depName, grade, data, reply)
-    if not mdtHasPerm(player, depName, grade, 'manage_custody') then return reply(false) end
-    MySQL.Async.fetchAll('SELECT * FROM mdt_custody WHERE ' .. scopeClause(depName, 'mdt_custody') .. ' ORDER BY started_at DESC LIMIT 100',
+    if not MdtHasPerm(player, depName, grade, 'manage_custody') then return reply(false) end
+    MySQL.Async.fetchAll('SELECT * FROM mdt_custody WHERE ' .. ScopeClause(depName, 'mdt_custody') .. ' ORDER BY started_at DESC LIMIT 100',
         {}, function(rows) reply(rows or {}) end)
 end
 
 -- Preuves (option : case_id)
 readHandlers.getEvidence = function(player, depName, grade, data, reply)
-    if not mdtHasPerm(player, depName, grade, 'view_evidence') then return reply(false) end
+    if not MdtHasPerm(player, depName, grade, 'view_evidence') then return reply(false) end
     local caseId = tonumber(data.case_id)
     -- Les preuves restent propres à chaque pôle (Config.MDT.SharedTables) :
-    -- chacun instruit ses propres scellés. Passer par scopeClause permet de
+    -- chacun instruit ses propres scellés. Passer par ScopeClause permet de
     -- basculer ce choix d'une seule ligne de config.
-    local scope = scopeClause(depName, 'mdt_evidence')
+    local scope = ScopeClause(depName, 'mdt_evidence')
     if caseId then
         MySQL.Async.fetchAll('SELECT * FROM mdt_evidence WHERE ' .. scope .. ' AND case_id=@c ORDER BY created_at DESC LIMIT 200',
             { ['@c'] = caseId }, function(rows) reply(rows or {}) end)
@@ -1062,7 +1062,7 @@ LSLegacy.Events.Register('mdt:query', function(payload)
     local reply = function(res)
         LSLegacy.Events.SendToClient('mdt:queryResult', src, { reqId = payload.reqId, result = res })
     end
-    local player, depName, grade = ctx(src)
+    local player, depName, grade = Ctx(src)
     if not player then return reply(false) end
     local handler = readHandlers[payload.action]
     if not handler then return reply(false) end
@@ -1089,7 +1089,7 @@ end)
 -- Créer une amende
 LSLegacy.Events.Register('mdt:createFine', function(data)
     local src = source
-    local player, depName = can(src, 'create_fine')
+    local player, depName = Can(src, 'create_fine')
     if not player or type(data) ~= 'table' then return end
     -- Deux entrées possibles : l'UI du MDT (data.identifier, déjà résolu via
     -- une recherche citoyen) ou l'action rapide ox_target (data.target, un
@@ -1099,21 +1099,21 @@ LSLegacy.Events.Register('mdt:createFine', function(data)
         local targetPlayer = LSLegacy.Players.Get(tonumber(data.target))
         identifier = targetPlayer and targetPlayer.identifier or nil
     end
-    if not identifier then return result(src, false, 'Citoyen invalide.') end
+    if not identifier then return Result(src, false, 'Citoyen invalide.') end
     local amount = math.floor(tonumber(data.amount) or 0)
-    if amount <= 0 or amount > L.MaxFine then return result(src, false, 'Montant invalide.') end
-    local reason = safeText(data.reason, 255)
-    if reason == '' then return result(src, false, 'Motif requis.') end
-    local plate = safePlate(data.plate)
-    resolveCitizenName(identifier, function(name)
-        if not name then return result(src, false, 'Citoyen introuvable.') end
+    if amount <= 0 or amount > L.MaxFine then return Result(src, false, 'Montant invalide.') end
+    local reason = SafeText(data.reason, 255)
+    if reason == '' then return Result(src, false, 'Motif requis.') end
+    local plate = SafePlate(data.plate)
+    ResolveCitizenName(identifier, function(name)
+        if not name then return Result(src, false, 'Citoyen introuvable.') end
         LSLegacy.ResolveCharacterId(identifier, function(charId)
             MySQL.Async.insert('INSERT INTO mdt_fines (department, identifier, character_id, citizen_name, amount, reason, plate, officer_identifier, officer_character_id, officer_name) VALUES (@dep,@id,@charId,@name,@amount,@reason,@plate,@oid,@oCharId,@oname)', {
                 ['@dep'] = depName, ['@id'] = identifier, ['@charId'] = charId, ['@name'] = name, ['@amount'] = amount,
-                ['@reason'] = reason, ['@plate'] = plate, ['@oid'] = player.identifier, ['@oCharId'] = player["boutique-id"], ['@oname'] = charName(player),
+                ['@reason'] = reason, ['@plate'] = plate, ['@oid'] = player.identifier, ['@oCharId'] = player["boutique-id"], ['@oname'] = CharName(player),
             }, function(insertId)
-                result(src, true, 'Amende de ' .. amount .. '$ enregistrée.', { view = 'citizen', id = identifier })
-                mdtLog('Amende', ('**%s** a verbalisé **%s** : %d$\n%s'):format(charName(player), name, amount, reason))
+                Result(src, true, 'Amende de ' .. amount .. '$ enregistrée.', { view = 'citizen', id = identifier })
+                MdtLog('Amende', ('**%s** a verbalisé **%s** : %d$\n%s'):format(CharName(player), name, amount, reason))
 
                 local targetSrc = GetOnlineSourceByCharacterId(charId)
                 if targetSrc then
@@ -1127,47 +1127,47 @@ end)
 -- Marquer une amende payée / impayée
 LSLegacy.Events.Register('mdt:toggleFinePaid', function(data)
     local src = source
-    local player, depName = can(src, 'create_fine')
+    local player, depName = Can(src, 'create_fine')
     if not player or type(data) ~= 'table' then return end
     local id = tonumber(data.id)
     if not id then return end
     local paid = data.paid and 1 or 0
-    MySQL.Async.execute('UPDATE mdt_fines SET paid=@p WHERE id=@id AND ' .. scopeClause(depName, 'mdt_fines'), { ['@p'] = paid, ['@id'] = id }, function()
-        result(src, true, paid == 1 and 'Amende marquée payée.' or 'Amende marquée impayée.', { view = 'citizen', id = data.identifier })
+    MySQL.Async.execute('UPDATE mdt_fines SET paid=@p WHERE id=@id AND ' .. ScopeClause(depName, 'mdt_fines'), { ['@p'] = paid, ['@id'] = id }, function()
+        Result(src, true, paid == 1 and 'Amende marquée payée.' or 'Amende marquée impayée.', { view = 'citizen', id = data.identifier })
     end)
 end)
 
 -- Supprimer une amende
 LSLegacy.Events.Register('mdt:deleteFine', function(data)
     local src = source
-    local player, depName = can(src, 'delete_records')
+    local player, depName = Can(src, 'delete_records')
     if not player or type(data) ~= 'table' then return end
     local id = tonumber(data.id)
     if not id then return end
-    MySQL.Async.execute('DELETE FROM mdt_fines WHERE id=@id AND ' .. scopeClause(depName, 'mdt_fines'), { ['@id'] = id }, function()
-        result(src, true, 'Amende supprimée.', { view = 'citizen', id = data.identifier })
+    MySQL.Async.execute('DELETE FROM mdt_fines WHERE id=@id AND ' .. ScopeClause(depName, 'mdt_fines'), { ['@id'] = id }, function()
+        Result(src, true, 'Amende supprimée.', { view = 'citizen', id = data.identifier })
     end)
 end)
 
 -- Ajouter une entrée au casier judiciaire
 LSLegacy.Events.Register('mdt:addCriminalRecord', function(data)
     local src = source
-    local player, depName = can(src, 'manage_records')
+    local player, depName = Can(src, 'manage_records')
     if not player or type(data) ~= 'table' then return end
     local identifier = type(data.identifier) == 'string' and data.identifier or nil
-    if not identifier then return result(src, false, 'Citoyen invalide.') end
-    local charge = safeText(data.charge, 255)
-    if charge == '' then return result(src, false, "Chef d'accusation requis.") end
-    local description = safeText(data.description, L.MaxTextLength)
-    resolveCitizenName(identifier, function(name)
-        if not name then return result(src, false, 'Citoyen introuvable.') end
+    if not identifier then return Result(src, false, 'Citoyen invalide.') end
+    local charge = SafeText(data.charge, 255)
+    if charge == '' then return Result(src, false, "Chef d'accusation requis.") end
+    local description = SafeText(data.description, L.MaxTextLength)
+    ResolveCitizenName(identifier, function(name)
+        if not name then return Result(src, false, 'Citoyen introuvable.') end
         LSLegacy.ResolveCharacterId(identifier, function(charId)
             MySQL.Async.insert('INSERT INTO mdt_criminal_records (department, identifier, character_id, citizen_name, charge, description, officer_identifier, officer_character_id, officer_name) VALUES (@dep,@id,@charId,@name,@charge,@desc,@oid,@oCharId,@oname)', {
                 ['@dep'] = depName, ['@id'] = identifier, ['@charId'] = charId, ['@name'] = name, ['@charge'] = charge,
-                ['@desc'] = description, ['@oid'] = player.identifier, ['@oCharId'] = player["boutique-id"], ['@oname'] = charName(player),
+                ['@desc'] = description, ['@oid'] = player.identifier, ['@oCharId'] = player["boutique-id"], ['@oname'] = CharName(player),
             }, function()
-                result(src, true, 'Entrée ajoutée au casier.', { view = 'citizen', id = identifier })
-                mdtLog('Casier', ('**%s** a inscrit au casier de **%s** : %s'):format(charName(player), name, charge))
+                Result(src, true, 'Entrée ajoutée au casier.', { view = 'citizen', id = identifier })
+                MdtLog('Casier', ('**%s** a inscrit au casier de **%s** : %s'):format(CharName(player), name, charge))
             end)
         end)
     end)
@@ -1176,23 +1176,23 @@ end)
 -- Supprimer une entrée de casier
 LSLegacy.Events.Register('mdt:deleteCriminalRecord', function(data)
     local src = source
-    local player, depName = can(src, 'delete_records')
+    local player, depName = Can(src, 'delete_records')
     if not player or type(data) ~= 'table' then return end
     local id = tonumber(data.id)
     if not id then return end
-    MySQL.Async.execute('DELETE FROM mdt_criminal_records WHERE id=@id AND ' .. scopeClause(depName, 'mdt_criminal_records'), { ['@id'] = id }, function()
-        result(src, true, 'Entrée de casier supprimée.', { view = 'citizen', id = data.identifier })
+    MySQL.Async.execute('DELETE FROM mdt_criminal_records WHERE id=@id AND ' .. ScopeClause(depName, 'mdt_criminal_records'), { ['@id'] = id }, function()
+        Result(src, true, 'Entrée de casier supprimée.', { view = 'citizen', id = data.identifier })
     end)
 end)
 
 -- Valide un type de dossier connu.
-local function isValidReportType(t)
+local function IsValidReportType(t)
     for _, rt in ipairs(Config.MDT.ReportTypes) do if rt.id == t then return true end end
     return false
 end
 
 -- Nettoie/borne la liste des personnes impliquées d'un rapport.
-local function sanitizeInvolved(list)
+local function SanitizeInvolved(list)
     local out = {}
     if type(list) ~= 'table' then return out end
     for i, v in ipairs(list) do
@@ -1200,8 +1200,8 @@ local function sanitizeInvolved(list)
         if type(v) == 'table' then
             out[#out + 1] = {
                 identifier = type(v.identifier) == 'string' and v.identifier:sub(1, 60) or nil,
-                name = safeText(v.name, 100),
-                role = safeText(v.role, 60),
+                name = SafeText(v.name, 100),
+                role = SafeText(v.role, 60),
             }
         end
     end
@@ -1213,41 +1213,41 @@ end
 -- ensuite, au fil de l'instruction.
 LSLegacy.Events.Register('mdt:createReport', function(data)
     local src = source
-    local player, depName = can(src, 'create_report')
+    local player, depName = Can(src, 'create_report')
     if not player or type(data) ~= 'table' then return end
-    local title = safeText(data.title, L.MaxTitleLength)
-    if title == '' then return result(src, false, 'Titre requis.') end
-    local content = safeText(data.content, L.MaxTextLength)
+    local title = SafeText(data.title, L.MaxTitleLength)
+    if title == '' then return Result(src, false, 'Titre requis.') end
+    local content = SafeText(data.content, L.MaxTextLength)
     MySQL.Async.insert("INSERT INTO mdt_reports (department, type, title, content, involved, author_identifier, author_name) VALUES (@dep,'enquete',@title,@content,'[]',@oid,@oname)", {
         ['@dep'] = depName, ['@title'] = title, ['@content'] = content,
-        ['@oid'] = player.identifier, ['@oname'] = charName(player),
+        ['@oid'] = player.identifier, ['@oname'] = CharName(player),
     }, function(id)
         -- On ouvre directement l'enquête créée : c'est là que l'agent va
         -- rattacher ses éléments.
-        result(src, true, 'Enquête ouverte.', { view = 'report', id = id })
-        mdtLog('Enquête', ('**%s** a ouvert une enquête : %s'):format(charName(player), title))
+        Result(src, true, 'Enquête ouverte.', { view = 'report', id = id })
+        MdtLog('Enquête', ('**%s** a ouvert une enquête : %s'):format(CharName(player), title))
     end)
 end)
 
 -- Modifier une enquête (titre / contenu)
 LSLegacy.Events.Register('mdt:updateReport', function(data)
     local src = source
-    local player, depName = can(src, 'create_report')
+    local player, depName = Can(src, 'create_report')
     if not player or type(data) ~= 'table' then return end
     local id = tonumber(data.id)
     if not id then return end
-    local title = safeText(data.title, L.MaxTitleLength)
-    if title == '' then return result(src, false, 'Titre requis.') end
-    local content = safeText(data.content, L.MaxTextLength)
+    local title = SafeText(data.title, L.MaxTitleLength)
+    if title == '' then return Result(src, false, 'Titre requis.') end
+    local content = SafeText(data.content, L.MaxTextLength)
     -- Seul le créateur de l'enquête peut en modifier le titre / contenu.
-    MySQL.Async.fetchScalar('SELECT author_identifier FROM mdt_reports WHERE id=@id AND ' .. scopeClause(depName, 'mdt_reports') .. ' LIMIT 1', { ['@id'] = id }, function(author)
+    MySQL.Async.fetchScalar('SELECT author_identifier FROM mdt_reports WHERE id=@id AND ' .. ScopeClause(depName, 'mdt_reports') .. ' LIMIT 1', { ['@id'] = id }, function(author)
         if author ~= player.identifier then
-            return result(src, false, "Seul l'auteur de l'enquête peut la modifier.")
+            return Result(src, false, "Seul l'auteur de l'enquête peut la modifier.")
         end
-        MySQL.Async.execute('UPDATE mdt_reports SET title=@title, content=@content WHERE id=@id AND ' .. scopeClause(depName, 'mdt_reports'), {
+        MySQL.Async.execute('UPDATE mdt_reports SET title=@title, content=@content WHERE id=@id AND ' .. ScopeClause(depName, 'mdt_reports'), {
             ['@title'] = title, ['@content'] = content, ['@id'] = id,
         }, function()
-            result(src, true, 'Enquête mise à jour.', { view = 'report', id = id })
+            Result(src, true, 'Enquête mise à jour.', { view = 'report', id = id })
         end)
     end)
 end)
@@ -1258,12 +1258,12 @@ end)
 --  existe sans enquête.
 
 -- Liste de noms libres (agents engagés), une entrée par ligne côté NUI.
-local function sanitizeNameList(list)
+local function SanitizeNameList(list)
     local out = {}
     if type(list) ~= 'table' then return out end
     for i, v in ipairs(list) do
         if i > 30 then break end
-        local name = safeText(v, 100)
+        local name = SafeText(v, 100)
         if name ~= '' then out[#out + 1] = name end
     end
     return out
@@ -1271,11 +1271,11 @@ end
 
 -- Liste des rapports + total des 30 derniers jours (affiché en tête d'onglet)
 readHandlers.getInterventionReports = function(player, depName, grade, data, reply)
-    if not mdtHasPerm(player, depName, grade, 'view_reports') then return reply(false) end
-    local scope = scopeClause(depName, 'mdt_intervention_reports')
+    if not MdtHasPerm(player, depName, grade, 'view_reports') then return reply(false) end
+    local scope = ScopeClause(depName, 'mdt_intervention_reports')
     local rtype = type(data.type) == 'string' and data.type or ''
     local clause, params = scope, {}
-    if rtype ~= '' and rtype ~= 'all' and isValidReportType(rtype) then
+    if rtype ~= '' and rtype ~= 'all' and IsValidReportType(rtype) then
         clause = clause .. ' AND type=@t'
         params['@t'] = rtype
     end
@@ -1290,11 +1290,11 @@ end
 
 -- Un rapport précis
 readHandlers.getInterventionReport = function(player, depName, grade, data, reply)
-    if not mdtHasPerm(player, depName, grade, 'view_reports') then return reply(false) end
+    if not MdtHasPerm(player, depName, grade, 'view_reports') then return reply(false) end
     local id = tonumber(data.id)
     if not id then return reply(false) end
     MySQL.Async.fetchAll('SELECT * FROM mdt_intervention_reports WHERE id=@id AND '
-        .. scopeClause(depName, 'mdt_intervention_reports') .. ' LIMIT 1', { ['@id'] = id }, function(rows)
+        .. ScopeClause(depName, 'mdt_intervention_reports') .. ' LIMIT 1', { ['@id'] = id }, function(rows)
         if not rows or not rows[1] then return reply(false) end
         local r = rows[1]
         -- Un rapport rédigé par l'autre pôle reste consultable, jamais
@@ -1306,69 +1306,69 @@ end
 
 LSLegacy.Events.Register('mdt:createInterventionReport', function(data)
     local src = source
-    local player, depName = can(src, 'create_report')
+    local player, depName = Can(src, 'create_report')
     if not player or type(data) ~= 'table' then return end
     local rtype = type(data.type) == 'string' and data.type or ''
-    if not isValidReportType(rtype) then return result(src, false, "Type d'intervention invalide.") end
-    local content = safeText(data.content, L.MaxTextLength)
-    if content == '' then return result(src, false, 'Compte rendu requis.') end
+    if not IsValidReportType(rtype) then return Result(src, false, "Type d'intervention invalide.") end
+    local content = SafeText(data.content, L.MaxTextLength)
+    if content == '' then return Result(src, false, 'Compte rendu requis.') end
     MySQL.Async.insert('INSERT INTO mdt_intervention_reports (department, type, content, agents, involved, joint, author_identifier, author_name) '
         .. 'VALUES (@dep,@t,@content,@agents,@involved,@joint,@oid,@oname)', {
         ['@dep'] = depName, ['@t'] = rtype, ['@content'] = content,
-        ['@agents'] = json.encode(sanitizeNameList(data.agents)),
-        ['@involved'] = json.encode(sanitizeInvolved(data.involved)),
+        ['@agents'] = json.encode(SanitizeNameList(data.agents)),
+        ['@involved'] = json.encode(SanitizeInvolved(data.involved)),
         ['@joint'] = data.joint and 1 or 0,
-        ['@oid'] = player.identifier, ['@oname'] = charName(player),
+        ['@oid'] = player.identifier, ['@oname'] = CharName(player),
     }, function(id)
-        result(src, true, "Rapport d'intervention enregistré.", { view = 'int_reports' })
-        mdtLog("Rapport d'intervention",
-            ('**%s** a enregistré un rapport [%s]%s'):format(charName(player), rtype,
+        Result(src, true, "Rapport d'intervention enregistré.", { view = 'int_reports' })
+        MdtLog("Rapport d'intervention",
+            ('**%s** a enregistré un rapport [%s]%s'):format(CharName(player), rtype,
                 data.joint and ' — intervention conjointe' or ''))
     end)
 end)
 
 LSLegacy.Events.Register('mdt:updateInterventionReport', function(data)
     local src = source
-    local player, depName = can(src, 'create_report')
+    local player, depName = Can(src, 'create_report')
     if not player or type(data) ~= 'table' then return end
     local id = tonumber(data.id)
     if not id then return end
     local rtype = type(data.type) == 'string' and data.type or ''
-    if not isValidReportType(rtype) then return result(src, false, "Type d'intervention invalide.") end
-    local content = safeText(data.content, L.MaxTextLength)
-    if content == '' then return result(src, false, 'Compte rendu requis.') end
+    if not IsValidReportType(rtype) then return Result(src, false, "Type d'intervention invalide.") end
+    local content = SafeText(data.content, L.MaxTextLength)
+    if content == '' then return Result(src, false, 'Compte rendu requis.') end
     MySQL.Async.fetchScalar('SELECT author_identifier FROM mdt_intervention_reports WHERE id=@id AND '
-        .. scopeClause(depName, 'mdt_intervention_reports') .. ' LIMIT 1', { ['@id'] = id }, function(author)
+        .. ScopeClause(depName, 'mdt_intervention_reports') .. ' LIMIT 1', { ['@id'] = id }, function(author)
         if author ~= player.identifier then
-            return result(src, false, "Seul l'auteur du rapport peut le modifier.")
+            return Result(src, false, "Seul l'auteur du rapport peut le modifier.")
         end
         MySQL.Async.execute('UPDATE mdt_intervention_reports SET type=@t, content=@content, agents=@agents, '
             .. 'involved=@involved, joint=@joint WHERE id=@id AND '
-            .. scopeClause(depName, 'mdt_intervention_reports'), {
+            .. ScopeClause(depName, 'mdt_intervention_reports'), {
             ['@t'] = rtype, ['@content'] = content,
-            ['@agents'] = json.encode(sanitizeNameList(data.agents)),
-            ['@involved'] = json.encode(sanitizeInvolved(data.involved)),
+            ['@agents'] = json.encode(SanitizeNameList(data.agents)),
+            ['@involved'] = json.encode(SanitizeInvolved(data.involved)),
             ['@joint'] = data.joint and 1 or 0, ['@id'] = id,
         }, function()
-            result(src, true, 'Rapport mis à jour.', { view = 'int_report', id = id })
+            Result(src, true, 'Rapport mis à jour.', { view = 'int_report', id = id })
         end)
     end)
 end)
 
 LSLegacy.Events.Register('mdt:deleteInterventionReport', function(data)
     local src = source
-    local player, depName = can(src, 'delete_records')
+    local player, depName = Can(src, 'delete_records')
     if not player or type(data) ~= 'table' then return end
     local id = tonumber(data.id)
     if not id then return end
     MySQL.Async.execute('DELETE FROM mdt_intervention_reports WHERE id=@id AND '
-        .. scopeClause(depName, 'mdt_intervention_reports'), { ['@id'] = id }, function()
+        .. ScopeClause(depName, 'mdt_intervention_reports'), { ['@id'] = id }, function()
         -- Le rapport disparaît aussi des enquêtes qui le référençaient, et
         -- de ses propres armes / véhicules associés.
         MySQL.Async.execute("DELETE FROM mdt_case_links WHERE kind='report' AND ref=@ref",
             { ['@ref'] = tostring(id) })
         MySQL.Async.execute('DELETE FROM mdt_report_links WHERE report_id=@id', { ['@id'] = id }, function()
-            result(src, true, 'Rapport supprimé.', { view = 'int_reports' })
+            Result(src, true, 'Rapport supprimé.', { view = 'int_reports' })
         end)
     end)
 end)
@@ -1379,7 +1379,7 @@ end)
 --  mais de documenter ce qui a été porté ou utilisé pendant l'intervention.
 
 readHandlers.getReportLinks = function(player, depName, grade, data, reply)
-    if not mdtHasPerm(player, depName, grade, 'view_reports') then return reply(false) end
+    if not MdtHasPerm(player, depName, grade, 'view_reports') then return reply(false) end
     local reportId = tonumber(data.reportId)
     if not reportId then return reply(false) end
     local out = { weapons = {}, vehicles = {} }
@@ -1397,7 +1397,7 @@ readHandlers.getReportLinks = function(player, depName, grade, data, reply)
         ]], { ['@id'] = reportId }, function(rows)
             for _, r in ipairs(rows or {}) do
                 r.plate = r.ref
-                local v = buildVehicleRow(r)
+                local v = BuildVehicleRow(r)
                 v.id = r.id
                 v.linked_by_name = r.linked_by_name
                 out.vehicles[#out.vehicles + 1] = v
@@ -1411,7 +1411,7 @@ readHandlers.getReportLinks = function(player, depName, grade, data, reply)
                w.id AS weapon_id, w.serial_number, w.category, w.model, w.seized
         FROM mdt_report_links l
         JOIN mdt_weapons w ON w.id = CAST(l.ref AS UNSIGNED)
-        WHERE l.report_id = @id AND l.kind = 'weapon' AND ]] .. scopeClause(depName, 'mdt_weapons', 'w.department') .. [[
+        WHERE l.report_id = @id AND l.kind = 'weapon' AND ]] .. ScopeClause(depName, 'mdt_weapons', 'w.department') .. [[
 
         ORDER BY l.created_at DESC
     ]], { ['@id'] = reportId }, function(rows)
@@ -1422,7 +1422,7 @@ end
 
 LSLegacy.Events.Register('mdt:linkReportItem', function(data)
     local src = source
-    local player, depName = can(src, 'create_report')
+    local player, depName = Can(src, 'create_report')
     if not player or type(data) ~= 'table' then return end
     local reportId = tonumber(data.reportId)
     local kind = type(data.kind) == 'string' and data.kind or ''
@@ -1430,58 +1430,58 @@ LSLegacy.Events.Register('mdt:linkReportItem', function(data)
 
     -- Le rapport doit exister dans la portée du demandeur avant tout ajout.
     MySQL.Async.fetchScalar('SELECT id FROM mdt_intervention_reports WHERE id=@id AND '
-        .. scopeClause(depName, 'mdt_intervention_reports') .. ' LIMIT 1', { ['@id'] = reportId }, function(found)
-        if not found then return result(src, false, 'Rapport introuvable.') end
+        .. ScopeClause(depName, 'mdt_intervention_reports') .. ' LIMIT 1', { ['@id'] = reportId }, function(found)
+        if not found then return Result(src, false, 'Rapport introuvable.') end
 
         if kind == 'weapon' then
             local serial = type(data.ref) == 'string' and data.ref:upper():gsub('[^A-Z0-9]', '') or ''
-            if serial == '' then return result(src, false, 'Numéro de série requis.') end
+            if serial == '' then return Result(src, false, 'Numéro de série requis.') end
             MySQL.Async.fetchAll('SELECT id FROM mdt_weapons WHERE serial_number=@s AND '
-                .. scopeClause(depName, 'mdt_weapons') .. ' LIMIT 1', { ['@s'] = serial }, function(rows)
-                if not rows or not rows[1] then return result(src, false, 'Aucune arme avec ce numéro de série.') end
+                .. ScopeClause(depName, 'mdt_weapons') .. ' LIMIT 1', { ['@s'] = serial }, function(rows)
+                if not rows or not rows[1] then return Result(src, false, 'Aucune arme avec ce numéro de série.') end
                 MySQL.Async.execute('INSERT IGNORE INTO mdt_report_links (report_id, kind, ref, linked_by, linked_by_name) '
                     .. "VALUES (@r,'weapon',@ref,@by,@byname)", {
                     ['@r'] = reportId, ['@ref'] = tostring(rows[1].id),
-                    ['@by'] = player.identifier, ['@byname'] = charName(player),
-                }, function() result(src, true, 'Arme associée au rapport.', { view = 'int_report', id = reportId }) end)
+                    ['@by'] = player.identifier, ['@byname'] = CharName(player),
+                }, function() Result(src, true, 'Arme associée au rapport.', { view = 'int_report', id = reportId }) end)
             end)
         else -- vehicle
-            local plate = safePlate(data.ref)
-            if not plate then return result(src, false, 'Plaque invalide.') end
+            local plate = SafePlate(data.ref)
+            if not plate then return Result(src, false, 'Plaque invalide.') end
             MySQL.Async.execute('INSERT IGNORE INTO mdt_report_links (report_id, kind, ref, linked_by, linked_by_name) '
                 .. "VALUES (@r,'vehicle',@ref,@by,@byname)", {
                 ['@r'] = reportId, ['@ref'] = plate,
-                ['@by'] = player.identifier, ['@byname'] = charName(player),
-            }, function() result(src, true, 'Véhicule associé au rapport.', { view = 'int_report', id = reportId }) end)
+                ['@by'] = player.identifier, ['@byname'] = CharName(player),
+            }, function() Result(src, true, 'Véhicule associé au rapport.', { view = 'int_report', id = reportId }) end)
         end
     end)
 end)
 
 LSLegacy.Events.Register('mdt:unlinkReportItem', function(data)
     local src = source
-    local player, depName = can(src, 'create_report')
+    local player, depName = Can(src, 'create_report')
     if not player or type(data) ~= 'table' then return end
     local id = tonumber(data.id)
     local reportId = tonumber(data.reportId)
     if not id or not reportId then return end
     MySQL.Async.execute('DELETE FROM mdt_report_links WHERE id=@id AND report_id=@r',
         { ['@id'] = id, ['@r'] = reportId }, function()
-        result(src, true, 'Élément retiré.', { view = 'int_report', id = reportId })
+        Result(src, true, 'Élément retiré.', { view = 'int_report', id = reportId })
     end)
 end)
 
 -- Supprimer une enquête (et ses rattachements, qui n'ont plus d'objet)
 LSLegacy.Events.Register('mdt:deleteReport', function(data)
     local src = source
-    local player, depName = can(src, 'delete_records')
+    local player, depName = Can(src, 'delete_records')
     if not player or type(data) ~= 'table' then return end
     local id = tonumber(data.id)
     if not id then return end
-    MySQL.Async.execute('DELETE FROM mdt_reports WHERE id=@id AND ' .. scopeClause(depName, 'mdt_reports'), { ['@id'] = id }, function()
+    MySQL.Async.execute('DELETE FROM mdt_reports WHERE id=@id AND ' .. ScopeClause(depName, 'mdt_reports'), { ['@id'] = id }, function()
         MySQL.Async.execute('DELETE FROM mdt_case_links WHERE case_id=@id', { ['@id'] = id })
         MySQL.Async.execute('DELETE FROM mdt_report_evidence WHERE report_id=@id', { ['@id'] = id })
         MySQL.Async.execute('DELETE FROM mdt_weapon_reports WHERE report_id=@id', { ['@id'] = id }, function()
-            result(src, true, 'Enquête supprimée.', { view = 'reports' })
+            Result(src, true, 'Enquête supprimée.', { view = 'reports' })
         end)
     end)
 end)
@@ -1496,7 +1496,7 @@ end)
 local CASE_LINK_KINDS = { report = true, vehicle = true, person = true }
 
 readHandlers.getCaseLinks = function(player, depName, grade, data, reply)
-    if not mdtHasPerm(player, depName, grade, 'view_reports') then return reply(false) end
+    if not MdtHasPerm(player, depName, grade, 'view_reports') then return reply(false) end
     local caseId = tonumber(data.caseId)
     if not caseId then return reply(false) end
     local out = { reports = {}, vehicles = {}, persons = {} }
@@ -1540,7 +1540,7 @@ readHandlers.getCaseLinks = function(player, depName, grade, data, reply)
         ]], { ['@id'] = caseId }, function(rows)
             for _, r in ipairs(rows or {}) do
                 r.plate = r.ref
-                local v = buildVehicleRow(r)
+                local v = BuildVehicleRow(r)
                 v.id = r.id
                 v.note = r.note
                 v.linked_by_name = r.linked_by_name
@@ -1559,7 +1559,7 @@ readHandlers.getCaseLinks = function(player, depName, grade, data, reply)
         .. 'FROM mdt_case_links l '
         .. 'JOIN mdt_intervention_reports r ON r.id = CAST(l.ref AS UNSIGNED) '
         .. "WHERE l.case_id = @id AND l.kind = 'report' AND "
-        .. scopeClause(depName, 'mdt_intervention_reports', 'r.department')
+        .. ScopeClause(depName, 'mdt_intervention_reports', 'r.department')
         .. ' ORDER BY r.created_at DESC', { ['@id'] = caseId }, function(rows)
         out.reports = rows or {}
         loadVehicles()
@@ -1569,49 +1569,49 @@ end
 -- Rattacher un élément à l'enquête
 LSLegacy.Events.Register('mdt:linkCaseItem', function(data)
     local src = source
-    local player, depName = can(src, 'create_report')
+    local player, depName = Can(src, 'create_report')
     if not player or type(data) ~= 'table' then return end
     local caseId = tonumber(data.caseId)
     local kind = type(data.kind) == 'string' and data.kind or ''
     if not caseId or not CASE_LINK_KINDS[kind] then return end
-    local note = safeText(data.note, 120)
+    local note = SafeText(data.note, 120)
 
     local function insert(ref, label)
         MySQL.Async.execute('INSERT IGNORE INTO mdt_case_links (case_id, kind, ref, note, linked_by, linked_by_name) '
             .. 'VALUES (@c,@k,@r,@n,@by,@byname)', {
             ['@c'] = caseId, ['@k'] = kind, ['@r'] = ref, ['@n'] = (note ~= '' and note or nil),
-            ['@by'] = player.identifier, ['@byname'] = charName(player),
+            ['@by'] = player.identifier, ['@byname'] = CharName(player),
         }, function()
-            result(src, true, label .. ' rattaché(e) à l\'enquête.', { view = 'report', id = caseId })
+            Result(src, true, label .. ' rattaché(e) à l\'enquête.', { view = 'report', id = caseId })
         end)
     end
 
     -- L'enquête doit exister dans la portée du demandeur avant tout ajout.
     MySQL.Async.fetchScalar('SELECT id FROM mdt_reports WHERE id=@id AND '
-        .. scopeClause(depName, 'mdt_reports') .. ' LIMIT 1', { ['@id'] = caseId }, function(found)
-        if not found then return result(src, false, 'Enquête introuvable.') end
+        .. ScopeClause(depName, 'mdt_reports') .. ' LIMIT 1', { ['@id'] = caseId }, function(found)
+        if not found then return Result(src, false, 'Enquête introuvable.') end
 
         if kind == 'report' then
             local rid = tonumber(data.ref)
-            if not rid then return result(src, false, 'Rapport invalide.') end
+            if not rid then return Result(src, false, 'Rapport invalide.') end
             MySQL.Async.fetchScalar('SELECT id FROM mdt_intervention_reports WHERE id=@id AND '
-                .. scopeClause(depName, 'mdt_intervention_reports') .. ' LIMIT 1', { ['@id'] = rid }, function(ok)
-                if not ok then return result(src, false, 'Rapport introuvable.') end
+                .. ScopeClause(depName, 'mdt_intervention_reports') .. ' LIMIT 1', { ['@id'] = rid }, function(ok)
+                if not ok then return Result(src, false, 'Rapport introuvable.') end
                 insert(tostring(rid), 'Rapport')
             end)
 
         elseif kind == 'vehicle' then
-            local plate = safePlate(data.ref)
-            if not plate then return result(src, false, 'Plaque invalide.') end
+            local plate = SafePlate(data.ref)
+            if not plate then return Result(src, false, 'Plaque invalide.') end
             -- Un véhicule non immatriculé en base reste rattachable : il
             -- peut s'agir d'un véhicule croisé en patrouille.
             insert(plate, 'Véhicule')
 
         else -- person
             local identifier = type(data.ref) == 'string' and data.ref or ''
-            if identifier == '' then return result(src, false, 'Citoyen invalide.') end
-            resolveCitizenName(identifier, function(name)
-                if not name then return result(src, false, 'Citoyen introuvable.') end
+            if identifier == '' then return Result(src, false, 'Citoyen invalide.') end
+            ResolveCitizenName(identifier, function(name)
+                if not name then return Result(src, false, 'Citoyen introuvable.') end
                 insert(identifier:sub(1, 60), 'Personne')
             end)
         end
@@ -1621,40 +1621,40 @@ end)
 -- Détacher un élément de l'enquête
 LSLegacy.Events.Register('mdt:unlinkCaseItem', function(data)
     local src = source
-    local player, depName = can(src, 'create_report')
+    local player, depName = Can(src, 'create_report')
     if not player or type(data) ~= 'table' then return end
     local id = tonumber(data.id)
     local caseId = tonumber(data.caseId)
     if not id or not caseId then return end
     MySQL.Async.execute('DELETE FROM mdt_case_links WHERE id=@id AND case_id=@c',
         { ['@id'] = id, ['@c'] = caseId }, function()
-        result(src, true, 'Élément détaché.', { view = 'report', id = caseId })
+        Result(src, true, 'Élément détaché.', { view = 'report', id = caseId })
     end)
 end)
 
 -- Créer un avis de recherche
 LSLegacy.Events.Register('mdt:createWarrant', function(data)
     local src = source
-    local player, depName = can(src, 'manage_warrants')
+    local player, depName = Can(src, 'manage_warrants')
     if not player or type(data) ~= 'table' then return end
-    local reason = safeText(data.reason, L.MaxTextLength)
-    if reason == '' then return result(src, false, 'Motif requis.') end
+    local reason = SafeText(data.reason, L.MaxTextLength)
+    if reason == '' then return Result(src, false, 'Motif requis.') end
     local danger = math.floor(tonumber(data.danger_level) or 1)
     if danger < 1 or danger > 3 then danger = 1 end
     local identifier = type(data.identifier) == 'string' and data.identifier ~= '' and data.identifier or nil
     local function insert(name, charId)
-        local finalName = (name and name ~= '') and name or safeText(data.citizen_name, 100)
+        local finalName = (name and name ~= '') and name or SafeText(data.citizen_name, 100)
         if finalName == '' then finalName = 'Individu non identifié' end
         MySQL.Async.insert("INSERT INTO mdt_warrants (department, identifier, character_id, citizen_name, reason, danger_level, status, author_identifier, author_character_id, author_name) VALUES (@dep,@id,@charId,@name,@reason,@danger,'active',@oid,@oCharId,@oname)", {
             ['@dep'] = depName, ['@id'] = identifier, ['@charId'] = charId, ['@name'] = finalName,
-            ['@reason'] = reason, ['@danger'] = danger, ['@oid'] = player.identifier, ['@oCharId'] = player["boutique-id"], ['@oname'] = charName(player),
+            ['@reason'] = reason, ['@danger'] = danger, ['@oid'] = player.identifier, ['@oCharId'] = player["boutique-id"], ['@oname'] = CharName(player),
         }, function()
-            result(src, true, 'Avis de recherche créé.', { view = 'warrants' })
-            mdtLog('Avis de recherche', ('**%s** a émis un avis (niveau %d) : %s'):format(charName(player), danger, finalName))
+            Result(src, true, 'Avis de recherche créé.', { view = 'warrants' })
+            MdtLog('Avis de recherche', ('**%s** a émis un avis (niveau %d) : %s'):format(CharName(player), danger, finalName))
         end)
     end
     if identifier then
-        resolveCitizenName(identifier, function(n)
+        ResolveCitizenName(identifier, function(n)
             LSLegacy.ResolveCharacterId(identifier, function(charId) insert(n, charId) end)
         end)
     else
@@ -1665,27 +1665,27 @@ end)
 -- Modifier un avis de recherche
 LSLegacy.Events.Register('mdt:updateWarrant', function(data)
     local src = source
-    local player, depName = can(src, 'manage_warrants')
+    local player, depName = Can(src, 'manage_warrants')
     if not player or type(data) ~= 'table' then return end
     local id = tonumber(data.id)
     if not id then return end
-    local reason = safeText(data.reason, L.MaxTextLength)
+    local reason = SafeText(data.reason, L.MaxTextLength)
     local danger = math.floor(tonumber(data.danger_level) or 1)
     if danger < 1 or danger > 3 then danger = 1 end
     local status = (data.status == 'closed') and 'closed' or 'active'
     local identifier = type(data.identifier) == 'string' and data.identifier ~= '' and data.identifier or nil
     local function upd(name, charId)
-        local finalName = (name and name ~= '') and name or safeText(data.citizen_name, 100)
+        local finalName = (name and name ~= '') and name or SafeText(data.citizen_name, 100)
         if finalName == '' then finalName = 'Individu non identifié' end
-        MySQL.Async.execute('UPDATE mdt_warrants SET reason=@reason, danger_level=@danger, status=@status, identifier=@wid_ident, character_id=@charId, citizen_name=@name WHERE id=@id AND ' .. scopeClause(depName, 'mdt_warrants'), {
+        MySQL.Async.execute('UPDATE mdt_warrants SET reason=@reason, danger_level=@danger, status=@status, identifier=@wid_ident, character_id=@charId, citizen_name=@name WHERE id=@id AND ' .. ScopeClause(depName, 'mdt_warrants'), {
             ['@reason'] = reason, ['@danger'] = danger, ['@status'] = status,
             ['@wid_ident'] = identifier, ['@charId'] = charId, ['@name'] = finalName, ['@id'] = id,
         }, function()
-            result(src, true, 'Avis de recherche mis à jour.', { view = 'warrants' })
+            Result(src, true, 'Avis de recherche mis à jour.', { view = 'warrants' })
         end)
     end
     if identifier then
-        resolveCitizenName(identifier, function(n)
+        ResolveCitizenName(identifier, function(n)
             LSLegacy.ResolveCharacterId(identifier, function(charId) upd(n, charId) end)
         end)
     else
@@ -1696,33 +1696,33 @@ end)
 -- Supprimer un avis de recherche
 LSLegacy.Events.Register('mdt:deleteWarrant', function(data)
     local src = source
-    local player, depName = can(src, 'manage_warrants')
+    local player, depName = Can(src, 'manage_warrants')
     if not player or type(data) ~= 'table' then return end
     local id = tonumber(data.id)
     if not id then return end
-    MySQL.Async.execute('DELETE FROM mdt_warrants WHERE id=@id AND ' .. scopeClause(depName, 'mdt_warrants'), { ['@id'] = id }, function()
-        result(src, true, 'Avis de recherche supprimé.', { view = 'warrants' })
+    MySQL.Async.execute('DELETE FROM mdt_warrants WHERE id=@id AND ' .. ScopeClause(depName, 'mdt_warrants'), { ['@id'] = id }, function()
+        Result(src, true, 'Avis de recherche supprimé.', { view = 'warrants' })
     end)
 end)
 
 -- Marquer / lever "recherché par les autorités" sur un véhicule (par plaque)
 LSLegacy.Events.Register('mdt:setVehicleWanted', function(data)
     local src = source
-    local player, depName = can(src, 'manage_warrants')
+    local player, depName = Can(src, 'manage_warrants')
     if not player or type(data) ~= 'table' then return end
-    local plate = safePlate(data.plate)
-    if not plate then return result(src, false, 'Plaque invalide.') end
+    local plate = SafePlate(data.plate)
+    if not plate then return Result(src, false, 'Plaque invalide.') end
     local wanted = data.wanted and 1 or 0
-    local reason = safeText(data.reason, 255)
+    local reason = SafeText(data.reason, 255)
     MySQL.Async.execute([[
         INSERT INTO mdt_vehicle_flags (plate, department, wanted, reason, officer_identifier, officer_name)
         VALUES (@plate, @dep, @wanted, @reason, @oid, @oname)
         ON DUPLICATE KEY UPDATE wanted=@wanted, reason=@reason, officer_identifier=@oid, officer_name=@oname
     ]], {
         ['@plate'] = plate, ['@dep'] = depName, ['@wanted'] = wanted, ['@reason'] = reason,
-        ['@oid'] = player.identifier, ['@oname'] = charName(player),
+        ['@oid'] = player.identifier, ['@oname'] = CharName(player),
     }, function()
-        result(src, true, wanted == 1 and 'Véhicule signalé recherché.' or 'Recherche levée.', { view = 'vehicle', id = plate })
+        Result(src, true, wanted == 1 and 'Véhicule signalé recherché.' or 'Recherche levée.', { view = 'vehicle', id = plate })
     end)
 end)
 
@@ -1730,21 +1730,21 @@ end)
 local VEHICLE_LOCATIONS = { circulation = true, concessionnaire = true, saisie = true, detruit = true }
 LSLegacy.Events.Register('mdt:setVehicleLocation', function(data)
     local src = source
-    local player, depName = can(src, 'manage_warrants')
+    local player, depName = Can(src, 'manage_warrants')
     if not player or type(data) ~= 'table' then return end
-    local plate = safePlate(data.plate)
-    if not plate then return result(src, false, 'Plaque invalide.') end
+    local plate = SafePlate(data.plate)
+    if not plate then return Result(src, false, 'Plaque invalide.') end
     local loc = type(data.location) == 'string' and data.location or ''
-    if not VEHICLE_LOCATIONS[loc] then return result(src, false, 'Localisation invalide.') end
+    if not VEHICLE_LOCATIONS[loc] then return Result(src, false, 'Localisation invalide.') end
     MySQL.Async.execute([[
         INSERT INTO mdt_vehicle_flags (plate, department, location, officer_identifier, officer_name)
         VALUES (@plate, @dep, @loc, @oid, @oname)
         ON DUPLICATE KEY UPDATE location=@loc, officer_identifier=@oid, officer_name=@oname
     ]], {
         ['@plate'] = plate, ['@dep'] = depName, ['@loc'] = loc,
-        ['@oid'] = player.identifier, ['@oname'] = charName(player),
+        ['@oid'] = player.identifier, ['@oname'] = CharName(player),
     }, function()
-        result(src, true, 'Localisation mise à jour.', { view = 'vehicle', id = plate })
+        Result(src, true, 'Localisation mise à jour.', { view = 'vehicle', id = plate })
     end)
 end)
 
@@ -1752,22 +1752,22 @@ end)
 -- ici enregistrement + procès-verbal, persistants)
 LSLegacy.Events.Register('mdt:createCustody', function(data)
     local src = source
-    local player, depName = can(src, 'manage_custody')
+    local player, depName = Can(src, 'manage_custody')
     if not player or type(data) ~= 'table' then return end
     local identifier = type(data.identifier) == 'string' and data.identifier or nil
-    if not identifier then return result(src, false, 'Citoyen invalide.') end
-    local reason = safeText(data.reason, L.MaxTextLength)
+    if not identifier then return Result(src, false, 'Citoyen invalide.') end
+    local reason = SafeText(data.reason, L.MaxTextLength)
     local duration = math.max(0, math.min(1440, math.floor(tonumber(data.duration) or 0)))
-    local pv = safeText(data.pv, L.MaxTextLength)
-    resolveCitizenName(identifier, function(name)
-        if not name then return result(src, false, 'Citoyen introuvable.') end
+    local pv = SafeText(data.pv, L.MaxTextLength)
+    ResolveCitizenName(identifier, function(name)
+        if not name then return Result(src, false, 'Citoyen introuvable.') end
         LSLegacy.ResolveCharacterId(identifier, function(charId)
             MySQL.Async.insert('INSERT INTO mdt_custody (department, identifier, character_id, citizen_name, reason, duration, pv, officer_identifier, officer_character_id, officer_name, ends_at) VALUES (@dep,@id,@charId,@name,@reason,@dur,@pv,@oid,@oCharId,@oname, DATE_ADD(CURRENT_TIMESTAMP, INTERVAL @dur MINUTE))', {
                 ['@dep'] = depName, ['@id'] = identifier, ['@charId'] = charId, ['@name'] = name, ['@reason'] = reason,
-                ['@dur'] = duration, ['@pv'] = pv, ['@oid'] = player.identifier, ['@oCharId'] = player["boutique-id"], ['@oname'] = charName(player),
+                ['@dur'] = duration, ['@pv'] = pv, ['@oid'] = player.identifier, ['@oCharId'] = player["boutique-id"], ['@oname'] = CharName(player),
             }, function()
-                result(src, true, 'Garde à vue enregistrée.', { view = 'citizen', id = identifier })
-                mdtLog('Garde à vue', ('**%s** a placé **%s** en GAV (%d min)'):format(charName(player), name, duration))
+                Result(src, true, 'Garde à vue enregistrée.', { view = 'citizen', id = identifier })
+                MdtLog('Garde à vue', ('**%s** a placé **%s** en GAV (%d min)'):format(CharName(player), name, duration))
             end)
         end)
     end)
@@ -1776,21 +1776,21 @@ end)
 -- Ajouter une preuve (collecte physique à venir ; table prête pour persistance)
 LSLegacy.Events.Register('mdt:addEvidence', function(data)
     local src = source
-    local player, depName = can(src, 'manage_evidence')
+    local player, depName = Can(src, 'manage_evidence')
     if not player or type(data) ~= 'table' then return end
     local etype = type(data.type) == 'string' and data.type or ''
     local valid = { empreinte = true, adn = true, sang = true, scene = true }
-    if not valid[etype] then return result(src, false, 'Type de preuve invalide.') end
-    local label = safeText(data.label, 255)
+    if not valid[etype] then return Result(src, false, 'Type de preuve invalide.') end
+    local label = SafeText(data.label, 255)
     local caseId = tonumber(data.case_id)
     local identifier = type(data.identifier) == 'string' and data.identifier ~= '' and data.identifier or nil
     local function insert(charId)
         MySQL.Async.insert("INSERT INTO mdt_evidence (department, case_id, type, label, data, status, identifier, character_id, collected_by, collected_by_name) VALUES (@dep,@case,@type,@label,@data,'collected',@id,@charId,@cid,@cname)", {
             ['@dep'] = depName, ['@case'] = caseId, ['@type'] = etype, ['@label'] = label,
             ['@data'] = json.encode(type(data.data) == 'table' and data.data or {}),
-            ['@id'] = identifier, ['@charId'] = charId, ['@cid'] = player.identifier, ['@cname'] = charName(player),
+            ['@id'] = identifier, ['@charId'] = charId, ['@cid'] = player.identifier, ['@cname'] = CharName(player),
         }, function()
-            result(src, true, 'Preuve enregistrée.', { view = 'evidence', id = caseId })
+            Result(src, true, 'Preuve enregistrée.', { view = 'evidence', id = caseId })
         end)
     end
     if identifier then LSLegacy.ResolveCharacterId(identifier, insert) else insert(nil) end
@@ -1801,7 +1801,7 @@ end)
 -- Comparaison empreintes
 -- Preuves enrichies (union police_fingerprints + police_dna + police_blood_traces)
 readHandlers.getEvidence = function(player, depName, grade, data, reply)
-    if not mdtHasPerm(player, depName, grade, 'view_evidence') then return reply(false) end
+    if not MdtHasPerm(player, depName, grade, 'view_evidence') then return reply(false) end
     MySQL.Async.fetchAll([[
         SELECT 'fingerprint' AS type, ref, identifier, citizen_name,
                COALESCE(description,'') AS description,
@@ -1828,12 +1828,12 @@ end
 --  ARMES — registre, liaisons personnes/dossiers, saisies
 
 -- Génère un numéro de série unique (vérifié contre mdt_weapons).
-local function generateUniqueSerial(cb, attempts)
+local function GenerateUniqueSerial(cb, attempts)
     attempts = attempts or 0
     local serial = LSLegacy.GenerateNumeroDeSerie()
     MySQL.Async.fetchScalar('SELECT id FROM mdt_weapons WHERE serial_number=@s LIMIT 1', { ['@s'] = serial }, function(existing)
         if existing and attempts < 10 then
-            generateUniqueSerial(cb, attempts + 1)
+            GenerateUniqueSerial(cb, attempts + 1)
         else
             cb(serial)
         end
@@ -1842,24 +1842,24 @@ end
 
 -- Recherche d'armes (numéro de série ou modèle ; option seized)
 readHandlers.searchWeapons = function(player, depName, grade, data, reply)
-    if not mdtHasPerm(player, depName, grade, 'view_weapons') then return reply(false) end
+    if not MdtHasPerm(player, depName, grade, 'view_weapons') then return reply(false) end
     local query = type(data.query) == 'string' and data.query or ''
     local like = '%' .. query:upper():gsub('[%%_\\]', '') .. '%'
     local limit = math.floor(L.MaxSearchResults)
     local seizedClause = data.seized == true and ' AND seized=1' or ''
     MySQL.Async.fetchAll(
         "SELECT id, serial_number, category, model, seized, status FROM mdt_weapons " ..
-        "WHERE " .. scopeClause(depName, 'mdt_weapons') .. seizedClause .. " AND (UPPER(serial_number) LIKE @q OR UPPER(model) LIKE @q) " ..
+        "WHERE " .. ScopeClause(depName, 'mdt_weapons') .. seizedClause .. " AND (UPPER(serial_number) LIKE @q OR UPPER(model) LIKE @q) " ..
         "ORDER BY created_at DESC LIMIT " .. limit,
         { ['@q'] = like }, function(rows) reply(rows or {}) end)
 end
 
 -- Fiche complète d'une arme + personnes + dossiers liés
 readHandlers.getWeapon = function(player, depName, grade, data, reply)
-    if not mdtHasPerm(player, depName, grade, 'view_weapons') then return reply(false) end
+    if not MdtHasPerm(player, depName, grade, 'view_weapons') then return reply(false) end
     local id = tonumber(data.id)
     if not id then return reply(false) end
-    MySQL.Async.fetchAll('SELECT * FROM mdt_weapons WHERE id=@id AND ' .. scopeClause(depName, 'mdt_weapons') .. ' LIMIT 1', { ['@id'] = id }, function(wrows)
+    MySQL.Async.fetchAll('SELECT * FROM mdt_weapons WHERE id=@id AND ' .. ScopeClause(depName, 'mdt_weapons') .. ' LIMIT 1', { ['@id'] = id }, function(wrows)
         if not wrows or not wrows[1] then return reply(false) end
         local weapon = wrows[1]
         MySQL.Async.fetchAll('SELECT * FROM mdt_weapon_persons WHERE weapon_id=@id ORDER BY created_at DESC', { ['@id'] = id }, function(persons)
@@ -1877,14 +1877,14 @@ end
 
 -- Armes liées à une personne (fiche citoyen)
 readHandlers.getPersonWeapons = function(player, depName, grade, data, reply)
-    if not mdtHasPerm(player, depName, grade, 'view_weapons') then return reply({}) end
+    if not MdtHasPerm(player, depName, grade, 'view_weapons') then return reply({}) end
     local identifier = type(data.identifier) == 'string' and data.identifier or ''
     if identifier == '' then return reply({}) end
     MySQL.Async.fetchAll([[
         SELECT w.id, w.serial_number, w.category, w.model, w.seized, wp.relation
         FROM mdt_weapon_persons wp
         JOIN mdt_weapons w ON w.id = wp.weapon_id
-        WHERE wp.identifier=@id AND ]] .. scopeClause(depName, 'mdt_weapons', 'w.department') .. [[
+        WHERE wp.identifier=@id AND ]] .. ScopeClause(depName, 'mdt_weapons', 'w.department') .. [[
 
         ORDER BY wp.created_at DESC
     ]], { ['@id'] = identifier }, function(rows) reply(rows or {}) end)
@@ -1892,14 +1892,14 @@ end
 
 -- Armes liées à un dossier (fiche dossier)
 readHandlers.getReportWeapons = function(player, depName, grade, data, reply)
-    if not mdtHasPerm(player, depName, grade, 'view_reports') then return reply({}) end
+    if not MdtHasPerm(player, depName, grade, 'view_reports') then return reply({}) end
     local reportId = tonumber(data.reportId)
     if not reportId then return reply({}) end
     MySQL.Async.fetchAll([[
         SELECT w.id, w.serial_number, w.category, w.model, w.seized
         FROM mdt_weapon_reports wr
         JOIN mdt_weapons w ON w.id = wr.weapon_id
-        WHERE wr.report_id=@rid AND ]] .. scopeClause(depName, 'mdt_weapons', 'w.department') .. [[
+        WHERE wr.report_id=@rid AND ]] .. ScopeClause(depName, 'mdt_weapons', 'w.department') .. [[
 
         ORDER BY wr.created_at DESC
     ]], { ['@rid'] = reportId }, function(rows) reply(rows or {}) end)
@@ -1908,20 +1908,20 @@ end
 -- Enregistrer une arme (numéro de série auto pour les armes à feu)
 LSLegacy.Events.Register('mdt:registerWeapon', function(data)
     local src = source
-    local player, depName = can(src, 'manage_weapons')
+    local player, depName = Can(src, 'manage_weapons')
     if not player or type(data) ~= 'table' then return end
     local category = (data.category == 'melee') and 'melee' or 'firearm'
-    local model = safeText(data.model, 120)
-    if model == '' then return result(src, false, 'Désignation requise.') end
-    local notes = safeText(data.notes, L.MaxTextLength)
+    local model = SafeText(data.model, 120)
+    if model == '' then return Result(src, false, 'Désignation requise.') end
+    local notes = SafeText(data.notes, L.MaxTextLength)
 
     local function insert(serial)
         MySQL.Async.insert('INSERT INTO mdt_weapons (department, serial_number, category, model, notes, registered_by, registered_by_name) VALUES (@dep,@serial,@cat,@model,@notes,@oid,@oname)', {
             ['@dep'] = depName, ['@serial'] = serial, ['@cat'] = category, ['@model'] = model,
-            ['@notes'] = notes, ['@oid'] = player.identifier, ['@oname'] = charName(player),
+            ['@notes'] = notes, ['@oid'] = player.identifier, ['@oname'] = CharName(player),
         }, function()
-            result(src, true, serial and ('Arme enregistrée (n° ' .. serial .. ').') or 'Arme enregistrée.', { view = 'weapons' })
-            mdtLog('Arme', ('**%s** a enregistré une arme : %s%s'):format(charName(player), model, serial and (' — ' .. serial) or ''))
+            Result(src, true, serial and ('Arme enregistrée (n° ' .. serial .. ').') or 'Arme enregistrée.', { view = 'weapons' })
+            MdtLog('Arme', ('**%s** a enregistré une arme : %s%s'):format(CharName(player), model, serial and (' — ' .. serial) or ''))
         end)
     end
 
@@ -1929,11 +1929,11 @@ LSLegacy.Events.Register('mdt:registerWeapon', function(data)
         local provided = type(data.serial) == 'string' and data.serial:upper():gsub('[^A-Z0-9]', '') or ''
         if provided ~= '' then
             MySQL.Async.fetchScalar('SELECT id FROM mdt_weapons WHERE serial_number=@s LIMIT 1', { ['@s'] = provided }, function(existing)
-                if existing then return result(src, false, 'Ce numéro de série existe déjà.') end
+                if existing then return Result(src, false, 'Ce numéro de série existe déjà.') end
                 insert(provided)
             end)
         else
-            generateUniqueSerial(function(serial) insert(serial) end)
+            GenerateUniqueSerial(function(serial) insert(serial) end)
         end
     else
         insert(nil)
@@ -1943,65 +1943,65 @@ end)
 -- Modifier une arme (désignation / notes)
 LSLegacy.Events.Register('mdt:updateWeapon', function(data)
     local src = source
-    local player, depName = can(src, 'manage_weapons')
+    local player, depName = Can(src, 'manage_weapons')
     if not player or type(data) ~= 'table' then return end
     local id = tonumber(data.id)
     if not id then return end
-    local model = safeText(data.model, 120)
-    if model == '' then return result(src, false, 'Désignation requise.') end
-    MySQL.Async.execute('UPDATE mdt_weapons SET model=@model, notes=@notes WHERE id=@id AND ' .. scopeClause(depName, 'mdt_weapons'), {
-        ['@model'] = model, ['@notes'] = safeText(data.notes, L.MaxTextLength), ['@id'] = id,
-    }, function() result(src, true, 'Arme mise à jour.', { view = 'weapon', id = id }) end)
+    local model = SafeText(data.model, 120)
+    if model == '' then return Result(src, false, 'Désignation requise.') end
+    MySQL.Async.execute('UPDATE mdt_weapons SET model=@model, notes=@notes WHERE id=@id AND ' .. ScopeClause(depName, 'mdt_weapons'), {
+        ['@model'] = model, ['@notes'] = SafeText(data.notes, L.MaxTextLength), ['@id'] = id,
+    }, function() Result(src, true, 'Arme mise à jour.', { view = 'weapon', id = id }) end)
 end)
 
 -- Supprimer une arme + ses liaisons
 LSLegacy.Events.Register('mdt:deleteWeapon', function(data)
     local src = source
-    local player, depName = can(src, 'manage_weapons')
+    local player, depName = Can(src, 'manage_weapons')
     if not player or type(data) ~= 'table' then return end
     local id = tonumber(data.id)
     if not id then return end
-    MySQL.Async.execute('DELETE FROM mdt_weapons WHERE id=@id AND ' .. scopeClause(depName, 'mdt_weapons'), { ['@id'] = id }, function()
+    MySQL.Async.execute('DELETE FROM mdt_weapons WHERE id=@id AND ' .. ScopeClause(depName, 'mdt_weapons'), { ['@id'] = id }, function()
         MySQL.Async.execute('DELETE FROM mdt_weapon_persons WHERE weapon_id=@id', { ['@id'] = id })
         MySQL.Async.execute('DELETE FROM mdt_weapon_reports WHERE weapon_id=@id', { ['@id'] = id })
-        result(src, true, 'Arme supprimée.', { view = 'weapons' })
+        Result(src, true, 'Arme supprimée.', { view = 'weapons' })
     end)
 end)
 
 -- Saisir / relâcher une arme (pièce à conviction)
 LSLegacy.Events.Register('mdt:seizeWeapon', function(data)
     local src = source
-    local player, depName = can(src, 'manage_weapons')
+    local player, depName = Can(src, 'manage_weapons')
     if not player or type(data) ~= 'table' then return end
     local id = tonumber(data.id)
     if not id then return end
     if data.seized then
-        MySQL.Async.execute("UPDATE mdt_weapons SET seized=1, status='seized', seized_case_id=@case, seized_by=@oid, seized_by_name=@oname, seized_at=CURRENT_TIMESTAMP WHERE id=@id AND " .. scopeClause(depName, 'mdt_weapons'), {
-            ['@case'] = tonumber(data.caseId), ['@oid'] = player.identifier, ['@oname'] = charName(player), ['@id'] = id,
-        }, function() result(src, true, 'Arme placée sous scellés.', { view = 'weapon', id = id }) end)
+        MySQL.Async.execute("UPDATE mdt_weapons SET seized=1, status='seized', seized_case_id=@case, seized_by=@oid, seized_by_name=@oname, seized_at=CURRENT_TIMESTAMP WHERE id=@id AND " .. ScopeClause(depName, 'mdt_weapons'), {
+            ['@case'] = tonumber(data.caseId), ['@oid'] = player.identifier, ['@oname'] = CharName(player), ['@id'] = id,
+        }, function() Result(src, true, 'Arme placée sous scellés.', { view = 'weapon', id = id }) end)
     else
-        MySQL.Async.execute("UPDATE mdt_weapons SET seized=0, status='registered', seized_case_id=NULL, seized_by=NULL, seized_by_name=NULL, seized_at=NULL WHERE id=@id AND " .. scopeClause(depName, 'mdt_weapons'), {
+        MySQL.Async.execute("UPDATE mdt_weapons SET seized=0, status='registered', seized_case_id=NULL, seized_by=NULL, seized_by_name=NULL, seized_at=NULL WHERE id=@id AND " .. ScopeClause(depName, 'mdt_weapons'), {
             ['@id'] = id,
-        }, function() result(src, true, 'Arme retirée des scellés.', { view = 'weapon', id = id }) end)
+        }, function() Result(src, true, 'Arme retirée des scellés.', { view = 'weapon', id = id }) end)
     end
 end)
 
 -- Lier une personne à une arme
 LSLegacy.Events.Register('mdt:linkWeaponPerson', function(data)
     local src = source
-    local player, depName = can(src, 'manage_weapons')
+    local player, depName = Can(src, 'manage_weapons')
     if not player or type(data) ~= 'table' then return end
     local weaponId = tonumber(data.weaponId)
     local identifier = type(data.identifier) == 'string' and data.identifier or nil
-    if not weaponId or not identifier then return result(src, false, 'Données invalides.') end
-    local relation = safeText(data.relation, 40)
+    if not weaponId or not identifier then return Result(src, false, 'Données invalides.') end
+    local relation = SafeText(data.relation, 40)
     if relation == '' then relation = 'lie' end
-    resolveCitizenName(identifier, function(name)
-        if not name then return result(src, false, 'Citoyen introuvable.') end
+    ResolveCitizenName(identifier, function(name)
+        if not name then return Result(src, false, 'Citoyen introuvable.') end
         LSLegacy.ResolveCharacterId(identifier, function(charId)
             MySQL.Async.execute('INSERT INTO mdt_weapon_persons (weapon_id, identifier, character_id, citizen_name, relation, linked_by) VALUES (@w,@id,@charId,@name,@rel,@by) ON DUPLICATE KEY UPDATE relation=@rel, citizen_name=@name', {
                 ['@w'] = weaponId, ['@id'] = identifier, ['@charId'] = charId, ['@name'] = name, ['@rel'] = relation, ['@by'] = player.identifier,
-            }, function() result(src, true, "Personne liée à l'arme.", { view = 'weapon', id = weaponId }) end)
+            }, function() Result(src, true, "Personne liée à l'arme.", { view = 'weapon', id = weaponId }) end)
         end)
     end)
 end)
@@ -2009,12 +2009,12 @@ end)
 -- Délier une personne d'une arme
 LSLegacy.Events.Register('mdt:unlinkWeaponPerson', function(data)
     local src = source
-    local player, depName = can(src, 'manage_weapons')
+    local player, depName = Can(src, 'manage_weapons')
     if not player or type(data) ~= 'table' then return end
     local linkId = tonumber(data.linkId)
     if not linkId then return end
     MySQL.Async.execute('DELETE FROM mdt_weapon_persons WHERE id=@id', { ['@id'] = linkId }, function()
-        result(src, true, 'Liaison retirée.', { view = 'weapon', id = tonumber(data.weaponId) })
+        Result(src, true, 'Liaison retirée.', { view = 'weapon', id = tonumber(data.weaponId) })
     end)
 end)
 
@@ -2022,29 +2022,29 @@ end)
 LSLegacy.Events.Register('mdt:linkWeaponReport', function(data)
     local src = source
     -- gestion des armes d'un dossier = compétence PTS (manage_evidence / CS037)
-    local player, depName = can(src, 'manage_evidence')
+    local player, depName = Can(src, 'manage_evidence')
     if not player or type(data) ~= 'table' then return end
     local reportId = tonumber(data.reportId)
     local serial = type(data.serial) == 'string' and data.serial:upper():gsub('[^A-Z0-9]', '') or ''
-    if not reportId or serial == '' then return result(src, false, 'Numéro de série requis.') end
-    MySQL.Async.fetchAll('SELECT id FROM mdt_weapons WHERE serial_number=@s AND ' .. scopeClause(depName, 'mdt_weapons') .. ' LIMIT 1', { ['@s'] = serial }, function(rows)
-        if not rows or not rows[1] then return result(src, false, 'Aucune arme avec ce numéro de série.') end
+    if not reportId or serial == '' then return Result(src, false, 'Numéro de série requis.') end
+    MySQL.Async.fetchAll('SELECT id FROM mdt_weapons WHERE serial_number=@s AND ' .. ScopeClause(depName, 'mdt_weapons') .. ' LIMIT 1', { ['@s'] = serial }, function(rows)
+        if not rows or not rows[1] then return Result(src, false, 'Aucune arme avec ce numéro de série.') end
         MySQL.Async.execute('INSERT IGNORE INTO mdt_weapon_reports (weapon_id, report_id, linked_by) VALUES (@w,@r,@by)', {
             ['@w'] = rows[1].id, ['@r'] = reportId, ['@by'] = player.identifier,
-        }, function() result(src, true, 'Arme liée au dossier.', { view = 'report', id = reportId }) end)
+        }, function() Result(src, true, 'Arme liée au dossier.', { view = 'report', id = reportId }) end)
     end)
 end)
 
 -- Délier une arme d'un dossier
 LSLegacy.Events.Register('mdt:unlinkWeaponReport', function(data)
     local src = source
-    local player, depName = can(src, 'manage_evidence')
+    local player, depName = Can(src, 'manage_evidence')
     if not player or type(data) ~= 'table' then return end
     local weaponId = tonumber(data.weaponId)
     local reportId = tonumber(data.reportId)
     if not weaponId or not reportId then return end
     MySQL.Async.execute('DELETE FROM mdt_weapon_reports WHERE weapon_id=@w AND report_id=@r', { ['@w'] = weaponId, ['@r'] = reportId }, function()
-        result(src, true, "Arme retirée du dossier.", { view = 'report', id = reportId })
+        Result(src, true, "Arme retirée du dossier.", { view = 'report', id = reportId })
     end)
 end)
 
@@ -2060,7 +2060,7 @@ local DUTY_CHECKERS = {
 }
 
 -- Le joueur est-il en service, quel que soit son métier ?
-local function isPlayerOnDuty(src, job)
+local function IsPlayerOnDuty(src, job)
     local checkerName = DUTY_CHECKERS[job]
     local checker = checkerName and _G[checkerName]
     return (type(checker) == 'function' and checker(src) == true) or false
@@ -2094,7 +2094,7 @@ end
 function IsLawEnforcementOnDuty(src)
     if not IsLawEnforcement(src) then return false end
     local p = LSLegacy.Players.Get(src)
-    return isPlayerOnDuty(src, p and p.job)
+    return IsPlayerOnDuty(src, p and p.job)
 end
 
 -- Liste des agents connectés du département du demandeur, triés par grade décroissant.
@@ -2108,7 +2108,7 @@ readHandlers.getRoster = function(player, depName, grade, data, reply)
     for src, p in pairs(LSLegacy.Players.GetAll()) do
         if p.job and jobsSet[p.job] then
             local g = tonumber(p.job_grade) or 0
-            local onDuty = isPlayerOnDuty(src, p.job)
+            local onDuty = IsPlayerOnDuty(src, p.job)
             local ci = p.characterInfos or {}
             out[#out + 1] = {
                 identifier = p.identifier,
@@ -2145,7 +2145,7 @@ readHandlers.getDashboard = function(player, depName, grade, data, reply)
     for _, j in ipairs(dep.jobs or {}) do jobsSet[j] = true end
     local onDuty, meOnDuty = {}, false
     for src, p in pairs(LSLegacy.Players.GetAll()) do
-        if p.job and jobsSet[p.job] and isPlayerOnDuty(src, p.job) then
+        if p.job and jobsSet[p.job] and IsPlayerOnDuty(src, p.job) then
             local g = tonumber(p.job_grade) or 0
             local ci = p.characterInfos or {}
             onDuty[#onDuty + 1] = {
@@ -2163,9 +2163,9 @@ readHandlers.getDashboard = function(player, depName, grade, data, reply)
         return (a.name or '') < (b.name or '')
     end)
 
-    local canWarrants = mdtHasPerm(player, depName, grade, 'view_warrants')
-    local canReports  = mdtHasPerm(player, depName, grade, 'view_reports')
-    local canCustody  = mdtHasPerm(player, depName, grade, 'manage_custody')
+    local canWarrants = MdtHasPerm(player, depName, grade, 'view_warrants')
+    local canReports  = MdtHasPerm(player, depName, grade, 'view_reports')
+    local canCustody  = MdtHasPerm(player, depName, grade, 'manage_custody')
 
     local out = {
         onDuty   = onDuty,
@@ -2184,7 +2184,7 @@ readHandlers.getDashboard = function(player, depName, grade, data, reply)
         if not canCustody then return finish() end
         -- Gardes à vue non expirées = celles réellement en cours.
         MySQL.Async.fetchAll('SELECT id, citizen_name, reason, duration, officer_name, department, started_at, ends_at '
-            .. 'FROM mdt_custody WHERE ' .. scopeClause(depName, 'mdt_custody')
+            .. 'FROM mdt_custody WHERE ' .. ScopeClause(depName, 'mdt_custody')
             .. ' AND ends_at IS NOT NULL AND ends_at > NOW() ORDER BY ends_at ASC LIMIT 5', {}, function(rows)
             out.custody = rows or {}
             out.stats.custodyActive = #out.custody
@@ -2195,10 +2195,10 @@ readHandlers.getDashboard = function(player, depName, grade, data, reply)
     local function loadReports()
         if not canReports then return loadCustody() end
         MySQL.Async.fetchAll('SELECT id, type, title, author_name, department, updated_at '
-            .. 'FROM mdt_reports WHERE ' .. scopeClause(depName, 'mdt_reports')
+            .. 'FROM mdt_reports WHERE ' .. ScopeClause(depName, 'mdt_reports')
             .. ' ORDER BY updated_at DESC LIMIT 5', {}, function(rows)
             out.reports = rows or {}
-            MySQL.Async.fetchScalar('SELECT COUNT(*) FROM mdt_reports WHERE ' .. scopeClause(depName, 'mdt_reports')
+            MySQL.Async.fetchScalar('SELECT COUNT(*) FROM mdt_reports WHERE ' .. ScopeClause(depName, 'mdt_reports')
                 .. ' AND DATE(created_at) = CURDATE()', {}, function(n)
                 out.stats.reportsToday = tonumber(n) or 0
                 loadCustody()
@@ -2209,10 +2209,10 @@ readHandlers.getDashboard = function(player, depName, grade, data, reply)
     local function loadWarrants()
         if not canWarrants then return loadReports() end
         MySQL.Async.fetchAll("SELECT id, identifier, citizen_name, reason, danger_level, author_name, department, created_at "
-            .. 'FROM mdt_warrants WHERE ' .. scopeClause(depName, 'mdt_warrants')
+            .. 'FROM mdt_warrants WHERE ' .. ScopeClause(depName, 'mdt_warrants')
             .. " AND status='active' ORDER BY danger_level DESC, created_at DESC LIMIT 5", {}, function(rows)
             out.warrants = rows or {}
-            MySQL.Async.fetchScalar('SELECT COUNT(*) FROM mdt_warrants WHERE ' .. scopeClause(depName, 'mdt_warrants')
+            MySQL.Async.fetchScalar('SELECT COUNT(*) FROM mdt_warrants WHERE ' .. ScopeClause(depName, 'mdt_warrants')
                 .. " AND status='active'", {}, function(n)
                 out.stats.warrantsActive = tonumber(n) or 0
                 loadReports()
@@ -2222,7 +2222,7 @@ readHandlers.getDashboard = function(player, depName, grade, data, reply)
 
     -- Amendes impayées : visible de tous, c'est l'indicateur d'activité le
     -- plus parlant sur la base commune.
-    MySQL.Async.fetchScalar('SELECT COUNT(*) FROM mdt_fines WHERE ' .. scopeClause(depName, 'mdt_fines')
+    MySQL.Async.fetchScalar('SELECT COUNT(*) FROM mdt_fines WHERE ' .. ScopeClause(depName, 'mdt_fines')
         .. ' AND paid=0', {}, function(n)
         out.stats.finesUnpaid = tonumber(n) or 0
         loadWarrants()
@@ -2233,10 +2233,10 @@ end
 
 -- Liste des lois (recherche article/infraction/catégorie + filtre catégorie)
 readHandlers.getLaws = function(player, depName, grade, data, reply)
-    if not mdtHasPerm(player, depName, grade, 'view_laws') then return reply(false) end
+    if not MdtHasPerm(player, depName, grade, 'view_laws') then return reply(false) end
     local query = type(data.query) == 'string' and data.query:lower():gsub('[%%_\\]', '') or ''
     local category = type(data.category) == 'string' and data.category or ''
-    local clauses = { scopeClause(depName, 'mdt_laws') }
+    local clauses = { ScopeClause(depName, 'mdt_laws') }
     local params = {}
     if category ~= '' and category ~= 'all' then
         clauses[#clauses + 1] = 'category=@cat'
@@ -2254,49 +2254,49 @@ end
 -- Créer une loi
 LSLegacy.Events.Register('mdt:createLaw', function(data)
     local src = source
-    local player, depName = can(src, 'manage_laws')
+    local player, depName = Can(src, 'manage_laws')
     if not player or type(data) ~= 'table' then return end
-    local name = safeText(data.name, 255)
-    if name == '' then return result(src, false, "Nom de l'infraction requis.") end
+    local name = SafeText(data.name, 255)
+    if name == '' then return Result(src, false, "Nom de l'infraction requis.") end
     MySQL.Async.insert('INSERT INTO mdt_laws (department, article, name, description, fine, jail, category, created_by, created_by_name) VALUES (@dep,@article,@name,@desc,@fine,@jail,@cat,@oid,@oname)', {
-        ['@dep'] = depName, ['@article'] = safeText(data.article, 40), ['@name'] = name,
-        ['@desc'] = safeText(data.description, L.MaxTextLength),
+        ['@dep'] = depName, ['@article'] = SafeText(data.article, 40), ['@name'] = name,
+        ['@desc'] = SafeText(data.description, L.MaxTextLength),
         ['@fine'] = math.max(0, math.floor(tonumber(data.fine) or 0)),
-        ['@jail'] = safeText(data.jail, 120), ['@cat'] = safeText(data.category, 60),
-        ['@oid'] = player.identifier, ['@oname'] = charName(player),
+        ['@jail'] = SafeText(data.jail, 120), ['@cat'] = SafeText(data.category, 60),
+        ['@oid'] = player.identifier, ['@oname'] = CharName(player),
     }, function()
-        result(src, true, 'Article ajouté au code juridique.', { view = 'laws' })
-        mdtLog('Code juridique', ('**%s** a ajouté un article : [%s] %s'):format(charName(player), safeText(data.article, 40), name))
+        Result(src, true, 'Article ajouté au code juridique.', { view = 'laws' })
+        MdtLog('Code juridique', ('**%s** a ajouté un article : [%s] %s'):format(CharName(player), SafeText(data.article, 40), name))
     end)
 end)
 
 -- Modifier une loi
 LSLegacy.Events.Register('mdt:updateLaw', function(data)
     local src = source
-    local player, depName = can(src, 'manage_laws')
+    local player, depName = Can(src, 'manage_laws')
     if not player or type(data) ~= 'table' then return end
     local id = tonumber(data.id)
     if not id then return end
-    local name = safeText(data.name, 255)
-    if name == '' then return result(src, false, "Nom de l'infraction requis.") end
-    MySQL.Async.execute('UPDATE mdt_laws SET article=@article, name=@name, description=@desc, fine=@fine, jail=@jail, category=@cat WHERE id=@id AND ' .. scopeClause(depName, 'mdt_laws'), {
-        ['@article'] = safeText(data.article, 40), ['@name'] = name,
-        ['@desc'] = safeText(data.description, L.MaxTextLength),
+    local name = SafeText(data.name, 255)
+    if name == '' then return Result(src, false, "Nom de l'infraction requis.") end
+    MySQL.Async.execute('UPDATE mdt_laws SET article=@article, name=@name, description=@desc, fine=@fine, jail=@jail, category=@cat WHERE id=@id AND ' .. ScopeClause(depName, 'mdt_laws'), {
+        ['@article'] = SafeText(data.article, 40), ['@name'] = name,
+        ['@desc'] = SafeText(data.description, L.MaxTextLength),
         ['@fine'] = math.max(0, math.floor(tonumber(data.fine) or 0)),
-        ['@jail'] = safeText(data.jail, 120), ['@cat'] = safeText(data.category, 60),
+        ['@jail'] = SafeText(data.jail, 120), ['@cat'] = SafeText(data.category, 60),
         ['@id'] = id,
-    }, function() result(src, true, 'Article mis à jour.', { view = 'laws' }) end)
+    }, function() Result(src, true, 'Article mis à jour.', { view = 'laws' }) end)
 end)
 
 -- Supprimer une loi
 LSLegacy.Events.Register('mdt:deleteLaw', function(data)
     local src = source
-    local player, depName = can(src, 'manage_laws')
+    local player, depName = Can(src, 'manage_laws')
     if not player or type(data) ~= 'table' then return end
     local id = tonumber(data.id)
     if not id then return end
-    MySQL.Async.execute('DELETE FROM mdt_laws WHERE id=@id AND ' .. scopeClause(depName, 'mdt_laws'), { ['@id'] = id }, function()
-        result(src, true, 'Article supprimé.', { view = 'laws' })
+    MySQL.Async.execute('DELETE FROM mdt_laws WHERE id=@id AND ' .. ScopeClause(depName, 'mdt_laws'), { ['@id'] = id }, function()
+        Result(src, true, 'Article supprimé.', { view = 'laws' })
     end)
 end)
 
@@ -2304,7 +2304,7 @@ end)
 
 -- Liste des formations (+ nb inscrits + si le demandeur est inscrit)
 readHandlers.getTrainings = function(player, depName, grade, data, reply)
-    if not mdtHasPerm(player, depName, grade, 'view_trainings') then return reply(false) end
+    if not MdtHasPerm(player, depName, grade, 'view_trainings') then return reply(false) end
     MySQL.Async.fetchAll([[
         SELECT t.*,
                (SELECT COUNT(*) FROM mdt_training_signups s  WHERE s.training_id  = t.id) AS signups,
@@ -2317,7 +2317,7 @@ end
 
 -- Liste des inscrits d'une formation (réservé gestionnaires)
 readHandlers.getTrainingSignups = function(player, depName, grade, data, reply)
-    if not mdtHasPerm(player, depName, grade, 'manage_trainings') then return reply(false) end
+    if not MdtHasPerm(player, depName, grade, 'manage_trainings') then return reply(false) end
     local tid = tonumber(data.trainingId)
     if not tid then return reply({}) end
     MySQL.Async.fetchAll('SELECT * FROM mdt_training_signups WHERE training_id=@t ORDER BY grade DESC, created_at ASC', { ['@t'] = tid }, function(rows) reply(rows or {}) end)
@@ -2326,68 +2326,68 @@ end
 -- Créer une formation
 LSLegacy.Events.Register('mdt:createTraining', function(data)
     local src = source
-    local player, depName = can(src, 'manage_trainings')
+    local player, depName = Can(src, 'manage_trainings')
     if not player or type(data) ~= 'table' then return end
-    local name = safeText(data.name, 255)
-    if name == '' then return result(src, false, 'Nom de la formation requis.') end
+    local name = SafeText(data.name, 255)
+    if name == '' then return Result(src, false, 'Nom de la formation requis.') end
     MySQL.Async.insert('INSERT INTO mdt_trainings (department, name, code, scheduled_at, description, max_slots, created_by, created_by_name) VALUES (@dep,@name,@code,@sched,@desc,@max,@oid,@oname)', {
-        ['@dep'] = depName, ['@name'] = name, ['@code'] = safeText(data.code, 10),
-        ['@sched'] = safeText(data.scheduled_at, 40),
-        ['@desc'] = safeText(data.description, L.MaxTextLength),
+        ['@dep'] = depName, ['@name'] = name, ['@code'] = SafeText(data.code, 10),
+        ['@sched'] = SafeText(data.scheduled_at, 40),
+        ['@desc'] = SafeText(data.description, L.MaxTextLength),
         ['@max'] = math.max(0, math.floor(tonumber(data.max_slots) or 0)),
-        ['@oid'] = player.identifier, ['@oname'] = charName(player),
+        ['@oid'] = player.identifier, ['@oname'] = CharName(player),
     }, function()
-        result(src, true, 'Formation créée.', { view = 'trainings' })
-        mdtLog('Formation', ('**%s** a créé la formation : %s'):format(charName(player), name))
+        Result(src, true, 'Formation créée.', { view = 'trainings' })
+        MdtLog('Formation', ('**%s** a créé la formation : %s'):format(CharName(player), name))
     end)
 end)
 
 -- Modifier une formation
 LSLegacy.Events.Register('mdt:updateTraining', function(data)
     local src = source
-    local player, depName = can(src, 'manage_trainings')
+    local player, depName = Can(src, 'manage_trainings')
     if not player or type(data) ~= 'table' then return end
     local id = tonumber(data.id)
     if not id then return end
-    local name = safeText(data.name, 255)
-    if name == '' then return result(src, false, 'Nom de la formation requis.') end
+    local name = SafeText(data.name, 255)
+    if name == '' then return Result(src, false, 'Nom de la formation requis.') end
     MySQL.Async.execute('UPDATE mdt_trainings SET name=@name, scheduled_at=@sched, description=@desc, max_slots=@max WHERE id=@id AND department=@dep', {
-        ['@name'] = name, ['@sched'] = safeText(data.scheduled_at, 40),
-        ['@desc'] = safeText(data.description, L.MaxTextLength),
+        ['@name'] = name, ['@sched'] = SafeText(data.scheduled_at, 40),
+        ['@desc'] = SafeText(data.description, L.MaxTextLength),
         ['@max'] = math.max(0, math.floor(tonumber(data.max_slots) or 0)), ['@id'] = id, ['@dep'] = depName,
-    }, function() result(src, true, 'Formation mise à jour.', { view = 'trainings' }) end)
+    }, function() Result(src, true, 'Formation mise à jour.', { view = 'trainings' }) end)
 end)
 
 -- Supprimer / annuler une formation (+ ses inscriptions)
 LSLegacy.Events.Register('mdt:deleteTraining', function(data)
     local src = source
-    local player, depName = can(src, 'manage_trainings')
+    local player, depName = Can(src, 'manage_trainings')
     if not player or type(data) ~= 'table' then return end
     local id = tonumber(data.id)
     if not id then return end
     MySQL.Async.execute('DELETE FROM mdt_trainings WHERE id=@id AND department=@dep', { ['@id'] = id, ['@dep'] = depName }, function()
         MySQL.Async.execute('DELETE FROM mdt_training_signups WHERE training_id=@id', { ['@id'] = id })
-        result(src, true, 'Formation annulée.', { view = 'trainings' })
+        Result(src, true, 'Formation annulée.', { view = 'trainings' })
     end)
 end)
 
 -- S'inscrire (place vérifiée + une seule inscription)
 LSLegacy.Events.Register('mdt:signupTraining', function(data)
     local src = source
-    local player, depName, grade = can(src, 'view_trainings')
+    local player, depName, grade = Can(src, 'view_trainings')
     if not player or type(data) ~= 'table' then return end
     local id = tonumber(data.id)
     if not id then return end
     MySQL.Async.fetchAll('SELECT max_slots, (SELECT COUNT(*) FROM mdt_training_signups s WHERE s.training_id=t.id) AS signups FROM mdt_trainings t WHERE t.id=@id AND t.department=@dep LIMIT 1', { ['@id'] = id, ['@dep'] = depName }, function(rows)
-        if not rows or not rows[1] then return result(src, false, 'Formation introuvable.') end
+        if not rows or not rows[1] then return Result(src, false, 'Formation introuvable.') end
         local maxSlots = tonumber(rows[1].max_slots) or 0
         local signups = tonumber(rows[1].signups) or 0
-        if maxSlots > 0 and signups >= maxSlots then return result(src, false, 'Formation complète.') end
+        if maxSlots > 0 and signups >= maxSlots then return Result(src, false, 'Formation complète.') end
         MySQL.Async.execute('INSERT IGNORE INTO mdt_training_signups (training_id, identifier, character_id, citizen_name, grade, grade_label) VALUES (@t,@id,@charId,@name,@grade,@glabel)', {
-            ['@t'] = id, ['@id'] = player.identifier, ['@charId'] = player["boutique-id"], ['@name'] = charName(player),
+            ['@t'] = id, ['@id'] = player.identifier, ['@charId'] = player["boutique-id"], ['@name'] = CharName(player),
             ['@grade'] = grade, ['@glabel'] = LSLegacy.MDT.GetGradeLabel(depName, grade),
         }, function()
-            result(src, true, 'Inscription enregistrée.', { view = 'trainings' })
+            Result(src, true, 'Inscription enregistrée.', { view = 'trainings' })
         end)
     end)
 end)
@@ -2395,24 +2395,24 @@ end)
 -- Se désinscrire
 LSLegacy.Events.Register('mdt:unsignupTraining', function(data)
     local src = source
-    local player, depName = can(src, 'view_trainings')
+    local player, depName = Can(src, 'view_trainings')
     if not player or type(data) ~= 'table' then return end
     local id = tonumber(data.id)
     if not id then return end
     MySQL.Async.execute('DELETE FROM mdt_training_signups WHERE training_id=@t AND character_id=@id', { ['@t'] = id, ['@id'] = player["boutique-id"] }, function()
-        result(src, true, 'Désinscription effectuée.', { view = 'trainings' })
+        Result(src, true, 'Désinscription effectuée.', { view = 'trainings' })
     end)
 end)
 
 -- Retirer une inscription (gestionnaire)
 LSLegacy.Events.Register('mdt:removeSignup', function(data)
     local src = source
-    local player, depName = can(src, 'manage_trainings')
+    local player, depName = Can(src, 'manage_trainings')
     if not player or type(data) ~= 'table' then return end
     local signupId = tonumber(data.signupId)
     if not signupId then return end
     MySQL.Async.execute('DELETE FROM mdt_training_signups WHERE id=@id', { ['@id'] = signupId }, function()
-        result(src, true, 'Inscription supprimée.', { view = 'training', id = tonumber(data.trainingId) })
+        Result(src, true, 'Inscription supprimée.', { view = 'training', id = tonumber(data.trainingId) })
     end)
 end)
 
@@ -2425,33 +2425,33 @@ end)
 -- suppression est une décision de commandement.
 LSLegacy.Events.Register('mdt:deleteCustody', function(data)
     local src = source
-    local player, depName = can(src, 'delete_custody')
+    local player, depName = Can(src, 'delete_custody')
     if not player or type(data) ~= 'table' then return end
     local id = tonumber(data.id)
     if not id then return end
-    MySQL.Async.execute('DELETE FROM mdt_custody WHERE id=@id AND ' .. scopeClause(depName, 'mdt_custody'), { ['@id'] = id }, function()
-        result(src, true, 'Garde à vue supprimée du casier.', { view = 'citizen', id = data.identifier })
+    MySQL.Async.execute('DELETE FROM mdt_custody WHERE id=@id AND ' .. ScopeClause(depName, 'mdt_custody'), { ['@id'] = id }, function()
+        Result(src, true, 'Garde à vue supprimée du casier.', { view = 'citizen', id = data.identifier })
     end)
 end)
 
 -- Lier une arme à un citoyen depuis sa fiche (par n° de série)
 LSLegacy.Events.Register('mdt:linkPersonWeapon', function(data)
     local src = source
-    local player, depName = can(src, 'manage_weapons')
+    local player, depName = Can(src, 'manage_weapons')
     if not player or type(data) ~= 'table' then return end
     local identifier = type(data.identifier) == 'string' and data.identifier or nil
     local serial = type(data.serial) == 'string' and data.serial:upper():gsub('[^A-Z0-9]', '') or ''
-    if not identifier or serial == '' then return result(src, false, 'Numéro de série requis.') end
-    local relation = safeText(data.relation, 40)
+    if not identifier or serial == '' then return Result(src, false, 'Numéro de série requis.') end
+    local relation = SafeText(data.relation, 40)
     if relation == '' then relation = 'lie' end
-    MySQL.Async.fetchAll('SELECT id FROM mdt_weapons WHERE serial_number=@s AND ' .. scopeClause(depName, 'mdt_weapons') .. ' LIMIT 1', { ['@s'] = serial }, function(rows)
-        if not rows or not rows[1] then return result(src, false, 'Aucune arme avec ce numéro de série.') end
-        resolveCitizenName(identifier, function(name)
+    MySQL.Async.fetchAll('SELECT id FROM mdt_weapons WHERE serial_number=@s AND ' .. ScopeClause(depName, 'mdt_weapons') .. ' LIMIT 1', { ['@s'] = serial }, function(rows)
+        if not rows or not rows[1] then return Result(src, false, 'Aucune arme avec ce numéro de série.') end
+        ResolveCitizenName(identifier, function(name)
             LSLegacy.ResolveCharacterId(identifier, function(charId)
                 MySQL.Async.execute('INSERT INTO mdt_weapon_persons (weapon_id, identifier, character_id, citizen_name, relation, linked_by) VALUES (@w,@id,@charId,@name,@rel,@by) ON DUPLICATE KEY UPDATE relation=@rel, citizen_name=@name', {
-                    ['@w'] = rows[1].id, ['@id'] = identifier, ['@charId'] = charId, ['@name'] = name or safeText(data.citizen_name, 100),
+                    ['@w'] = rows[1].id, ['@id'] = identifier, ['@charId'] = charId, ['@name'] = name or SafeText(data.citizen_name, 100),
                     ['@rel'] = relation, ['@by'] = player.identifier,
-                }, function() result(src, true, "Arme liée au citoyen.", { view = 'citizen', id = identifier }) end)
+                }, function() Result(src, true, "Arme liée au citoyen.", { view = 'citizen', id = identifier }) end)
             end)
         end)
     end)
@@ -2460,7 +2460,7 @@ end)
 -- Valider / refuser la formation d'un inscrit (valide → compétence auto)
 LSLegacy.Events.Register('mdt:validateSignup', function(data)
     local src = source
-    local player, depName = can(src, 'manage_trainings')
+    local player, depName = Can(src, 'manage_trainings')
     if not player or type(data) ~= 'table' then return end
     local signupId = tonumber(data.signupId)
     if not signupId then return end
@@ -2470,17 +2470,17 @@ LSLegacy.Events.Register('mdt:validateSignup', function(data)
             FROM mdt_training_signups s JOIN mdt_trainings t ON t.id = s.training_id
             WHERE s.id=@id LIMIT 1
         ]], { ['@id'] = signupId }, function(rows)
-            if not rows or not rows[1] then return result(src, false, 'Inscription introuvable.') end
+            if not rows or not rows[1] then return Result(src, false, 'Inscription introuvable.') end
             MySQL.Async.execute("UPDATE mdt_training_signups SET status='validated' WHERE id=@id", { ['@id'] = signupId })
             MySQL.Async.execute('INSERT INTO mdt_agent_skills (department, identifier, character_id, skill, code) VALUES (@dep,@id,@charId,@skill,@code) ON DUPLICATE KEY UPDATE obtained_at=CURRENT_TIMESTAMP, code=@code', {
                 ['@dep'] = depName, ['@id'] = rows[1].identifier, ['@charId'] = rows[1].character_id, ['@skill'] = rows[1].training_name, ['@code'] = rows[1].training_code or '',
             }, function()
-                result(src, true, 'Formation validée — compétence ajoutée.', { view = 'training', id = tonumber(data.trainingId) })
+                Result(src, true, 'Formation validée — compétence ajoutée.', { view = 'training', id = tonumber(data.trainingId) })
             end)
         end)
     else
         MySQL.Async.execute("UPDATE mdt_training_signups SET status='refused' WHERE id=@id", { ['@id'] = signupId }, function()
-            result(src, true, 'Formation refusée.', { view = 'training', id = tonumber(data.trainingId) })
+            Result(src, true, 'Formation refusée.', { view = 'training', id = tonumber(data.trainingId) })
         end)
     end
 end)
@@ -2492,56 +2492,56 @@ local EVIDENCE_TABLES = { fingerprint = 'police_fingerprints', dna = 'police_dna
 -- Renseigner / modifier la description détaillée d'une preuve
 LSLegacy.Events.Register('mdt:updateEvidence', function(data)
     local src = source
-    local player, depName = can(src, 'manage_evidence')
+    local player, depName = Can(src, 'manage_evidence')
     if not player or type(data) ~= 'table' then return end
     local tbl = EVIDENCE_TABLES[data.type]
     local ref = type(data.ref) == 'string' and data.ref or ''
-    if not tbl or ref == '' then return result(src, false, 'Preuve invalide.') end
+    if not tbl or ref == '' then return Result(src, false, 'Preuve invalide.') end
     MySQL.Async.execute('UPDATE ' .. tbl .. ' SET description=@desc WHERE ref=@ref', {
-        ['@desc'] = safeText(data.description, L.MaxTextLength), ['@ref'] = ref,
-    }, function() result(src, true, 'Description enregistrée.', { view = 'evidence' }) end)
+        ['@desc'] = SafeText(data.description, L.MaxTextLength), ['@ref'] = ref,
+    }, function() Result(src, true, 'Description enregistrée.', { view = 'evidence' }) end)
 end)
 
 -- Lier une preuve (par référence) à un dossier
 LSLegacy.Events.Register('mdt:linkReportEvidence', function(data)
     local src = source
-    local player, depName = can(src, 'view_evidence')
+    local player, depName = Can(src, 'view_evidence')
     if not player or type(data) ~= 'table' then return end
     local reportId = tonumber(data.reportId)
     local ref = type(data.ref) == 'string' and data.ref:upper():gsub('%s+', '') or ''
-    if not reportId or ref == '' then return result(src, false, 'Référence requise.') end
+    if not reportId or ref == '' then return Result(src, false, 'Référence requise.') end
     MySQL.Async.fetchAll([[
         SELECT 'fingerprint' AS t, CONCAT('Empreintes — ', citizen_name) AS label FROM police_fingerprints WHERE ref=@ref
         UNION ALL SELECT 'dna', CONCAT('ADN — ', citizen_name) FROM police_dna WHERE ref=@ref
         UNION ALL SELECT 'blood', CONCAT('Sang — ', ref) FROM police_blood_traces WHERE ref=@ref
         LIMIT 1
     ]], { ['@ref'] = ref }, function(rows)
-        if not rows or not rows[1] then return result(src, false, 'Aucune preuve avec cette référence.') end
+        if not rows or not rows[1] then return Result(src, false, 'Aucune preuve avec cette référence.') end
         MySQL.Async.execute('INSERT IGNORE INTO mdt_report_evidence (report_id, ev_type, ev_ref, label, linked_by) VALUES (@r,@t,@ref,@label,@by)', {
             ['@r'] = reportId, ['@t'] = rows[1].t, ['@ref'] = ref, ['@label'] = rows[1].label, ['@by'] = player.identifier,
-        }, function() result(src, true, 'Preuve liée au dossier.', { view = 'report', id = reportId }) end)
+        }, function() Result(src, true, 'Preuve liée au dossier.', { view = 'report', id = reportId }) end)
     end)
 end)
 
 -- Délier une preuve d'un dossier
 LSLegacy.Events.Register('mdt:unlinkReportEvidence', function(data)
     local src = source
-    local player = can(src, 'view_evidence')
+    local player = Can(src, 'view_evidence')
     if not player or type(data) ~= 'table' then return end
     local id = tonumber(data.id)
     if not id then return end
     MySQL.Async.execute('DELETE FROM mdt_report_evidence WHERE id=@id', { ['@id'] = id }, function()
-        result(src, true, 'Preuve retirée du dossier.', { view = 'report', id = tonumber(data.reportId) })
+        Result(src, true, 'Preuve retirée du dossier.', { view = 'report', id = tonumber(data.reportId) })
     end)
 end)
 
 --  FICHE DÉTAILLÉE AGENT (RH, carrière, affectations, sanctions, compétences)
 
-local function generateMatricule(cb, attempts)
+local function GenerateMatricule(cb, attempts)
     attempts = attempts or 0
     local m = 'PN' .. tostring(math.random(10000, 99999))
     MySQL.Async.fetchScalar('SELECT identifier FROM mdt_agent_meta WHERE matricule=@m LIMIT 1', { ['@m'] = m }, function(existing)
-        if existing and attempts < 12 then generateMatricule(cb, attempts + 1) else cb(m) end
+        if existing and attempts < 12 then GenerateMatricule(cb, attempts + 1) else cb(m) end
     end)
 end
 
@@ -2599,7 +2599,7 @@ readHandlers.getAgentFile = function(player, depName, grade, data, reply)
             if mrows and mrows[1] then
                 loadAll(mrows[1])
             else
-                generateMatricule(function(m)
+                GenerateMatricule(function(m)
                     MySQL.Async.execute('INSERT INTO mdt_agent_meta (identifier, character_id, department, matricule) VALUES (@id,@charId,@dep,@m) ON DUPLICATE KEY UPDATE matricule=matricule', {
                         ['@id'] = identifier, ['@charId'] = characterId, ['@dep'] = depName, ['@m'] = m,
                     }, function()
@@ -2614,20 +2614,20 @@ end
 -- Infos RH (date entrée, titularisation, arme de service)
 LSLegacy.Events.Register('mdt:saveAgentMeta', function(data)
     local src = source
-    local player, depName = can(src, 'manage_personnel')
+    local player, depName = Can(src, 'manage_personnel')
     if not player or type(data) ~= 'table' then return end
     local characterId = tonumber(data.character_id)
     if not characterId then return end
     MySQL.Async.execute('UPDATE mdt_agent_meta SET hire_date=@h, tenure_date=@t, service_weapon=@w WHERE character_id=@id', {
-        ['@h'] = safeText(data.hire_date, 20), ['@t'] = safeText(data.tenure_date, 20),
-        ['@w'] = safeText(data.service_weapon, 20), ['@id'] = characterId,
-    }, function() result(src, true, 'Informations enregistrées.', { view = 'agent', id = characterId }) end)
+        ['@h'] = SafeText(data.hire_date, 20), ['@t'] = SafeText(data.tenure_date, 20),
+        ['@w'] = SafeText(data.service_weapon, 20), ['@id'] = characterId,
+    }, function() Result(src, true, 'Informations enregistrées.', { view = 'agent', id = characterId }) end)
 end)
 
 -- Historique de carrière (dates par grade, enregistré en bloc)
 LSLegacy.Events.Register('mdt:saveCareer', function(data)
     local src = source
-    local player, depName = can(src, 'manage_personnel')
+    local player, depName = Can(src, 'manage_personnel')
     if not player or type(data) ~= 'table' then return end
     local characterId = tonumber(data.character_id)
     local identifier = type(data.identifier) == 'string' and data.identifier or nil
@@ -2637,118 +2637,118 @@ LSLegacy.Events.Register('mdt:saveCareer', function(data)
         local gi = tonumber(e.grade)
         if gi then
             MySQL.Async.execute('INSERT INTO mdt_agent_career (identifier, character_id, grade_index, start_date, end_date) VALUES (@ident,@id,@gi,@s,@e) ON DUPLICATE KEY UPDATE start_date=@s, end_date=@e', {
-                ['@ident'] = identifier, ['@id'] = characterId, ['@gi'] = gi, ['@s'] = safeText(e.start, 20), ['@e'] = safeText(e.endDate, 20),
+                ['@ident'] = identifier, ['@id'] = characterId, ['@gi'] = gi, ['@s'] = SafeText(e.start, 20), ['@e'] = SafeText(e.endDate, 20),
             })
         end
     end
-    result(src, true, 'Historique de carrière enregistré.', { view = 'agent', id = characterId })
+    Result(src, true, 'Historique de carrière enregistré.', { view = 'agent', id = characterId })
 end)
 
 -- Affectations
 LSLegacy.Events.Register('mdt:addAssignment', function(data)
     local src = source
-    local player, depName = can(src, 'manage_personnel')
+    local player, depName = Can(src, 'manage_personnel')
     if not player or type(data) ~= 'table' then return end
     local characterId = tonumber(data.character_id)
     local identifier = type(data.identifier) == 'string' and data.identifier or nil
     if not characterId or not identifier then return end
-    local code = safeText(data.code, 80)
-    if code == '' then return result(src, false, "Code d'affectation requis.") end
+    local code = SafeText(data.code, 80)
+    if code == '' then return Result(src, false, "Code d'affectation requis.") end
     MySQL.Async.insert('INSERT INTO mdt_agent_assignments (identifier, character_id, code, start_date, end_date) VALUES (@ident,@id,@code,@s,@e)', {
-        ['@ident'] = identifier, ['@id'] = characterId, ['@code'] = code, ['@s'] = safeText(data.start_date, 20), ['@e'] = safeText(data.end_date, 20),
-    }, function() result(src, true, 'Affectation ajoutée.', { view = 'agent', id = characterId }) end)
+        ['@ident'] = identifier, ['@id'] = characterId, ['@code'] = code, ['@s'] = SafeText(data.start_date, 20), ['@e'] = SafeText(data.end_date, 20),
+    }, function() Result(src, true, 'Affectation ajoutée.', { view = 'agent', id = characterId }) end)
 end)
 
 LSLegacy.Events.Register('mdt:updateAssignment', function(data)
     local src = source
-    local player = can(src, 'manage_personnel')
+    local player = Can(src, 'manage_personnel')
     if not player or type(data) ~= 'table' then return end
     local id = tonumber(data.id)
     if not id then return end
     MySQL.Async.execute('UPDATE mdt_agent_assignments SET code=@code, start_date=@s, end_date=@e WHERE id=@id', {
-        ['@code'] = safeText(data.code, 80), ['@s'] = safeText(data.start_date, 20), ['@e'] = safeText(data.end_date, 20), ['@id'] = id,
-    }, function() result(src, true, 'Affectation mise à jour.', { view = 'agent', id = data.character_id }) end)
+        ['@code'] = SafeText(data.code, 80), ['@s'] = SafeText(data.start_date, 20), ['@e'] = SafeText(data.end_date, 20), ['@id'] = id,
+    }, function() Result(src, true, 'Affectation mise à jour.', { view = 'agent', id = data.character_id }) end)
 end)
 
 LSLegacy.Events.Register('mdt:deleteAssignment', function(data)
     local src = source
-    local player = can(src, 'manage_personnel')
+    local player = Can(src, 'manage_personnel')
     if not player or type(data) ~= 'table' then return end
     local id = tonumber(data.id)
     if not id then return end
     MySQL.Async.execute('DELETE FROM mdt_agent_assignments WHERE id=@id', { ['@id'] = id }, function()
-        result(src, true, 'Affectation supprimée.', { view = 'agent', id = data.character_id })
+        Result(src, true, 'Affectation supprimée.', { view = 'agent', id = data.character_id })
     end)
 end)
 
 -- Félicitations / sanctions
 LSLegacy.Events.Register('mdt:addCommendation', function(data)
     local src = source
-    local player, depName = can(src, 'manage_personnel')
+    local player, depName = Can(src, 'manage_personnel')
     if not player or type(data) ~= 'table' then return end
     local characterId = tonumber(data.character_id)
     local identifier = type(data.identifier) == 'string' and data.identifier or nil
     if not characterId or not identifier then return end
     local nature = (data.nature == 'sanction') and 'sanction' or 'felicitation'
-    local reason = safeText(data.reason, 255)
-    if reason == '' then return result(src, false, 'Motif requis.') end
+    local reason = SafeText(data.reason, 255)
+    if reason == '' then return Result(src, false, 'Motif requis.') end
     MySQL.Async.insert('INSERT INTO mdt_agent_commendations (identifier, character_id, obtained_date, nature, reason, details, author, author_name) VALUES (@ident,@id,@d,@n,@r,@det,@oid,@oname)', {
-        ['@ident'] = identifier, ['@id'] = characterId, ['@d'] = safeText(data.obtained_date, 20), ['@n'] = nature,
-        ['@r'] = reason, ['@det'] = safeText(data.details, L.MaxTextLength),
-        ['@oid'] = player.identifier, ['@oname'] = charName(player),
+        ['@ident'] = identifier, ['@id'] = characterId, ['@d'] = SafeText(data.obtained_date, 20), ['@n'] = nature,
+        ['@r'] = reason, ['@det'] = SafeText(data.details, L.MaxTextLength),
+        ['@oid'] = player.identifier, ['@oname'] = CharName(player),
     }, function()
-        result(src, true, 'Entrée ajoutée.', { view = 'agent', id = characterId })
-        mdtLog('Personnel', ('**%s** a ajouté une %s'):format(charName(player), nature))
+        Result(src, true, 'Entrée ajoutée.', { view = 'agent', id = characterId })
+        MdtLog('Personnel', ('**%s** a ajouté une %s'):format(CharName(player), nature))
     end)
 end)
 
 LSLegacy.Events.Register('mdt:deleteCommendation', function(data)
     local src = source
-    local player = can(src, 'manage_personnel')
+    local player = Can(src, 'manage_personnel')
     if not player or type(data) ~= 'table' then return end
     local id = tonumber(data.id)
     if not id then return end
     MySQL.Async.execute('DELETE FROM mdt_agent_commendations WHERE id=@id', { ['@id'] = id }, function()
-        result(src, true, 'Entrée supprimée.', { view = 'agent', id = data.character_id })
+        Result(src, true, 'Entrée supprimée.', { view = 'agent', id = data.character_id })
     end)
 end)
 
 -- Ajouter une compétence manuellement (Commissaire / Commandant)
 LSLegacy.Events.Register('mdt:addSkill', function(data)
     local src = source
-    local player, depName = can(src, 'manage_personnel')
+    local player, depName = Can(src, 'manage_personnel')
     if not player or type(data) ~= 'table' then return end
     local characterId = tonumber(data.character_id)
     local identifier = type(data.identifier) == 'string' and data.identifier or nil
     if not characterId or not identifier then return end
-    local skill = safeText(data.skill, 150)
-    if skill == '' then return result(src, false, 'Compétence requise.') end
+    local skill = SafeText(data.skill, 150)
+    if skill == '' then return Result(src, false, 'Compétence requise.') end
     MySQL.Async.execute('INSERT INTO mdt_agent_skills (department, identifier, character_id, skill, code) VALUES (@dep,@ident,@id,@skill,@code) ON DUPLICATE KEY UPDATE code=@code, obtained_at=CURRENT_TIMESTAMP', {
-        ['@dep'] = depName, ['@ident'] = identifier, ['@id'] = characterId, ['@skill'] = skill, ['@code'] = safeText(data.code, 10),
-    }, function() result(src, true, 'Compétence ajoutée.', { view = 'agent', id = characterId }) end)
+        ['@dep'] = depName, ['@ident'] = identifier, ['@id'] = characterId, ['@skill'] = skill, ['@code'] = SafeText(data.code, 10),
+    }, function() Result(src, true, 'Compétence ajoutée.', { view = 'agent', id = characterId }) end)
 end)
 
 -- Supprimer une compétence
 LSLegacy.Events.Register('mdt:deleteSkill', function(data)
     local src = source
-    local player = can(src, 'manage_personnel')
+    local player = Can(src, 'manage_personnel')
     if not player or type(data) ~= 'table' then return end
     local id = tonumber(data.id)
     if not id then return end
     MySQL.Async.execute('DELETE FROM mdt_agent_skills WHERE id=@id', { ['@id'] = id }, function()
-        result(src, true, 'Compétence supprimée.', { view = 'agent', id = data.character_id })
+        Result(src, true, 'Compétence supprimée.', { view = 'agent', id = data.character_id })
     end)
 end)
 
 -- Modifier la date d'obtention d'une compétence (Commissaire / Commandant)
 LSLegacy.Events.Register('mdt:updateSkillDate', function(data)
     local src = source
-    local player = can(src, 'manage_personnel')
+    local player = Can(src, 'manage_personnel')
     if not player or type(data) ~= 'table' then return end
     local id = tonumber(data.id)
-    local date = safeText(data.obtained_date, 20)
+    local date = SafeText(data.obtained_date, 20)
     if not id or date == '' then return end
     MySQL.Async.execute('UPDATE mdt_agent_skills SET obtained_at=@d WHERE id=@id', { ['@d'] = date, ['@id'] = id }, function()
-        result(src, true, "Date d'obtention mise à jour.", { view = 'agent', id = data.character_id })
+        Result(src, true, "Date d'obtention mise à jour.", { view = 'agent', id = data.character_id })
     end)
 end)
