@@ -20,6 +20,13 @@ Config.DiscordStatus = {
 
 Config.UseStamina = false
 
+Config.Population = {
+    PedDensity = 0.5,
+    VehicleDensity = 0.5,
+    ParkedVehicleDensity = 0.5,
+    LockAmbientVehicles = true,
+}
+
 Config.AP = {}
 Config.AP.Enable = true
 Config.AP.UpdateIntervalMs = 10000
@@ -233,7 +240,7 @@ Config.Items = {
     -- ── Armes ajoutées (2026-07-19) ──────────────────────────────────
     -- ATTENTION : noms de props (modèles GTA V) non testés en jeu, à
     -- vérifier/corriger si un modèle ne charge pas (cf. convention TODO
-    -- déjà utilisée pour module/mecanicien).
+    -- déjà utilisée pour les coordonnées à revoir dans module/atelier).
     -- Armes blanches — pas de munition
     ['weapon_bat']         = {label = "Batte",                    weight = 1.5, props = "w_me_bat"},
     ['weapon_golfclub']    = {label = "Club de golf",             weight = 1.5, props = "w_me_golfclub"},
