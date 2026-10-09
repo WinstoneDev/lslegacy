@@ -9,10 +9,10 @@
 local machines = {}   -- [stationId] = entity
 local metroEnabled = true -- basculé par /metrotoggle (staff), voir metro:setEnabled
 
-local function dbg(...) if Config.Metro.Debug then print('[metro]', ...) end end
+local function Dbg(...) if Config.Metro.Debug then print('[metro]', ...) end end
 
 local function Notify(msg, type)
-    TriggerEvent(Config.Metro.NotifyEvent, 'Métro', msg, 5000, type or 'info')
+    TriggerEvent('notify', 'Métro', msg, type or 'info', 5000)
 end
 
 -- ── Piste de métro ──────────────────────────────────────────────────
@@ -26,7 +26,7 @@ local function EnsureTrack()
     SetTrainTrackSpawnFrequency(Config.Metro.TrackId, Config.Metro.SpawnFrequency)
     SetRandomTrains(true)
     SetTrainsForceDoorsOpen(false)
-    dbg('piste', Config.Metro.TrackId, 'réactivée, spawn ambiant activé')
+    Dbg('piste', Config.Metro.TrackId, 'réactivée, spawn ambiant activé')
 end
 
 AddEventHandler('playerSpawned', function()
@@ -49,14 +49,14 @@ local function CreateBlips()
         AddTextComponentString('Métro — ' .. s.label)
         EndTextCommandSetBlipName(blip)
     end
-    dbg(#Config.Metro.Stations, 'blips de station créés')
+    Dbg(#Config.Metro.Stations, 'blips de station créés')
 end
 
 CreateThread(CreateBlips)
 
 -- ── Bornes de tickets (props + ox_target) ───────────────────────────
 
-local function loadModel(model)
+local function LoadModel(model)
     local hash = type(model) == 'number' and model or GetHashKey(model)
     if not HasModelLoaded(hash) then
         RequestModel(hash)
@@ -72,11 +72,11 @@ end
 -- au modèle et pas à une entité précise : ça inclut aussi bien nos props
 -- que les `prop_train_ticket_02` déjà placés nativement par le jeu).
 
-local function spawnMachine(station)
+local function SpawnMachine(station)
     local m = station.ticketMachine
-    local hash = loadModel(Config.Metro.TicketMachineModel)
+    local hash = LoadModel(Config.Metro.TicketMachineModel)
     if not hash then
-        dbg('ERREUR : modèle', Config.Metro.TicketMachineModel, 'non chargé, borne', station.id, 'annulée')
+        Dbg('ERREUR : modèle', Config.Metro.TicketMachineModel, 'non chargé, borne', station.id, 'annulée')
         return
     end
     local z = m.coords.z + Config.Metro.TicketMachineZOffset
@@ -86,29 +86,29 @@ local function spawnMachine(station)
     SetEntityInvincible(obj, true)
     SetModelAsNoLongerNeeded(hash)
     machines[station.id] = obj
-    dbg('borne spawnée pour', station.id, '- entité', obj)
+    Dbg('borne spawnée pour', station.id, '- entité', obj)
 end
 
-local function despawnMachine(stationId)
+local function DespawnMachine(stationId)
     local obj = machines[stationId]
     if obj and DoesEntityExist(obj) then DeleteEntity(obj) end
     machines[stationId] = nil
-    dbg('borne despawnée pour', stationId)
+    Dbg('borne despawnée pour', stationId)
 end
 
 CreateThread(function()
     while true do
         if not metroEnabled then
-            for id in pairs(machines) do despawnMachine(id) end
+            for id in pairs(machines) do DespawnMachine(id) end
         else
             local pc = GetEntityCoords(PlayerPedId())
             for _, s in ipairs(Config.Metro.Stations) do
                 if s.ticketMachine then
                     local dist = #(pc - s.ticketMachine.coords)
                     if dist <= Config.Metro.PropRenderDistance then
-                        if not machines[s.id] then spawnMachine(s) end
+                        if not machines[s.id] then SpawnMachine(s) end
                     elseif machines[s.id] then
-                        despawnMachine(s.id)
+                        DespawnMachine(s.id)
                     end
                 end
             end
@@ -131,10 +131,10 @@ exports.ox_target:addModel(Config.Metro.TicketMachineModel, {
                 Notify(Lang.Metro.metro_disabled, 'error')
                 return
             end
-            dbg('achat ticket demandé')
+            Dbg('achat ticket demandé')
             -- L'heure in-game n'existe que côté client : on la transmet
             -- pour le label du ticket.
-            LSLegacy.SendEventToServer('metro:buyTicket', GetClockHours(), GetClockMinutes())
+            LSLegacy.Events.SendToServer('metro:buyTicket', GetClockHours(), GetClockMinutes())
         end,
     },
 })
@@ -194,9 +194,9 @@ CreateThread(function()
     end
 end)
 
-LSLegacy.RegisterClientEvent('metro:toggleTrainBlips', function()
+LSLegacy.Events.Register('metro:toggleTrainBlips', function()
     trainBlipsEnabled = not trainBlipsEnabled
-    dbg('blips de debug rames', trainBlipsEnabled and 'ACTIVÉS' or 'DÉSACTIVÉS')
+    Dbg('blips de debug rames', trainBlipsEnabled and 'ACTIVÉS' or 'DÉSACTIVÉS')
     if not trainBlipsEnabled then
         for key, blip in pairs(trainBlips) do
             if DoesBlipExist(blip) then RemoveBlip(blip) end
@@ -208,9 +208,9 @@ end)
 
 -- ── Retours serveur ─────────────────────────────────────────────────
 
-LSLegacy.RegisterClientEvent('metro:setEnabled', function(enabled)
+LSLegacy.Events.Register('metro:setEnabled', function(enabled)
     metroEnabled = enabled
-    dbg('métro', enabled and 'ACTIVÉ' or 'DÉSACTIVÉ', 'par le staff')
+    Dbg('métro', enabled and 'ACTIVÉ' or 'DÉSACTIVÉ', 'par le staff')
     if not enabled then
         SetRandomTrains(false)
     else
@@ -218,17 +218,17 @@ LSLegacy.RegisterClientEvent('metro:setEnabled', function(enabled)
     end
 end)
 
-LSLegacy.RegisterClientEvent('metro:ticketBought', function()
-    dbg('ticket acheté avec succès')
+LSLegacy.Events.Register('metro:ticketBought', function()
+    Dbg('ticket acheté avec succès')
     Notify(Lang.Metro.ticket_bought, 'success')
 end)
 
-LSLegacy.RegisterClientEvent('metro:ticketFailed', function(reason)
-    dbg('achat ticket refusé :', tostring(reason))
+LSLegacy.Events.Register('metro:ticketFailed', function(reason)
+    Dbg('achat ticket refusé :', tostring(reason))
     Notify(reason or Lang.Metro.ticket_failed, 'error')
 end)
 
 AddEventHandler('onResourceStop', function(res)
     if res ~= GetCurrentResourceName() then return end
-    for id in pairs(machines) do despawnMachine(id) end
+    for id in pairs(machines) do DespawnMachine(id) end
 end)

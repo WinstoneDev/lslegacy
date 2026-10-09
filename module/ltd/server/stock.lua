@@ -4,12 +4,12 @@ local ShelfStock   = {}  -- { [storeId] = { [item] = quantity } }
 local ReserveStock = {}  -- { [storeId] = { [item] = quantity } }
 local lastAlarm    = {}  -- { [storeId] = os.time() }
 
-local function GetPlayer(src)   return LSLegacy.ServerPlayers[src] end
-local function IsEmployee(src)  return GetPlayer(src) and GetPlayer(src).job == Config.LTD.Job end
-local function GetGrade(src)    return GetPlayer(src) and tonumber(GetPlayer(src).job_grade) or 0 end
+local function GetPlayer(src)   return LSLegacy.Players.Get(src) end
+local function IsEmployee(src)  return LSLegacy.Jobs.Is(GetPlayer(src), Config.LTD.Job) end
+local function GetGrade(src)    return GetPlayer(src) and tonumber(LSLegacy.Jobs.GetGrade(GetPlayer(src))) or 0 end
 
 local function Notify(src, msg, t)
-    TriggerClientEvent(Config.LTD.NotifyEvent, src, 'LTD', msg, 5000, t or 'info')
+    LSLegacy.Events.SendToClient('notify', src, 'LTD', msg, t or 'info', 5000)
 end
 
 local function GetItemConfig(itemName)
@@ -76,14 +76,14 @@ local function SaveStock(storeId, item)
     )
 end
 
-LSLegacy.RegisterServerEvent('ltd:requestShelfStock', function(data)
+LSLegacy.Events.Register('ltd:requestShelfStock', function(data)
     local src = source
     if not data or not IsValidStore(data.storeId) then return end
     if not IsEmployee(src) or not IsLtdOnDutyAt(src, data.storeId) then return end
     TriggerClientEvent('ltd:shelfStockResult', src, ShelfStock[data.storeId])
 end)
 
-LSLegacy.RegisterServerEvent('ltd:requestReserveStock', function(data)
+LSLegacy.Events.Register('ltd:requestReserveStock', function(data)
     local src = source
     if not data or not IsValidStore(data.storeId) then return end
     if not IsEmployee(src) or not IsLtdOnDutyAt(src, data.storeId) then return end
@@ -122,7 +122,7 @@ LSLegacy.Bank.RegisterPaymentResultHandler('ltd', function(token, success)
     TriggerClientEvent('ltd:purchaseNotice', pending.customerSrc, { label = entry.label, price = entry.price })
 end)
 
-LSLegacy.RegisterServerEvent('ltd:sellItem', function(data)
+LSLegacy.Events.Register('ltd:sellItem', function(data)
     local src = source
     if not data or not IsValidStore(data.storeId) then return end
     if not IsEmployee(src) or not IsLtdOnDutyAt(src, data.storeId) then return end
@@ -149,7 +149,7 @@ LSLegacy.RegisterServerEvent('ltd:sellItem', function(data)
     LSLegacy.Bank.OpenPaymentMenu(data.customer, 'Achat - ' .. entry.label, entry.price, { meta = { type = 'ltd', refId = token } })
 end)
 
-LSLegacy.RegisterServerEvent('ltd:restockShelf', function(data)
+LSLegacy.Events.Register('ltd:restockShelf', function(data)
     local src = source
     if not data or not IsValidStore(data.storeId) then return end
     if not IsEmployee(src) or not IsLtdOnDutyAt(src, data.storeId) then return end
@@ -174,7 +174,7 @@ LSLegacy.RegisterServerEvent('ltd:restockShelf', function(data)
     TriggerClientEvent('ltd:restockResult', src, { success = true, label = entry.label, amount = amount })
 end)
 
-LSLegacy.RegisterServerEvent('ltd:fillReserve', function(data)
+LSLegacy.Events.Register('ltd:fillReserve', function(data)
     local src = source
     if not data or not IsValidStore(data.storeId) then return end
     if not IsEmployee(src) or not IsLtdOnDutyAt(src, data.storeId) then return end
@@ -222,14 +222,14 @@ local function TriggerAlarm(storeId)
     end
 end
 
-LSLegacy.RegisterServerEvent('ltd:triggerAlarm', function(data)
+LSLegacy.Events.Register('ltd:triggerAlarm', function(data)
     local src = source
     if not data or not IsValidStore(data.storeId) then return end
     if not IsEmployee(src) or not IsLtdOnDutyAt(src, data.storeId) then return end
     TriggerAlarm(data.storeId)
 end)
 
-LSLegacy.RegisterServerEvent('ltd:stealItem', function(data)
+LSLegacy.Events.Register('ltd:stealItem', function(data)
     local src = source
     if not data or not IsValidStore(data.storeId) then return end
     if IsLtdOnDutyAt(src, data.storeId) then return end

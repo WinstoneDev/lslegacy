@@ -14,13 +14,71 @@ local ClientWritableFields = {
     'skin',
 }
 
-LSLegacy.RegisterServerEvent('ReceiveUpdateServerPlayer', function(data)
+LSLegacy.Events.Register('lslegacy:receiveUpdateServerPlayer', function(data)
     local source = source
     if not LSLegacy.ServerPlayers[source] then return end
     for _, field in ipairs(ClientWritableFields) do
-        LSLegacy.ServerPlayers[source][field] = data[field]
+        -- ignore un écho client avant que PlayerData ne soit rempli (post-connexion, reselect multichar) :
+        -- sinon ça écrase un skin déjà valide en mémoire par nil, persisté ensuite par SaveDirty/sync
+        if data[field] ~= nil then
+            LSLegacy.ServerPlayers[source][field] = data[field]
+            LSLegacy.ServerPlayers[source]:MarkDirty(field)
+        end
     end
 end)
+
+-- Colonnes SQL pilotées par player:MarkDirty(field)/player:SaveDirty() : évite
+-- de resauvegarder tous les champs à chaque tick périodique, seulement ceux
+-- réellement modifiés depuis la dernière sauvegarde.
+local DirtyColumns = {
+    coords        = {column = 'coords',        get = function(p) return json.encode(p.coords) end},
+    skin          = {column = 'skin',          get = function(p) return p.skin and json.encode(p.skin) or nil end},
+    inventory     = {column = 'inventory',     get = function(p) return json.encode(p.inventory) end},
+    money         = {column = 'money',         get = function(p) return json.encode({cash = p.cash, dirty = p.dirty}) end},
+    health        = {column = 'health',        get = function(p) return p.health end},
+    status        = {column = 'status',        get = function(p) return json.encode(p.status) end},
+    skills        = {column = 'skills',        get = function(p) return json.encode(p.skills or {}) end},
+    job           = {column = 'job',           get = function(p) return p.job end},
+    job_grade     = {column = 'job_grade',     get = function(p) return p.job_grade end},
+    faction       = {column = 'faction',       get = function(p) return p.faction end},
+    faction_grade = {column = 'faction_grade', get = function(p) return p.faction_grade end},
+}
+
+local PlayerMethods = {}
+LSLegacy.PlayerMeta = {__index = PlayerMethods}
+
+---MarkDirty — signale qu'un champ du joueur doit être resauvegardé au prochain SaveDirty.
+---@type function
+---@param self table
+---@param field string
+---@public
+PlayerMethods.MarkDirty = function(self, field)
+    if not DirtyColumns[field] then return end
+    self._dirtyFields = self._dirtyFields or {}
+    self._dirtyFields[field] = true
+end
+
+---SaveDirty — sauvegarde uniquement les champs marqués dirty depuis le dernier appel.
+---@type function
+---@param self table
+---@public
+PlayerMethods.SaveDirty = function(self)
+    if not self._dirtyFields or not next(self._dirtyFields) then return end
+    if not self["boutique-id"] then return end
+    local sets, params = {}, {['@id'] = self["boutique-id"]}
+    for field in pairs(self._dirtyFields) do
+        local def = DirtyColumns[field]
+        local value = def.get(self)
+        if value == nil then goto continue end
+        local param = '@' .. field
+        sets[#sets + 1] = def.column .. ' = ' .. param
+        params[param] = value
+        ::continue::
+    end
+    if #sets == 0 then self._dirtyFields = {} return end
+    MySQL.Async.execute('UPDATE players SET ' .. table.concat(sets, ', ') .. ' WHERE `boutique-id` = @id', params)
+    self._dirtyFields = {}
+end
 
 local function GetPlayerDiscord(source)
     local _source = source
@@ -107,9 +165,12 @@ AddEventHandler("registerPlayer", function(characterId)
             isComa = false,
             job = row.job,
             job_grade = row.job_grade,
+            job_label = LSLegacy.Jobs.GetJobLabel(row.job),
+            job_grade_label = LSLegacy.Jobs.GetJobGradeLabel(row.job, row.job_grade),
             faction = row.faction,
             faction_grade = row.faction_grade
         }
+        setmetatable(LSLegacy.ServerPlayers[source], LSLegacy.PlayerMeta)
         -- Accès command.doorlock (ox_doorlock) pour tout personnage superadmin,
         -- sans passer par une liste d'identifiants figée dans server.cfg
         -- (voir "add_ace group.superadmin command.doorlock allow").
@@ -127,7 +188,8 @@ AddEventHandler("registerPlayer", function(characterId)
         LSLegacy.Injury.InitWounds(source)
         Wait(250)
         Config.Development.Print("[registerPlayer] " .. source .. ": envoi InitPlayer (LoadCharacter)")
-        LSLegacy.SendEventToClient('InitPlayer', source, LSLegacy.ServerPlayers[source])
+        TriggerClientEvent('lslegacy:usableItems', source, LSLegacy.Inventory.GetUsableItemNames())
+        LSLegacy.Events.SendToClient('lslegacy:initPlayer', source, LSLegacy.ServerPlayers[source])
         TriggerClientEvent('lslegacy:phone:playerReady', source)
         LSLegacy.RegisterPeds(LSLegacy.RegisteredZones, source)
         for k, v in pairs(LSLegacy.Commands) do
@@ -139,9 +201,9 @@ AddEventHandler("registerPlayer", function(characterId)
             end
         end
         Config.Development.Print("Successfully registered player " .. GetPlayerName(source))
-        LSLegacy.SendEventToClient('zones:registerBlips', source, LSLegacy.RegisteredZones)
-        LSLegacy.SendEventToClient('UpdateDatastore', source, LSLegacy.DataStores)
-        LSLegacy.TriggerLocalEvent('ap:clientsetonSpawn', source)
+        LSLegacy.Events.SendToClient('zones:registerBlips', source, LSLegacy.RegisteredZones)
+        LSLegacy.Events.SendToClient('lslegacy:updateDatastore', source, LSLegacy.DataStores)
+        LSLegacy.Events.TriggerLocal('ap:clientsetonSpawn', source)
 
         -- Vérification coma persistant après reconnexion
         local _src = source
@@ -153,7 +215,7 @@ AddEventHandler("registerPlayer", function(characterId)
                 local remaining = comaUntil - os.time()
                 if remaining > 0 then
                     p.isComa = true
-                    TriggerClientEvent("LSLegacy:injury:resumeComa", _src, remaining)
+                    TriggerClientEvent("lslegacy:injuryResumeComa", _src, remaining)
                 end
             end
         end)
@@ -199,9 +261,12 @@ AddEventHandler("registerPlayer", function(characterId)
             isComa  = false,
             job = "unemployed",
             job_grade = 0,
+            job_label = LSLegacy.Jobs.GetJobLabel("unemployed"),
+            job_grade_label = LSLegacy.Jobs.GetJobGradeLabel("unemployed", 0),
             faction = "unemployed",
             faction_grade = 0
         }
+        setmetatable(LSLegacy.ServerPlayers[source], LSLegacy.PlayerMeta)
         local insertReceived, insertId = false, nil
         MySQL.Async.insert('INSERT INTO players (identifier, slot, discordId, token, characterInfos, coords, status) VALUES(@identifier, @slot, @discordId, @token, @characterInfos, @coords, @status)', {
             ['@identifier'] = LSLegacy.ServerPlayers[source].identifier,
@@ -219,7 +284,8 @@ AddEventHandler("registerPlayer", function(characterId)
         LSLegacy.ServerPlayers[source]["boutique-id"] = insertId
         LSLegacy.Injury.InitWounds(source)
         Config.Development.Print("[registerPlayer] " .. source .. ": envoi InitPlayer (CreateCharacter), id=" .. tostring(LSLegacy.ServerPlayers[source]["boutique-id"]))
-        LSLegacy.SendEventToClient('InitPlayer', source, LSLegacy.ServerPlayers[source])
+        TriggerClientEvent('lslegacy:usableItems', source, LSLegacy.Inventory.GetUsableItemNames())
+        LSLegacy.Events.SendToClient('lslegacy:initPlayer', source, LSLegacy.ServerPlayers[source])
         TriggerClientEvent('lslegacy:phone:playerReady', source)
         LSLegacy.RegisterPeds(LSLegacy.RegisteredZones, source)
         for k, v in pairs(LSLegacy.Commands) do
@@ -230,9 +296,9 @@ AddEventHandler("registerPlayer", function(characterId)
             end
         end
         Config.Development.Print("Successfully registered player " .. GetPlayerName(source))
-        LSLegacy.SendEventToClient('zones:registerBlips', source, LSLegacy.RegisteredZones)
-        LSLegacy.SendEventToClient('UpdateDatastore', source, LSLegacy.DataStores)
-        LSLegacy.TriggerLocalEvent('ap:clientsetonSpawn', source)
+        LSLegacy.Events.SendToClient('zones:registerBlips', source, LSLegacy.RegisteredZones)
+        LSLegacy.Events.SendToClient('lslegacy:updateDatastore', source, LSLegacy.DataStores)
+        LSLegacy.Events.TriggerLocal('ap:clientsetonSpawn', source)
     end
 
     if characterId ~= nil and characterId ~= "new" then
@@ -292,25 +358,23 @@ Citizen.CreateThread(function()
                 coords = player.coords
             end
             if not LSLegacy.ServerPlayers[_source] then goto continue end
-            MySQL.Async.execute('UPDATE players SET coords = @coords, skin = @skin, inventory = @inventory, money = @money, health = @health, status = @status, skills = @skills, job = @job, job_grade = @job_grade, faction = @faction, faction_grade = @faction_grade WHERE `boutique-id` = @id', {
-                ['@coords'] = json.encode(coords),
-                ['@id'] = LSLegacy.ServerPlayers[_source]["boutique-id"],
-                ["@skin"] = json.encode(LSLegacy.ServerPlayers[_source].skin),
-                ['@inventory'] = json.encode(LSLegacy.ServerPlayers[_source].inventory),
-                ['@money'] = json.encode({cash = LSLegacy.ServerPlayers[_source].cash, dirty = LSLegacy.ServerPlayers[_source].dirty}),
-                ['@health'] = ped and ped ~= 0 and DoesEntityExist(ped) and GetEntityHealth(ped) or player.health,
-                ['@status'] = json.encode(LSLegacy.ServerPlayers[_source].status),
-                ['@skills'] = json.encode(LSLegacy.ServerPlayers[_source].skills or {}),
-                ['@job'] = LSLegacy.ServerPlayers[_source].job,
-                ['@job_grade'] = LSLegacy.ServerPlayers[_source].job_grade,
-                ['@faction'] = LSLegacy.ServerPlayers[_source].faction,
-                ['@faction_grade'] = LSLegacy.ServerPlayers[_source].faction_grade
-            })
-            LSLegacy.SendEventToClient('UpdateServerPlayer', _source)
-            LSLegacy.SendEventToClient('UpdateDatastore', _source, LSLegacy.DataStores)
+            if ped and ped ~= 0 and DoesEntityExist(ped) then
+                LSLegacy.ServerPlayers[_source].health = GetEntityHealth(ped)
+            end
+            -- coords/health/status/skills changent en continu en jeu : on les
+            -- resauvegarde à chaque tick comme avant. money/inventory/skin/
+            -- job/faction ne partent que s'ils ont réellement été modifiés
+            -- (voir player:MarkDirty dans money.lua/inventory.lua/jobs.lua).
+            LSLegacy.ServerPlayers[_source]:MarkDirty('coords')
+            LSLegacy.ServerPlayers[_source]:MarkDirty('health')
+            LSLegacy.ServerPlayers[_source]:MarkDirty('status')
+            LSLegacy.ServerPlayers[_source]:MarkDirty('skills')
+            LSLegacy.ServerPlayers[_source]:SaveDirty()
+            LSLegacy.Events.SendToClient('lslegacy:updateServerPlayer', _source)
+            LSLegacy.Events.SendToClient('lslegacy:updateDatastore', _source, LSLegacy.DataStores)
             Wait(500)
             if LSLegacy.ServerPlayers[_source] then
-                LSLegacy.SendEventToClient('UpdatePlayer', _source, LSLegacy.ServerPlayers[_source])
+                LSLegacy.Events.SendToClient('lslegacy:updatePlayer', _source, LSLegacy.ServerPlayers[_source])
             end
             ::continue::
         end
@@ -319,7 +383,7 @@ Citizen.CreateThread(function()
 end)
 
 
-LSLegacy.AddEventHandler('playerDropped', function()
+LSLegacy.Events.AddHandler('playerDropped', function()
     local _source = source
     local player = LSLegacy.ServerPlayers[_source]
     if player then
@@ -342,3 +406,78 @@ LSLegacy.AddEventHandler('playerDropped', function()
         Config.Development.Print("Player " .. _source .. " disconnected")
     end
 end)
+
+---LSLegacy.Players — API d'accès aux joueurs, à préférer aux accès directs à
+---LSLegacy.ServerPlayers dispersés dans les modules. Enveloppe l'existant
+---(LSLegacy.GetPlayerFromId, etc.) sans le remplacer : l'ancienne API reste
+---disponible pour les modules non encore migrés.
+LSLegacy.Players = LSLegacy.Players or {}
+
+---Get — résout un source en joueur serveur réel.
+---@type function
+---@param source any
+---@return table|nil
+---@public
+LSLegacy.Players.Get = function(source)
+    return LSLegacy.GetPlayerFromId(source)
+end
+
+---Remove — retire un joueur de la table live (déconnexion, ou changement de personnage sans déconnexion via multichar).
+---@type function
+---@param source any
+---@return nil
+---@public
+LSLegacy.Players.Remove = function(source)
+    LSLegacy.ServerPlayers[source] = nil
+end
+
+---GetByIdentifier
+---@type function
+---@param identifier string
+---@return table|nil
+---@public
+LSLegacy.Players.GetByIdentifier = function(identifier)
+    return LSLegacy.GetPlayerFromIdentifier(identifier)
+end
+
+---GetAll — renvoie la table brute { [source] = player }, à ne pas muter directement.
+---@type function
+---@return table
+---@public
+LSLegacy.Players.GetAll = function()
+    return LSLegacy.ServerPlayers
+end
+
+---SetJob — délègue à LSLegacy.Jobs.SetJob/SetJobGrade, résolu depuis un source plutôt qu'un player déjà en main.
+---@type function
+---@param source any
+---@param job string
+---@param grade number|nil
+---@return boolean
+---@public
+LSLegacy.Players.SetJob = function(source, job, grade)
+    local player = LSLegacy.Players.Get(source)
+    if not player then return false end
+    LSLegacy.Jobs.SetJob(player, job)
+    if grade ~= nil then
+        LSLegacy.Jobs.SetJobGrade(player, grade)
+    end
+    return true
+end
+
+---SetFaction — délègue à LSLegacy.Jobs.SetFaction/SetFactionGrade, résolu depuis un source plutôt qu'un player déjà en main.
+---@type function
+---@param source any
+---@param faction string
+---@param grade number|nil
+---@return boolean
+---@public
+LSLegacy.Players.SetFaction = function(source, faction, grade)
+    local player = LSLegacy.Players.Get(source)
+    if not player then return false end
+    LSLegacy.Jobs.SetFaction(player, faction)
+    if grade ~= nil then
+        LSLegacy.Jobs.SetFactionGrade(player, grade)
+    end
+    return true
+end

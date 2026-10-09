@@ -7,15 +7,27 @@
 local C = Config.Concessionnaire
 
 local function Notify(msg, type)
-    TriggerEvent(C.NotifyEvent, 'Concessionnaire', msg, 5000, type or 'info')
+    TriggerEvent('notify', 'Concessionnaire', msg, type or 'info', 5000)
 end
 
 -- Retire les espaces de tête ET de fin (le jeu centre les plaques courtes)
-local function trim(s) return (tostring(s or ''):gsub('^%s+', ''):gsub('%s+$', '')) end
-local function clamp(v) return math.max(0, math.min(100, math.floor(v + 0.5))) end
+local function Trim(s) return (tostring(s or ''):gsub('^%s+', ''):gsub('%s+$', '')) end
+local function Clamp(v) return math.max(0, math.min(100, math.floor(v + 0.5))) end
 
 -- Sélection en cours (véhicule affiché en aperçu)
-local sel = nil   -- { model, label, price, primary, secondary, plate, stats, back }
+local sel = nil   -- { model, label, price, primary, secondary, plate, stats, back, forJob }
+local jobBoss = nil   -- { job, label } si le joueur est chef de son job (achat entreprise), sinon false
+
+-- Site courant (celui dont le PNJ a été sollicité) : détermine Preview /
+-- TestDrive / point de retour après essai pour tout le menu ouvert.
+local currentSite = Config.Concessionnaire.Sites[1]
+
+local function RefreshJobBoss()
+    if not (C.JobPurchase and C.JobPurchase.enabled) then jobBoss = false return end
+    LSLegacy.Callbacks.TriggerServer('concessionnaire:canBuyForJob', function(res)
+        jobBoss = res or false
+    end)
+end
 
 -- ── Prévisualisation : véhicule + caméra orbitale ────────────────────
 
@@ -41,10 +53,10 @@ Concessionnaire.ClearPreview = ClearPreview
 local function ComputeStats(veh, hash)
     local kmh = GetVehicleEstimatedMaxSpeed(veh) * 3.6
     return {
-        speed    = clamp(kmh / 300.0 * 100.0),
+        speed    = Clamp(kmh / 300.0 * 100.0),
         speedKmh = math.floor(kmh + 0.5),
-        accel    = clamp((GetVehicleModelAcceleration(hash) or 0.0) / 0.5 * 100.0),
-        braking  = clamp((GetVehicleModelMaxBraking(hash) or 0.0) / 1.2 * 100.0),
+        accel    = Clamp((GetVehicleModelAcceleration(hash) or 0.0) / 0.5 * 100.0),
+        braking  = Clamp((GetVehicleModelMaxBraking(hash) or 0.0) / 1.2 * 100.0),
     }
 end
 
@@ -56,7 +68,7 @@ local function ShowPreview(model)
     while not HasModelLoaded(hash) and t < 100 do Wait(10); t = t + 1 end
     if not HasModelLoaded(hash) then return end
 
-    local p = C.Preview
+    local p = currentSite.Preview
     previewVeh = CreateVehicle(hash, p.coords.x, p.coords.y, p.coords.z, p.heading, false, false)
     SetEntityAsMissionEntity(previewVeh, true, true)
     SetVehicleOnGroundProperly(previewVeh)
@@ -153,9 +165,9 @@ local function AskCustomPlate()
             max = C.CustomPlate.maxLength,
         },
     })
-    if input and input[1] and trim(input[1]) ~= '' then
+    if input and input[1] and Trim(input[1]) ~= '' then
         -- Cap à 8 (max GTA) + nettoyage A-Z 0-9
-        local p = string.upper(trim(input[1])):gsub('[^A-Z0-9 ]', ''):sub(1, 8)
+        local p = string.upper(Trim(input[1])):gsub('[^A-Z0-9 ]', ''):sub(1, 8)
         sel.plate = (p ~= '') and p or nil
     else
         sel.plate = nil
@@ -172,16 +184,20 @@ local function SendBuy()
     ClearPreview()
     lib.hideContext()
     if sel.occasionId then
-        LSLegacy.SendEventToServer('concessionnaire:buyOccasion', {
+        LSLegacy.Events.SendToServer('concessionnaire:buyOccasion', {
             id        = sel.occasionId,
+            site      = currentSite.id,
+            forJob    = sel.forJob == true,
             paint     = paint,
             primary   = paint and sel.primary or nil,
             secondary = paint and sel.secondary or nil,
             plate     = sel.plate,
         })
     else
-        LSLegacy.SendEventToServer('concessionnaire:buy', {
+        LSLegacy.Events.SendToServer('concessionnaire:buy', {
             model     = sel.model,
+            site      = currentSite.id,
+            forJob    = sel.forJob == true,
             paint     = paint,
             primary   = paint and sel.primary or nil,
             secondary = paint and sel.secondary or nil,
@@ -231,7 +247,20 @@ function Concessionnaire.OpenVehicle()
         end
     end
 
-    if C.TestDrive.enabled then
+    -- Chef de job : interrupteur achat entreprise (véhicule au job, garage du job)
+    if jobBoss then
+        local on = sel.forJob == true
+        options[#options + 1] = {
+            title = Lang.Concessionnaire.job_purchase,
+            description = on and string.format(Lang.Concessionnaire.job_purchase_on, jobBoss.label)
+                            or  Lang.Concessionnaire.job_purchase_off,
+            icon = on and 'fa-solid fa-toggle-on' or 'fa-solid fa-toggle-off',
+            iconColor = on and '#3ad17e' or '#9aa4b5',
+            onSelect = function() sel.forJob = not on; Concessionnaire.OpenVehicle() end,
+        }
+    end
+
+    if currentSite.TestDrive.enabled then
         options[#options + 1] = {
             title = Lang.Concessionnaire.test_drive, icon = 'fa-solid fa-road',
             onSelect = function() Concessionnaire.StartTestDrive(sel.model) end,
@@ -239,7 +268,7 @@ function Concessionnaire.OpenVehicle()
     end
 
     options[#options + 1] = {
-        title = string.format(Lang.Concessionnaire.buy, total),
+        title = string.format(sel.forJob and Lang.Concessionnaire.buy_job or Lang.Concessionnaire.buy, total),
         icon = 'fa-solid fa-cart-shopping',
         onSelect = SendBuy,
     }
@@ -257,7 +286,7 @@ end
 local function SelectVehicle(veh, backId)
     sel = { model = veh.model, label = veh.label, price = veh.price,
             primary = 0, secondary = 0, painted = false, baseP = nil, baseS = nil,
-            plate = nil, stats = {}, back = backId, occasionId = nil }
+            plate = nil, stats = {}, back = backId, occasionId = nil, forJob = false }
     ShowPreview(veh.model)
     Concessionnaire.OpenVehicle()
 end
@@ -268,7 +297,7 @@ local function SelectOccasion(occ)
     sel = { model = occ.model, label = occ.label .. Lang.Concessionnaire.occasion_tag,
             price = occ.price, primary = c1, secondary = c2, painted = false,
             baseP = c1, baseS = c2, plate = nil, stats = {}, back = 'concess_occasions',
-            occasionId = occ.id }
+            occasionId = occ.id, forJob = false }
     ShowPreview(occ.model)
     Concessionnaire.OpenVehicle()
 end
@@ -298,7 +327,7 @@ local function OpenSearch()
     })
     if not input then Concessionnaire.OpenCatalog() return end
 
-    local query  = string.lower(trim(input[1]))
+    local query  = string.lower(Trim(input[1]))
     local budget = tonumber(input[2])
 
     local results = {}
@@ -326,7 +355,9 @@ end
 
 -- ── Catalogue racine ─────────────────────────────────────────────────
 
-function Concessionnaire.OpenCatalog()
+function Concessionnaire.OpenCatalog(site)
+    if site then currentSite = site end
+    RefreshJobBoss()
     local options = {
         { title = Lang.Concessionnaire.search_menu, description = Lang.Concessionnaire.search_hint,
           icon = 'fa-solid fa-magnifying-glass', arrow = true, onSelect = OpenSearch },
@@ -344,12 +375,14 @@ end
 
 -- ── Marché de l'occasion ─────────────────────────────────────────────
 
-function Concessionnaire.OpenOccasions()
+function Concessionnaire.OpenOccasions(site)
+    if site then currentSite = site end
     if not C.Occasion.enabled then return end
-    LSLegacy.SendEventToServer('concessionnaire:getOccasions')   -- réponse : concessionnaire:occasionsList
+    RefreshJobBoss()
+    LSLegacy.Events.SendToServer('concessionnaire:getOccasions')   -- réponse : concessionnaire:occasionsList
 end
 
-LSLegacy.RegisterClientEvent('concessionnaire:occasionsList', function(list)
+LSLegacy.Events.Register('concessionnaire:occasionsList', function(list)
     local options = {}
     if not list or #list == 0 then
         options[1] = { title = Lang.Concessionnaire.occasion_none, icon = 'fa-solid fa-ban', disabled = true }
@@ -384,14 +417,32 @@ Concessionnaire.ClearTestDrive = ClearTestDrive
 local function EndTestDrive(reason)
     if not testActive and not testVeh then return end
     ClearTestDrive()
-    local s = C.Seller.coords
+    local s = currentSite.Seller.coords
     SetEntityCoords(PlayerPedId(), s.x + 2.0, s.y, s.z, false, false, false, false)
     Notify(reason or Lang.Concessionnaire.test_ended, 'info')
 end
 Concessionnaire.EndTestDrive = EndTestDrive
 
+-- SetEntityAsMissionEntity(true, true) protège testVeh du nettoyage auto FiveM
+-- au restart resource, pour survivre à une brève coupure réseau. Mais si le
+-- client crash/déco/le resource restart AVANT EndTestDrive/ClearTestDrive, la
+-- carcasse reste marquée mission entity pour toujours : personne ne la
+-- supprime (le thread de dédup AP ignore volontairement les plaques ESSAI).
+-- On purge donc tout véhicule ESSAI déjà présent au point de spawn avant d'en
+-- créer un nouveau, plutôt que de compter uniquement sur testActive/testVeh
+-- (variables locales qui ne survivent pas à un restart).
+local function ClearOrphanTestVehicles(sp)
+    local allVeh = GetAllVehicles()
+    for i = 1, #allVeh do
+        local v = allVeh[i]
+        if DoesEntityExist(v) and GetVehicleNumberPlateText(v) == 'ESSAI' and #(GetEntityCoords(v) - vector3(sp.x, sp.y, sp.z)) < 15.0 then
+            DeleteEntity(v)
+        end
+    end
+end
+
 function Concessionnaire.StartTestDrive(model)
-    if not C.TestDrive.enabled then return end
+    if not currentSite.TestDrive.enabled then return end
     if testActive then Notify(Lang.Concessionnaire.test_already, 'error') return end
 
     ClearPreview()
@@ -403,7 +454,9 @@ function Concessionnaire.StartTestDrive(model)
     while not HasModelLoaded(hash) and t < 100 do Wait(10); t = t + 1 end
     if not HasModelLoaded(hash) then Notify('Modèle introuvable.', 'error') return end
 
-    local sp = C.TestDrive.spawn
+    local td = currentSite.TestDrive
+    local sp = td.spawn
+    ClearOrphanTestVehicles(sp)
     testVeh = CreateVehicle(hash, sp.x, sp.y, sp.z, sp.w, true, false)
     SetVehicleOnGroundProperly(testVeh)
     SetEntityAsMissionEntity(testVeh, true, true)
@@ -413,8 +466,8 @@ function Concessionnaire.StartTestDrive(model)
     SetModelAsNoLongerNeeded(hash)
 
     testActive = true
-    local endTime = GetGameTimer() + C.TestDrive.duration * 1000
-    Notify(string.format(Lang.Concessionnaire.test_started, C.TestDrive.duration), 'success')
+    local endTime = GetGameTimer() + td.duration * 1000
+    Notify(string.format(Lang.Concessionnaire.test_started, td.duration), 'success')
 
     Citizen.CreateThread(function()
         while testActive do
@@ -423,7 +476,7 @@ function Concessionnaire.StartTestDrive(model)
             if now >= endTime then EndTestDrive(Lang.Concessionnaire.test_timeout) break end
 
             local pos = GetEntityCoords(PlayerPedId())
-            if #(pos - C.TestDrive.boundaryCenter) > C.TestDrive.boundaryRadius then
+            if not LSLegacy.Validate.Distance(pos, td.boundaryCenter, td.boundaryRadius) then
                 EndTestDrive(Lang.Concessionnaire.test_outofbounds) break
             end
 
@@ -448,12 +501,13 @@ RegisterKeyMapping('concess_test_stop', 'Arrêter l\'essai (Concessionnaire)', '
 
 -- ── Revente ──────────────────────────────────────────────────────────
 
-function Concessionnaire.OpenResale()
+function Concessionnaire.OpenResale(site)
+    if site then currentSite = site end
     if not C.Resale.enabled then return end
     local veh = GetVehiclePedIsIn(PlayerPedId(), false)
     if veh == 0 then Notify(Lang.Concessionnaire.resale_need_vehicle, 'error') return end
 
-    local plate = trim(GetVehicleNumberPlateText(veh))
+    local plate = Trim(GetVehicleNumberPlateText(veh))
     Citizen.CreateThread(function()
         local confirm = lib.alertDialog({
             header   = Lang.Concessionnaire.resale_confirm_title,
@@ -462,7 +516,7 @@ function Concessionnaire.OpenResale()
             cancel   = true,
         })
         if confirm == 'confirm' then
-            LSLegacy.SendEventToServer('concessionnaire:sell', { plate = plate })
+            LSLegacy.Events.SendToServer('concessionnaire:sell', { plate = plate })
         end
     end)
 end

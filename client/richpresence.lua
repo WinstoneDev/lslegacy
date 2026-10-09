@@ -1,16 +1,16 @@
 local CountPlayers = nil
 
-LSLegacy.RegisterClientEvent('receiveNumberPlayers', function(number)
+LSLegacy.Events.Register('receiveNumberPlayers', function(number)
     CountPlayers = number
 end)
 
 Citizen.CreateThread(function()
     Wait(30000)
-    LSLegacy.SendEventToServer('updateNumberPlayer')
+    LSLegacy.Events.SendToServer('updateNumberPlayer')
 	while true do
         local time = 20000
         if CountPlayers ~= nil then
-            LSLegacy.SendEventToServer('updateNumberPlayer')
+            LSLegacy.Events.SendToServer('updateNumberPlayer')
             SetDiscordAppId(Config.DiscordStatus["ID"])
             SetDiscordRichPresenceAsset(Config.DiscordStatus["LargeIcon"])
             SetDiscordRichPresenceAssetText(Config.DiscordStatus["LargeIconText"])

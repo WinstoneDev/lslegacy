@@ -1,6 +1,5 @@
 Config.Atelier = {}
 
-Config.Atelier.NotifyEvent = 'brutal_notify:SendAlert'
 
 -- Distances / cooldowns génériques (repris du module mecanicien existant)
 Config.Atelier.Actions = {
@@ -36,6 +35,23 @@ Config.Atelier.Thresholds = {
     BodyDamaged   = 700,
 }
 
-Config.Atelier.PartHandBone   = 'SKEL_R_Hand'
-Config.Atelier.PartHandOffset = vector3(0.0, 0.0, 0.0)
-Config.Atelier.PartHandRot    = vector3(0.0, 0.0, 0.0)
+-- Pose "portage à deux mains, paumes vers le ciel" (même anim/bone/placement
+-- que l'emote "Boîte" déjà calibrée dans module/emotes/data/emotes_props.lua)
+-- plutôt qu'un simple attach à la main : sinon la pièce tenue reste figée,
+-- flotte contre le buste sans pose de portage, quelle que soit sa taille.
+Config.Atelier.PartHandAnimDict  = 'anim@heists@box_carry@'
+Config.Atelier.PartHandAnimClip  = 'idle'
+Config.Atelier.PartHandBone      = 'SKEL_R_Hand'
+Config.Atelier.PartHandOffset    = vector3(0.025, 0.08, 0.255)
+Config.Atelier.PartHandRot       = vector3(-145.0, 290.0, 0.0)
+
+-- Usure des pièces mécaniques non observables nativement (freins, transmission,
+-- suspension, embrayage, radiateur) : dégradée uniquement par la conduite réelle
+-- (moteur allumé, joueur au volant), jamais par le simple écoulement du temps
+-- calendaire — cf. client/interventions.lua (rapport) et server/vehicles.lua
+-- (application). ~2.5%/h vise une visite chez le mécano toutes les ~40h de
+-- conduite effective par pièce (à ajuster selon le rythme de jeu constaté).
+Config.Atelier.Wear = {
+    componentsPerHour     = 2.5,
+    reportIntervalSeconds = 300,
+}

@@ -28,6 +28,18 @@ function esc(v) {
         .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+// Assombrit (percent < 0) ou éclaircit (percent > 0) une couleur hex — utilisé
+// pour dériver --mdt-blue-dk depuis la couleur de département sans avoir à
+// déclarer deux couleurs par entreprise dans config_mdt.lua.
+function shadeColor(hex, percent) {
+    const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    if (!m) return hex;
+    const clamp = (n) => Math.max(0, Math.min(255, Math.round(n)));
+    const shift = (c) => clamp(c + (percent < 0 ? c * percent : (255 - c) * percent));
+    const [r, g, b] = [1, 2, 3].map((i) => shift(parseInt(m[i], 16)));
+    return `#${[r, g, b].map((c) => c.toString(16).padStart(2, '0')).join('')}`;
+}
+
 function asArray(x) { return Array.isArray(x) ? x : []; }
 
 function fmtDate(v) {
@@ -43,11 +55,11 @@ function fmtDate(v) {
 function has(perm) { return !!state.perms[perm] || !!state.perms.admin_mdt; }
 
 /* Estampille d'origine d'une pièce du dossier commun aux forces de
-   l'ordre : « Police » ou « Gendarmerie » selon le pôle qui l'a saisie.
+   l'ordre : « Police » ou « Sheriff » selon le pôle qui l'a saisie.
 
    Rien n'est affiché quand le département est seul dans sa sphère de
    données : le badge n'apprendrait rien et alourdirait les tableaux du
-   SAMU ou des pompiers, qui ne partagent leur base avec personne. */
+   EMS ou du LSFD, qui ne partagent leur base avec personne. */
 function depBadge(dep) {
     if (!dep || !state.depMulti) return '';
     const d = state.depLabels[dep];
@@ -137,6 +149,8 @@ function openModal(title, bodyHtml, footerHtml) {
     el('mdt-modal-title').textContent = title;
     el('mdt-modal-body').innerHTML = bodyHtml;
     el('mdt-modal-footer').innerHTML = footerHtml || '';
+    el('mdt-modal').style.transform = '';   // recentrée à chaque ouverture
+    el('mdt-modal').classList.remove('mdt-modal-lg');
     el('mdt-modal-overlay').classList.remove('mdt-hidden');
 }
 function closeModal() { el('mdt-modal-overlay').classList.add('mdt-hidden'); }
@@ -170,10 +184,21 @@ function openMDT(payload) {
     state.depLabels = payload.departmentLabels || {};
     state.depMulti = asArray(payload.dataGroup).length > 1;
     el('mdt-dep-label').textContent = payload.departmentLabel || 'MDT';
-    el('mdt-officer-name').textContent = payload.officerName || '—';
+    // Logo du département (image fournie par le module métier) — repli sur
+    // l'écusson générique si aucun logo n'est déclaré (dep.logo dans son
+    // config_mdt.lua).
+    el('mdt-logo').innerHTML = payload.departmentLogo
+        ? `<img src="${esc(payload.departmentLogo)}" alt="" class="mdt-logo-img">`
+        : '🛡️';
+    el('mdt-officer-name').textContent = payload.callsign || payload.officerName || '—';
     el('mdt-officer-grade').textContent = payload.gradeLabel || '—';
     if (payload.departmentColor) {
-        document.documentElement.style.setProperty('--mdt-blue-dk', payload.departmentColor);
+        // --mdt-blue pilote la quasi-totalité des accents visibles (badges,
+        // boutons primaires, grade, onglets actifs...) : ne recolorer que
+        // --mdt-blue-dk (l'en-tête) laissait tout le reste bleu "police"
+        // pour les départements aux couleurs propres (ex: Red's Tunershop).
+        document.documentElement.style.setProperty('--mdt-blue', payload.departmentColor);
+        document.documentElement.style.setProperty('--mdt-blue-dk', shadeColor(payload.departmentColor, -0.35));
     }
     renderSidebar();
     if (state.tabs.length) selectTab(state.tabs[0].id);
@@ -204,7 +229,7 @@ function renderSidebar() {
 function selectTab(id) {
     state.currentTab = id;
     document.querySelectorAll('.mdt-tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === id));
-    // Registre extensible : les modules métier (ex. MDT médical SAMU,
+    // Registre extensible : les modules métier (ex. MDT médical EMS,
     // js/medical.js) ajoutent leurs onglets via window.MDT_RENDERERS
     // plutôt qu'en éditant cette liste.
     const renderers = Object.assign({
@@ -296,6 +321,7 @@ async function openCitizenFile(identifier) {
             <div class="mdt-card">
                 <div class="mdt-card-title">Synthèse</div>
                 <dl class="mdt-kv">
+                    <dt>Métier</dt><dd>${esc(id.jobLabel || 'Sans emploi')}${id.jobGradeLabel ? ' — ' + esc(id.jobGradeLabel) : ''}</dd>
                     <dt>Permis</dt><dd>${(asArray(id.licenses).length ? asArray(id.licenses).map(esc).join(', ') : 'Aucun')}</dd>
                     <dt>Casier</dt><dd>${records.length} entrée(s)</dd>
                     <dt>Amendes</dt><dd>${fines.length} · <b style="color:var(--mdt-orange)">${totalFines}$ impayé(s)</b></dd>
@@ -858,7 +884,7 @@ function reportExcerpt(content) {
     return txt.length > 140 ? txt.slice(0, 140) + '…' : txt;
 }
 
-const JOINT_BADGE = '<span class="mdt-badge mdt-badge-orange" title="Intervention menée conjointement par la police et la gendarmerie">Conjointe</span>';
+const JOINT_BADGE = '<span class="mdt-badge mdt-badge-orange" title="Intervention menée conjointement par la police et le shérif">Conjointe</span>';
 
 async function renderInterventionReports() {
     setContent(`
@@ -1053,7 +1079,7 @@ function formInterventionReport(existing) {
             <textarea class="mdt-textarea" id="ir-involved" placeholder="Jean Dupont | Mis en cause">${esc(involved.map((p) => `${p.name || ''} | ${p.role || ''}`).join('\n'))}</textarea></div>
         <div class="mdt-form-row mdt-check-row">
             <input type="checkbox" id="ir-joint" ${existing && Number(existing.joint) === 1 ? 'checked' : ''}>
-            <label for="ir-joint">Intervention conjointe Police / Gendarmerie</label>
+            <label for="ir-joint">Intervention conjointe Police / Sheriff</label>
         </div>
     `, `<button class="mdt-btn" onclick="window.__mdtCloseModal()">Annuler</button>
         <button class="mdt-btn mdt-btn-primary" id="ir-submit">${existing ? 'Enregistrer' : 'Créer'}</button>`);
@@ -1838,19 +1864,37 @@ function formLaw(existing) {
 /* ════════════════════════════════════════════════════════════════
    ONGLET — EFFECTIFS (agents connectés + statut de service)
    ════════════════════════════════════════════════════════════════ */
-function renderRosterList(agents) {
-    const list = el('ef-list');
+/* Vocabulaire du personnel : "Agent"/👮 convient aux départements type
+   forces de l'ordre/secours, pas à une entreprise (resto, atelier…).
+   dep.staffLabel/staffLabelPlural/staffIcon (config_mdt.lua) permettent à
+   un département de le redéfinir ; sans override on garde "Agent"/👮, donc
+   aucun changement pour les départements existants. */
+function staffLabel(plural) {
+    const p = state.payload || {};
+    return (plural ? p.staffLabelPlural : p.staffLabel) || (plural ? 'Agents' : 'Agent');
+}
+function staffIcon() {
+    return (state.payload && state.payload.staffIcon) || '👮';
+}
+
+function renderRosterList(agents, targetId) {
+    const list = el(targetId || 'ef-list');
     if (!list) return;
-    if (!agents.length) { list.innerHTML = emptyState('👮', 'Aucun agent connecté.'); return; }
-    list.innerHTML = agents.map((a) => `
+    if (!agents.length) { list.innerHTML = emptyState(staffIcon(), `Aucun ${staffLabel(false).toLowerCase()}.`); return; }
+    list.innerHTML = agents.map((a) => {
+        const statusLabel = a.online === false ? 'Déconnecté' : (a.onDuty ? 'En service' : 'Hors service');
+        const dotClass = a.online === false ? 'mdt-dot-off' : (a.onDuty ? 'mdt-dot-on' : 'mdt-dot-off');
+        const badgeClass = a.online === false ? 'mdt-badge-gray' : (a.onDuty ? 'mdt-badge-green' : 'mdt-badge-red');
+        return `
         <div class="mdt-roster-item" data-agent="${esc(a.character_id != null ? a.character_id : '')}" style="cursor:pointer">
-            <span class="mdt-dot ${a.onDuty ? 'mdt-dot-on' : 'mdt-dot-off'}" title="${a.onDuty ? 'En service' : 'Hors service'}"></span>
+            <span class="mdt-dot ${dotClass}" title="${statusLabel}"></span>
             <div class="mdt-roster-main">
-                <div class="mdt-roster-name">${esc(a.name || 'Agent')}</div>
+                <div class="mdt-roster-name">${esc(a.name || staffLabel(false))}</div>
                 <div class="mdt-roster-grade">${esc(a.gradeLabel || '—')}</div>
             </div>
-            <span class="mdt-badge ${a.onDuty ? 'mdt-badge-green' : 'mdt-badge-red'}">${a.onDuty ? 'En service' : 'Hors service'}</span>
-        </div>`).join('');
+            <span class="mdt-badge ${badgeClass}">${statusLabel}</span>
+        </div>`;
+    }).join('');
     list.querySelectorAll('.mdt-roster-item[data-agent]').forEach((it) => it.addEventListener('click', () => {
         if (it.dataset.agent) openAgentFile(it.dataset.agent);
     }));
@@ -1859,23 +1903,33 @@ function renderRosterList(agents) {
 async function renderEffectifs() {
     if (state.rosterTimer) { clearInterval(state.rosterTimer); state.rosterTimer = null; }
     if (state.rosterExpanded === undefined) state.rosterExpanded = true;
+    const canRecruit = has('recruit_personnel');
     setContent(`
-        <div class="mdt-page-title">Effectifs</div>
-        <div class="mdt-page-sub">Agents connectés, triés par grade. Statut de service en temps réel.</div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+            <div>
+                <div class="mdt-page-title">Effectifs</div>
+                <div class="mdt-page-sub">${staffLabel(true)} du département, connecté(e)s ou non, trié(e)s par présence puis grade. Cliquer sur un(e) ${staffLabel(false).toLowerCase()} pour ouvrir sa fiche.</div>
+            </div>
+            ${canRecruit ? `<button class="mdt-btn mdt-btn-primary" id="ef-recruit">+ Ajouter effectif</button>` : ''}
+        </div>
         <div class="mdt-card" style="padding:0">
             <div class="mdt-card-title" id="ef-toggle" style="cursor:pointer;padding:16px 18px;margin:0;display:flex;align-items:center;justify-content:space-between">
-                <span>Effectifs en ligne — <span id="ef-count">…</span></span>
+                <span>Effectifs — <span id="ef-count">…</span></span>
                 <span id="ef-chevron">${state.rosterExpanded ? '▼' : '▶'}</span>
             </div>
             <div id="ef-list" class="${state.rosterExpanded ? '' : 'mdt-hidden'}">${emptyState('⏳', 'Chargement…')}</div>
         </div>
     `);
 
+    if (canRecruit) b('ef-recruit', () => formRecruit());
+
     const load = async () => {
         const agents = asArray(await fetchNui('mdt:getRoster', {}));
         if (state.currentTab !== 'effectifs' || !el('ef-list')) return;
         const onCount = agents.filter((a) => a.onDuty).length;
-        const cnt = el('ef-count'); if (cnt) cnt.textContent = `${agents.length} agent(s) · ${onCount} en service`;
+        const connectedCount = agents.filter((a) => a.online !== false).length;
+        const cnt = el('ef-count');
+        if (cnt) cnt.textContent = `${agents.length} ${staffLabel(false).toLowerCase()}(s) · ${connectedCount} connecté(s) · ${onCount} en service`;
         renderRosterList(agents);
     };
 
@@ -1903,7 +1957,7 @@ async function openAgentFile(characterId) {
     state.currentAgent = characterId;
     setContent(emptyState('⏳', 'Chargement de la fiche…'));
     const d = await fetchNui('mdt:getAgentFile', { character_id: characterId });
-    if (!d || !d.identity) { setContent(emptyState('🚫', 'Agent introuvable.')); return; }
+    if (!d || !d.identity) { setContent(emptyState('🚫', `${staffLabel(false)} introuvable.`)); return; }
     const id = d.identity, meta = d.meta || {}, career = d.career || {};
     const identifier = id.identifier;
     const assignments = asArray(d.assignments), comms = asArray(d.commendations), skills = asArray(d.skills);
@@ -1923,7 +1977,7 @@ async function openAgentFile(characterId) {
         <div class="mdt-page-sub">${esc(id.gradeLabel || '—')}</div>
 
         <div class="mdt-card">
-            <div class="mdt-card-title">Informations générales ${canEdit ? `<button class="mdt-btn mdt-btn-sm mdt-btn-primary" id="ag-save-meta">Enregistrer</button>` : ''}</div>
+            <div class="mdt-card-title">Informations générales ${(canEdit && d.isLeo) ? `<button class="mdt-btn mdt-btn-sm mdt-btn-primary" id="ag-save-meta">Enregistrer</button>` : ''}</div>
             <div class="mdt-grid-2">
                 <dl class="mdt-kv">
                     <dt>Matricule</dt><dd>${esc(meta.matricule || '—')}</dd>
@@ -1931,27 +1985,33 @@ async function openAgentFile(characterId) {
                     <dt>Prénom</dt><dd>${esc(id.prenom || '—')}</dd>
                     <dt>Naissance</dt><dd>${esc(id.ddn || '—')}</dd>
                 </dl>
-                <dl class="mdt-kv">
-                    <dt>Entrée police</dt><dd>${canEdit ? `<input class="mdt-input" style="max-width:180px" type="date" id="ag-hire" value="${esc(meta.hire_date || '')}">` : fmtDateFR(meta.hire_date)}</dd>
+                ${d.isLeo ? `<dl class="mdt-kv">
+                    <dt>Entrée en service</dt><dd>${canEdit ? `<input class="mdt-input" style="max-width:180px" type="date" id="ag-hire" value="${esc(meta.hire_date || '')}">` : fmtDateFR(meta.hire_date)}</dd>
                     <dt>Titularisation</dt><dd>${canEdit ? `<input class="mdt-input" style="max-width:180px" type="date" id="ag-tenure" value="${esc(meta.tenure_date || '')}">` : fmtDateFR(meta.tenure_date)}</dd>
                     <dt>Arme de service</dt><dd>${canEdit ? `<input class="mdt-input" style="max-width:180px" id="ag-weapon" value="${esc(meta.service_weapon || '')}" placeholder="N° de série">` : esc(meta.service_weapon || '—')}</dd>
-                </dl>
+                </dl>` : ''}
             </div>
         </div>
 
+        ${d.isLeo ? `
         <div class="mdt-card">
-            <div class="mdt-card-title">Historique de carrière ${canEdit ? `<button class="mdt-btn mdt-btn-sm mdt-btn-primary" id="ag-save-career">Enregistrer</button>` : ''}</div>
-            <table class="mdt-table"><thead><tr><th>Grade</th><th>Date de début</th><th>Date de fin</th></tr></thead><tbody>
-            ${grades.map((g) => {
-        const c = career[String(g.grade)] || {};
-        return `<tr>
-                    <td><b>${esc(g.label)}</b></td>
-                    <td>${canEdit ? `<input class="mdt-input" style="max-width:170px" type="date" data-car-start="${g.grade}" value="${esc(c.start_date || '')}">` : fmtDateFR(c.start_date)}</td>
-                    <td>${canEdit ? `<input class="mdt-input" style="max-width:170px" type="date" data-car-end="${g.grade}" value="${esc(c.end_date || '')}">` : fmtDateFR(c.end_date)}</td>
-                </tr>`;
-    }).join('')}
-            </tbody></table>
-        </div>
+            <div class="mdt-card-title">Historique de carrière ${canEdit ? `<button class="mdt-btn mdt-btn-sm mdt-btn-primary" id="ag-save-career">Enregistrer</button> <button class="mdt-btn mdt-btn-sm" id="ag-add-career">+ Ajouter un grade</button> <button class="mdt-btn mdt-btn-sm" id="ag-promote">Promouvoir / rétrograder</button>` : ''}</div>
+            ${(() => {
+        const dated = grades.filter((g) => { const c = career[String(g.grade)] || {}; return c.start_date || c.end_date; });
+        if (!dated.length) return emptyState('📜', "Aucune entrée. Utilisez « + Ajouter un grade ».");
+        return `<table class="mdt-table"><thead><tr><th>Grade</th><th>Date de début</th><th>Date de fin</th><th>Modifié par</th></tr></thead><tbody>
+            ${dated.map((g) => {
+            const c = career[String(g.grade)] || {};
+            return `<tr>
+                        <td><b>${esc(g.label)}</b></td>
+                        <td>${canEdit ? `<input class="mdt-input" style="max-width:170px" type="date" data-car-start="${g.grade}" value="${esc(c.start_date || '')}">` : fmtDateFR(c.start_date)}</td>
+                        <td>${canEdit ? `<input class="mdt-input" style="max-width:170px" type="date" data-car-end="${g.grade}" value="${esc(c.end_date || '')}">` : fmtDateFR(c.end_date)}</td>
+                        <td>${esc(c.changed_by || '—')}</td>
+                    </tr>`;
+        }).join('')}
+            </tbody></table>`;
+    })()}
+        </div>` : ''}
 
         <div class="mdt-card">
             <div class="mdt-card-title">Affectations opérationnelles ${canEdit ? `<button class="mdt-btn mdt-btn-sm mdt-btn-primary" id="ag-add-assign">+ Ajouter</button>` : ''}</div>
@@ -1964,6 +2024,7 @@ async function openAgentFile(characterId) {
                 </tr>`).join('') + `</tbody></table>` : emptyState('📍', 'Aucune affectation.')}
         </div>
 
+        ${d.isLeo ? `
         <div class="mdt-card">
             <div class="mdt-card-title">Lettres de félicitations / sanctions ${canEdit ? `<button class="mdt-btn mdt-btn-sm mdt-btn-primary" id="ag-add-comm">+ Ajouter</button>` : ''}</div>
             ${comms.length ? `<table class="mdt-table"><thead><tr><th>Date d'obtention</th><th>Nature</th><th>Motif</th>${canEdit ? '<th></th>' : ''}</tr></thead><tbody>` +
@@ -1973,8 +2034,24 @@ async function openAgentFile(characterId) {
                     <td>${esc(c.reason)}</td>
                     ${canEdit ? `<td><button class="mdt-btn mdt-btn-sm mdt-btn-danger" data-del-comm="${esc(c.id)}">🗑</button></td>` : ''}
                 </tr>`).join('') + `</tbody></table>` : emptyState('🎖️', 'Aucune entrée.')}
-        </div>
+        </div>` : ''}
 
+        ${d.stats ? `
+        <div class="mdt-card">
+            <div class="mdt-card-title">Statistiques</div>
+            <dl class="mdt-kv">
+                <dt>GAV posées</dt><dd>${d.stats.custody_count || 0}</dd>
+                <dt>Incarcérations</dt><dd>${d.stats.prison_count || 0}</dd>
+                <dt>Amendes émises</dt><dd>${d.stats.fines_count || 0} (${d.stats.fines_amount || 0}$ au total)</dd>
+                <dt>Fouilles / palpations</dt><dd>${d.stats.searches_count || 0}</dd>
+                <dt>Prélèvements PTS</dt><dd>${d.stats.evidence_count || 0}</dd>
+                <dt>Temps de service cumulé</dt><dd>${Math.floor((d.stats.duty_seconds || 0) / 3600)}h${String(Math.floor(((d.stats.duty_seconds || 0) % 3600) / 60)).padStart(2, '0')}</dd>
+                <dt>Mises à mort en intervention</dt><dd>${d.stats.callout_killed || 0}</dd>
+                <dt>Bavures constatées (IGPN)</dt><dd>${(d.stats.callout_misconducts || 0) > 0 ? `<span class="mdt-badge mdt-badge-red">${d.stats.callout_misconducts}</span>` : '0'}</dd>
+            </dl>
+        </div>` : ''}
+
+        ${d.isLeo ? `
         <div class="mdt-card">
             <div class="mdt-card-title">Compétences ${canEdit ? `<button class="mdt-btn mdt-btn-sm mdt-btn-primary" id="ag-add-skill">+ Ajouter</button>` : ''}</div>
             ${skills.length ? `<table class="mdt-table"><thead><tr><th>Compétence</th><th>Statut</th><th>Date d'obtention</th>${canEdit ? '<th></th>' : ''}</tr></thead><tbody>` +
@@ -1986,13 +2063,29 @@ async function openAgentFile(characterId) {
                         <button class="mdt-btn mdt-btn-sm" data-edit-skill-date="${esc(s.id)}" data-date="${esc(toISODate(s.obtained_at))}" title="Modifier la date">✏️</button>
                         <button class="mdt-btn mdt-btn-sm mdt-btn-danger" data-del-skill="${esc(s.id)}">🗑</button></td>` : ''}
                 </tr>`).join('') + `</tbody></table>` : emptyState('🎓', 'Aucune compétence. Les formations validées apparaissent ici automatiquement.')}
-        </div>
+        </div>` : ''}
+
+        ${d.rangeScores ? `
+        <div class="mdt-card">
+            <div class="mdt-card-title">Stand de tir</div>
+            ${d.rangeScores.length ? `<table class="mdt-table"><thead><tr><th>Date</th><th>Difficulté</th><th>Cibles</th><th>Score</th><th>Formateur</th></tr></thead><tbody>` +
+            d.rangeScores.map((r) => `<tr>
+                    <td>${fmtDateFR(r.created_at)}</td>
+                    <td>${esc(r.difficulty_label || r.difficulty)}</td>
+                    <td>${r.target_count}</td>
+                    <td>${r.score} / ${r.max_score}</td>
+                    <td>${esc(r.trainer_name || '—')}</td>
+                </tr>`).join('') + `</tbody></table>` : emptyState('🎯', 'Aucune session de tir enregistrée.')}
+        </div>` : ''}
     `);
 
     b('ag-back', renderEffectifs);
     if (canEdit) {
         b('ag-save-meta', () => fetchNui('mdt:saveAgentMeta', {
-            character_id: characterId, hire_date: el('ag-hire').value, tenure_date: el('ag-tenure').value, service_weapon: el('ag-weapon').value.trim(),
+            character_id: characterId,
+            hire_date: el('ag-hire') ? el('ag-hire').value : (meta.hire_date || ''),
+            tenure_date: el('ag-tenure') ? el('ag-tenure').value : (meta.tenure_date || ''),
+            service_weapon: el('ag-weapon') ? el('ag-weapon').value.trim() : (meta.service_weapon || ''),
         }));
         b('ag-save-career', () => {
             const entries = [];
@@ -2003,11 +2096,13 @@ async function openAgentFile(characterId) {
             });
             fetchNui('mdt:saveCareer', { character_id: characterId, identifier, entries });
         });
-        b('ag-add-assign', () => formAssignment(characterId, identifier, null));
+        b('ag-promote', () => formPromote(characterId, identifier, parseInt(id.job_grade) || 0, grades));
+        b('ag-add-career', () => formAddCareerGrade(characterId, identifier, grades, career));
+        b('ag-add-assign', () => formAssignment(characterId, identifier, null, d.unitCatalog, d.lockedUnit));
         b('ag-add-comm', () => formCommendation(characterId, identifier));
         document.querySelectorAll('[data-edit-assign]').forEach((x) => x.addEventListener('click', (e) => {
             e.stopPropagation();
-            const a = assignments.find((aa) => String(aa.id) === x.dataset.editAssign); formAssignment(characterId, identifier, a);
+            const a = assignments.find((aa) => String(aa.id) === x.dataset.editAssign); formAssignment(characterId, identifier, a, d.unitCatalog, d.lockedUnit);
         }));
         document.querySelectorAll('[data-del-assign]').forEach((x) => x.addEventListener('click', () => {
             fetchNui('mdt:deleteAssignment', { id: x.dataset.delAssign, character_id: characterId });
@@ -2043,19 +2138,125 @@ function showCommendationDetail(c) {
     `, `<button class="mdt-btn" onclick="window.__mdtCloseModal()">Fermer</button>`);
 }
 
-function formAssignment(characterId, identifier, existing) {
+function formAssignment(characterId, identifier, existing, unitCatalog, lockedUnit) {
+    const catalog = asArray(unitCatalog);
+    const options = lockedUnit
+        ? catalog.filter((u) => u.id === lockedUnit)
+        : catalog;
+    const optionsHtml = options.map((u) =>
+        `<option value="${esc(u.id)}" ${existing && existing.code === u.id ? 'selected' : ''}>${esc(u.label)} — ${esc(u.service)}</option>`
+    ).join('');
     openModal(existing ? "Modifier l'affectation" : 'Nouvelle affectation', `
-        <div class="mdt-form-row"><label>Code Affectation</label><input class="mdt-input" id="as-code" value="${esc(existing ? existing.code : '')}" placeholder="Ex : BAC-01"></div>
+        <div class="mdt-form-row"><label>Unité</label>
+            <select class="mdt-input" id="as-code">${optionsHtml}</select>
+            ${lockedUnit ? `<div style="font-size:12px;color:var(--mdt-text-dim);margin-top:4px">Grade limité à cette unité.</div>` : ''}
+        </div>
         <div class="mdt-form-row"><label>Date de début</label><input class="mdt-input" type="date" id="as-start" value="${esc(existing ? existing.start_date : '')}"></div>
         <div class="mdt-form-row"><label>Date de fin</label><input class="mdt-input" type="date" id="as-end" value="${esc(existing ? existing.end_date : '')}"></div>
+        <div style="font-size:12px;color:var(--mdt-text-dim)">Laisser la date de fin vide = affectation actuelle (ferme automatiquement la précédente, notifie l'agent).</div>
     `, `<button class="mdt-btn" onclick="window.__mdtCloseModal()">Annuler</button>
         <button class="mdt-btn mdt-btn-primary" id="as-submit">${existing ? 'Enregistrer' : 'Ajouter'}</button>`);
     el('as-submit').addEventListener('click', () => {
-        const code = el('as-code').value.trim();
-        if (!code) { toast('Code requis.', false); return; }
+        const code = el('as-code').value;
+        if (!code) { toast('Unité requise.', false); return; }
         const payload = { character_id: characterId, identifier, code, start_date: el('as-start').value, end_date: el('as-end').value };
         if (existing) { payload.id = existing.id; fetchNui('mdt:updateAssignment', payload); }
         else fetchNui('mdt:addAssignment', payload);
+        closeModal();
+    });
+}
+
+function formAddCareerGrade(characterId, identifier, grades, career) {
+    const available = asArray(grades).filter((g) => {
+        const c = career[String(g.grade)] || {};
+        return !(c.start_date || c.end_date);
+    });
+    if (!available.length) { toast('Tous les grades ont déjà une entrée datée.', false); return; }
+    const options = available.map((g) => `<option value="${g.grade}">${esc(g.label)}</option>`).join('');
+    openModal("Ajouter un grade à l'historique", `
+        <div class="mdt-form-row"><label>Grade</label><select class="mdt-input" id="cg-grade">${options}</select></div>
+        <div class="mdt-form-row"><label>Date de début</label><input class="mdt-input" type="date" id="cg-start"></div>
+        <div class="mdt-form-row"><label>Date de fin</label><input class="mdt-input" type="date" id="cg-end"></div>
+    `, `<button class="mdt-btn" onclick="window.__mdtCloseModal()">Annuler</button>
+        <button class="mdt-btn mdt-btn-primary" id="cg-submit">Ajouter</button>`);
+    el('cg-submit').addEventListener('click', () => {
+        const grade = parseInt(el('cg-grade').value);
+        const start = el('cg-start').value, endDate = el('cg-end').value;
+        if (!start && !endDate) { toast('Au moins une date requise.', false); return; }
+        fetchNui('mdt:saveCareer', { character_id: characterId, identifier, entries: [{ grade, start, endDate }] });
+        closeModal();
+    });
+}
+
+function formPromote(characterId, identifier, currentGrade, grades) {
+    const options = asArray(grades).map((g) =>
+        `<option value="${g.grade}" ${g.grade === currentGrade ? 'selected' : ''}>${esc(g.label)}</option>`
+    ).join('');
+    openModal('Promouvoir / rétrograder', `
+        <div class="mdt-form-row"><label>Nouveau grade</label><select class="mdt-input" id="pr-grade">${options}</select></div>
+        <div style="font-size:12px;color:var(--mdt-text-dim)">Change réellement le grade de l'agent (doit être connecté) et ferme l'entrée de carrière en cours.</div>
+    `, `<button class="mdt-btn" onclick="window.__mdtCloseModal()">Annuler</button>
+        <button class="mdt-btn mdt-btn-primary" id="pr-submit">Valider</button>`);
+    el('pr-submit').addEventListener('click', () => {
+        const grade = parseInt(el('pr-grade').value);
+        fetchNui('mdt:promoteAgent', { character_id: characterId, grade });
+        closeModal();
+    });
+}
+
+// Recrutement d'une nouvelle recrue (onglet Effectifs → "+ Ajouter effectif").
+// Ne liste que les joueurs proches et pas déjà dans le département (calculé
+// côté serveur) ; grade limité à un rang strictement inférieur au sien.
+async function formRecruit() {
+    const myGrade = state.payload.grade;
+    const grades = asArray(state.payload.grades).filter((g) => g.grade < myGrade);
+    if (!grades.length) { toast('Aucun grade disponible pour un recrutement.', false); return; }
+
+    const catalog = [];
+    asArray(state.payload.services).forEach((s) => asArray(s.units).forEach((u) => catalog.push({ id: u.id, label: u.label, service: s.label })));
+    const unitsFor = (grade) => {
+        const rank = grades.find((g) => g.grade === grade) || {};
+        const ids = asArray(rank.units);
+        return catalog.filter((u) => ids.includes(u.id));
+    };
+
+    openModal('Ajouter effectif', `
+        <div class="mdt-form-row"><label>Candidat</label>
+            <select class="mdt-input" id="rc-target">${emptyState('⏳', 'Recherche des personnes à proximité…')}</select>
+        </div>
+        <div class="mdt-form-row"><label>Grade</label>
+            <select class="mdt-input" id="rc-grade">${grades.map((g) => `<option value="${g.grade}">${esc(g.label)}</option>`).join('')}</select>
+        </div>
+        <div class="mdt-form-row"><label>Service / unité</label><select class="mdt-input" id="rc-unit"></select></div>
+        <div style="font-size:12px;color:var(--mdt-text-dim)">Attribue le job, le grade et l'unité choisis à la personne sélectionnée (elle doit rester à proximité).</div>
+    `, `<button class="mdt-btn" onclick="window.__mdtCloseModal()">Annuler</button>
+        <button class="mdt-btn mdt-btn-primary" id="rc-submit">Recruter</button>`);
+
+    const refreshUnits = () => {
+        const grade = parseInt(el('rc-grade').value);
+        const units = unitsFor(grade);
+        const sel = el('rc-unit');
+        if (sel) sel.innerHTML = units.map((u) => `<option value="${esc(u.id)}">${esc(u.label)} — ${esc(u.service)}</option>`).join('');
+    };
+    el('rc-grade').addEventListener('change', refreshUnits);
+    refreshUnits();
+
+    const candidates = asArray(await fetchNui('mdt:getNearbyRecruits', {}));
+    const targetSel = el('rc-target');
+    if (!targetSel) return; // modal fermée entre-temps
+    if (!candidates.length) {
+        targetSel.innerHTML = '<option value="">Aucune personne à proximité</option>';
+    } else {
+        targetSel.innerHTML = candidates.map((c) => `<option value="${esc(c.source)}">${esc(c.name || ('Joueur ' + c.source))}</option>`).join('');
+    }
+
+    el('rc-submit').addEventListener('click', () => {
+        const source = parseInt(el('rc-target').value);
+        const grade = parseInt(el('rc-grade').value);
+        const unit = el('rc-unit').value;
+        if (!source) { toast('Sélectionnez un candidat.', false); return; }
+        if (!unit) { toast('Sélectionnez une unité.', false); return; }
+        fetchNui('mdt:recruitAgent', { source, grade, unit });
         closeModal();
     });
 }
@@ -2278,19 +2479,23 @@ function formTraining(existing) {
 /* ════════════════════════════════════════════════════════════════
    ONGLET — ORGANISATION (services / unités / grades)
    ════════════════════════════════════════════════════════════════ */
-function renderOrganisation() {
+async function renderOrganisation() {
     const services = asArray(state.payload.services);
     const grades = asArray(state.payload.grades);
     setContent(`
         <div class="mdt-page-title">Organisation — ${esc(state.payload.departmentLabel)}</div>
-        <div class="mdt-page-sub">Services, unités et grille des grades.</div>
+        <div class="mdt-page-sub">Services, unités et grille des grades. Cliquer sur une unité pour voir son effectif.</div>
         <div class="mdt-grid-2">
-            <div>
+            <div id="org-services">
                 <div class="mdt-card-title">Services & unités</div>
                 ${services.map((s) => `
                     <div class="mdt-service">
                         <div class="mdt-service-head">${esc(s.label)}</div>
-                        ${asArray(s.units).map((u) => `<div class="mdt-unit"><div class="mdt-unit-name">${esc(u.label)}</div><div class="mdt-unit-desc">${esc(u.description || '')}</div></div>`).join('')}
+                        ${asArray(s.units).map((u) => `
+                            <div class="mdt-unit" data-unit="${esc(u.id)}" data-label="${esc(u.label)}" style="cursor:pointer">
+                                <div class="mdt-unit-name">${esc(u.label)} <span class="mdt-badge mdt-badge-gray" id="org-count-${esc(u.id)}">…</span></div>
+                                <div class="mdt-unit-desc">${esc(u.description || '')}</div>
+                            </div>`).join('')}
                     </div>`).join('')}
             </div>
             <div>
@@ -2306,6 +2511,37 @@ function renderOrganisation() {
             </div>
         </div>
     `);
+
+    document.querySelectorAll('#org-services [data-unit]').forEach((row) => row.addEventListener('click', () => {
+        renderUnitDetail(row.dataset.unit, row.dataset.label);
+    }));
+
+    const agents = asArray(await fetchNui('mdt:getRoster', {}));
+    if (state.currentTab !== 'organisation') return;
+    const counts = {};
+    agents.forEach((a) => { counts[a.unit] = (counts[a.unit] || 0) + 1; });
+    services.forEach((s) => asArray(s.units).forEach((u) => {
+        const badge = el('org-count-' + u.id);
+        if (badge) badge.textContent = counts[u.id] || 0;
+    }));
+}
+
+/* ── Détail d'une unité (depuis Organisation) : effectif réellement affecté ── */
+async function renderUnitDetail(unitId, unitLabel) {
+    setContent(emptyState('⏳', 'Chargement…'));
+    const agents = asArray(await fetchNui('mdt:getRoster', {}));
+    if (state.currentTab !== 'organisation') return;
+    const filtered = agents.filter((a) => a.unit === unitId);
+    setContent(`
+        <div class="mdt-back" id="un-back">← Retour à l'Organisation</div>
+        <div class="mdt-page-title">${esc(unitLabel)}</div>
+        <div class="mdt-page-sub">${filtered.length} ${staffLabel(false).toLowerCase()}(s) actuellement affecté(e)(s). Cliquer sur un(e) ${staffLabel(false).toLowerCase()} pour ouvrir sa fiche.</div>
+        <div class="mdt-card" style="padding:0">
+            <div id="un-list"></div>
+        </div>
+    `);
+    b('un-back', renderOrganisation);
+    renderRosterList(filtered, 'un-list');
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -2349,6 +2585,76 @@ el('mdt-close').addEventListener('click', closeMDT);
 el('mdt-modal-close').addEventListener('click', closeModal);
 el('mdt-modal-overlay').addEventListener('click', (e) => { if (e.target === el('mdt-modal-overlay')) closeModal(); });
 window.__mdtCloseModal = closeModal;
+
+/* Fenêtre déplaçable : clic maintenu sur l'en-tête, déplacement par
+   translate() — la position de base reste le centrage flex de l'overlay. */
+(function setupModalDrag() {
+    const modal  = el('mdt-modal');
+    const header = modal && modal.querySelector('.mdt-modal-header');
+    if (!modal || !header) return;
+    let dragging = false, startX = 0, startY = 0, baseX = 0, baseY = 0;
+
+    header.addEventListener('mousedown', (e) => {
+        if (e.target.closest('.mdt-modal-close')) return;
+        dragging = true;
+        startX = e.clientX; startY = e.clientY;
+        const m = /translate\(([-\d.]+)px,\s*([-\d.]+)px\)/.exec(modal.style.transform || '');
+        baseX = m ? parseFloat(m[1]) : 0;
+        baseY = m ? parseFloat(m[2]) : 0;
+        e.preventDefault();
+    });
+    document.addEventListener('mousemove', (e) => {
+        if (!dragging) return;
+        modal.style.transform = `translate(${baseX + (e.clientX - startX)}px, ${
+            baseY + (e.clientY - startY)}px)`;
+    });
+    document.addEventListener('mouseup', () => { dragging = false; });
+})();
+
+/* Fenêtre redimensionnable : clic maintenu sur la poignée en coin,
+   la taille (px) est appliquée directement sur .mdt-window et remplace
+   les valeurs vw/vh/max-* du CSS (voir mdt.css), puis persistée pour
+   être restaurée à la prochaine ouverture. */
+(function setupResize() {
+    const win    = document.querySelector('.mdt-window');
+    const handle = el('mdt-resize-handle');
+    if (!win || !handle) return;
+    const MIN_W = 900, MIN_H = 500;
+    let dragging = false, startX = 0, startY = 0, baseW = 0, baseH = 0;
+
+    try {
+        const saved = JSON.parse(localStorage.getItem('mdt-size') || 'null');
+        if (saved && saved.w && saved.h) {
+            win.style.maxWidth = 'none'; win.style.maxHeight = 'none';
+            win.style.width  = saved.w + 'px';
+            win.style.height = saved.h + 'px';
+        }
+    } catch (e) {}
+
+    handle.addEventListener('mousedown', (e) => {
+        dragging = true;
+        startX = e.clientX; startY = e.clientY;
+        const r = win.getBoundingClientRect();
+        baseW = r.width; baseH = r.height;
+        /* Les plafonds max-width/max-height du CSS empêcheraient de
+           dépasser la taille par défaut : on les lève dès le premier
+           redimensionnement manuel. */
+        win.style.maxWidth = 'none'; win.style.maxHeight = 'none';
+        e.preventDefault();
+    });
+    document.addEventListener('mousemove', (e) => {
+        if (!dragging) return;
+        const w = Math.max(MIN_W, Math.min(window.innerWidth - 20, baseW + (e.clientX - startX)));
+        const h = Math.max(MIN_H, Math.min(window.innerHeight - 20, baseH + (e.clientY - startY)));
+        win.style.width  = w + 'px';
+        win.style.height = h + 'px';
+    });
+    document.addEventListener('mouseup', () => {
+        if (!dragging) return;
+        dragging = false;
+        try { localStorage.setItem('mdt-size', JSON.stringify({ w: win.clientWidth, h: win.clientHeight })); } catch (e) {}
+    });
+})();
 
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {

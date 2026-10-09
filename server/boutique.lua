@@ -144,8 +144,8 @@ end
 -- Ajoute des crédits en BDD, que le joueur soit en ligne ou hors ligne.
 local function AddCredits(identifier, amount)
     if not identifier or not amount then return end
-    amount = tonumber(amount)
-    if amount <= 0 then return end
+    amount = LSLegacy.Validate.PositiveInteger(amount)
+    if not amount then return end
 
     MySQL.Async.execute([[
         UPDATE players SET `boutique-credits` = `boutique-credits` + @amount
@@ -194,7 +194,7 @@ RegisterCommand("logpurchase", function(source, args, rawCommand)
     local price         = args[3]  or "?"
     local currency      = args[4]  or "EUR"
     local date          = args[5]  or "?"
-    local time_val      = args[6]  or "?"
+    local timeVal      = args[6]  or "?"
     local email         = args[7]  or "N/A"
     local packageId     = args[8]  or "?"
     local packagePrice  = args[9]  or "?"
@@ -208,7 +208,7 @@ RegisterCommand("logpurchase", function(source, args, rawCommand)
     end
     local packageName = #pkgParts > 0 and table.concat(pkgParts, " ") or "N/A"
 
-    date, time_val = ToLocalTime(date, time_val)
+    date, timeVal = ToLocalTime(date, timeVal)
 
     print(("[Tebex-Credits] Achat logué : %s a acheté '%s' (%.2f %s)"):format(
         username, packageName, tonumber(price) or 0, currency
@@ -222,7 +222,7 @@ RegisterCommand("logpurchase", function(source, args, rawCommand)
         price         = tonumber(price) or 0,
         currency      = currency,
         date          = date,
-        time          = time_val,
+        time          = timeVal,
         discordUsername = username,
     })
 
@@ -275,7 +275,7 @@ RegisterCommand("logpurchase", function(source, args, rawCommand)
             },
             {
                 name   = "📅  Date & Heure",
-                value  = ("%s à %s"):format(date, time_val),
+                value  = ("%s à %s"):format(date, timeVal),
                 inline = true
             },
         },

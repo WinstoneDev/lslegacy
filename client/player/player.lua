@@ -1,7 +1,7 @@
 local playerLoaded = false
 LSLegacy.PlayerData = {}
 
-LSLegacy.RegisterClientEvent('InitPlayer', function(data)
+LSLegacy.Events.Register('lslegacy:initPlayer', function(data)
     Config.Development.Print("[client] InitPlayer reçu, id=" .. tostring(data and data.id) .. " slot=" .. tostring(data and data.slot))
     LSLegacy.PlayerData = data
     playerLoaded = true
@@ -17,13 +17,19 @@ LSLegacy.RegisterClientEvent('InitPlayer', function(data)
     end
 end)
 
-LSLegacy.RegisterClientEvent('UpdatePlayer', function(data)
+LSLegacy.UsableItems = {}
+RegisterNetEvent('lslegacy:usableItems', function(names)
+    LSLegacy.UsableItems = {}
+    for _, name in ipairs(names or {}) do LSLegacy.UsableItems[name] = true end
+end)
+
+LSLegacy.Events.Register('lslegacy:updatePlayer', function(data)
     LSLegacy.PlayerData = data
 end)
 
-LSLegacy.RegisterClientEvent('UpdateServerPlayer', function()
+LSLegacy.Events.Register('lslegacy:updateServerPlayer', function()
     local data = LSLegacy.PlayerData
-    LSLegacy.SendEventToServer('ReceiveUpdateServerPlayer', data)
+    LSLegacy.Events.SendToServer('lslegacy:receiveUpdateServerPlayer', data)
 end)
 
 function GetPlayerInventoryItems()
@@ -45,7 +51,7 @@ end
 Citizen.CreateThread( function()
     while true do
         if playerLoaded then
-            LSLegacy.TriggerLocalEvent('skinchanger:getSkin', function(skin)
+            LSLegacy.Events.TriggerLocal('skinchanger:getSkin', function(skin)
                 LSLegacy.PlayerData.skin = skin
             end)
        end
@@ -72,14 +78,26 @@ Citizen.CreateThread( function()
         SetPedHelmet(PlayerPedId(), false) 
         DisablePoliceReports()
         SetPlayerHealthRechargeMultiplier(PlayerId(), 0.0)
-        if IsPedInAnyVehicle(PlayerPedId(), false) then
-            if GetPedInVehicleSeat(GetVehiclePedIsIn(PlayerPedId(), false), 0) == PlayerPedId() then
-                if GetIsTaskActive(PlayerPedId(), 165) then
-                    SetPedIntoVehicle(PlayerPedId(), GetVehiclePedIsIn(PlayerPedId(), false), 0)
+        Wait(100)
+    end
+end)
+
+-- anti-shuffle : le flag 184 est remis à zéro par le moteur chaque frame et n'empêche
+-- pas toujours une tâche de shuffle déjà lancée, d'où le filet de sécurité (snap-back)
+CreateThread(function()
+    while true do
+        local ped = PlayerPedId()
+        if IsPedInAnyVehicle(ped, false) then
+            local vehicle = GetVehiclePedIsIn(ped, false)
+            if GetPedInVehicleSeat(vehicle, 0) == ped then
+                SetPedConfigFlag(ped, 184, true)
+                if GetIsTaskActive(ped, 165) and GetSeatPedIsTryingToEnter(ped) == -1 then
+                    SetPedIntoVehicle(ped, vehicle, 0)
+                    SetVehicleCloseDoorDeferedAction(vehicle, 0)
                 end
             end
         end
-        Wait(100)
+        Wait(0)
     end
 end)
 
@@ -126,7 +144,7 @@ Citizen.CreateThread(function()
     end
 end)
 
-LSLegacy.RegisterClientEvent('debug', function()
+LSLegacy.Events.Register('debug', function()
    ExecuteCommand('p1')
    Wait(1000)
    ExecuteCommand('p2')

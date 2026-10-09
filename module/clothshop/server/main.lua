@@ -1,0 +1,276 @@
+-- ════════════════════════════════════════════════
+--  LSLegacy – ClothShop Server
+-- ════════════════════════════════════════════════
+
+LSLegacy.Security.RegisterRateLimit('clothshop:addClothesInInventory', 20)
+LSLegacy.Security.RegisterRateLimit('clothshop:createOutfit', 20)
+LSLegacy.Security.RegisterRateLimit('clothshop:splitOutfit', 20)
+LSLegacy.Security.RegisterRateLimit('clothshop:modifyOutfit', 20)
+LSLegacy.Security.RegisterRateLimit('inventory:updateOutfitFromInventory', 20)
+
+-- ── Helper: remove inventory item by uniqueId ─────
+local function RemoveItemByUniqueId(player, uniqueId)
+    if not player or not uniqueId then return end
+    local inventory = player.inventory
+    for k, v in pairs(inventory) do
+        if tostring(v.uniqueId) == tostring(uniqueId) then
+            table.remove(inventory, k)
+            break
+        end
+    end
+    player.inventory = inventory
+    player:MarkDirty('inventory')
+    player.weight    = LSLegacy.Inventory.GetInventoryWeight(player.inventory)
+    LSLegacy.Events.SendToClient('lslegacy:updatePlayer', player.source, player)
+end
+
+-- ── Add single clothing item after purchase ───────
+LSLegacy.Events.Register('clothshop:addClothesInInventory', function(item, label, data)
+    local player = LSLegacy.Players.Get(source)
+    LSLegacy.Inventory.AddItemInInventory(player, item, 1, label, nil, data)
+end)
+
+-- ── Create outfit from individual clothing items ──
+LSLegacy.Events.Register('clothshop:createOutfit', function(name, itemsData, itemIds)
+    local player = LSLegacy.Players.Get(source)
+    if not player then return end
+
+    -- Reporte l'armure restante du gilet consommé sur la tenue (sinon un
+    -- gilet endommagé redeviendrait neuf une fois transformé en tenue)
+    local vestArmour = nil
+    for _, entry in ipairs(itemIds or {}) do
+        for _, v in pairs(player.inventory) do
+            if tostring(v.uniqueId) == tostring(entry.uniqueId) and v.name == 'bproof' then
+                vestArmour = v.armor
+            end
+        end
+    end
+
+    -- Remove each consumed clothing item from inventory
+    for _, entry in ipairs(itemIds or {}) do
+        RemoveItemByUniqueId(player, entry.uniqueId)
+    end
+
+    -- Build outfit data: { tshirt: {drawable, texture}, ... }
+    local outfitData = {}
+    for slot, vals in pairs(itemsData or {}) do
+        outfitData[slot] = { vals.drawable or 0, vals.texture or 0 }
+    end
+    if outfitData['bproof'] then
+        outfitData.bproof_armor = vestArmour or 100
+    end
+
+    -- Give outfit item with all clothing data embedded
+    LSLegacy.Inventory.AddItemInInventory(player, 'outfit', 1, name, nil, outfitData)
+
+    LSLegacy.Events.SendToClient('clothshop:outfitCreated', source)
+end)
+
+-- ── Split outfit back into individual items ───────
+LSLegacy.Events.Register('clothshop:splitOutfit', function(outfitItem)
+    local player = LSLegacy.Players.Get(source)
+    if not player then return end
+
+    -- Remove the outfit item
+    if outfitItem and outfitItem.uniqueId then
+        RemoveItemByUniqueId(player, outfitItem.uniqueId)
+    end
+
+    -- Return each clothing item
+    if outfitItem and outfitItem.data then
+        local clothLabels = {
+            tshirt='T-shirt', torso='Torse', arms='Bras', pants='Pantalon',
+            shoes='Chaussures', helmet='Chapeau', glasses='Lunettes', chain='Chaîne',
+            bags='Sac', ears='Oreillette', watches='Montre', bracelet='Bracelet',
+            mask='Masque', decals='Badge', bproof='Gilet pare-balles'
+        }
+        for slot, vals in pairs(outfitItem.data) do
+            if slot ~= 'bproof_armor' then
+                local drawable = type(vals) == 'table' and (vals[1] or vals.drawable or 0) or 0
+                local texture  = type(vals) == 'table' and (vals[2] or vals.texture  or 0) or 0
+                local label    = (clothLabels[slot] or slot) .. ' #' .. drawable
+                if slot == 'bproof' then
+                    -- Rend l'armure restante au gilet redevenu un item individuel
+                    local newId = LSLegacy.Inventory.GiveUniqueId()
+                    LSLegacy.Inventory.AddItemInInventory(player, slot, 1, label, newId, {drawable, texture})
+                    for _, v in pairs(player.inventory) do
+                        if v.uniqueId == newId then
+                            v.armor = outfitItem.data.bproof_armor or 100
+                            break
+                        end
+                    end
+                    player:MarkDirty('inventory')
+                else
+                    LSLegacy.Inventory.AddItemInInventory(player, slot, 1, label, nil, {drawable, texture})
+                end
+            end
+        end
+    end
+
+    LSLegacy.Events.SendToClient('clothshop:outfitSplit', source)
+end)
+
+-- ── Modify an existing outfit ─────────────────────
+LSLegacy.Events.Register('clothshop:modifyOutfit', function(modData)
+    local player = LSLegacy.Players.Get(source)
+    if not player then return end
+
+    -- Reporte l'armure restante : celle d'un gilet fraîchement ajouté prime,
+    -- sinon celle déjà stockée sur la tenue (évite un reset à 100 à chaque modif)
+    local vestArmour = nil
+    if modData.uniqueId then
+        for _, v in pairs(player.inventory) do
+            if tostring(v.uniqueId) == tostring(modData.uniqueId) and v.name == 'outfit' and v.data then
+                vestArmour = v.data.bproof_armor
+            end
+        end
+    end
+    for _, entry in ipairs(modData.itemIds or {}) do
+        for _, v in pairs(player.inventory) do
+            if tostring(v.uniqueId) == tostring(entry.uniqueId) and v.name == 'bproof' then
+                vestArmour = v.armor
+            end
+        end
+    end
+
+    -- Remove the old outfit item
+    if modData.uniqueId then
+        RemoveItemByUniqueId(player, modData.uniqueId)
+    end
+
+    -- Remove consumed individual clothing items
+    for _, entry in ipairs(modData.itemIds or {}) do
+        RemoveItemByUniqueId(player, entry.uniqueId)
+    end
+
+    -- Build new outfit data
+    local outfitData = {}
+    for slot, vals in pairs(modData.items or {}) do
+        outfitData[slot] = { vals.drawable or 0, vals.texture or 0 }
+    end
+    if outfitData['bproof'] then
+        outfitData.bproof_armor = vestArmour or 100
+    end
+
+    -- Give back removed slots as individual items
+    local clothLabels = {
+        tshirt='T-shirt', torso='Torse', arms='Bras', pants='Pantalon',
+        shoes='Chaussures', helmet='Chapeau', glasses='Lunettes', chain='Chaîne',
+        bags='Sac', ears='Oreillette', watches='Montre', bracelet='Bracelet',
+        mask='Masque', decals='Badge', bproof='Gilet pare-balles'
+    }
+    for slot, vals in pairs(modData.removedSlots or {}) do
+        local drawable = type(vals) == 'table' and (vals[1] or vals.drawable or 0) or 0
+        local texture  = type(vals) == 'table' and (vals[2] or vals.texture  or 0) or 0
+        local label    = (clothLabels[slot] or slot) .. ' #' .. drawable
+        LSLegacy.Inventory.AddItemInInventory(player, slot, 1, label, nil, {drawable, texture})
+    end
+
+    -- Give updated outfit item
+    local name = modData.newName or 'Tenue'
+    LSLegacy.Inventory.AddItemInInventory(player, 'outfit', 1, name, nil, outfitData)
+
+    LSLegacy.Events.SendToClient('clothshop:outfitModified', source)
+end)
+
+-- ── Modifier une tenue depuis l'inventaire (drag & drop) ──
+LSLegacy.Events.Register('inventory:updateOutfitFromInventory', function(updateData)
+    local player = LSLegacy.Players.Get(source)
+    if not player or not updateData.outfitUniqueId then return end
+
+    local clothLabels = {
+        tshirt='T-shirt', torso='Torse', arms='Bras', pants='Pantalon',
+        shoes='Chaussures', helmet='Chapeau', glasses='Lunettes', chain='Chaîne',
+        bags='Sac', ears='Oreillette', watches='Montre', bracelet='Bracelet',
+        mask='Masque', decals='Badge', bproof='Gilet pare-balles'
+    }
+
+    -- Armure du gilet avant modification (pour la préserver ou la rendre au
+    -- gilet éjecté), remplacée par celle d'un gilet fraîchement dragué s'il y en a un
+    local inventory = player.inventory
+    local previousBproofArmour = nil
+    for _, v in pairs(inventory) do
+        if v.name == 'outfit' and tostring(v.uniqueId) == tostring(updateData.outfitUniqueId) then
+            previousBproofArmour = v.data and v.data.bproof_armor
+        end
+    end
+    local newVestArmour = previousBproofArmour
+    for _, entry in ipairs(updateData.consumedItems or {}) do
+        for _, v in pairs(inventory) do
+            if tostring(v.uniqueId) == tostring(entry.uniqueId) and v.name == 'bproof' then
+                newVestArmour = v.armor
+            end
+        end
+    end
+
+    -- Mettre à jour les données de l'item outfit en place
+    for k, v in pairs(inventory) do
+        if v.name == 'outfit' and tostring(v.uniqueId) == tostring(updateData.outfitUniqueId) then
+            local slots = updateData.newSlots or {}
+            if slots['bproof'] then
+                slots.bproof_armor = newVestArmour or 100
+            end
+            inventory[k].data = slots
+            break
+        end
+    end
+    player.inventory = inventory
+    player:MarkDirty('inventory')
+
+    -- Retirer les vêtements individuels consommés (ajoutés à la tenue)
+    for _, entry in ipairs(updateData.consumedItems or {}) do
+        RemoveItemByUniqueId(player, entry.uniqueId)
+    end
+
+    -- Redonner comme items individuels les slots retirés de la tenue
+    for slot, vals in pairs(updateData.removedSlots or {}) do
+        local drawable = type(vals) == 'table' and (vals[1] or vals.drawable or 0) or 0
+        local texture  = type(vals) == 'table' and (vals[2] or vals.texture  or 0) or 0
+        local label    = (clothLabels[slot] or slot) .. ' #' .. drawable
+        if slot == 'bproof' then
+            local newId = LSLegacy.Inventory.GiveUniqueId()
+            LSLegacy.Inventory.AddItemInInventory(player, slot, 1, label, newId, {drawable, texture})
+            for _, v in pairs(player.inventory) do
+                if v.uniqueId == newId then
+                    v.armor = previousBproofArmour or 100
+                    break
+                end
+            end
+            player:MarkDirty('inventory')
+        else
+            LSLegacy.Inventory.AddItemInInventory(player, slot, 1, label, nil, {drawable, texture})
+        end
+    end
+
+    -- Forcer la synchronisation si aucune opération d'ajout/suppression n'a déclenché UpdatePlayer
+    if (not updateData.consumedItems or #updateData.consumedItems == 0) and
+       (not updateData.removedSlots  or not next(updateData.removedSlots)) then
+        player.weight = LSLegacy.Inventory.GetInventoryWeight(player.inventory)
+        LSLegacy.Events.SendToClient('lslegacy:updatePlayer', player.source, player)
+    end
+end)
+
+-- ── Register shop zones ───────────────────────────
+local number = 0
+
+for k, v in pairs(Config.zoneClothShop) do
+    for i = 1, #v, 1 do
+        number = number + 1
+        LSLegacy.RegisterZone('Magasin de vêtements n°'..number, v[i].coords, function(source)
+            LSLegacy.Events.SendToClient('openClothMenu', source, "Magasin de vêtements n°"..number, v.Type)
+        end, 10.0, true, {
+            markerType  = 25,
+            markerColor = {r = 0, g = 125, b = 255, a = 255},
+            markerSize  = {x = 1.0, y = 1.0, z = 1.0},
+            markerPos   = v[i].coords
+        }, true, {
+            blipSprite = v.BlipId,
+            blipColor  = v.BlipColor,
+            blipScale  = v.BlipScale,
+            blipName   = k
+        }, true, {
+            drawNotificationDistance = 2.5,
+            notificationMessage      = "Appuyez sur ~INPUT_CONTEXT~ pour ouvrir le magasin de vêtements",
+        }, false, {})
+    end
+end

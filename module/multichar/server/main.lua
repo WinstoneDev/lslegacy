@@ -1,5 +1,5 @@
 -- ─── Résolution des slots ────────────────────────────────────────────────
--- Événements non passés par LSLegacy.RegisterServerEvent (RegisterNetEvent
+-- Événements non passés par LSLegacy.Events.Register (RegisterNetEvent
 -- brut + TriggerServerEvent côté client) : comme pour `registerPlayer`, le
 -- système de jetons anti-triche n'existe pas encore à ce stade de la
 -- connexion (LSLegacy.GeneratorTokenConnecting n'a pas encore tourné).
@@ -108,7 +108,7 @@ AddEventHandler('multichar:requestSlots', function()
     local source = source
     Config.Development.Print("[multichar] requestSlots reçu de " .. source)
 
-    if LSLegacy.ServerPlayers[source] then
+    if LSLegacy.Players.Get(source) then
         Config.Development.Print("Player " .. source .. " already registered")
         DropPlayer(source, "Player " .. source .. " already registered ╭∩╮（︶_︶）╭∩╮")
         return
@@ -134,14 +134,16 @@ end)
 -- ─── Bucket routing (isolement pendant l'appartement de sélection) ─────────
 -- Même contrainte que registerPlayer/requestSlots : le système de jetons
 -- n'existe pas encore à ce stade, donc RegisterNetEvent brut (comme
--- module/creatorPerso, mais offset distinct pour ne jamais collisionner avec
+-- module/creatorperso, mais offset distinct pour ne jamais collisionner avec
 -- son propre bucket). Le serveur dérive le bucket du server id : un client
 -- modifié ne peut pas demander le bucket d'un autre joueur.
 RegisterNetEvent('multichar:setApartmentBucket')
 AddEventHandler('multichar:setApartmentBucket', function(enter)
     local source = source
-    if LSLegacy.ServerPlayers[source] then return end
-    SetPlayerRoutingBucket(source, enter and (Config.Multichar.Apartment.BucketOffset + source) or 0)
+    if LSLegacy.Players.Get(source) then return end
+    local bucket = enter and (Config.Multichar.Apartment.BucketOffset + source) or 0
+    SetPlayerRoutingBucket(source, bucket)
+    LSLegacy.Pickup.SyncBucket(source, bucket)
 end)
 
 -- ─── Suppression d'un personnage ───────────────────────────────────────────
@@ -149,7 +151,7 @@ RegisterNetEvent('multichar:deleteCharacter')
 AddEventHandler('multichar:deleteCharacter', function(characterId)
     local source = source
 
-    if LSLegacy.ServerPlayers[source] then
+    if LSLegacy.Players.Get(source) then
         -- La suppression ne se fait que depuis l'écran de sélection, avant
         -- tout chargement de personnage.
         return
@@ -163,11 +165,11 @@ AddEventHandler('multichar:deleteCharacter', function(characterId)
     -- tables "agent de service" à un seul rôle identifier). Volontairement
     -- PAS de cascade pour interim_stations / police_blood_traces /
     -- police_crime_scenes : ces tables deviennent per-personnage mais
-    -- restent en base (preuves/scènes), voir module/pedOffline pour le
+    -- restent en base (preuves/scènes), voir module/pedoffline pour le
     -- même principe déjà appliqué aux peds endormis.
     local CASCADE_TABLES = {
-        'police_officers', 'pompiers_agents', 'mecanicien_agents', 'atelier_agents',
-        'ltd_agents', 'samu_agents', 'gendarmerie_officers',
+        'police_officers', 'lsfd_agents', 'atelier_agents',
+        'ltd_agents', 'ems_agents', 'sheriff_deputies',
         'police_radio_channels', 'emotes_favorites',
         -- Lot 2 : tables où ce personnage est le SUJET (citoyen/patient).
         -- La suppression cible toujours `character_id` (le sujet), jamais
@@ -217,7 +219,7 @@ end)
 -- dans Config.Multichar.AdminIdentifiers (mêmes comptes qui ont accès à
 -- plusieurs slots) — pas au grade en jeu, qui est propre à chaque personnage.
 local function SaveAndReleaseCharacter(source)
-    local player = LSLegacy.ServerPlayers[source]
+    local player = LSLegacy.Players.Get(source)
     if not player then return end
 
     local ped = GetPlayerPed(source)
@@ -242,13 +244,13 @@ local function SaveAndReleaseCharacter(source)
     })
 
     -- Le joueur reste connecté (seul le personnage change), donc `playerDropped`
-    -- ne se déclenche jamais : sans cet appel explicite, module/pedOffline ne
+    -- ne se déclenche jamais : sans cet appel explicite, module/pedoffline ne
     -- mettrait jamais "au lit" le personnage laissé derrière.
     if LSLegacy.PedOffline and LSLegacy.PedOffline.PutToSleep then
         LSLegacy.PedOffline.PutToSleep(source)
     end
 
-    LSLegacy.ServerPlayers[source] = nil
+    LSLegacy.Players.Remove(source)
 
     -- LSLegacy.GeneratorTokenConnecting (appelée par `registerPlayer`) ne
     -- s'exécute qu'une fois par valeur de `addTokenClient[source]` : sans ce
@@ -267,11 +269,11 @@ LSLegacy.Multichar = LSLegacy.Multichar or {}
 function LSLegacy.Multichar.ReturnToSelection(source)
     local identifier = GetPlayerIdentifierMC(source)
     if not identifier or GetMaxSlots(identifier) <= 1 then
-        LSLegacy.SendEventToClient('notify', source, "LSLegacy", "Vous n'avez pas accès au multicharacter.", "error")
+        LSLegacy.Events.SendToClient('notify', source, "LSLegacy", "Vous n'avez pas accès au multicharacter.", "error")
         return
     end
 
-    if not LSLegacy.ServerPlayers[source] then return end
+    if not LSLegacy.Players.Get(source) then return end
 
     SaveAndReleaseCharacter(source)
     TriggerClientEvent('multichar:forceReselect', source)
@@ -284,10 +286,10 @@ end, false)
 
 TriggerClientEvent('chat:addSuggestion', -1, '/multichar', "Revenir à la sélection de personnage (réservé aux comptes multicharacter)")
 
--- Bouton du menu admin (module/adminmenu/cl_admin.lua) : passe par le système
+-- Bouton du menu admin (module/adminmenu/client/main.lua) : passe par le système
 -- de jetons sécurisé, puisqu'il n'est utilisable qu'une fois le personnage
 -- déjà chargé (contrairement à /multichar, utilisable dès la connexion).
-LSLegacy.RegisterServerEvent('admin:multichar:returnToSelection', function()
+LSLegacy.Events.Register('admin:multicharReturnToSelection', function()
     local source = source
     LSLegacy.Multichar.ReturnToSelection(source)
 end)

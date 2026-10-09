@@ -3,7 +3,7 @@
 local CFG = Config.Pompe
 
 local function Notify(msg, t)
-    TriggerEvent(CFG.NotifyEvent, 'Station essence', msg, 5000, t or 'info')
+    TriggerEvent('notify', 'Station essence', msg, t or 'info', 5000)
 end
 
 local function DrawCenteredText(text, x, y, scale, font, r, g, b, a)
@@ -48,7 +48,7 @@ local function GetTargetVehicle()
     local pedCoords = GetEntityCoords(cache.ped)
 
     if lastVehicle and DoesEntityExist(lastVehicle)
-        and #(GetEntityCoords(lastVehicle) - pedCoords) <= CFG.VehicleMaxDistance
+        and LSLegacy.Validate.Distance(GetEntityCoords(lastVehicle), pedCoords, CFG.VehicleMaxDistance)
     then
         return lastVehicle
     end
@@ -129,18 +129,35 @@ local function RunFillSequence(vehicle, currentLiters, capacity, station, maxDel
     local finalLiters = math.floor(litersAdded)
     if finalLiters <= 0 then return end
 
-    SetVehicleFuelLevel(vehicle, ((currentLiters + finalLiters) / capacity) * 100.0)
+    local finalPercent = ((currentLiters + finalLiters) / capacity) * 100.0
+    SetSyncedFuelLevel(vehicle, finalPercent)
 
-    LSLegacy.SendEventToServer('pompe:payFuel', {
+    LSLegacy.Events.SendToServer('pompe:payFuel', {
         stationId = station.id,
         liters = finalLiters,
+        netId = NetworkGetNetworkIdFromEntity(vehicle),
+        currentLiters = currentLiters,
+        capacity = capacity,
     })
 end
+
+-- Paiement refusé (fonds insuffisants en carte ET en espèces, plafond
+-- atteint, etc.) : le plein était appliqué de façon optimiste pendant
+-- l'animation, on le retire puisqu'il n'a pas été facturé.
+LSLegacy.Events.Register('pompe:fuelPaymentFailed', function(data)
+    if not data or not data.netId then return end
+    local vehicle = NetworkGetEntityFromNetworkId(data.netId)
+    if not DoesEntityExist(vehicle) then return end
+    local capacity = tonumber(data.capacity) or 0
+    if capacity <= 0 then return end
+    local percent = (tonumber(data.currentLiters) or 0) / capacity * 100.0
+    SetSyncedFuelLevel(vehicle, percent)
+end)
 
 -- Demande de plein en cours (une seule à la fois)
 local pendingFill = nil
 
-LSLegacy.RegisterClientEvent('pompe:fillAuthorized', function(data)
+LSLegacy.Events.Register('pompe:fillAuthorized', function(data)
     if not pendingFill or not data or pendingFill.station.id ~= data.stationId then return end
     local req = pendingFill
     pendingFill = nil
@@ -175,7 +192,7 @@ local function StartFuelPurchase(pumpEntity)
     end
 
     pendingFill = { vehicle = vehicle, currentLiters = currentLiters, capacity = capacity, station = station }
-    LSLegacy.SendEventToServer('pompe:requestFill', {
+    LSLegacy.Events.SendToServer('pompe:requestFill', {
         stationId = station.id,
         currentLiters = currentLiters,
         capacity = capacity,

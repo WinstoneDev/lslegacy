@@ -10,7 +10,7 @@ local CLEAR_INTERVAL_MS = 2000
 local function ClearAmbientVehiclesAround(coords, radius)
     for _, vehicle in ipairs(GetGamePool('CVehicle')) do
         if DoesEntityExist(vehicle) and not IsEntityAMissionEntity(vehicle)
-            and #(GetEntityCoords(vehicle) - coords) <= radius
+            and LSLegacy.Validate.Distance(GetEntityCoords(vehicle), coords, radius)
         then
             local hasPlayer = false
             for i = -1, GetVehicleMaxNumberOfPassengers(vehicle) do
@@ -31,10 +31,17 @@ end
 local function ClearAmbientPedsAround(coords, radius)
     for _, ped in ipairs(GetGamePool('CPed')) do
         if DoesEntityExist(ped) and not IsPedAPlayer(ped) and not IsEntityAMissionEntity(ped)
-            and #(GetEntityCoords(ped) - coords) <= radius
+            and LSLegacy.Validate.Distance(GetEntityCoords(ped), coords, radius)
         then
-            SetEntityAsMissionEntity(ped, true, true)
-            DeletePed(ped)
+            -- Un PNJ au volant d'un véhicule mission (trafic custom, épargné par
+            -- ClearAmbientVehiclesAround) ne doit pas être supprimé seul : le
+            -- véhicule resterait comme épave sans conducteur à côté du joueur.
+            local vehicle = GetVehiclePedIsIn(ped, false)
+            local drivingProtectedVehicle = vehicle ~= 0 and IsEntityAMissionEntity(vehicle)
+            if not drivingProtectedVehicle then
+                SetEntityAsMissionEntity(ped, true, true)
+                DeletePed(ped)
+            end
         end
     end
 end
@@ -66,7 +73,7 @@ CreateThread(function()
             if now - lastClear >= CLEAR_INTERVAL_MS then
                 lastClear = now
                 for _, s in ipairs(CFG.Stations) do
-                    if #(coords - s.coords) <= DETECT_RADIUS then
+                    if LSLegacy.Validate.Distance(coords, s.coords, DETECT_RADIUS) then
                         ClearAmbientVehiclesAround(s.coords, RADIUS)
                         ClearAmbientPedsAround(s.coords, RADIUS)
                     end

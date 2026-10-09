@@ -1,19 +1,28 @@
 -- Création tables SQL, gestion prise de service (par magasin). Toutes les actions revalident job/grade depuis ServerPlayers.
 
+local rateLimits = {
+    ['ltd:onDuty'] = 10, ['ltd:offDuty'] = 10, ['ltd:requestShelfStock'] = 20,
+    ['ltd:requestReserveStock'] = 20, ['ltd:sellItem'] = 20, ['ltd:restockShelf'] = 15,
+    ['ltd:fillReserve'] = 15, ['ltd:triggerAlarm'] = 10, ['ltd:stealItem'] = 15,
+}
+for eventName, limit in pairs(rateLimits) do
+    LSLegacy.Security.RegisterRateLimit(eventName, limit)
+end
+
 local LtdAgents = {}   -- { [source] = { onDuty, grade, storeId } }
 
 local function GetPlayer(src)
-    return LSLegacy.ServerPlayers[src]
+    return LSLegacy.Players.Get(src)
 end
 
 local function IsEmployee(src)
     local p = GetPlayer(src)
-    return p and p.job == Config.LTD.Job
+    return LSLegacy.Jobs.Is(p, Config.LTD.Job)
 end
 
 local function GetGrade(src)
     local p = GetPlayer(src)
-    return p and (tonumber(p.job_grade) or 0) or 0
+    return p and (tonumber(LSLegacy.Jobs.GetGrade(p)) or 0) or 0
 end
 
 local function GetIdentifier(src)
@@ -49,7 +58,7 @@ MySQL.Async.execute([[
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 ]], {})
 
-LSLegacy.RegisterServerEvent('ltd:onDuty', function(data)
+LSLegacy.Events.Register('ltd:onDuty', function(data)
     local src = source
     if not IsEmployee(src) then return end
     if not data or not IsValidStore(data.storeId) then return end
@@ -66,7 +75,7 @@ LSLegacy.RegisterServerEvent('ltd:onDuty', function(data)
     )
 end)
 
-LSLegacy.RegisterServerEvent('ltd:offDuty', function()
+LSLegacy.Events.Register('ltd:offDuty', function()
     local src = source
     if not LtdAgents[src] then return end
 

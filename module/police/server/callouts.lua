@@ -8,6 +8,11 @@ local Registered  = {}      -- { [src] = { name, ident, grade, crew } }
 -- Plusieurs interventions peuvent tourner en parallèle : autant que
 local Callouts    = {}      -- { [id] = callout }
 local AgentCall   = {}      -- { [src] = calloutId } — agent → intervention
+-- Interventions closes mais pas encore nettoyées (cf. C.CleanupDelay) :
+-- un individu déjà menotté au moment où la mission se termine reste
+-- présentable au poste le temps que la scène soit démontée, plutôt que
+-- de rester bloqué indéfiniment dans le véhicule (cf. suspectDelivered).
+local EndedCallouts = {}    -- { [id] = callout }
 local LocationCd  = {}      -- { ['cat:index'] = os.time() de dernière utilisation }
 local LastScenario = nil
 local CurrentHour = nil     -- heure in-game rapportée par les clients
@@ -24,7 +29,7 @@ MySQL.Async.execute([[
         label              VARCHAR(120) NOT NULL,
         coords             VARCHAR(80)  NOT NULL,
         zone               VARCHAR(80)  DEFAULT NULL,
-        status             ENUM('cancelled','success','failed') NOT NULL,
+        status             ENUM('in_progress','cancelled','success','failed') NOT NULL DEFAULT 'in_progress',
         false_alarm        TINYINT(1) DEFAULT 0,
         agents_registered  INT DEFAULT 0,
         suspects_total     INT DEFAULT 0,
@@ -42,6 +47,12 @@ MySQL.Async.execute([[
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 ]], {})
 
+-- Élargissement de l'ENUM pour les installations antérieures à la fiche
+-- Appel 17 en direct (statut 'in_progress' avant clôture) — idempotent.
+MySQL.Async.execute(
+    "ALTER TABLE police_callouts MODIFY COLUMN status " ..
+    "ENUM('in_progress','cancelled','success','failed') NOT NULL DEFAULT 'in_progress'", {})
+
 -- Colonnes ajoutées après coup (rapport et classement du dossier).
 local CalloutColumns = {
     police_callouts = {
@@ -53,9 +64,27 @@ local CalloutColumns = {
         { 'closed_at',  'DATETIME DEFAULT NULL' },
         -- Pôle ayant mené l'intervention : estampille d'origine du MDT.
         { 'department', "VARCHAR(50) NOT NULL DEFAULT 'police'" },
+        -- Déposition du requérant et constatations relevées sur place
+        -- (porte/fenêtre forcée…) : consignées au dossier MDT.
+        { 'statement',      'TEXT DEFAULT NULL' },
+        { 'examine_notes',  'TEXT DEFAULT NULL' },
+        -- Véhicule accidenté d'un délit de fuite (marque/modèle + plaque),
+        -- pour la fiche Appel 17 et le PV — cf. crashVehModel/crashVehPlate.
+        { 'vehicle_model',  'VARCHAR(80) DEFAULT NULL' },
+        { 'vehicle_plate',  'VARCHAR(12) DEFAULT NULL' },
+        -- Indicatif de l'équipage meneur (« Police Secours Alpha… »), figé
+        -- à la prise en charge : sert de repli pour le PV quand l'agent
+        -- n'est plus inscrit à un groupe d'intervention au moment de
+        -- rédiger (l'indicatif live dépend de Registered[src]).
+        { 'unit_label',     'VARCHAR(80) DEFAULT NULL' },
+        -- Véhicule ciblé par un vol de véhicule en cours (marque/modèle +
+        -- plaque), pour la fiche Appel 17 et le PV — cf. targetVehModel/
+        -- targetVehPlate.
+        { 'target_vehicle_model', 'VARCHAR(80) DEFAULT NULL' },
+        { 'target_vehicle_plate', 'VARCHAR(12) DEFAULT NULL' },
     },
     police_callout_agents = {
-        -- Une mission conjointe mêle policiers et gendarmes : chaque ligne
+        -- Une mission conjointe mêle policiers et adjoints du shérif : chaque ligne
         { 'department', "VARCHAR(50) NOT NULL DEFAULT 'police'" },
     },
 }
@@ -107,8 +136,7 @@ MySQL.Async.execute([[
 --  HELPERS
 
 local function Notify(src, msg, t)
-    TriggerClientEvent(Config.Police.NotifyEvent, src, 'Police Nationale', msg,
-        Config.Police.NotifyDuration or 30000, t or 'info')
+    LSLegacy.Events.SendToClient('notify', src, 'Police Nationale', msg, t or 'info', Config.Police.NotifyDuration or 30000)
 end
 
 local function NotifyAll(list, msg, t)
@@ -128,6 +156,15 @@ end
 local function NotifyEngaged(co, msg, t)
     if not co then return end
     for src in pairs(co.agents) do Notify(src, msg, t) end
+end
+
+-- Petit signal sonore MDT : un proche à prévenir vient de devenir
+-- consultable (cf. suspectIdentify / suspectDelivered — sc.familyContact).
+local function PingMdt(co)
+    if not co then return end
+    for src in pairs(co.agents) do
+        TriggerClientEvent('police:callouts:mdtPing', src)
+    end
 end
 
 -- Un équipage est occupé dès qu'il est engagé sur une intervention.
@@ -175,6 +212,24 @@ local function IsEngaged(src)
     return AgentCall[src] ~= nil and Callouts[AgentCall[src]] ~= nil
 end
 
+--  CENTRE D'INFORMATION ET DE COMMANDEMENT (CIC / « TN 97 »)
+-- Un seul espace de noms (une seule variable locale) pour tout le
+-- sous-système CIC : le fichier est déjà proche de la limite Lua des
+-- 200 locales de niveau fichier, chaque fonction ajoutée ici est un
+-- champ de table et non une nouvelle locale.
+local Cic = {
+    operators = {},   -- { [src] = true } — opérateurs CIC actuellement en poste
+    history   = {},   -- 50 dernières affectations { calloutId, label, crew, cic, at, kind }
+}
+
+function Cic.online() return next(Cic.operators) ~= nil end
+function Cic.isOperator(src) return Cic.operators[src] == true end
+
+function Cic.push(entry)
+    table.insert(Cic.history, entry)
+    if #Cic.history > 50 then table.remove(Cic.history, 1) end
+end
+
 -- Tirage pondéré dans une table { clef = poids }
 local function WeightedPick(tbl)
     local total = 0
@@ -219,14 +274,17 @@ local function GenderFromModel(model)
     return nil
 end
 
-local usedNames = {}
-
-local function GenerateIdentity(model, poolName)
+-- Table de déduplication des noms tirés (« prénom|nom » déjà utilisés).
+-- Scopée par appelant (roster en construction, ou co.usedNames pour un
+-- callout déjà en cours) : jamais un état partagé au niveau fichier, qui
+-- ferait collisionner les identités de deux interventions concurrentes.
+local function GenerateIdentity(model, poolName, forceGender, usedNames)
+    usedNames = usedNames or {}
     local origins = C.PedPoolOrigins[poolName] or C.DefaultOrigins
     local origin  = WeightedPick(origins) or 'anglo'
     local bank    = C.Names[origin] or C.Names.anglo
 
-    local gender = GenderFromModel(model)
+    local gender = forceGender or GenderFromModel(model)
     if not gender then gender = (math.random(1, 2) == 1) and 'male' or 'female' end
 
     for _ = 1, 12 do
@@ -291,7 +349,7 @@ local function AnyCivilianNear(coords, radius)
             local ped = GetPlayerPed(src)
             if ped and ped ~= 0 then
                 local pc = GetEntityCoords(ped)
-                if #(pc - coords) < radius then return true end
+                if LSLegacy.Validate.Distance(pc, coords, radius) then return true end
             end
         end
     end
@@ -388,7 +446,8 @@ end
 
 local function BuildRoster(sc, staff, falseAlarm, zone, massVariant)
     local roster = {}
-    usedNames = {}
+    local usedNames = {}
+    roster.usedNames = usedNames
 
     -- Évite de retrouver trois fois le même visage sur une même scène.
     local usedModels = {}
@@ -410,9 +469,12 @@ local function BuildRoster(sc, staff, falseAlarm, zone, massVariant)
             pool     = poolName,
             model    = model,
             state    = 'idle',
-            identity = (role ~= 'animal') and GenerateIdentity(model, poolName) or nil,
-            -- La victime n'est pas identifiée d'office : c'est à l'agent
-            identified = (role ~= 'suspect' and role ~= 'victim'),
+            identity = (role ~= 'animal') and GenerateIdentity(model, poolName, nil, usedNames) or nil,
+            -- La victime, la personne errante et un corps ne sont pas
+            -- identifiés d'office : c'est à l'agent de le faire (cf.
+            -- sc.familyContact — personne errante / découverte de corps).
+            identified = (role ~= 'suspect' and role ~= 'victim'
+                and role ~= 'wanderer' and role ~= 'deceased'),
             items    = {},
         }
         if extra then for k, v in pairs(extra) do entry[k] = v end end
@@ -420,8 +482,10 @@ local function BuildRoster(sc, staff, falseAlarm, zone, massVariant)
         return entry
     end
 
-    -- Le requérant, toujours présent — sauf le tapage : personne
-    if sc.objective ~= 'radio' then
+    -- Le requérant, toujours présent — sauf le tapage (personne) et les
+    -- scénarios déclarant explicitement sc.noCaller (ex. rodeo_urbain :
+    -- simple appel de riverains, sans témoin en scène).
+    if sc.objective ~= 'radio' and not sc.noCaller then
         add('caller', sc.caller or 'witnesses')
     end
 
@@ -507,6 +571,10 @@ local function BuildRoster(sc, staff, falseAlarm, zone, massVariant)
                 suspectCount = (math.random(1, 100) <= 40) and 2 or 1
             end
 
+            -- Un seul véhicule de fuite partagé : seul le premier suspect
+            -- en fuite en prend le volant, les suivants fuient à pied.
+            local driverTaken = false
+
             for _ = 1, suspectCount do
                 if v.suspectState == 'present' then
                     local behavior = RollBehavior(sc.behaviors or {})
@@ -520,6 +588,10 @@ local function BuildRoster(sc, staff, falseAlarm, zone, massVariant)
                     end
                     if behavior == 'flee' and sc.fleeOn then
                         e.fleeOn = PickOne(sc.fleeOn) or 'foot'
+                        if e.fleeOn == 'car' then
+                            if driverTaken then e.fleeOn = 'foot'
+                            else driverTaken = true e.isDriver = true end
+                        end
                     end
                 elseif v.suspectState == 'barricaded' then
                     -- Retranché : ne sort pas, ne fuit pas. Une reddition
@@ -542,7 +614,10 @@ local function BuildRoster(sc, staff, falseAlarm, zone, massVariant)
         addBystanders()
         return roster
     elseif sc.objective == 'hospital' then
-        add('wanderer', sc.pedPool or 'elderly')
+        -- behavior='passive' : sans lui, aucune des conditions du
+        -- prédicat « Contrôler l'identité » (cuffed/stunned/passive)
+        -- n'est vraie et le bouton n'apparaît jamais sur la personne errante.
+        add('wanderer', sc.pedPool or 'elderly', { behavior = 'passive' })
         addBystanders()
         return roster
     end
@@ -580,9 +655,6 @@ local function BuildRoster(sc, staff, falseAlarm, zone, massVariant)
         if behavior == 'flee' and sc.fleeOn then
             e.fleeOn = PickOne(sc.fleeOn) or 'foot'
         end
-
-        -- Mémoire de l'arme portée : elle sera effacée de l'individu à
-        e.weaponInitial = e.weapon
 
         -- Butin. `lootAlways` le rend systématique : un vigile ne retient
         if sc.loot and #sc.loot > 0 then
@@ -623,6 +695,13 @@ local function BuildRoster(sc, staff, falseAlarm, zone, massVariant)
         for _, i in ipairs(pickedIdx) do
             suspects[i].weapon = PickOne(w.pool)
         end
+    end
+
+    -- Mémoire de l'arme portée : elle sera effacée de l'individu à la
+    -- fouille (p.weapon = nil) — capturée ICI, après le tirage ci-dessus,
+    -- pas avant (sinon toujours nil, cf. SuspectsJson qui s'y replie).
+    for _, e in ipairs(suspects) do
+        e.weaponInitial = e.weapon
     end
 
     -- Permis de port d'arme : décidé une fois à la création, 20 % de
@@ -694,13 +773,11 @@ local function BuildRoster(sc, staff, falseAlarm, zone, massVariant)
         add('victim', 'victims', { state = 'injured' })
     end
 
-    -- Victime blessée du délit de fuite
+    -- Victime blessée du délit de fuite — scène fixe : toujours un
+    -- piéton renversé (cf. shared/scenarios.lua, S['delit_fuite']).
     if sc.crash then
-        local ct = PickOne(C.CrashTypes) or C.CrashTypes[1]
-        roster.crashType = ct
-        if ct.victim then
-            add('victim', 'victims', { state = 'injured' })
-        end
+        roster.crashType = { victim = true }
+        add('victim', 'victims', { state = 'injured' })
     end
 
     return roster
@@ -726,6 +803,13 @@ local function ResolvePlace(callout)
     if not D then return 'urbain' end
 
     local category = tostring(callout.location.key or ''):match('^(.-):')
+
+    -- Un emplacement précis peut imposer son propre type de lieu, plus
+    -- fin que sa catégorie générique (ex. un commerce ou un entrepôt
+    -- relevé au milieu d'emplacements résidentiels de type doorstep).
+    local forcedPlace = callout.location.loc and callout.location.loc.place
+    if forcedPlace then return forcedPlace, category end
+
     local byCat = category and D.PlaceByCategory[category]
     if byCat then return byCat, category end
 
@@ -739,6 +823,9 @@ local function ResolveProfile(callout, caller, place)
     if not D then return 'passant' end
 
     local forced = D.ProfileByScenario[callout.scenarioId]
+    -- Le profil imposé peut lui-même varier selon le lieu (ex. un
+    -- commerçant plutôt qu'un propriétaire sur une effraction en magasin).
+    if type(forced) == 'table' then forced = forced[place] or forced['*'] end
     if forced then return forced, 'scénario' end
 
     local byPool = caller and caller.pool and D.ProfileByPool[caller.pool]
@@ -762,6 +849,17 @@ local function PickIntro(callout, ctx)
     local D = Config.Police.Dialogues
     if not D or not D.Lines then return nil end
 
+    -- Une entrée de dialogue est soit une liste de phrases directement,
+    -- soit un sous-groupe { door = {...}, window = {...} } quand le
+    -- texte doit rester cohérent avec le point d'entrée relevé (cf.
+    -- constatation_effraction/ctx.entryKind).
+    local function ResolveList(entry)
+        if type(entry) ~= 'table' then return nil end
+        if #entry > 0 then return entry end
+        local kind = ctx.entryKind
+        return (kind and entry[kind]) or entry.door or entry.window
+    end
+
     local mission = D.Lines[callout.scenarioId]
     if mission then
         local order = {
@@ -770,7 +868,8 @@ local function PickIntro(callout, ctx)
             mission['*'] and mission['*'][ctx.profile],
             mission['*'] and mission['*']['*'],
         }
-        for i, list in ipairs(order) do
+        for i, raw in ipairs(order) do
+            local list = ResolveList(raw)
             if type(list) == 'table' and #list > 0 then
                 ctx.depth = i
                 return list[math.random(1, #list)]
@@ -783,6 +882,19 @@ local function PickIntro(callout, ctx)
     local fb = D.Fallback
     if type(fb) == 'table' and #fb > 0 then return fb[math.random(1, #fb)] end
     return nil
+end
+
+-- Phrase de clôture dite par le requérant quand l'agent revient le voir
+-- une fois les constatations terminées (constatation_effraction) : il
+-- annonce qu'il ira déposer plainte au commissariat.
+local function PickClosing(callout)
+    local D = Config.Police.Dialogues
+    local pool = D and D.ClosingLines and D.ClosingLines[callout.scenarioId]
+    if not pool then return nil end
+    local profile = callout.dialogue and callout.dialogue.profile
+    local list = (profile and pool[profile]) or pool['*']
+    if type(list) ~= 'table' or #list == 0 then return nil end
+    return list[math.random(1, #list)]
 end
 
 -- Contexte complet du requérant, calculé une seule fois à la création
@@ -816,6 +928,10 @@ local function BuildDialogueContext(callout)
         suspectCount = suspects,
         objective    = callout.scenario.objective,
         falseAlarm   = callout.falseAlarm or false,
+        -- Constatation de vol par effraction : nature du point d'entrée
+        -- relevé (porte/fenêtre), pour que la déposition reste cohérente
+        -- avec l'endroit qui sera effectivement à examiner.
+        entryKind    = callout.entryPoint,
     }
 
     callout.dialogue = ctx
@@ -847,7 +963,14 @@ end
 function BuildStatement(callout)
     if callout.falseAlarm then
         BuildDialogueContext(callout)
-        callout.statement = PickOne(C.FalseAlarmLines)
+        -- En rapport avec le scénario en cours (cf. falseAlarmIntro dans
+        -- shared/scenarios.lua) — repli sur le pool générique pour les
+        -- scénarios sans variante dédiée (constatation_effraction, tapage,
+        -- tuerie_masse : allowFalseAlarm = false, jamais atteint ici).
+        local pool = (callout.scenario.falseAlarmIntro
+            and #callout.scenario.falseAlarmIntro > 0)
+            and callout.scenario.falseAlarmIntro or C.FalseAlarmLines
+        callout.statement = PickOne(pool)
         callout.statementLines = { callout.statement }
         return
     end
@@ -892,21 +1015,30 @@ function BuildStatement(callout)
     end
     local canFlee = fleeing > 0 and not callout.scenario.suspectsAtCaller
 
-    -- Pas de direction de fuite annoncée : le témoin dit qui est parti
-    if #suspects == 1 then
-        parts[#parts + 1] = canFlee
-            and 'Il n\'y avait qu\'un individu, il est parti en courant.'
-            or  'Il n\'y avait qu\'un individu, il est encore sur place.'
-    elseif not canFlee then
-        parts[#parts + 1] = ('Ils sont %d et ils sont toujours là.'):format(#suspects)
-    elseif fleeing >= #suspects then
-        parts[#parts + 1] = ('Ils étaient %d et sont tous partis en courant.')
-            :format(#suspects)
-    else
-        -- Cas mixte : certains ont filé, d'autres non. Le témoin le dit.
-        parts[#parts + 1] = ('Ils étaient %d, %d %s parti%s, le reste est sur place.')
-            :format(#suspects, fleeing, (fleeing > 1) and 'sont' or 'est',
-                (fleeing > 1) and 's' or '')
+    -- Ce complément suppose que « comportement = fuite » veut dire
+    -- « déjà parti » — faux pour un scénario où le suspect reste sur
+    -- place jusqu'à l'arrivée des agents (delit_fuite : le conducteur
+    -- attend près du véhicule, cf. suspectsAtVehicle/fleeTrigger). Le
+    -- témoin appelle AVANT cette arrivée : il ne peut pas encore savoir
+    -- que le suspect va fuir. L'intro dédiée (L.delit_fuite) décrit déjà
+    -- l'état réel, ce complément ne s'applique donc pas ici.
+    if not callout.scenario.crash then
+        -- Pas de direction de fuite annoncée : le témoin dit qui est parti
+        if #suspects == 1 then
+            parts[#parts + 1] = canFlee
+                and 'Il n\'y avait qu\'un individu, il est parti en courant.'
+                or  'Il n\'y avait qu\'un individu, il est encore sur place.'
+        elseif not canFlee then
+            parts[#parts + 1] = ('Ils sont %d et ils sont toujours là.'):format(#suspects)
+        elseif fleeing >= #suspects then
+            parts[#parts + 1] = ('Ils étaient %d et sont tous partis en courant.')
+                :format(#suspects)
+        else
+            -- Cas mixte : certains ont filé, d'autres non. Le témoin le dit.
+            parts[#parts + 1] = ('Ils étaient %d, %d %s parti%s, le reste est sur place.')
+                :format(#suspects, fleeing, (fleeing > 1) and 'sont' or 'est',
+                    (fleeing > 1) and 's' or '')
+        end
     end
 
     -- Pas de description vestimentaire : elle ne pourrait pas coller au
@@ -1080,10 +1212,45 @@ local function SpawnEntities(callout, roster, groundPoints)
         end
         if va and va.x then
             local vp = { x = va.x, y = va.y, z = va.z }
-            if callout.getawayPos then callout.getawayPos = vp end
+            -- callout.getawayPos n'existe que si le scénario a un
+            -- getawayOffset (cambriolage/braquage) — la tuerie de masse
+            -- n'en a pas mais a quand même un véhicule de fuite (driver).
+            if callout.getawayPos or callout.scenario.driver then callout.getawayPos = vp end
             if callout.scenario.targetVehicle then callout.targetVehiclePos = vp end
             if callout.scenario.crash then callout.crashPos = vp end
             if callout.scenario.objective == 'radio' then callout.boomboxPos = vp end
+        end
+    end
+
+    -- Point d'entrée relevé à la main (porte forcée OU fenêtre brisée) :
+    -- un seul par scène, les cambrioleurs passent par le même endroit
+    -- pour entrer et sortir. Le choix est tiré une fois pour toutes et
+    -- conditionne aussi le texte de déposition du requérant (cf.
+    -- BuildDialogueContext/ctx.entryKind) — jamais l'un sans l'autre.
+    callout.entryPoint   = nil
+    callout.examinePoints = {}
+    do
+        local candidates = {}
+        if AnchorFor('door') then candidates[#candidates + 1] = 'door' end
+        if AnchorFor('window') then candidates[#candidates + 1] = 'window' end
+        if #candidates > 0 then
+            local kind = candidates[math.random(1, #candidates)]
+            callout.entryPoint = kind
+            local label = (kind == 'door') and 'la porte forcée' or 'la fenêtre brisée'
+            local a = AnchorFor(kind)
+            local pts = (a.w ~= nil) and { a } or a
+            -- Certains lieux déclarent PLUSIEURS candidats du même genre
+            -- (ex. deux fenêtres visibles sur la même façade) : un seul
+            -- point d'entrée par scène, on en tire un et on ignore les
+            -- autres — sans ça, chacun devenait un point à examiner en
+            -- plus, doublant les constatations attendues.
+            local pt = pts[math.random(1, #pts)]
+            if pt and pt.x then
+                callout.examinePoints[1] = {
+                    id = 1, kind = kind, label = label,
+                    x = pt.x, y = pt.y, z = pt.z, h = pt.w,
+                }
+            end
         end
     end
 
@@ -1277,14 +1444,20 @@ local function SpawnVehicles(callout, sc)
         return vehAnchors
     end
 
-    -- Création d'un véhicule de décor.
-    local function spawn(poolName, offsetX, offsetY, damaged, anchored)
+    -- Création d'un véhicule de décor. `fixedAnchor`, quand fourni,
+    -- prime sur `anchored` : utilisé par le rodéo urbain pour piocher
+    -- dans SES propres points relevés sans jamais retomber sur le point
+    -- `vehicle` générique d'un autre scénario au même lieu (cf. plus bas).
+    local function spawn(poolName, offsetX, offsetY, damaged, anchored, fixedAnchor)
         local model = PickOne(C.Vehicles[poolName])
         if not model then return nil end
 
         local px, py = base.x + offsetX, base.y + offsetY
         local pz, ph = base.z + 1.0, base.w + 0.0
-        if anchored then
+        if fixedAnchor then
+            px, py, pz, ph = fixedAnchor.x, fixedAnchor.y,
+                fixedAnchor.z + 1.0, fixedAnchor.w or fixedAnchor.h or ph
+        elseif anchored then
             local a = NextVehicleAnchor()
             if a then
                 px, py, pz, ph = a.x, a.y, a.z + 1.0, a.w or a.h or ph
@@ -1305,6 +1478,7 @@ local function SpawnVehicles(callout, sc)
             local id = NetworkGetNetworkIdFromEntity(veh)
             callout.vehicles[#callout.vehicles + 1] = {
                 netId = id, entity = veh, kind = poolName, damaged = damaged,
+                model = model,
             }
             return id
         end)
@@ -1328,12 +1502,36 @@ local function SpawnVehicles(callout, sc)
         local pool = (math.random(1, 100) <= (C.TargetBikeChance or 30))
             and 'target_bike' or 'target_car'
         callout.targetVehNet = spawn(pool, tv.x - base.x, tv.y - base.y, false, true)
+
+        -- Marque/modèle + plaque, consignés pour la fiche Appel 17 et le
+        -- PV (même besoin que crashVehModel/crashVehPlate ci-dessous).
+        local tvv = callout.vehicles[#callout.vehicles]
+        if tvv and tvv.netId == callout.targetVehNet
+           and tvv.entity and DoesEntityExist(tvv.entity) then
+            callout.targetVehModel = (C.Vehicles.target_vehicle_labels or {})[tvv.model] or tvv.model
+            local LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+            local function letter() local i = math.random(1, 26) return LETTERS:sub(i, i) end
+            callout.targetVehPlate = ('%s%s%03d%s%s'):format(
+                letter(), letter(), math.random(0, 999), letter(), letter())
+            pcall(SetVehicleNumberPlateText, tvv.entity, callout.targetVehPlate)
+        end
     end
     if sc.crash and callout.crashType then
         callout.crashVehNet = spawn('crashed_car', 3.0, 0.0, true, true)
-        if callout.crashType.second then
-            -- Le second véhicule d'une collision consomme lui aussi un
-            spawn(callout.crashType.second, 6.0, 1.5, true, true)
+
+        -- Marque/modèle + plaque, consignés pour la fiche Appel 17 et le
+        -- PV (cf. PersistCallout) : sans ça rien ne permettait de les
+        -- retrouver après coup, la plaque du véhicule restant même celle
+        -- par défaut du moteur (jamais fixée explicitement jusqu'ici).
+        local cv = callout.vehicles[#callout.vehicles]
+        if cv and cv.netId == callout.crashVehNet
+           and cv.entity and DoesEntityExist(cv.entity) then
+            callout.crashVehModel = (C.Vehicles.crashed_car_labels or {})[cv.model] or cv.model
+            local LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+            local function letter() local i = math.random(1, 26) return LETTERS:sub(i, i) end
+            callout.crashVehPlate = ('%s%s%03d%s%s'):format(
+                letter(), letter(), math.random(0, 999), letter(), letter())
+            pcall(SetVehicleNumberPlateText, cv.entity, callout.crashVehPlate)
         end
     end
     if sc.driver then
@@ -1350,30 +1548,136 @@ local function SpawnVehicles(callout, sc)
         callout.suspectVehNet = spawn('mass_incident_car', -6.0, 2.0, false, true)
     end
 
-    -- Sur un tapage, un fêtard tient le volant : c'est lui qui rend la
-    if sc.objective == 'radio' and callout.boomboxNet then
-        local pool = {}
-        for _, p in pairs(callout.peds) do
-            if p.role == 'suspect' then pool[#pool + 1] = p end
-        end
-        if #pool > 0 then
-            local driver = pool[math.random(1, #pool)]
-            driver.inCar = true
-            local car = NetworkGetEntityFromNetworkId(callout.boomboxNet)
-            if car and car ~= 0 and DoesEntityExist(car) and driver.entity
-               and DoesEntityExist(driver.entity) then
-                SetPedIntoVehicle(driver.entity, car, -1)
-            end
-        end
-    end
-
     -- Deux-roues pour les fuyards concernés
     local i = 0
     for _, p in pairs(callout.peds) do
-        if p.behavior == 'flee' and p.fleeOn == 'bike' then
+        if p.behavior == 'flee' and p.fleeOn == 'bike' and not sc.suspectsOnBike then
             i = i + 1
             p.bikeNet = spawn('flee_bike', 8.0 + i * 2.5, -3.0, false)
         end
+    end
+
+    -- Rodéo urbain : chaque suspect est planté à côté de sa propre moto-
+    -- cross. Anchorage DÉDIÉ au scénario (anchorScoped.vehicle) — jamais
+    -- le point `vehicle` générique partagé avec vol_vehicule/tapage au
+    -- même lieu (une seule place de stationnement, pas 3 motos côte à
+    -- côte).
+    --
+    -- Appariement par PROXIMITÉ, pas par rang dans la liste relevée :
+    -- l'ordre dans lequel les points `vehicule`/`suspect` ont été
+    -- relevés en jeu ne correspond pas forcément à leur disposition
+    -- réelle sur le terrain (le releveur ne place pas forcément chaque
+    -- paire l'une après l'autre) — un appariement par rang envoyait
+    -- alors un suspect monter sur une moto qui n'était pas la plus
+    -- proche de lui.
+    local rodeoVehAnchors = anchorScoped and anchorScoped.vehicle or nil
+    local vehPoints = {}
+    if type(rodeoVehAnchors) == 'table' and rodeoVehAnchors[1]
+       and type(rodeoVehAnchors[1]) ~= 'number' then
+        for i, v in ipairs(rodeoVehAnchors) do vehPoints[i] = v end
+    elseif rodeoVehAnchors then
+        vehPoints[1] = rodeoVehAnchors
+    end
+
+    if sc.suspectsOnBike then
+        local riders = {}
+        for _, p in pairs(callout.peds) do
+            if p.role == 'suspect' then riders[#riders + 1] = p end
+        end
+
+        -- Un point véhicule par suspect, le plus proche disponible.
+        local claimed, riderAnchor = {}, {}
+        for _, p in ipairs(riders) do
+            local ppos = p.spawn
+            local best, bestDist = nil, nil
+            if ppos then
+                for i, v in ipairs(vehPoints) do
+                    if not claimed[i] then
+                        local d = (v.x - ppos.x) ^ 2 + (v.y - ppos.y) ^ 2
+                        if not bestDist or d < bestDist then bestDist, best = d, i end
+                    end
+                end
+            end
+            if best then
+                claimed[best] = true
+                riderAnchor[p.netId] = vehPoints[best]
+            end
+        end
+        -- Ordre stable pour la création (utilisé pour l'espacement des
+        -- créations ci-dessous et les logs) : par distance à la moto
+        -- assignée, du plus proche au plus loin — arbitraire mais stable.
+        table.sort(riders, function(a, b)
+            local va, vb = riderAnchor[a.netId], riderAnchor[b.netId]
+            if not va then return false end
+            if not vb then return true end
+            local da = (va.x - a.spawn.x) ^ 2 + (va.y - a.spawn.y) ^ 2
+            local db = (vb.x - b.spawn.x) ^ 2 + (vb.y - b.spawn.y) ^ 2
+            return da < db
+        end)
+
+        local LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+        local function letter() return LETTERS:sub(math.random(1, 26), math.random(1, 26)) end
+
+        local function spawnBike(p, n, anchor)
+            local netId = spawn('motocross_bike', -4.0 - n * 2.0, -4.0, false, false, anchor)
+            if not netId then return end
+            p.bikeNet = netId
+            local vv = callout.vehicles[#callout.vehicles]
+            p.bikeModel = (vv and vv.netId == netId) and vv.model or nil
+            p.fleeOn  = 'bike'
+            -- Déjà en selle dès le début de la scène : ApplyInitialTask
+            -- (client) laisse ces suspects tranquilles, comme le
+            -- conducteur du tapage. Repris ici (y compris en cas de
+            -- recréation par le contrôle de survie) plutôt que dans la
+            -- séquence de montée échelonnée côté client, désormais retirée.
+            p.inCar = true
+
+            -- NetworkDoesNetworkIdExist est un native CLIENT UNIQUEMENT —
+            -- l'appeler côté serveur lève une erreur Lua qui interrompait
+            -- toute la boucle (une seule moto créée sur les N attendues).
+            local veh = NetworkGetEntityFromNetworkId(netId)
+            if veh and veh ~= 0 and DoesEntityExist(veh) then
+                if p.entity and DoesEntityExist(p.entity) then
+                    TaskWarpPedIntoVehicle(p.entity, veh, -1)
+                end
+                pcall(SetVehicleNumberPlateText, veh, p.plateMissing and '' or (p.bikePlate or ''))
+            end
+        end
+
+        for n, p in ipairs(riders) do
+            -- Bug FXServer connu (CreateVehicleServerSetter) : des créations
+            -- rafale sans pause se font parfois reprendre/supprimer par le
+            -- moteur avant qu'un client ne puisse en prendre possession —
+            -- un seul véhicule survivait alors sur les N créés. Espacer
+            -- réduit la fréquence du problème (limitation moteur, pas un
+            -- bug de ce scénario — cf. citizenfx/fivem#2623) ; le contrôle
+            -- de survie ci-dessous rattrape les cas restants.
+            if n > 1 then Wait(200) end
+            local anchor = riderAnchor[p.netId]
+
+            -- Casque, plaque, provenance : tirés une fois par moto, avant
+            -- la création pour que la plaque soit posée dès le premier essai.
+            p.helmetMissing = math.random(1, 100) <= (sc.helmetMissingChance or 40)
+            p.plateMissing  = math.random(1, 100) <= (sc.plateMissingChance or 25)
+            p.bikeStolen    = math.random(1, 100) <= (sc.stolenBikeChance or 25)
+            -- Roulée à un moment de la fuite, seulement si elle chute.
+            p.willFall      = math.random(1, 100) <= (sc.fallChance or 0)
+            if not p.plateMissing then
+                p.bikePlate = ('%s%s%03d%s%s'):format(
+                    letter(), letter(), math.random(0, 999), letter(), letter())
+            end
+
+            spawnBike(p, n, anchor)
+        end
+
+        -- Contrôle de survie EN ARRIÈRE-PLAN (RodeoBikeWatchdog, plus bas
+        -- dans ce fichier — a besoin de SyncEngaged, déclarée après cette
+        -- fonction) : ne doit pas retarder la synchronisation initiale de
+        -- la scène de plusieurs secondes pour un problème qui ne se
+        -- produit pas à chaque fois.
+        CreateThread(function()
+            RodeoBikeWatchdog(callout, riders, riderAnchor, spawnBike)
+        end)
     end
 end
 
@@ -1407,6 +1711,10 @@ local function DeleteAllEntities(callout)
     if not callout then return end
     for _, p in pairs(callout.peds or {}) do
         if p.entity and DoesEntityExist(p.entity) then DeleteEntity(p.entity) end
+        if p.familyContact and p.familyContact.entity
+           and DoesEntityExist(p.familyContact.entity) then
+            DeleteEntity(p.familyContact.entity)
+        end
     end
     for _, v in ipairs(callout.vehicles or {}) do
         if v.entity and DoesEntityExist(v.entity) then DeleteEntity(v.entity) end
@@ -1453,6 +1761,31 @@ local function BuildPayload(co)
             posture       = p.posture,
             -- Personne armée : validité du permis de port d'arme,
             permitValid   = p.permitValid,
+            -- Personne errante / découverte de corps : proche à prévenir.
+            familyContact = p.familyContact,
+            -- IPM : taux d'alcoolémie relevé.
+            breathalyzer  = p.breathalyzer,
+            -- IPM : résultat du dépistage de stupéfiants.
+            drugTest      = p.drugTest,
+            -- Découverte de corps : cause du décès établie à l'analyse.
+            causeOfDeath  = p.causeOfDeath,
+            -- Vol à l'étalage : proposition de payer les articles déjà faite.
+            payOffAsked   = p.payOffAsked,
+            -- Contrôle d'identité : récidive / fiche de recherche.
+            repeatOffender = p.repeatOffender,
+            wanted         = p.wanted,
+            wantedReason   = p.wantedReason,
+            releasedWhileWanted = p.releasedWhileWanted,
+            -- Suspect touché par balle mais vivant : doit être soigné.
+            wounded = p.wounded,
+            healed  = p.healed,
+            -- Rodéo urbain : casque/plaque manquants (constatables tout de
+            -- suite), chute programmée (déclenchée côté client à la fuite),
+            -- résultat FOVES gardé serveur tant qu'il n'a pas été demandé.
+            helmetMissing = p.helmetMissing,
+            plateMissing  = p.plateMissing,
+            willFall      = p.willFall,
+            fovesChecked  = p.fovesChecked,
         }
     end
 
@@ -1468,9 +1801,13 @@ local function BuildPayload(co)
     local v = co.location.loc.coords
     return {
         id         = co.id,
+        -- Identifiant de la fiche Appel 17 (police_callouts.id) : distinct
+        -- de co.id (numéro de séquence en mémoire) — sert de clé côté MDT.
+        dbId       = co.dbId,
         scenarioId = co.scenarioId,
         label      = sc.label,
         objective  = sc.objective,
+        objectiveDone = co.objectiveDone,
         falseAlarm = co.falseAlarm,
         coords     = { x = v.x, y = v.y, z = v.z, w = v.w },
         zoneLabel  = co.location.loc.label,
@@ -1505,19 +1842,47 @@ local function BuildPayload(co)
         -- Endurance propre au scénario : certains individus tiennent
         fleeSprint  = sc.fleeSprint,
         fleeSlowAt  = sc.fleeSlowAt,
+        fleeRateTired     = sc.fleeRateTired,
+        fleeRateExhausted = sc.fleeRateExhausted,
         -- Le relâchement est offert partout, sauf refus explicite.
         moveAlong  = (sc.moveAlong ~= false),
         brawl      = sc.brawl,
         drunk      = sc.drunk,
+        -- Rodéo urbain : démarre la boucle de figures/tours (cf.
+        -- StartRodeoLoop, client) une fois la scène synchronisée.
+        suspectsOnBike = sc.suspectsOnBike,
         victimAssault   = sc.victimAssault,
         suspectScenario = sc.suspectScenario,
         animalRange = sc.animalRange,
         requireSuspects = sc.requireSuspects,
+        requireAid      = sc.requireAid,
+        -- Sans ce champ, Callout.payOff restait toujours nil côté client
+        -- et l'option « Proposer de payer les articles » ne s'affichait
+        -- jamais, même identité + fouille faites (cf. canInteract, client).
+        payOff          = sc.payOff,
+        -- Sans ces deux champs, Callout.aggroOnApproachChance restait
+        -- toujours nil côté client (IPM) et l'ivrogne ne devenait jamais
+        -- agressif à l'approche, quel que soit le tirage (cf. le tirage
+        -- correspondant dans la boucle cerveau, client).
+        aggroOnApproachChance = sc.aggroOnApproachChance,
+        aggroOnApproachDist   = sc.aggroOnApproachDist,
+        stashDrop       = sc.stashDrop,
+        familyContact   = sc.familyContact,
+        breathalyzer    = sc.breathalyzer,
+        drugTest        = sc.drugTest,
+        autopsy         = sc.autopsy,
+        drops           = co.drops,
         extraDeath      = co.extraDeath,
         deathConstated  = co.deathConstated,
         canInterrogate  = true,
         ownerStatement  = co.ownerStatement,
         ownerLabel      = co.ownerLabel,
+        -- Points d'examen fixes (constatation de vol par effraction :
+        -- porte forcée, fenêtre brisée…) et notes déjà relevées dessus.
+        examinePoints   = co.examinePoints,
+        examineNotes    = co.examineNotes,
+        examineComplete = co.examineComplete,
+        closingLine     = co.closingLine,
         -- Contraintes de composition : indiquent au client si un PNJ
         heist             = co.heist,
         suspectsAtCaller  = sc.suspectsAtCaller,
@@ -1533,10 +1898,38 @@ local function BuildPayload(co)
 end
 
 local function SyncEngaged(co)
-    if not co then return end
+    if not co or co.state == 'ended' then return end
     local payload = BuildPayload(co)
     for src in pairs(co.agents) do
         TriggerClientEvent('police:callouts:sync', src, payload)
+    end
+    -- Fiche Appel 17 tenue à jour en direct (cf. UpdateCalloutRecord).
+    UpdateCalloutRecord(co)
+end
+
+-- Rodéo urbain : contrôle de survie en arrière-plan des motos. Bug FXServer
+-- connu (CreateVehicleServerSetter, cf. citizenfx/fivem#2623) où un
+-- véhicule créé côté serveur sans agent à proximité se fait parfois
+-- supprimer par le moteur avant qu'un client n'ait pu en prendre
+-- possession — un seul survivait alors sur les N créés. Deux passages
+-- (3s puis 8s après la création) recréent au même endroit celles
+-- disparues, et repoussent la scène à jour si besoin.
+function RodeoBikeWatchdog(callout, riders, riderAnchor, spawnBike)
+    for _, delay in ipairs({ 3000, 5000 }) do
+        Wait(delay)
+        if not callout or callout.state ~= 'active' then return end
+        local changed = false
+        for n, p in ipairs(riders) do
+            local alive = p.bikeNet
+                and DoesEntityExist(NetworkGetEntityFromNetworkId(p.bikeNet))
+            if not alive then
+                print(('^3[callouts]^7 Rodéo urbain : moto du suspect %s ' ..
+                    'disparue, recréation.'):format(tostring(p.netId)))
+                spawnBike(p, n, riderAnchor[p.netId])
+                changed = true
+            end
+        end
+        if changed then SyncEngaged(callout) end
     end
 end
 
@@ -1590,7 +1983,14 @@ local function SuspectsJson(callout)
     local list = {}
     for _, p in pairs(callout.peds) do
         if p.role ~= 'bystander' then
-            local identified = p.identified and p.state ~= 'escaped'
+            -- Tuerie de masse : aucun bouton « identifier » sur les corps
+            -- (cf. canInteract, client — pas de procédure d'identification
+            -- individuelle sur une scène de ce type), mais leur identité
+            -- existe déjà en mémoire (tirée à la création du roster) : la
+            -- fiche MDT la montre directement, sans quoi ces victimes
+            -- restaient éternellement « Individu non identifié ».
+            local identified = (p.identified and p.state ~= 'escaped')
+                or (p.role == 'deceased' and callout.scenario.multiDeath)
             -- L'arme est effacée de l'individu à la fouille ou quand il
             local carried = p.weapon or p.weaponInitial or p.droppedWeapon
 
@@ -1604,6 +2004,11 @@ local function SuspectsJson(callout)
                 lastname  = identified and p.identity and p.identity.lastname or nil,
                 label     = (not identified) and (p.label or 'Individu non identifié') or nil,
                 role      = p.role,
+                -- Comportement réel tiré à la création — plus fiable que
+                -- de le déduire de l'issue finale (un suspect agressif
+                -- interpellé vivant, sans jamais fuir ni mourir, se
+                -- devinait à tort comme « passif », cf. coBehaviorGuess).
+                behavior  = p.behavior,
                 weapon    = WeaponLabel(carried),
                 seized    = (#seized > 0) and seized or nil,
                 killedBy  = p.killedBy,
@@ -1618,22 +2023,216 @@ local function SuspectsJson(callout)
                     or ((p.role == 'deceased') and 'morgue')
                     or ((p.role == 'animal') and (callout.objectiveDone
                         and 'morgue' or p.state) or nil),
+                -- Personne errante / découverte de corps : proche à
+                -- prévenir. N'apparaît qu'une fois pertinent : un corps
+                -- est identifiable tout de suite, une personne errante
+                -- seulement après son dépôt à l'hôpital (cf. client,
+                -- bouton « À prévenir » de la fiche Appel 17).
+                familyContact = (p.familyContact and p.familyContact.identity
+                    and (p.role == 'deceased' or p.state == 'delivered'))
+                    and (p.familyContact.identity.firstname .. ' ' .. p.familyContact.identity.lastname) or nil,
+                familyContactNotified = p.familyContact and p.familyContact.notified or nil,
+                -- IPM : taux consigné pour appuyer le rapport.
+                breathalyzer = p.breathalyzer and
+                    ('%.2f g/L (%s)'):format(p.breathalyzer.rate, p.breathalyzer.level) or nil,
+                -- IPM : dépistage stupéfiants, positif (substances) ou négatif.
+                drugTest = p.drugTest and (p.drugTest.positive
+                    and ('positif — ' .. table.concat(p.drugTest.substances, ', '))
+                    or 'négatif') or nil,
+                -- Découverte de corps : cause du décès établie à l'analyse.
+                causeOfDeath = p.causeOfDeath,
+                -- Contrôle d'identité : récidive / fiche de recherche —
+                -- seulement une fois l'individu identifié (sinon fuite
+                -- d'info sur quelqu'un jamais contrôlé).
+                repeatOffender = identified and p.repeatOffender or nil,
+                wanted         = identified and p.wanted or nil,
+                wantedReason   = identified and p.wanted and p.wantedReason or nil,
+                -- Relâché malgré une fiche de recherche active : à
+                -- justifier dans le rapport.
+                releasedWhileWanted = p.releasedWhileWanted or nil,
+                -- Suspect touché par balle mais vivant.
+                wounded = p.wounded or nil,
+                healed  = p.healed or nil,
+                -- Victime soignée : constatation médicale générée selon
+                -- la scène, à reprendre par l'agent dans son PV.
+                woundDescription = p.woundDescription,
+                -- Braquage/cambriolage : distingue le chauffeur des autres
+                -- suspects pour la fiche/le PV (cf. isDriver côté client).
+                isDriver = p.isDriver or nil,
+                -- Personne armée : validité du permis de port d'arme.
+                permitValid = p.permitValid,
+                -- Vol à l'étalage : proposition de payer les articles —
+                -- sans ce champ, le PV cochait toujours « Non proposé »
+                -- même après une proposition effectivement faite/refusée.
+                payOffAsked = p.payOffAsked or nil,
+                -- Chien dangereux : race déduite du modèle tiré, pour le PV.
+                breed = (p.role == 'animal') and C.AnimalBreeds and C.AnimalBreeds[p.model] or nil,
+                -- Rodéo urbain : infractions constatables sur la moto.
+                helmetMissing = p.helmetMissing or nil,
+                plateMissing  = p.plateMissing or nil,
+                bikeModel = p.bikeNet and callout.scenario.suspectsOnBike
+                    and (C.Vehicles.motocross_bike_labels or {})[p.bikeModel] or nil,
+                bikePlate = p.bikeNet and callout.scenario.suspectsOnBike and p.bikePlate or nil,
+                -- Le résultat FOVES ne s'affiche qu'une fois vérifié par
+                -- l'agent : sans ce garde, la fiche répondrait à la place
+                -- du contrôle qu'elle est censée motiver.
+                bikeStolen    = p.fovesChecked and p.bikeStolen or nil,
+                bikeImpounded = p.bikeImpounded or nil,
             }
         end
     end
     return json.encode(list)
 end
 
-local function PersistCallout(callout, status, cb)
+-- Constatations relevées sur le point d'entrée (porte/fenêtre forcée),
+-- concaténées pour le dossier MDT.
+local function ExamineNotesText(co)
+    if not co.examineNotes then return nil end
+    local parts = {}
+    for _, note in pairs(co.examineNotes) do parts[#parts + 1] = note end
+    if #parts == 0 then return nil end
+    return table.concat(parts, ' ')
+end
+
+-- Crée la fiche Appel 17 DÈS le lancement de la scène (pas seulement à
+-- la clôture) : elle apparaît immédiatement dans le MDT et se tient à
+-- jour au fil de l'intervention via UpdateCalloutRecord (cf. SyncEngaged).
+local PersistCallout   -- forward declaration (définie plus bas, référencée par CreateCalloutRecord)
+
+local function CreateCalloutRecord(co)
+    if co.dbId or not co.location then return end
+    local v = co.location.loc.coords
+    MySQL.Async.insert(
+        'INSERT INTO police_callouts (scenario_id, label, coords, zone, status, false_alarm, ' ..
+        'agents_registered, department, started_at) ' ..
+        'VALUES (@sid, @label, @coords, @zone, @status, @fa, @staff, @dep, FROM_UNIXTIME(@started))',
+        {
+            ['@sid']    = co.scenarioId,
+            ['@label']  = co.scenario.label,
+            ['@coords'] = string.format('%.1f, %.1f, %.1f', v.x, v.y, v.z),
+            ['@zone']   = co.street or co.location.loc.label,
+            ['@status'] = 'in_progress',
+            ['@fa']     = co.falseAlarm and 1 or 0,
+            ['@staff']  = co.staff or 0,
+            ['@dep']    = (co.leader and GetMdtDepartment(co.leader)) or 'police',
+            ['@started']= co.createdAt,
+        },
+        function(insertId)
+            co.dbId = insertId
+            -- Course possible avec EndCallout/PersistCallout : si l'appel
+            -- s'est déjà terminé pendant que cet INSERT était en vol (ex.
+            -- accepté puis aussitôt abandonné), la ligne fraîchement créée
+            -- doit être clôturée immédiatement — sinon PersistCallout avait
+            -- déjà pris la branche INSERT (co.dbId encore nil à ce moment-
+            -- là), laissant CETTE ligne-ci bloquée à 'in_progress' pour
+            -- toujours, en doublon de la ligne réellement fermée.
+            if co.state == 'ended' then
+                PersistCallout(co, co.endStatus or 'cancelled')
+            else
+                UpdateCalloutRecord(co)
+            end
+        end
+    )
+end
+
+-- Rafraîchit la fiche Appel 17 en cours (zone, effectifs, individus,
+-- identité/famille/alcootest/cause du décès via SuspectsJson) — appelé à
+-- chaque SyncEngaged, donc à chaque évolution notable de la scène.
+function UpdateCalloutRecord(co)
+    if not co.dbId or not co.peds or not co.location then return end
+    local total, delivered, killed, escaped = CountSuspects(co)
+    MySQL.Async.execute(
+        'UPDATE police_callouts SET zone=@zone, false_alarm=@fa, agents_registered=@staff, ' ..
+        'suspects_total=@tot, suspects_delivered=@del, suspects_killed=@kil, suspects_escaped=@esc, ' ..
+        'suspects_json=@json, department=@dep, statement=@statement, examine_notes=@examine, ' ..
+        'vehicle_model=@vmodel, vehicle_plate=@vplate, unit_label=@unit, ' ..
+        'target_vehicle_model=@tvmodel, target_vehicle_plate=@tvplate ' ..
+        'WHERE id=@id',
+        {
+            ['@zone']   = co.street or co.location.loc.label,
+            ['@fa']     = co.falseAlarm and 1 or 0,
+            ['@staff']  = co.staff or 0,
+            ['@tot']    = total,
+            ['@del']    = delivered,
+            ['@kil']    = killed,
+            ['@esc']    = escaped,
+            ['@json']   = SuspectsJson(co),
+            ['@dep']    = (co.leader and GetMdtDepartment(co.leader)) or 'police',
+            ['@statement'] = co.statement,
+            ['@examine']   = ExamineNotesText(co),
+            ['@vmodel'] = co.crashVehModel,
+            ['@vplate'] = co.crashVehPlate,
+            ['@unit']   = co.unitLabel,
+            ['@tvmodel'] = co.targetVehModel,
+            ['@tvplate'] = co.targetVehPlate,
+            ['@id']     = co.dbId,
+        },
+        function()
+            -- Pousse un rafraîchissement au MDT des agents qui l'ont ouvert :
+            -- sans ça, le bouton « À prévenir » ne s'affiche qu'après avoir
+            -- quitté puis rouvert l'onglet Appel 17.
+            for src in pairs(co.agents) do
+                TriggerClientEvent('mdt:result', src, { refresh = { view = 'callouts' } })
+            end
+        end
+    )
+end
+
+PersistCallout = function(callout, status, cb)
     local total, delivered, killed, escaped = CountSuspects(callout)
     local v = callout.location.loc.coords
+
+    -- La fiche existe déjà depuis le lancement de la scène (cf.
+    -- CreateCalloutRecord) : on la clôture par UPDATE plutôt que d'en
+    -- créer une seconde. Seul un appel jamais mis en scène (annulé avant
+    -- acceptation) n'a pas encore de ligne — repli sur l'INSERT d'origine.
+    if callout.dbId then
+        MySQL.Async.execute(
+            'UPDATE police_callouts SET status=@status, zone=@zone, false_alarm=@fa, ' ..
+            'agents_registered=@staff, suspects_total=@tot, suspects_delivered=@del, ' ..
+            'suspects_killed=@kil, suspects_escaped=@esc, suspects_json=@json, ' ..
+            'response_time=@rt, department=@dep, statement=@statement, examine_notes=@examine, ' ..
+            'vehicle_model=@vmodel, vehicle_plate=@vplate, unit_label=@unit, ' ..
+            'target_vehicle_model=@tvmodel, target_vehicle_plate=@tvplate, ' ..
+            'ended_at=NOW() WHERE id=@id',
+            {
+                ['@status'] = status,
+                ['@zone']   = callout.street or callout.location.loc.label,
+                ['@fa']     = callout.falseAlarm and 1 or 0,
+                ['@staff']  = callout.staff or 0,
+                ['@tot']    = total,
+                ['@del']    = delivered,
+                ['@kil']    = killed,
+                ['@esc']    = escaped,
+                ['@json']   = callout.peds and SuspectsJson(callout) or nil,
+                ['@rt']     = callout.responseTime,
+                ['@dep']    = (callout.leader and GetMdtDepartment(callout.leader)) or 'police',
+                ['@statement'] = callout.statement,
+                ['@examine']   = ExamineNotesText(callout),
+                ['@vmodel'] = callout.crashVehModel,
+                ['@vplate'] = callout.crashVehPlate,
+                ['@unit']   = callout.unitLabel,
+                ['@tvmodel'] = callout.targetVehModel,
+                ['@tvplate'] = callout.targetVehPlate,
+                ['@id']     = callout.dbId,
+            },
+            function(affected)
+                print(('^3[callouts:diag]^7 PersistCallout UPDATE id=%s status=%s affectedRows=%s')
+                    :format(tostring(callout.dbId), tostring(status), tostring(affected)))
+                if cb then cb(callout.dbId) end
+            end
+        )
+        return
+    end
 
     MySQL.Async.insert(
         'INSERT INTO police_callouts (scenario_id, label, coords, zone, status, false_alarm, ' ..
         'agents_registered, suspects_total, suspects_delivered, suspects_killed, suspects_escaped, ' ..
-        'suspects_json, response_time, department, started_at, ended_at) ' ..
+        'suspects_json, response_time, department, statement, examine_notes, vehicle_model, ' ..
+        'vehicle_plate, unit_label, target_vehicle_model, target_vehicle_plate, started_at, ended_at) ' ..
         'VALUES (@sid, @label, @coords, @zone, @status, @fa, @staff, @tot, @del, @kil, @esc, @json, @rt, ' ..
-        '@dep, FROM_UNIXTIME(@started), NOW())',
+        '@dep, @statement, @examine, @vmodel, @vplate, @unit, @tvmodel, @tvplate, ' ..
+        'FROM_UNIXTIME(@started), NOW())',
         {
             ['@sid']    = callout.scenarioId,
             ['@label']  = callout.scenario.label,
@@ -1650,6 +2249,13 @@ local function PersistCallout(callout, status, cb)
             ['@rt']     = callout.responseTime,
             -- Le dossier est versé au pôle du chef d'équipage ; à défaut
             ['@dep']    = (callout.leader and GetMdtDepartment(callout.leader)) or 'police',
+            ['@statement'] = callout.statement,
+            ['@examine']   = ExamineNotesText(callout),
+            ['@vmodel'] = callout.crashVehModel,
+            ['@vplate'] = callout.crashVehPlate,
+            ['@unit']   = callout.unitLabel,
+            ['@tvmodel'] = callout.targetVehModel,
+            ['@tvplate'] = callout.targetVehPlate,
             ['@started']= callout.createdAt,
         },
         function(insertId)
@@ -1733,7 +2339,7 @@ local function PayRewards(co, success)
         a.reward = amount
 
         if amount > 0 then
-            local player = LSLegacy.GetPlayerFromId(src)
+            local player = LSLegacy.Players.Get(src)
             if player then
                 LSLegacy.Bank.PaySalary(player, amount, 'Prime d\'intervention')
                 Notify(src, 'Intervention terminée — prime de ' .. amount .. ' $.', 'success')
@@ -1757,6 +2363,25 @@ end
 
 local EndCallout   -- forward declaration
 local MaybeFinishMassIncident   -- forward declaration
+
+-- Déclarés ici (avant EndCallout) pour que son nettoyage du convoi
+-- d'ambulance lié à l'appel puisse les référencer sans dépendre de
+-- l'ordre du fichier (leur définition complète reste plus bas, à côté
+-- de DispatchAmbulance).
+local Ambulances = {}   -- { [id] = { entities = {...}, corpses = {...} } }
+local AmbulanceSeq = 0
+local function ClearAmbulance(id)
+    local amb = Ambulances[id]
+    if not amb then return end
+    Ambulances[id] = nil
+
+    for _, e in ipairs(amb.corpses or {}) do
+        if DoesEntityExist(e) then DeleteEntity(e) end
+    end
+    for _, e in ipairs(amb.entities or {}) do
+        if DoesEntityExist(e) then DeleteEntity(e) end
+    end
+end
 
 -- Résumé radio de fin d'intervention, adapté au type de mission.
 local function EndSummary(co, success)
@@ -1799,8 +2424,14 @@ end
 
 EndCallout = function(co, status)
     if not co then return end
+    if co.state == 'ended' then return end
     local callout = co
     local success = (status == 'success')
+    -- Capturé AVANT l'écrasement plus bas (callout.state = 'ended'),
+    -- sinon le test de persistance ligne ~2019 comparait 'ended' à
+    -- 'pending' et devenait toujours vrai — un appel jamais accepté et
+    -- clos de force finissait quand même inséré en base.
+    local wasPending = (callout.state == 'pending')
 
     local rewardTxt = 'Appel classé sans suite.'
     if callout.state == 'active' then
@@ -1813,6 +2444,15 @@ EndCallout = function(co, status)
             success and 'success' or 'warning')
         NotifyEngaged(co, 'Intervention terminée — n\'oubliez pas de rédiger votre rapport.', 'info')
     end
+
+    -- Sans ce marquage, co.state restait 'active' pour toujours sur cet
+    -- objet devenu orphelin (retiré de Callouts[] mais toujours référencé
+    -- par des callbacks tardifs — ex: ambulanceLoaded après la clôture
+    -- réelle d'une tuerie de masse) : un SyncEngaged tardif renvoyait alors
+    -- un payload complet et réaffichait la fiche d'intervention pourtant
+    -- terminée.
+    callout.state = 'ended'
+    callout.endStatus = status
 
     -- Log Discord
     local total, delivered, killed, escaped = CountSuspects(co)
@@ -1834,20 +2474,39 @@ EndCallout = function(co, status)
         success and 3066993 or 15158332)
 
     -- Persistance
-    if callout.state ~= 'pending' or status == 'cancelled' then
+    print(('^3[callouts:diag]^7 EndCallout id=%s dbId=%s status=%s wasPending=%s persisting=%s')
+        :format(tostring(callout.id), tostring(callout.dbId), tostring(status),
+            tostring(wasPending), tostring(not wasPending or status == 'cancelled')))
+    if not wasPending or status == 'cancelled' then
         PersistCallout(callout, status, function(insertId)
             if insertId then PersistAgents(callout, insertId) end
+            -- Sans ça, la fiche Appel 17 reste affichée « en cours » côté
+            -- MDT tant que l'agent ne quitte pas puis rouvre l'onglet :
+            -- seul UpdateCalloutRecord (en cours d'intervention) poussait
+            -- ce rafraîchissement, jamais la clôture elle-même.
+            for src in pairs(callout.agents) do
+                TriggerClientEvent('mdt:result', src, { refresh = { view = 'callouts' } })
+            end
         end)
     end
 
     -- Sortie de scène : les figurants repartent, la suppression effective
     ReleaseScene(callout)
+    -- Le convoi d'ambulance n'était jamais lié au cycle de vie de l'appel
+    -- (seul son propre timer le nettoyait, ~105s après dispatch) : une
+    -- clôture anticipée (timeout, admin) le laissait orphelin en jeu
+    -- jusqu'à l'expiration de ce délai indépendant.
+    for _, ambId in ipairs(callout.ambulanceIds or {}) do
+        ClearAmbulance(ambId)
+    end
     for src in pairs(callout.agents) do
         TriggerClientEvent('police:callouts:ended', src, { id = callout.id, status = status })
         AgentCall[src] = nil          -- l'agent redevient disponible
     end
+    EndedCallouts[callout.id] = callout
     SetTimeout(C.CleanupDelay * 1000, function()
         DeleteAllEntities(callout)
+        EndedCallouts[callout.id] = nil
     end)
     if callout.location then
         LocationCd[callout.location.key] = os.time()
@@ -1887,9 +2546,45 @@ local function CheckResolution(co)
     -- Un corps sur les lieux bloque la clôture tant qu'il n'a pas été
     if co.extraDeath and not co.deathConstated and not sc.multiDeath then return end
 
+    -- Un suspect touché par balle mais vivant doit être soigné avant la
+    -- clôture, quel que soit le scénario — pas seulement interpellé.
+    for _, p in pairs(co.peds) do
+        if p.role == 'suspect' and p.wounded and not p.healed then return end
+    end
+
+    -- Un blessé sur place (délit de fuite, chien dangereux…) doit être
+    -- secouru avant la clôture — AVANT la branche « scénarios à objectif »
+    -- ci-dessous, qui clôt et sort sans jamais atteindre ce garde sinon
+    -- (ex. chien dangereux : maître interpellé sans que la victime mordue
+    -- ne soit jamais soignée ni entendue).
+    if sc.requireAid then
+        for _, p in pairs(co.peds) do
+            if p.role == 'victim' and p.state ~= 'healed' then return end
+        end
+    end
+
+    -- Accident voie publique / chien dangereux : la victime doit aussi
+    -- être identifiée et entendue sur les faits, pas seulement soignée.
+    if sc.requireVictimReport then
+        for _, p in pairs(co.peds) do
+            if p.role == 'victim' then
+                if not p.identified then return end
+                if not p.interrogated then return end
+            end
+        end
+    end
+
     -- Scénarios à objectif (constatations, hôpital, sono) + fausses alertes
     if co.falseAlarm or sc.objective then
         if not co.objectiveDone then return end
+
+        -- Point d'entrée relevé sur ce lieu (porte OU fenêtre forcée) :
+        -- à examiner avant de clore, même une fois la déposition prise.
+        -- Rien à constater sur une fausse alerte.
+        if not co.falseAlarm and co.examinePoints and #co.examinePoints > 0
+           and not (co.examineNotes and next(co.examineNotes)) then
+            return
+        end
 
         -- Certains scénarios à objectif comportent en plus un mis en
         if sc.requireSuspects and not co.falseAlarm then
@@ -1900,9 +2595,43 @@ local function CheckResolution(co)
             end
         end
 
+        -- Tapage : la sono coupée ne suffit plus si un ou plusieurs
+        -- fêtards ont été interpellés — la mission attend qu'ils soient
+        -- présentés au poste. Plus léger que requireSuspects : les
+        -- fêtards jamais approchés (encore « idle ») ne bloquent rien.
+        if sc.requireDeliverCuffed and not co.falseAlarm then
+            for _, p in pairs(co.peds) do
+                if p.role == 'suspect' and (p.state == 'cuffed' or p.state == 'stunned') then
+                    return
+                end
+            end
+        end
+
+        -- Personne errante / découverte de corps : identification PUIS
+        -- proche prévenu obligatoires avant de clore, même si l'objectif
+        -- principal (hôpital, constat de décès) est déjà rempli. Sans
+        -- ce garde, sauter l'identification laissait `familyContact`
+        -- à `nil` et la clôture passait sans jamais prévenir personne.
+        -- La levée du corps par les secours (découverte de corps) ne
+        -- dispense de rien : l'agent l'attend justement avant d'aller
+        -- prévenir la famille.
+        if sc.familyContact then
+            for _, p in pairs(co.peds) do
+                if p.role == 'wanderer' or p.role == 'deceased' then
+                    if not p.identified then return end
+                    if not (p.familyContact and p.familyContact.notified) then return end
+                end
+            end
+        end
+
         EndCallout(co, 'success')
         return
     end
+
+    -- Aucun scénario n'exige plus l'enlèvement du véhicule pour clore
+    -- (cf. delit_fuite) — ce garde ne joue que si un scénario futur
+    -- redéfinit requireImpound.
+    if sc.requireImpound and not co.vehicleImpounded then return end
 
     local total, _, _, escaped, pending = CountSuspects(co)
     if total == 0 then
@@ -1915,6 +2644,48 @@ local function CheckResolution(co)
         EndCallout(co, 'failed')
     else
         EndCallout(co, 'success')
+    end
+end
+
+-- Fourrière (module externe) : le véhicule accidenté d'un délit de fuite
+-- doit être mis en fourrière avant de pouvoir clore. Appelée en fonction
+-- globale DIRECTE (même ressource, même VM Lua) plutôt que par event :
+-- fourriere:impound est déclenché via le bus custom LSLegacy (useEvent),
+-- qui appelle son handler en Lua direct sans jamais émettre l'event natif
+-- correspondant — un AddEventHandler('fourriere:impound', ...) ici ne se
+-- déclenchait donc jamais (co.vehicleImpounded restait nil pour toujours).
+function LSLegacy_NotifyVehicleImpounded(src, netId)
+    local id = tonumber(netId)
+    local co = CalloutOf(src)
+    if co and co.state == 'active' then
+        if co.scenario.requireImpound and co.crashVehNet == id then
+            co.vehicleImpounded = true
+            NotifyEngaged(co, "Enlèvement du véhicule accidenté demandé.", 'success')
+            SyncEngaged(co)
+            CheckResolution(co)
+            return
+        end
+        -- Rodéo urbain : simple constat pour la fiche, aucune moto n'est
+        -- exigée pour clore la mission (cf. CheckResolution, générique).
+        for _, p in pairs(co.peds) do
+            if p.role == 'suspect' and p.bikeNet == id then
+                p.bikeImpounded = true
+                SyncEngaged(co)
+                return
+            end
+        end
+    end
+
+    -- Mission déjà close mais moto encore sur place (fenêtre de grâce
+    -- avant DeleteAllEntities, cf. EndedCallouts) : la fiche garde trace
+    -- de la mise en fourrière même après la clôture.
+    for _, ec in pairs(EndedCallouts) do
+        for _, p in pairs(ec.peds) do
+            if p.role == 'suspect' and p.bikeNet == id then
+                p.bikeImpounded = true
+                return
+            end
+        end
     end
 end
 
@@ -1950,6 +2721,52 @@ local function DispatchMessage(sc, location, overrideDispatch)
     return C.Dispatch.prefix .. ' — ' .. string.format(line, where)
 end
 
+-- Niveau de danger heuristique (aucune scénario ne le déclare
+-- aujourd'hui) : ré-utilise le trio Config.MDT.DangerLevels côté CIC
+-- pour prioriser visuellement les appels en attente d'affectation.
+function Cic.scenarioDanger(sc)
+    if sc.dangerLevel then return sc.dangerLevel end
+    if sc.massIncident then return 3 end
+    if (sc.weapons and (sc.weapons.chance or 0) >= 50)
+        or (sc.behaviors and (sc.behaviors.aggressive or 0) >= 30) then return 2 end
+    return 1
+end
+
+-- Diffusion « classique » (auto-accept) : tous les équipages libres.
+-- Utilisée quand aucun CIC n'est en ligne, et en repli si le dernier
+-- CIC se déconnecte alors qu'un appel attendait une affectation.
+function Cic.broadcastAutoAccept(co)
+    local msg = DispatchMessage(co.scenario, co.location, co.massVariant and co.massVariant.dispatch)
+    local v = co.location.loc.coords
+    for src in pairs(Registered) do
+        if not IsCrewBusy(Registered[src].crew) then
+            TriggerClientEvent('police:callouts:incoming', src, {
+                id = co.id, scenarioId = co.scenarioId, label = co.scenario.label,
+                zoneLabel = co.location.loc.label, message = msg,
+                coords = { x = v.x, y = v.y, z = v.z },
+                timeout = C.AcceptTimeout,
+            })
+        end
+    end
+end
+
+-- Idem pour une demande de renfort.
+function Cic.broadcastBackup(co)
+    local n = 0
+    for _ in pairs(co.agents) do n = n + 1 end
+    local msg = string.format(C.Dispatch.backup, co.street or co.location.loc.label, n)
+    local v = co.location.loc.coords
+    for other in pairs(Registered) do
+        if not IsEngaged(other) and not IsCrewBusy(Registered[other].crew) then
+            TriggerClientEvent('police:callouts:backupRequested', other, {
+                id = co.id, label = co.scenario.label,
+                zoneLabel = co.location.loc.label, message = msg, agents = n,
+                coords = { x = v.x, y = v.y, z = v.z },
+            })
+        end
+    end
+end
+
 local function CreateCallout(scenarioId, forced)
     local sc = Config.Police.Scenarios[scenarioId]
     if not sc then return false, 'Scénario inconnu.' end
@@ -1983,6 +2800,7 @@ local function CreateCallout(scenarioId, forced)
         peds       = {},
         vehicles   = {},
         droppedWeapons = {},
+        drops          = {},
         misconducts    = 0,
         armedDeliveries = 0,
         civilianKills   = 0,
@@ -1997,33 +2815,35 @@ local function CreateCallout(scenarioId, forced)
     Callouts[co.id] = co
     LastScenario = scenarioId
 
-    local msg = DispatchMessage(sc, co.location, co.massVariant and co.massVariant.dispatch)
-    local v   = picked.loc.coords
-
-    -- Diffusion aux seuls agents dont l'ÉQUIPAGE est libre : un équipage
-    for src in pairs(Registered) do
-        if not IsCrewBusy(Registered[src].crew) then
-        TriggerClientEvent('police:callouts:incoming', src, {
-            id = co.id, scenarioId = scenarioId, label = sc.label,
-            zoneLabel = picked.loc.label, message = msg,
-            -- Coordonnées envoyées dès la diffusion : le blip apparaît
-            coords = { x = v.x, y = v.y, z = v.z },
-            timeout = C.AcceptTimeout,
-        })
+    -- Diffusion : au CIC exclusivement s'il y en a un en ligne, sinon
+    -- aux équipages libres (auto-accept classique).
+    if Cic.online() then
+        co.cicPending = true
+        local msg = DispatchMessage(sc, co.location, co.massVariant and co.massVariant.dispatch)
+        for cicSrc in pairs(Cic.operators) do
+            TriggerClientEvent('police:callouts:cicIncoming', cicSrc, {
+                id = co.id, label = sc.label, zoneLabel = picked.loc.label, message = msg,
+            })
         end
+    else
+        Cic.broadcastAutoAccept(co)
     end
 
     Dbg('appel diffusé :', scenarioId, picked.loc.label, '[' .. co.zone .. ']', falseAlarm and '(fausse alerte)' or '')
 
-    -- Expiration si personne n'accepte.
+    -- Expiration si personne n'accepte / si le CIC n'affecte personne.
     local myId = co.id
-    SetTimeout(C.AcceptTimeout * 1000, function()
+    local timeoutSec = co.cicPending and (C.CicAssignTimeout or C.AcceptTimeout) or C.AcceptTimeout
+    SetTimeout(timeoutSec * 1000, function()
         local pendingCo = Callouts[myId]
         if not pendingCo or pendingCo.state ~= 'pending' then return end
 
         -- L'annulation n'était diffusée QUE lorsqu'un équipage prenait
         for other in pairs(Registered) do
             TriggerClientEvent('police:callouts:cancelled', other, { id = myId })
+        end
+        for cicSrc in pairs(Cic.operators) do
+            TriggerClientEvent('police:callouts:cicCancelled', cicSrc, { id = myId })
         end
 
         EndCallout(pendingCo, 'cancelled')
@@ -2125,6 +2945,33 @@ local function CrewLabel(crewId)
     return 'Équipage'
 end
 
+local function CrewShort(crewId)
+    for _, c in ipairs(C.Crews) do
+        if c.id == crewId then return c.short or c.label end
+    end
+    return ''
+end
+
+-- Visibilité des unités (Appel 17 / MDT) — bascule en mémoire par le
+-- Commissaire. Police Secours est verrouillée toujours visible.
+local UnitVisible = {}
+for _, u in ipairs(C.Units) do UnitVisible[u.id] = u.visible end
+
+local function UnitInfo(unitId)
+    for _, u in ipairs(C.Units) do
+        if u.id == unitId then return u end
+    end
+    return nil
+end
+
+-- Indicatif complet d'un agent inscrit (ex. « Police Secours Alpha »).
+local function Callsign(src)
+    local r = Registered[src]
+    if not r then return nil end
+    local u = UnitInfo(r.unit) or C.Units[1]
+    return (u.indicatif or u.label) .. ' ' .. CrewShort(r.crew)
+end
+
 -- Envoie au client l'état des équipages (effectifs, places restantes).
 local function SendCrewState(src)
     local crews = {}
@@ -2140,8 +2987,8 @@ local function SendCrewState(src)
     })
 end
 
-local function DoRegister(src, crewId)
-    -- Missions conjointes : police et gendarmerie s'engagent indifféremment
+local function DoRegister(src, crewId, unitId)
+    -- Missions conjointes : police et le shérif s'engagent indifféremment
     if not IsLawEnforcement(src) then
         Notify(src, "Réservé aux forces de l'ordre.", 'error')
         return
@@ -2170,6 +3017,7 @@ local function DoRegister(src, crewId)
             end
         end
         Registered[src] = nil
+        Player(src).state:set('policeCallsign', nil, true)
         if TestMode.active and TestMode.admin == src then
             TestMode.active = false
             TestMode.admin  = nil
@@ -2200,41 +3048,73 @@ local function DoRegister(src, crewId)
         return
     end
 
+    unitId = unitId or C.Units[1].id
+    local u = UnitInfo(unitId)
+    if not u or (not UnitVisible[unitId] and not u.locked) then
+        Notify(src, 'Unité indisponible.', 'error')
+        return
+    end
+
     Registered[src] = {
         name  = GetName(src),
         ident = GetIdentifier(src),
         grade = GetGrade(src),
         crew  = crewId,
+        unit  = unitId,
     }
+    local callsign = Callsign(src)
+    Player(src).state:set('policeCallsign', callsign, true)
     Notify(src, 'Vous rejoignez ' .. CrewLabel(crewId) ..
-        ' (' .. CrewCount(crewId) .. '/' .. C.CrewMaxSize .. ') — Police Secours.', 'success')
-    TriggerClientEvent('police:callouts:registerState', src, true, crewId, CrewLabel(crewId))
+        ' (' .. CrewCount(crewId) .. '/' .. C.CrewMaxSize .. ') — ' .. callsign .. '.', 'success')
+    TriggerClientEvent('police:callouts:registerState', src, true, crewId, CrewLabel(crewId), callsign)
 
     -- Les autres membres de l'équipage sont prévenus
     for _, other in ipairs(CrewMembers(crewId)) do
         if other ~= src then
-            Notify(other, (Registered[src].name or 'Un agent') ..
-                ' rejoint votre équipage.', 'info')
+            Notify(other, callsign .. ' rejoint votre équipage.', 'info')
         end
     end
 end
 
--- Le client demande la liste des équipages (clic sur Anna)
-LSLegacy.RegisterServerEvent('police:callouts:askCrews', function()
-    local src = source
-    if not IsLawEnforcementOnDuty(src) then
-        Notify(src, "Vous devez être en service dans une force de l'ordre.", 'error')
-        return
-    end
-    SendCrewState(src)
-end)
 
-LSLegacy.RegisterServerEvent('police:callouts:register', function(data)
-    DoRegister(source, data and data.crew or nil)
-end)
+-- Poste CIC : bascule (activation gérée par la permission view_cic /
+-- admin_mdt côté MDT). Un CIC quitte automatiquement son équipage,
+-- l'inverse valant aussi (voir MdtQueries.setRegistration).
+function Cic.setActive(src, on)
+    if on then
+        -- HasPermission ignore les déblocages par compétence (BZ008) : on
+        -- passe par le pont MDT qui les consulte réellement.
+        if not LSLegacy.MDT.HasEffectivePermission(src, 'view_cic') then return false end
+        if Registered[src] then DoRegister(src) end
+        Cic.operators[src] = true
+        TriggerClientEvent('police:cic:state', src, true)
+    else
+        Cic.operators[src] = nil
+        TriggerClientEvent('police:cic:state', src, false)
+        Cic.offlineFallback()
+    end
+    return true
+end
+
+-- Repli auto-accept immédiat pour tout appel encore en attente
+-- d'affectation dès lors que plus aucun CIC n'est en ligne.
+function Cic.offlineFallback()
+    if Cic.online() then return end
+    for _, co in pairs(Callouts) do
+        if co.state == 'pending' and co.cicPending then
+            co.cicPending = false
+            Cic.broadcastAutoAccept(co)
+            Dbg('CIC hors ligne — repli auto-accept pour l\'appel', co.id)
+        elseif co.state == 'active' and co.backup and co.backup.cicPending then
+            co.backup.cicPending = false
+            Cic.broadcastBackup(co)
+        end
+    end
+end
 
 -- Désinscription automatique en fin de service.
 AddEventHandler('police:callouts:officerOffDuty', function(src)
+    if src and Cic.isOperator(src) then Cic.setActive(src, false) end
     if not src or not Registered[src] then return end
 
     local co = CalloutOf(src)
@@ -2254,6 +3134,7 @@ AddEventHandler('police:callouts:officerOffDuty', function(src)
     end
 
     Registered[src] = nil
+    Player(src).state:set('policeCallsign', nil, true)
     TriggerClientEvent('police:callouts:registerState', src, false)
 
     if TestMode.active and TestMode.admin == src then
@@ -2265,6 +3146,7 @@ end)
 
 AddEventHandler('playerDropped', function()
     local src = source
+    if Cic.isOperator(src) then Cic.operators[src] = nil Cic.offlineFallback() end
     if not Registered[src] then return end
 
     local co = CalloutOf(src)
@@ -2294,7 +3176,10 @@ end)
 
 local function AddAgent(co, src, asLeader)
     co.agents[src] = {
-        name  = Registered[src] and Registered[src].name or GetName(src),
+        -- Nom réel : sert aux statistiques individuelles, à l'attribution
+        -- « neutralisé/relâché par » et au dossier — jamais l'indicatif
+        -- radio, qui identifie un poste occupé, pas un agent.
+        name  = (Registered[src] and Registered[src].name) or GetName(src),
         ident = Registered[src] and Registered[src].ident or GetIdentifier(src),
         grade = GetGrade(src),
         status = 'enroute',
@@ -2305,13 +3190,163 @@ local function AddAgent(co, src, asLeader)
     if asLeader then co.leader = src end
 end
 
-LSLegacy.RegisterServerEvent('police:callouts:accept', function(data)
+-- Met en scène un appel fraîchement pris (spawn PNJ/véhicules) et le
+-- diffuse comme pris — factorisé pour être partagé entre la prise en
+-- charge classique (auto-accept) et l'affectation par le CIC.
+function Cic.launchScene(co, leaderSrc)
+    -- Figé ici plutôt que recalculé au moment du rapport : l'agent peut
+    -- s'être désinscrit du groupe d'intervention (TN 97) entre la fin de
+    -- la mission et la rédaction, ce qui viderait l'indicatif live.
+    co.unitLabel = Callsign(leaderSrc)
+    CreateCalloutRecord(co)
+
+    local sc     = co.scenario
+    local roster = BuildRoster(sc, co.staff, co.falseAlarm, co.zone, co.massVariant)
+    co.crashType = roster.crashType
+    co.usedNames = roster.usedNames
+
+    -- Emplacement précis avec requérant dédié (magasin, entrepôt…) :
+    -- remplace le modèle générique tiré par BuildRoster.
+    local callerPool = co.location and co.location.loc and co.location.loc.callerPool
+    if callerPool then
+        for _, e in ipairs(roster) do
+            if e.role == 'caller' then
+                local pool  = ResolvePedPool(callerPool, co.zone)
+                local model = PickOne(pool) or e.model
+                e.model    = model
+                e.pool     = callerPool
+                e.identity = GenerateIdentity(model, callerPool, nil, co.usedNames)
+                break
+            end
+        end
+    end
+
+    -- La mise en scène ne doit JAMAIS empêcher la synchronisation :
+    local okE, errE = pcall(SpawnEntities, co, roster, nil)
+    if not okE then
+        print('^1[callouts]^7 Erreur lors du spawn des PNJ : ' .. tostring(errE))
+    end
+    local okV, errV = pcall(SpawnVehicles, co, sc)
+    if not okV then
+        print('^1[callouts]^7 Erreur lors du spawn des véhicules : ' .. tostring(errV))
+    end
+
+    -- Le pcall ci-dessus évite qu'une erreur de mise en scène prive les
+    local nPeds = 0
+    for _ in pairs(co.peds or {}) do nPeds = nPeds + 1 end
+    if nPeds == 0 and #roster > 0 then
+        print(('^1[callouts]^7 ANOMALIE : aucun PNJ créé pour %s (%d attendus). ' ..
+            'Voir l\'erreur de spawn ci-dessus.'):format(tostring(co.scenarioId), #roster))
+        NotifyEngaged(co, 'Anomalie technique : aucun PNJ n\'a pu être créé sur ' ..
+            'cette intervention. Signalez-le à l\'administration.', 'error')
+    end
+
+    SyncEngaged(co)
+    AssignBrain(co, leaderSrc)
+
+    -- Les autres enregistrés savent que cet appel est pris
+    for other in pairs(Registered) do
+        if not co.agents[other] then
+            TriggerClientEvent('police:callouts:cancelled', other, { id = co.id, taken = true })
+        end
+    end
+end
+
+-- Affectation d'un nouvel appel par le CIC : identique à l'acceptation
+-- classique, déclenchée par l'opérateur plutôt que par la patrouille.
+function Cic.assignNew(co, crewId, cicSrc)
+    co.state      = 'active'
+    co.takenAt    = os.time()
+    co.crew       = crewId
+    co.cicPending = false
+
+    local leader = nil
+    for _, mate in ipairs(CrewMembers(crewId)) do
+        if not IsEngaged(mate) then
+            AddAgent(co, mate, leader == nil)
+            if leader == nil then leader = mate end
+            Notify(mate, 'Le CIC vous envoie sur — ' .. co.scenario.label .. '.', 'info')
+        end
+    end
+    if not leader then co.state = 'pending' co.cicPending = true return false end
+
+    Cic.launchScene(co, leader)
+    Cic.push({ calloutId = co.id, label = co.scenario.label, crew = CrewLabel(crewId),
+        cic = Callsign(cicSrc) or GetName(cicSrc), at = os.time(), kind = 'dispatch' })
+    Dbg('CIC', tostring(cicSrc), 'affecte l\'appel', co.id, 'à', crewId)
+    return true
+end
+
+-- Envoi d'un équipage en renfort sur un appel déjà actif, sur décision
+-- du CIC (n'affecte pas l'équipage déjà engagé).
+function Cic.assignBackup(co, crewId, cicSrc)
+    local maxAgents = C.MaxCalloutAgents or 8
+    local n = 0
+    for _ in pairs(co.agents) do n = n + 1 end
+    local added = false
+    for _, mate in ipairs(CrewMembers(crewId)) do
+        if n >= maxAgents then break end
+        if not IsEngaged(mate) then
+            AddAgent(co, mate, false)
+            Notify(mate, 'Le CIC vous envoie en renfort sur — ' .. co.scenario.label .. '.', 'info')
+            added = true
+            n = n + 1
+        end
+    end
+    if not added then return false end
+
+    co.backup.cicPending = false
+    SyncEngaged(co)
+    Cic.push({ calloutId = co.id, label = co.scenario.label, crew = CrewLabel(crewId),
+        cic = Callsign(cicSrc) or GetName(cicSrc), at = os.time(), kind = 'renfort' })
+    return true
+end
+
+-- Réaffectation : retire l'équipage actuellement engagé et le
+-- remplace par un autre, sans re-générer la scène (PNJ/véhicules).
+function Cic.reassign(co, crewId, cicSrc)
+    for s in pairs(co.agents) do
+        co.agents[s] = nil
+        AgentCall[s] = nil
+        Notify(s, 'Le CIC vous retire de cette intervention.', 'warning')
+        TriggerClientEvent('police:callouts:ended', s, { id = co.id, status = 'left' })
+    end
+
+    local leader = nil
+    for _, mate in ipairs(CrewMembers(crewId)) do
+        if not IsEngaged(mate) then
+            AddAgent(co, mate, leader == nil)
+            if leader == nil then leader = mate end
+            Notify(mate, 'Le CIC vous réaffecte sur — ' .. co.scenario.label .. '.', 'info')
+        end
+    end
+    if not leader then
+        -- Personne de disponible dans le nouvel équipage : l'appel
+        -- retourne en attente d'affectation plutôt que de rester sans agent.
+        co.crew = nil
+        co.cicPending = true
+        return false
+    end
+
+    co.crew = crewId
+    SyncEngaged(co)
+    AssignBrain(co, leader)
+    Cic.push({ calloutId = co.id, label = co.scenario.label, crew = CrewLabel(crewId),
+        cic = Callsign(cicSrc) or GetName(cicSrc), at = os.time(), kind = 'reassign' })
+    return true
+end
+
+LSLegacy.Events.Register('police:callouts:accept', function(data)
     local src = source
     if not Registered[src] or not IsLawEnforcementOnDuty(src) then return end
     if not data then return end
 
     local co = Callouts[tonumber(data.id) or 0]
     if not co then return end
+    if co.cicPending then
+        Notify(src, 'Cet appel est géré par le CIC.', 'error')
+        return
+    end
     if co.state ~= 'pending' then
         Notify(src, 'Cet appel a déjà été pris en charge.', 'error')
         return
@@ -2343,46 +3378,13 @@ LSLegacy.RegisterServerEvent('police:callouts:accept', function(data)
         end
     end
 
-    -- Création immédiate de la scène. Aucun appel bloquant vers un client :
-    local sc     = co.scenario
-    local roster = BuildRoster(sc, co.staff, co.falseAlarm, co.zone, co.massVariant)
-    co.crashType = roster.crashType
-
-    -- La mise en scène ne doit JAMAIS empêcher la synchronisation :
-    local okE, errE = pcall(SpawnEntities, co, roster, nil)
-    if not okE then
-        print('^1[callouts]^7 Erreur lors du spawn des PNJ : ' .. tostring(errE))
-    end
-    local okV, errV = pcall(SpawnVehicles, co, sc)
-    if not okV then
-        print('^1[callouts]^7 Erreur lors du spawn des véhicules : ' .. tostring(errV))
-    end
-
-    -- Le pcall ci-dessus évite qu'une erreur de mise en scène prive les
-    local nPeds = 0
-    for _ in pairs(co.peds or {}) do nPeds = nPeds + 1 end
-    if nPeds == 0 and #roster > 0 then
-        print(('^1[callouts]^7 ANOMALIE : aucun PNJ créé pour %s (%d attendus). ' ..
-            'Voir l\'erreur de spawn ci-dessus.'):format(tostring(co.scenarioId), #roster))
-        NotifyEngaged(co, 'Anomalie technique : aucun PNJ n\'a pu être créé sur ' ..
-            'cette intervention. Signalez-le à l\'administration.', 'error')
-    end
-
     Notify(src, C.Dispatch.taken, 'success')
-    SyncEngaged(co)
-    AssignBrain(co, src)
-
-    -- Les autres enregistrés savent que cet appel est pris
-    for other in pairs(Registered) do
-        if not co.agents[other] then
-            TriggerClientEvent('police:callouts:cancelled', other, { id = co.id, taken = true })
-        end
-    end
+    Cic.launchScene(co, src)
     Dbg('appel', co.id, 'pris en charge par', tostring(src), 'équipage', tostring(crew))
 end)
 
 -- Le cerveau remonte le nom de rue réel une fois sur place (non bloquant)
-LSLegacy.RegisterServerEvent('police:callouts:reposition', function(data)
+LSLegacy.Events.Register('police:callouts:reposition', function(data)
     local src = source
     local co = CalloutOf(src)
     if not co or not data or not data.netId then return end
@@ -2397,7 +3399,7 @@ LSLegacy.RegisterServerEvent('police:callouts:reposition', function(data)
 
     -- Garde-fou : on n'accepte qu'un recalage local, jamais un
     local base = co.location.loc.coords
-    if #(vector3(x, y, z) - vector3(base.x, base.y, base.z)) > (C.SearchRadius + 50.0) then
+    if not LSLegacy.Validate.Distance(vector3(x, y, z), vector3(base.x, base.y, base.z), C.SearchRadius + 50.0) then
         return
     end
 
@@ -2407,7 +3409,7 @@ LSLegacy.RegisterServerEvent('police:callouts:reposition', function(data)
 end)
 
 -- Relais de visibilité du corps. Le cerveau masque le cadavre pendant
-LSLegacy.RegisterServerEvent('police:callouts:corpseVisible', function(data)
+LSLegacy.Events.Register('police:callouts:corpseVisible', function(data)
     local src = source
     local co = CalloutOf(src)
     if not co or not data or not data.netId then return end
@@ -2426,16 +3428,16 @@ LSLegacy.RegisterServerEvent('police:callouts:corpseVisible', function(data)
     end
 end)
 
-LSLegacy.RegisterServerEvent('police:callouts:reportStreet', function(data)
+LSLegacy.Events.Register('police:callouts:reportStreet', function(data)
     local src = source
     local co = CalloutOf(src)
     if not co or co.brain ~= src then return end
     if co.street or not data or type(data.street) ~= 'string' then return end
-    co.street = data.street
+    co.street = data.street:sub(1, 80)
 end)
 
 -- Refus explicite d'un appel. Sans ce retour, un appel décliné restait
-LSLegacy.RegisterServerEvent('police:callouts:refuse', function(data)
+LSLegacy.Events.Register('police:callouts:refuse', function(data)
     local src = source
     if not Registered[src] or not data then return end
 
@@ -2462,7 +3464,7 @@ LSLegacy.RegisterServerEvent('police:callouts:refuse', function(data)
     end
 end)
 
-LSLegacy.RegisterServerEvent('police:callouts:leave', function()
+LSLegacy.Events.Register('police:callouts:leave', function()
     local src = source
     local co = CalloutOf(src)
     if not co then return end
@@ -2483,7 +3485,7 @@ LSLegacy.RegisterServerEvent('police:callouts:leave', function()
     end
 end)
 
-LSLegacy.RegisterServerEvent('police:callouts:requestBackup', function()
+LSLegacy.Events.Register('police:callouts:requestBackup', function()
     local src = source
     local co = CalloutOf(src)
     if not co or co.state ~= 'active' then return end
@@ -2494,28 +3496,27 @@ LSLegacy.RegisterServerEvent('police:callouts:requestBackup', function()
         Notify(src, 'Demande de renfort déjà émise récemment.', 'error')
         return
     end
-    co.backup = { at = now, by = src }
-
-    local n = 0
-    for _ in pairs(co.agents) do n = n + 1 end
-    local msg = string.format(C.Dispatch.backup, co.street or co.location.loc.label, n)
-
-    local v = co.location.loc.coords
-    -- Seuls les équipages LIBRES peuvent venir en renfort
-    for other in pairs(Registered) do
-        if not IsEngaged(other) and not IsCrewBusy(Registered[other].crew) then
-            TriggerClientEvent('police:callouts:backupRequested', other, {
-                id = co.id, label = co.scenario.label,
-                zoneLabel = co.location.loc.label, message = msg, agents = n,
-                -- Sans coordonnées, le renfort n'a aucun blip pour se rendre
-                coords = { x = v.x, y = v.y, z = v.z },
+    -- Renfort aussi géré par le CIC quand il y en a un en ligne, sur le
+    -- même principe que les nouveaux appels.
+    if Cic.online() then
+        co.backup = { at = now, by = src, cicPending = true }
+        local n = 0
+        for _ in pairs(co.agents) do n = n + 1 end
+        local msg = string.format(C.Dispatch.backup, co.street or co.location.loc.label, n)
+        for cicSrc in pairs(Cic.operators) do
+            TriggerClientEvent('police:callouts:cicIncoming', cicSrc, {
+                id = co.id, label = co.scenario.label, zoneLabel = co.location.loc.label,
+                message = msg, backup = true,
             })
         end
+    else
+        co.backup = { at = now, by = src }
+        Cic.broadcastBackup(co)
     end
     NotifyEngaged(co, 'Demande de renfort transmise au central.', 'info')
 end)
 
-LSLegacy.RegisterServerEvent('police:callouts:acceptBackup', function(data)
+LSLegacy.Events.Register('police:callouts:acceptBackup', function(data)
     local src = source
     if not Registered[src] or not IsLawEnforcementOnDuty(src) then return end
     if not data then return end
@@ -2530,14 +3531,28 @@ LSLegacy.RegisterServerEvent('police:callouts:acceptBackup', function(data)
         return
     end
 
+    local function AgentCount()
+        local n = 0
+        for _ in pairs(co.agents) do n = n + 1 end
+        return n
+    end
+    local maxAgents = C.MaxCalloutAgents or 8
+    if AgentCount() >= maxAgents then
+        Notify(src, 'L\'effectif déjà engagé sur cette intervention est suffisant.', 'error')
+        return
+    end
+
     AddAgent(co, src, false)
     Notify(src, 'Vous rejoignez l\'intervention en renfort.', 'success')
     NotifyEngaged(co, (co.agents[src].name or 'Un agent') .. ' arrive en renfort.', 'info')
 
-    -- Le renfort engage également tout l'équipage du volontaire
+    -- Le renfort engage également tout l'équipage du volontaire, dans la
+    -- limite de l'effectif max (anti-abus : multiplier les primes pleines
+    -- en empilant des coéquipiers sur un même appel).
     local crew = Registered[src] and Registered[src].crew or nil
     if crew then
         for _, mate in ipairs(CrewMembers(crew)) do
+            if AgentCount() >= maxAgents then break end
             if mate ~= src and not co.agents[mate] and not IsEngaged(mate) then
                 AddAgent(co, mate, false)
                 Notify(mate, 'Votre équipage part en renfort.', 'info')
@@ -2547,7 +3562,7 @@ LSLegacy.RegisterServerEvent('police:callouts:acceptBackup', function(data)
     SyncEngaged(co)
 end)
 
-LSLegacy.RegisterServerEvent('police:callouts:setStatus', function(data)
+LSLegacy.Events.Register('police:callouts:setStatus', function(data)
     local src = source
     local co = CalloutOf(src)
     if not co or not data or not data.status then return end
@@ -2577,10 +3592,10 @@ local function AgentNear(src, ped, radius)
     if not ped or not ped.entity or not DoesEntityExist(ped.entity) then return false end
     local a = GetEntityCoords(GetPlayerPed(src))
     local b = GetEntityCoords(ped.entity)
-    return #(a - b) <= (radius or 5.0)
+    return LSLegacy.Validate.Distance(a, b, radius or 5.0)
 end
 
-LSLegacy.RegisterServerEvent('police:callouts:suspectStunned', function(data)
+LSLegacy.Events.Register('police:callouts:suspectStunned', function(data)
     local src = source
     local p, co = GetPed(src, data)
     if not p or p.role == 'caller' then return end
@@ -2591,7 +3606,7 @@ LSLegacy.RegisterServerEvent('police:callouts:suspectStunned', function(data)
     SyncEngaged(co)
 end)
 
-LSLegacy.RegisterServerEvent('police:callouts:suspectCuffed', function(data)
+LSLegacy.Events.Register('police:callouts:suspectCuffed', function(data)
     local src = source
     local p, co = GetPed(src, data)
     if not p or (p.role ~= 'suspect' and p.role ~= 'wanderer') then return end
@@ -2604,25 +3619,132 @@ LSLegacy.RegisterServerEvent('police:callouts:suspectCuffed', function(data)
     SyncEngaged(co)
 end)
 
-LSLegacy.RegisterServerEvent('police:callouts:suspectIdentify', function(data)
+LSLegacy.Events.Register('police:callouts:suspectIdentify', function(data)
     local src = source
     local p, co = GetPed(src, data)
     if not p or p.identified then return end
     if not AgentNear(src, p, 4.0) then return end
-    -- Une victime se laisse toujours identifier ; un mis en cause doit
-    if p.role ~= 'victim'
+    -- Une victime se laisse toujours identifier. Un corps ne se laisse
+    -- identifier que sur les scénarios qui exploitent réellement cette
+    -- étape (personne errante, découverte de corps) : pas question
+    -- d'identifier les corps d'une tuerie de masse au passage.
+    local co_sc = co.scenario
+    local corpseOk = p.role == 'deceased' and co_sc and co_sc.familyContact
+    if p.role ~= 'victim' and not corpseOk
        and not (p.state == 'cuffed' or p.state == 'stunned' or p.behavior == 'passive') then
         Notify(src, 'Impossible de contrôler cet individu dans cet état.', 'error')
         return
     end
 
     p.identified = true
+    p.identity = p.identity or GenerateIdentity(nil, p.pool, nil, co.usedNames)
+
+    -- Contrôle d'identité d'un suspect PNJ : récidive et fiche de
+    -- recherche, tirées une seule fois, indépendamment l'une de l'autre.
+    -- Purement PNJ, sans lien avec le casier des joueurs réels (cf.
+    -- C.Wanted, config_callouts.lua).
+    if p.role == 'suspect' and p.repeatOffender == nil then
+        local W = C.Wanted or {}
+        p.repeatOffender = math.random(1, 100) <= (W.RepeatOffenderChance or 25)
+        if p.repeatOffender then
+            NotifyEngaged(co, PedLabel(p) .. ' est un récidiviste connu des services.', 'warning')
+        end
+
+        p.wanted = math.random(1, 100) <= (W.Chance or 12)
+        if p.wanted then
+            local reasons = W.Reasons or {}
+            p.wantedReason = (#reasons > 0) and reasons[math.random(1, #reasons)] or nil
+            NotifyEngaged(co, PedLabel(p) .. ' fait l\'objet d\'une fiche de recherche' ..
+                (p.wantedReason and (' : ' .. p.wantedReason) or '') .. '.', 'error')
+        end
+    end
+
+    -- Personne errante / découverte de corps : une fois identifié, un
+    -- proche à prévenir est tiré parmi les doorsteps déjà relevés pour
+    -- la constatation de vol par effraction — parfaits pour représenter
+    -- quelqu'un chez lui.
+    local sc = co.scenario
+    if sc.familyContact and (p.role == 'wanderer' or p.role == 'deceased')
+       and not p.familyContact then
+        local locs = C.Locations['doorstep'] or {}
+        if #locs > 0 then
+            local i = math.random(1, #locs)
+            local v = locs[i].coords
+            local gender = (math.random(1, 2) == 1) and 'male' or 'female'
+            local contactIdentity = GenerateIdentity(nil, 'residents', gender, co.usedNames)
+            -- Un proche à prévenir : même nom de famille que la victime/
+            -- personne errante, sinon la fiche n'a aucun sens.
+            contactIdentity.lastname = p.identity.lastname
+            p.familyContact = {
+                identity = contactIdentity,
+                gender = gender,
+                x = v.x, y = v.y, z = v.z, heading = v.w,
+            }
+            -- Découverte de corps : le proche est consultable tout de
+            -- suite. Personne errante : il ne le devient qu'après le
+            -- dépôt à l'hôpital (cf. suspectDelivered) — pas de bip ici.
+            if p.role == 'deceased' then
+                NotifyEngaged(co, 'Un proche à prévenir a été identifié — voir la fiche ' ..
+                    'Appel 17 au MDT.', 'info')
+                PingMdt(co)
+            end
+        end
+    end
+
     Notify(src, 'Identité relevée : ' .. PedLabel(p) .. '.', 'success')
     SyncEngaged(co)
+    CheckResolution(co)
+end)
+
+-- Matérialisation du PNJ « contact famille ». Créé ici, côté serveur et
+-- réseauté, dès qu'un agent engagé est assez proche — jamais avant, sinon
+-- on retombe sur le bug déjà rencontré (ped réseauté loin de tout joueur,
+-- nettoyé par le moteur faute de propriétaire malgré l'anti-culling). En
+-- local (ancienne version), le PNJ n'existait que sur la machine de
+-- l'agent qui avait cliqué « À prévenir » dans le MDT — invisible pour le
+-- reste de l'équipage. Réseauté + matérialisé à portée, il est vu par
+-- tous les agents engagés une fois BuildPayload leur transmis son netId.
+CreateThread(function()
+    while true do
+        Wait(4000)
+        for _, co in pairs(Callouts) do
+            if co.state == 'active' and co.scenario.familyContact then
+                for _, p in pairs(co.peds) do
+                    local fc = p.familyContact
+                    if fc and not fc.notified and not fc.entity then
+                        local near = false
+                        for src in pairs(co.agents) do
+                            local ped = GetPlayerPed(src)
+                            if ped and ped ~= 0 and DoesEntityExist(ped) then
+                                local pc = GetEntityCoords(ped)
+                                local dx, dy = pc.x - fc.x, pc.y - fc.y
+                                if (dx * dx + dy * dy) <= (80.0 * 80.0) then
+                                    near = true
+                                    break
+                                end
+                            end
+                        end
+                        if near then
+                            local pool = C.FamilyContactModels[fc.gender] or C.FamilyContactModels.male
+                            local model = pool[math.random(1, #pool)]
+                            local ped = CreatePed(4, GetHashKey(model),
+                                fc.x, fc.y, fc.z, fc.heading or 0.0, true, true)
+                            if ped and ped ~= 0 and DoesEntityExist(ped) then
+                                pcall(function() SetEntityDistanceCullingRadius(ped, 500.0) end)
+                                fc.entity = ped
+                                fc.netId = NetworkGetNetworkIdFromEntity(ped)
+                                SyncEngaged(co)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
 end)
 
 -- Faire circuler un individu. Alternative à l'interpellation sur les
-LSLegacy.RegisterServerEvent('police:callouts:moveAlong', function(data)
+LSLegacy.Events.Register('police:callouts:moveAlong', function(data)
     local src = source
     local p, co = GetPed(src, data)
     if not p or p.role ~= 'suspect' then return end
@@ -2630,8 +3752,9 @@ LSLegacy.RegisterServerEvent('police:callouts:moveAlong', function(data)
     if co.scenario.moveAlong == false then return end
     if not AgentNear(src, p, 4.0) then return end
 
-    -- On ne relâche pas quelqu'un qui a encore une arme sur lui.
-    if p.weapon then
+    -- On ne relâche pas quelqu'un qui a encore une arme sur lui — sauf
+    -- permis de port d'arme valide (cf. sc.weaponPermit / p.permitValid).
+    if p.weapon and not p.permitValid then
         Notify(src, 'Impossible : ' .. PedLabel(p) ..
             ' est toujours porteur d\'une arme.', 'error')
         return
@@ -2646,10 +3769,26 @@ LSLegacy.RegisterServerEvent('police:callouts:moveAlong', function(data)
         Notify(src, 'L\'individu n\'est pas en état de coopérer.', 'error')
         return
     end
+    -- Touché par balle et pas encore soigné : le relâcher ainsi serait
+    -- irréversible (il quitte la scène, plus moyen de le soigner après),
+    -- alors que la clôture de la mission l'exige (cf. CheckResolution).
+    if p.wounded and not p.healed then
+        Notify(src, 'Impossible : ' .. PedLabel(p) ..
+            ' doit être soigné avant.', 'error')
+        return
+    end
 
     p.state = 'dispersed'
     p.releasedBy = co.agents[src] and co.agents[src].name or nil
-    Notify(src, PedLabel(p) .. ' est laissé(e) libre et quitte les lieux.', 'success')
+    -- Fiche de recherche active : le choix reste possible, mais à
+    -- justifier dans le rapport — consigné pour la fiche Appel 17.
+    if p.wanted then
+        p.releasedWhileWanted = true
+        Notify(src, PedLabel(p) .. ' est laissé(e) libre malgré sa fiche de ' ..
+            'recherche — à justifier dans le rapport.', 'warning')
+    else
+        Notify(src, PedLabel(p) .. ' est laissé(e) libre et quitte les lieux.', 'success')
+    end
     SyncEngaged(co)
     CheckResolution(co)
 end)
@@ -2714,7 +3853,13 @@ local function PickVictimLine(co, healed)
     local mission = (D.VictimLines or {})[co.scenarioId]
 
     if mission then
-        for _, blk in ipairs({ mission[place], mission['*'] }) do
+        -- ipairs({ mission[place], mission['*'] }) s'arrêterait net si
+        -- mission[place] est nil (trou à l'index 1) : le repli sur '*'
+        -- ne serait alors jamais atteint. On ne liste que les blocs réels.
+        local blocks = {}
+        if mission[place] then blocks[#blocks + 1] = mission[place] end
+        if place ~= '*' and mission['*'] then blocks[#blocks + 1] = mission['*'] end
+        for _, blk in ipairs(blocks) do
             if type(blk) == 'table' then
                 local list = blk[key] or blk[healed and 'blesse' or 'soigne']
                 if type(list) == 'table' and #list > 0 then
@@ -2730,7 +3875,7 @@ local function PickVictimLine(co, healed)
 end
 
 -- Recueil du témoignage d'une victime.
-LSLegacy.RegisterServerEvent('police:callouts:victimStatement', function(data)
+LSLegacy.Events.Register('police:callouts:victimStatement', function(data)
     local src = source
     local p, co = GetPed(src, data)
     if not p or p.role ~= 'victim' then return end
@@ -2747,9 +3892,10 @@ LSLegacy.RegisterServerEvent('police:callouts:victimStatement', function(data)
         label = PedLabel(p), text = p.statement,
     })
     SyncEngaged(co)
+    CheckResolution(co)
 end)
 
-LSLegacy.RegisterServerEvent('police:callouts:interrogate', function(data)
+LSLegacy.Events.Register('police:callouts:interrogate', function(data)
     local src = source
     local p, co = GetPed(src, data)
     if not p or p.role ~= 'suspect' then return end
@@ -2789,7 +3935,61 @@ LSLegacy.RegisterServerEvent('police:callouts:interrogate', function(data)
     SyncEngaged(co)
 end)
 
-LSLegacy.RegisterServerEvent('police:callouts:suspectSearched', function(data)
+-- Examen d'un point fixe de la scène (constatation de vol par effraction :
+-- porte forcée, fenêtre brisée…). Une seule fois par point, résultat
+-- tiré au hasard dans un pool par nature (porte/fenêtre) puis conservé.
+local ExamineTexts = {
+    door = {
+        'Serrure arrachée, chambranle fendu par l\'impact.',
+        'Porte forcée au pied-de-biche, éclats de bois autour de la gâche.',
+        'Barillet de serrure détruit, traces d\'outil sur le cadre.',
+    },
+    window = {
+        'Vitre brisée, éclats de verre au sol côté intérieur.',
+        'Fenêtre forcée, cadre déformé au niveau du loqueteau.',
+        'Carreau découpé proprement, ouverture minutieuse.',
+    },
+}
+
+LSLegacy.Events.Register('police:callouts:examinePoint', function(data)
+    local src = source
+    local co = CalloutOf(src)
+    if not co then return end
+
+    local id = tonumber(data and data.id)
+    local pt = id and co.examinePoints and co.examinePoints[id]
+    if not pt then return end
+
+    co.examineNotes = co.examineNotes or {}
+    if co.examineNotes[id] then return end
+
+    if not LSLegacy.Validate.Distance(GetEntityCoords(GetPlayerPed(src)),
+        vector3(pt.x, pt.y, pt.z), 3.0) then
+        return
+    end
+
+    local pool = ExamineTexts[pt.kind] or {}
+    co.examineNotes[id] = pool[math.random(1, #pool)] or 'Rien de notable relevé.'
+
+    Notify(src, ('Examen de %s : %s'):format(pt.label or 'la scène', co.examineNotes[id]), 'info')
+
+    -- Une fois TOUS les points relevés examinés, le requérant a quelque
+    -- chose à dire au prochain contact (cf. objectiveDone/kind=statement) :
+    -- il annonce qu'il va déposer plainte au commissariat.
+    if not co.examineComplete then
+        local done = 0
+        for _ in pairs(co.examineNotes) do done = done + 1 end
+        if done >= #co.examinePoints then
+            co.examineComplete = true
+            co.closingLine = PickClosing(co)
+        end
+    end
+
+    SyncEngaged(co)
+    CheckResolution(co)
+end)
+
+LSLegacy.Events.Register('police:callouts:suspectSearched', function(data)
     local src = source
     local p, co = GetPed(src, data)
     if not p or p.role ~= 'suspect' then return end
@@ -2833,10 +4033,164 @@ LSLegacy.RegisterServerEvent('police:callouts:suspectSearched', function(data)
     TriggerClientEvent('police:callouts:searchResult', src, {
         label = PedLabel(p), items = seizedLabels,
     })
+    IncrementPoliceStat(GetIdent(src), GetCharacterId(src), GetName(src), 'searches_count', 1)
     SyncEngaged(co)
 end)
 
-LSLegacy.RegisterServerEvent('police:callouts:suspectDropWeapon', function(data)
+-- Vol à l'étalage : une fois identité + fouille faites, propose de régler
+-- la marchandise sur place. S'il refuse, l'agent garde le choix de
+-- l'interpeller ou de le laisser repartir quand même (callout_move_along).
+LSLegacy.Events.Register('police:callouts:offerPayOff', function(data)
+    local src = source
+    local p, co = GetPed(src, data)
+    if not p or p.role ~= 'suspect' then return end
+    if not co.scenario.payOff then return end
+    if not p.identified or not p.searched then
+        Notify(src, "Il faut d'abord contrôler son identité et le fouiller.", 'error')
+        return
+    end
+    if p.payOffAsked then
+        Notify(src, 'Déjà proposé à cet individu.', 'error')
+        return
+    end
+    if p.state ~= 'idle' or p.behavior ~= 'passive' then
+        Notify(src, "L'individu n'est pas en état de répondre.", 'error')
+        return
+    end
+    if not AgentNear(src, p, 4.0) then return end
+
+    p.payOffAsked = true
+    local lines   = co.scenario.payOffLines or {}
+    local accepted = math.random(1, 100) <= (co.scenario.payOffChance or 50)
+
+    local pool = accepted and lines.accept or lines.refuse
+    local line = pool and #pool > 0 and pool[math.random(1, #pool)] or nil
+    if line then
+        TriggerClientEvent('police:callouts:ownerStatement', src, { label = PedLabel(p), text = line })
+    end
+
+    if accepted then
+        p.state = 'dispersed'
+        p.releasedBy = co.agents[src] and co.agents[src].name or nil
+        NotifyEngaged(co, PedLabel(p) .. ' règle la marchandise et quitte les lieux.', 'success')
+    else
+        Notify(src, PedLabel(p) .. ' refuse de payer.', 'error')
+    end
+
+    SyncEngaged(co)
+    CheckResolution(co)
+end)
+
+-- IPM : taux d'alcoolémie tiré une seule fois par individu, consigné
+-- au rapport. Rarement sous le seuil légal (0.5 g/L) puisque l'ivresse
+-- publique manifeste est déjà constatée visuellement.
+LSLegacy.Events.Register('police:callouts:breathalyzer', function(data)
+    local src = source
+    local p, co = GetPed(src, data)
+    if not p or not co.scenario.breathalyzer then return end
+    if p.breathalyzer then
+        Notify(src, 'Alcootest déjà effectué.', 'error')
+        return
+    end
+    if not AgentNear(src, p, 4.0) then return end
+
+    local rate
+    if math.random(1, 100) <= 15 then
+        rate = math.random(20, 49) / 100
+    else
+        rate = math.random(50, 250) / 100
+    end
+    p.breathalyzer = { rate = rate, level = (rate >= 0.5) and 'élevé' or 'normal' }
+
+    Notify(src, ('Alcootest : %.2f g/L (%s).'):format(rate, p.breathalyzer.level), 'info')
+    SyncEngaged(co)
+end)
+
+-- IPM : dépistage de stupéfiants tiré une seule fois par individu. En cas
+-- de positif, une ou deux substances sont consignées au rapport.
+local DrugTestSubstances = { 'Cannabis', 'Cocaïne', 'Amphétamines', 'MDMA' }
+LSLegacy.Events.Register('police:callouts:drugTest', function(data)
+    local src = source
+    local p, co = GetPed(src, data)
+    if not p or not co.scenario.drugTest then return end
+    if p.drugTest then
+        Notify(src, 'Dépistage déjà effectué.', 'error')
+        return
+    end
+    if not AgentNear(src, p, 4.0) then return end
+
+    local positive = math.random(1, 100) <= 60
+    if not positive then
+        p.drugTest = { positive = false, substances = {} }
+        Notify(src, 'Dépistage de stupéfiants : négatif.', 'info')
+    else
+        local pool = {}
+        for _, s in ipairs(DrugTestSubstances) do pool[#pool + 1] = s end
+        local want = math.random(1, 2)
+        local substances = {}
+        for _ = 1, math.min(want, #pool) do
+            local i = math.random(1, #pool)
+            substances[#substances + 1] = pool[i]
+            table.remove(pool, i)
+        end
+        p.drugTest = { positive = true, substances = substances }
+        Notify(src, 'Dépistage de stupéfiants : positif (' ..
+            table.concat(substances, ', ') .. ').', 'error')
+    end
+    SyncEngaged(co)
+end)
+
+-- Découverte de corps : cause du décès tirée une seule fois (70 %
+-- simple / 30 % suspecte, cf. C.DeathCauses).
+LSLegacy.Events.Register('police:callouts:autopsy', function(data)
+    local src = source
+    local p, co = GetPed(src, data)
+    if not p or p.role ~= 'deceased' or not co.scenario.autopsy then return end
+    if p.causeOfDeath then
+        Notify(src, 'Ce corps a déjà été analysé.', 'error')
+        return
+    end
+    if not AgentNear(src, p, 4.0) then return end
+
+    local pool = (math.random(1, 100) <= (100 - (C.DeathCauseSuspectChance or 30)))
+        and C.DeathCauses.simple or C.DeathCauses.suspect
+    p.causeOfDeath = pool[math.random(1, #pool)]
+
+    Notify(src, 'Cause du décès établie : ' .. p.causeOfDeath, 'info')
+    SyncEngaged(co)
+end)
+
+-- Le proche a été informé sur place (PNJ synthétique posé chez lui,
+-- pas un rôle de l'intervention) : débloque la clôture pour les
+-- scénarios sc.familyContact (cf. CheckResolution).
+LSLegacy.Events.Register('police:callouts:familyNotified', function(data)
+    local src = source
+    local co = CalloutOf(src)
+    if not co or co.state ~= 'active' then return end
+
+    local target = nil
+    for _, p in pairs(co.peds) do
+        if p.familyContact and not p.familyContact.notified then target = p break end
+    end
+    if not target then return end
+
+    local fc = target.familyContact
+    -- Horizontal seulement : `fc.z` est la hauteur du point d'ancrage
+    -- brut, pas la position réelle du PNJ une fois posé au sol par la
+    -- gravité (cf. SpawnFamilyContactNpc côté client) — un écart
+    -- vertical entre les deux ne doit pas bloquer la validation alors
+    -- que l'agent est bien devant le PNJ.
+    local pc = GetEntityCoords(GetPlayerPed(src))
+    local dx, dy = pc.x - fc.x, pc.y - fc.y
+    if math.sqrt(dx * dx + dy * dy) > 6.0 then return end
+
+    fc.notified = true
+    NotifyEngaged(co, 'La famille a été prévenue.', 'success')
+    SyncEngaged(co)
+    CheckResolution(co)
+end)
+
+LSLegacy.Events.Register('police:callouts:suspectDropWeapon', function(data)
     local src = source
     local co = CalloutOf(src)
     if not co or co.brain ~= src then return end
@@ -2849,7 +4203,7 @@ LSLegacy.RegisterServerEvent('police:callouts:suspectDropWeapon', function(data)
     SyncEngaged(co)
 end)
 
-LSLegacy.RegisterServerEvent('police:callouts:pickupWeapon', function(data)
+LSLegacy.Events.Register('police:callouts:pickupWeapon', function(data)
     local src = source
     local p, co = GetPed(src, data)
     if not p or not p.droppedWeapon then return end
@@ -2864,27 +4218,102 @@ LSLegacy.RegisterServerEvent('police:callouts:pickupWeapon', function(data)
     SyncEngaged(co)
 end)
 
--- Causes de décès qui ne peuvent JAMAIS constituer une bavure : les
-local NonLethalCause = nil
-local function IsNonLethalCause(hash)
-    if not hash or hash == 0 then return false end
-    if not NonLethalCause then
-        NonLethalCause = {}
-        for name in pairs(C.NonLethal or {}) do
-            NonLethalCause[GetHashKey(name)] = true
-        end
-        NonLethalCause[GetHashKey('WEAPON_FALL')] = true
-    end
-    return NonLethalCause[hash] == true
-end
+-- Trafic de stup : le sachet tombe là où le suspect se trouvait à
+-- l'instant précis de la fuite, pas sur lui — il faut le retrouver au
+-- sol, pas cibler le suspect qui a pu s'éloigner depuis.
+LSLegacy.Events.Register('police:callouts:suspectDropStash', function(data)
+    local src = source
+    local co = CalloutOf(src)
+    if not co or co.brain ~= src then return end
+    local p = co.peds[tonumber(data and data.netId or 0)]
+    if not p then return end
 
-LSLegacy.RegisterServerEvent('police:callouts:suspectDead', function(data)
+    for i, it in ipairs(p.items or {}) do
+        if it == 'Sachet de stupéfiants' then table.remove(p.items, i) break end
+    end
+
+    local x, y, z = tonumber(data and data.x), tonumber(data and data.y), tonumber(data and data.z)
+    if not x or not y or not z then return end
+    co.drops[#co.drops + 1] = {
+        id = #co.drops + 1, item = 'Sachet de stupéfiants',
+        x = x, y = y, z = z, picked = false,
+    }
+    NotifyEngaged(co, PedLabel(p) .. ' a jeté quelque chose en fuyant.', 'warning')
+    SyncEngaged(co)
+end)
+
+LSLegacy.Events.Register('police:callouts:pickupStash', function(data)
     local src = source
     local co = CalloutOf(src)
     if not co or co.state ~= 'active' then return end
+    local dropId = tonumber(data and data.dropId or 0)
+    local drop = nil
+    for _, d in ipairs(co.drops or {}) do
+        if d.id == dropId then drop = d break end
+    end
+    if not drop or drop.picked then return end
+    if not LSLegacy.Validate.Distance(GetEntityCoords(GetPlayerPed(src)),
+        vector3(drop.x, drop.y, drop.z), 2.5) then return end
+
+    drop.picked = true
+    co.seized = co.seized or {}
+    co.seized[#co.seized + 1] = drop.item
+    Notify(src, (drop.item or 'Objet') .. ' récupéré (placé sous scellés).', 'success')
+    SyncEngaged(co)
+end)
+
+-- Seule une chute n'est pas un usage de la force par l'agent : aucun
+-- « moyen » n'a été employé contre l'individu. Les moyens de contrainte
+-- (poing, matraque, lampe, taser) restent, eux, un usage de la force et
+-- passent donc par la même évaluation de légitimité que l'arme létale —
+-- un décès qui en résulte sans légitime défense reste une bavure IGPN.
+local FallCauseHash = nil
+local function IsFallCause(hash)
+    if not hash or hash == 0 then return false end
+    if not FallCauseHash then FallCauseHash = GetHashKey('WEAPON_FALL') end
+    return hash == FallCauseHash
+end
+
+-- Coup mortel signalé par le tireur lui-même, au moment du coup : filet de
+-- sécurité pour suspectDead, dont l'auteur/arme (GetPedSourceOfDeath côté
+-- client) se révèle parfois incorrect selon l'arme utilisée (explosifs,
+-- mêlée…) — seules pistolet/fusil étaient alors couverts de façon fiable.
+LSLegacy.Events.Register('police:callouts:suspectKillHit', function(data)
+    local src = source
+    local co = CalloutOf(src)
+    if not co or co.brain ~= src then return end
+    if not data or not data.netId then return end
+    local p = co.peds[tonumber(data.netId)]
+    if not p or p.state == 'dead' or p.killHit then return end
+
+    p.killHit = { src = src, weapon = tonumber(data.weapon or 0) }
+end)
+
+LSLegacy.Events.Register('police:callouts:suspectDead', function(data)
+    local src = source
+    local co = CalloutOf(src)
+    -- N'importe quel agent ENGAGÉ SUR CET APPEL peut rapporter un décès
+    -- (pas n'importe quel joueur) — cf. le cerveau, qui restait seul
+    -- autoritaire, mais dont la détection dépendait de SON PROPRE
+    -- streaming client de l'entité : un PNJ tué loin de lui (fusillade en
+    -- pleine course-poursuite) pouvait alors n'être jamais rapporté, le
+    -- corps restant considéré vivant côté serveur indéfiniment.
+    if not co or not co.agents[src] or co.state ~= 'active' then return end
     if not data or not data.netId then return end
     local p = co.peds[tonumber(data.netId)]
     if not p or p.state == 'dead' then return end
+
+    -- Repli sur le coup fatal signalé par le tireur si l'auteur/l'arme
+    -- rapportés après coup sont absents ou incohérents.
+    if p.killHit then
+        if not data.killer or tonumber(data.killer) == 0
+           or not co.agents[tonumber(data.killer)] then
+            data.killer = p.killHit.src
+        end
+        if not data.cause or tonumber(data.cause) == 0 then
+            data.cause = p.killHit.weapon
+        end
+    end
 
     -- L'état AVANT la mort décide de la légitimité du tir. Il faut le
     local prevState = p.state
@@ -2920,12 +4349,14 @@ LSLegacy.RegisterServerEvent('police:callouts:suspectDead', function(data)
 
     p.identified = true  -- on a le corps
 
-    -- État de combat transmis avec le décès : il peut arriver avant le
-    if data.combat == true then p.combat = true end
+    -- L'état de combat n'est JAMAIS pris depuis le rapport de décès
+    -- lui-même (auto-déclaratif, donc trivialement falsifiable) : seul
+    -- le canal authentifié suspectCombat/suspectSurrender (déjà limité
+    -- à co.brain) fait foi pour p.combat.
 
-    local killer = tonumber(data.killer or 0)
+    local killer = tonumber(data.killer or 0) or 0
     -- L'engagement doit être vérifié sur CETTE intervention précisément :
-    if not killer or not co.agents[killer] then
+    if killer == 0 or not co.agents[killer] then
         -- Tué par un tiers : ni réussite ni bavure
         co.civilianKills = (co.civilianKills or 0) + 1
         co.extraDeath = true
@@ -2944,18 +4375,19 @@ LSLegacy.RegisterServerEvent('police:callouts:suspectDead', function(data)
     -- Auteur du tir, conservé pour la fiche d'intervention : avec
     p.killedBy = co.agents[killer].name or 'Agent'
 
-    -- MOYEN NON LÉTAL : hors du champ de la bavure.
-    if IsNonLethalCause(tonumber(data.cause or 0)) then
-        p.killReason = 'décès consécutif à un moyen non létal'
-        NotifyEngaged(co, PedLabel(p) .. ' est décédé(e) des suites de sa ' ..
-            'mise à terre. Aucun usage de l\'arme létale.', 'warning')
+    -- CHUTE : aucun moyen employé contre l'individu, jamais une bavure.
+    if IsFallCause(tonumber(data.cause or 0)) then
+        p.killReason = 'décès consécutif à une chute'
+        NotifyEngaged(co, PedLabel(p) .. ' est décédé(e) des suites d\'une ' ..
+            'chute.', 'warning')
         SyncEngaged(co)
         MaybeConvertToDeathScene(co)
         CheckResolution(co)
         return
     end
 
-    -- Usage de l'arme létale : légitime UNIQUEMENT si l'individu était
+    -- Usage de la force (arme létale COMME moyen de contrainte : poing,
+    -- matraque, lampe, taser…) : légitime UNIQUEMENT si l'individu était
     local legitimate = (p.weapon ~= nil)
         and (prevState ~= 'cuffed')
         and (p.combat == true)
@@ -2992,7 +4424,7 @@ LSLegacy.RegisterServerEvent('police:callouts:suspectDead', function(data)
     CheckResolution(co)
 end)
 
-LSLegacy.RegisterServerEvent('police:callouts:suspectCombat', function(data)
+LSLegacy.Events.Register('police:callouts:suspectCombat', function(data)
     local src = source
     local co = CalloutOf(src)
     if not co or co.brain ~= src then return end
@@ -3001,7 +4433,7 @@ LSLegacy.RegisterServerEvent('police:callouts:suspectCombat', function(data)
     p.combat = (data.combat == true)
 end)
 
-LSLegacy.RegisterServerEvent('police:callouts:suspectSurrender', function(data)
+LSLegacy.Events.Register('police:callouts:suspectSurrender', function(data)
     local src = source
     local co = CalloutOf(src)
     if not co or co.brain ~= src then return end
@@ -3019,7 +4451,7 @@ LSLegacy.RegisterServerEvent('police:callouts:suspectSurrender', function(data)
     SyncEngaged(co)
 end)
 
-LSLegacy.RegisterServerEvent('police:callouts:suspectEscaped', function(data)
+LSLegacy.Events.Register('police:callouts:suspectEscaped', function(data)
     local src = source
     local co = CalloutOf(src)
     if not co or co.brain ~= src then return end
@@ -3037,12 +4469,32 @@ LSLegacy.RegisterServerEvent('police:callouts:suspectEscaped', function(data)
     CheckResolution(co)
 end)
 
-LSLegacy.RegisterServerEvent('police:callouts:suspectDelivered', function(data)
+LSLegacy.Events.Register('police:callouts:suspectDelivered', function(data)
     local src = source
     local p, co = GetPed(src, data)
+
+    -- Mission déjà close (timeout, admin…) mais scène pas encore
+    -- nettoyée : un individu qu'on avait déjà menotté reste présentable
+    -- au poste tant que EndedCallouts le retient (cf. C.CleanupDelay).
+    if not p and data and data.netId then
+        for _, ec in pairs(EndedCallouts) do
+            if ec.agents[src] then
+                local ep = ec.peds[tonumber(data.netId)]
+                if ep then p, co = ep, ec break end
+            end
+        end
+    end
     if not p then return end
     if p.state ~= 'cuffed' and not (p.role == 'wanderer') then
         Notify(src, 'L\'individu doit être menotté.', 'error')
+        return
+    end
+
+    -- Personne errante : l'identité doit être établie AVANT le transport —
+    -- une fois déposée, elle entre à l'hôpital et devient inaccessible,
+    -- ce qui rendrait toute identification ultérieure impossible.
+    if p.role == 'wanderer' and co.scenario.familyContact and not p.identified then
+        Notify(src, 'Établissez son identité avant de la conduire à l\'hôpital.', 'error')
         return
     end
 
@@ -3050,11 +4502,11 @@ LSLegacy.RegisterServerEvent('police:callouts:suspectDelivered', function(data)
     local npc = (p.role == 'wanderer') and C.Npcs.hospital or C.Npcs.custody
     if not p.entity or not DoesEntityExist(p.entity) then return end
     local pc = GetEntityCoords(p.entity)
-    if #(pc - npc.coords) > C.CustodyRadius then
+    if not LSLegacy.Validate.Distance(pc, npc.coords, C.CustodyRadius) then
         Notify(src, 'Vous devez présenter l\'individu sur place.', 'error')
         return
     end
-    if #(GetEntityCoords(GetPlayerPed(src)) - npc.coords) > (C.CustodyRadius + 5.0) then return end
+    if not LSLegacy.Validate.Distance(GetEntityCoords(GetPlayerPed(src)), npc.coords, C.CustodyRadius + 5.0) then return end
 
     -- Contrôle d'armement à l'arrivée
     if p.role == 'suspect' and (p.weapon ~= nil) then
@@ -3064,6 +4516,9 @@ LSLegacy.RegisterServerEvent('police:callouts:suspectDelivered', function(data)
 
     p.state = 'delivered'
     co.agents[src].delivered = (co.agents[src].delivered or 0) + 1
+    if p.role == 'suspect' then
+        IncrementPoliceStat(GetIdent(src), GetCharacterId(src), GetName(src), 'custody_count', 1)
+    end
 
     if p.role == 'wanderer' then
         -- Elle entre dans l'hôpital avant d'être retirée : la faire
@@ -3078,6 +4533,13 @@ LSLegacy.RegisterServerEvent('police:callouts:suspectDelivered', function(data)
     if p.role == 'wanderer' then
         co.objectiveDone = true
         Notify(src, PedLabel(p) .. ' a été confié(e) à l\'hôpital.', 'success')
+        -- Le proche à prévenir (déjà tiré à l'identification) ne devient
+        -- consultable/actionnable qu'à partir de maintenant.
+        if p.familyContact then
+            NotifyEngaged(co, 'Un proche à prévenir est consultable — voir la fiche ' ..
+                'Appel 17 au MDT.', 'info')
+            PingMdt(co)
+        end
         -- La personne n'est pas escamotée : elle entre dans
         for asrc in pairs(co.agents) do
             TriggerClientEvent('police:callouts:hospitalIntake', asrc, {
@@ -3088,8 +4550,12 @@ LSLegacy.RegisterServerEvent('police:callouts:suspectDelivered', function(data)
         Notify(src, PedLabel(p) .. ' a été présenté(e) au poste.', 'success')
     end
 
-    SyncEngaged(co)
-    CheckResolution(co)
+    -- Mission déjà close : rien à resynchroniser ni à ré-évaluer, ça
+    -- rouvrirait à tort le HUD/les blips d'une intervention terminée.
+    if co.state == 'active' then
+        SyncEngaged(co)
+        CheckResolution(co)
+    end
 end)
 
 -- Levée de corps. Le constat de décès clôt l'intervention dans la
@@ -3137,35 +4603,36 @@ local function RemoveAnimals(co)
 end
 
 --  LEVÉE DE CORPS PAR LES SECOURS
-
-local Ambulances = {}   -- { [id] = { entities = {...}, corpses = {...} } }
-local AmbulanceSeq = 0
-
--- Suppression du convoi et des corps encore présents.
-local function ClearAmbulance(id)
-    local amb = Ambulances[id]
-    if not amb then return end
-    Ambulances[id] = nil
-
-    for _, e in ipairs(amb.corpses or {}) do
-        if DoesEntityExist(e) then DeleteEntity(e) end
-    end
-    for _, e in ipairs(amb.entities or {}) do
-        if DoesEntityExist(e) then DeleteEntity(e) end
-    end
-end
+-- (Ambulances / AmbulanceSeq / ClearAmbulance sont déclarés plus haut,
+-- avant EndCallout, qui a besoin de ClearAmbulance pour son nettoyage.)
 
 -- Retire les corps pris en charge par les brancardiers.
-LSLegacy.RegisterServerEvent('police:callouts:ambulanceLoaded', function(data)
+LSLegacy.Events.Register('police:callouts:ambulanceLoaded', function(data)
+    local src = source
     local id = data and tonumber(data.id)
     local amb = id and Ambulances[id]
     if not amb or amb.loaded then return end
+    -- Sans ce contrôle, n'importe quel client peut deviner un id
+    -- d'ambulance et effacer prématurément le convoi/les corps d'une
+    -- intervention qui n'est pas la sienne.
+    if amb.co ~= CalloutOf(src) then return end
     amb.loaded = true
 
     for _, e in ipairs(amb.corpses or {}) do
         if DoesEntityExist(e) then DeleteEntity(e) end
     end
     amb.corpses = {}
+    for _, p in ipairs(amb.entries or {}) do
+        p.entity = nil
+    end
+
+    -- La levée du corps par les secours ne clôt plus rien : l'agent
+    -- attend justement cette levée avant d'aller prévenir la famille.
+    -- La mission ne se termine qu'à la notification (cf. CheckResolution
+    -- / familyNotified) — un scénario resté sans agent capable de
+    -- clore reste couvert par le timeout de mission ou l'admin.
+    local co = amb.co
+    if co then SyncEngaged(co) end
 end)
 
 -- Dépêche une ambulance sur la scène. Retourne false si elle n'a pas pu
@@ -3215,6 +4682,21 @@ local function DispatchAmbulance(co, src)
     local dist = A.SpawnDist or 110.0
     local sx   = base.x + math.cos(ang) * dist
     local sy   = base.y + math.sin(ang) * dist
+
+    -- Annonce (et ré-annonce, en cas de redéploiement par le chien de
+    -- garde anti-despawn) du convoi à tous les agents engagés.
+    local function Announce(payload, driverSrc)
+        local sent = 0
+        for agent in pairs(co.agents) do
+            sent = sent + 1
+            TriggerClientEvent('police:callouts:ambulance', agent, {
+                id = payload.id, vehNet = payload.vehNet, crew = payload.crew,
+                corpses = payload.corpses, target = payload.target,
+                driver = (agent == driverSrc),
+            })
+        end
+        AmbLog(driverSrc, 'Convoi annoncé à %d agent(s), meneur = %s.', sent, tostring(driverSrc))
+    end
 
     -- Création pas à pas. Chaque entité est vérifiée AVANT qu'on lui
     local function NetIdOf(entity)
@@ -3278,8 +4760,41 @@ local function DispatchAmbulance(co, src)
 
         AmbulanceSeq = AmbulanceSeq + 1
         local id = AmbulanceSeq
-        Ambulances[id] = { entities = entities, corpses = corpses }
+        Ambulances[id] = { entities = entities, corpses = corpses, entries = entries, co = co }
         SetTimeout(((A.Cleanup or 45) + 60) * 1000, function() ClearAmbulance(id) end)
+
+        -- Liée à l'appel : EndCallout/onResourceStop peuvent ainsi la
+        -- nettoyer immédiatement au lieu d'attendre son propre délai,
+        -- indépendant du cycle de vie de la mission.
+        co.ambulanceIds = co.ambulanceIds or {}
+        co.ambulanceIds[#co.ambulanceIds + 1] = id
+
+        -- Anti-despawn : un véhicule/ped réseauté créé loin de tout agent
+        -- (SpawnDist ~110m) peut être nettoyé par le moteur faute de
+        -- propriétaire proche, malgré SetEntityDistanceCullingRadius —
+        -- même défaut que le PNJ « contact famille ». On surveille et on
+        -- redéploie une fois si le véhicule disparaît avant la levée.
+        CreateThread(function()
+            for _ = 1, 20 do
+                Wait(3000)
+                local amb = Ambulances[id]
+                if not amb or amb.loaded or amb.redispatched then return end
+                if not DoesEntityExist(veh) then
+                    amb.redispatched = true
+                    AmbLog(src, 'Convoi #%d disparu avant la levée (véhicule introuvable) — redéploiement.', id)
+                    for _, e in ipairs(amb.entities or {}) do
+                        if DoesEntityExist(e) then DeleteEntity(e) end
+                    end
+                    Ambulances[id] = nil
+                    local retry = Build()
+                    if retry then
+                        NotifyEngaged(co, 'Le convoi a rencontré un problème — nouvelle ambulance en route.', 'warning')
+                        Announce(retry, src)
+                    end
+                    return
+                end
+            end
+        end)
 
         return {
             id = id, vehNet = vehNet, crew = crew, corpses = netIds,
@@ -3295,25 +4810,21 @@ local function DispatchAmbulance(co, src)
         return false
     end
 
-    -- Convoi en place : les corps passent sous la responsabilité de
+    -- Convoi en place : les corps passent sous la responsabilité des
+    -- secours, mais restent interactifs (identité, analyse) jusqu'à la
+    -- levée effective — sinon `p.entity = nil` ici coupait tout de
+    -- suite AgentNear/GetPed, empêchant d'identifier après le constat
+    -- alors même que le corps est encore visible pendant le transport.
+    -- L'entité n'est réellement effacée qu'à la levée (ambulanceLoaded),
+    -- qui met `p.entity = nil` à ce moment-là.
     for _, p in ipairs(entries) do
-        p.entity = nil
         if p.role == 'deceased' then p.state = 'removed' end
     end
     AmbLog(src, 'Convoi #%d prêt — %d corps, %d brancardier(s).',
         payload.id, #corpses, #payload.crew)
 
     -- Le meneur est l'agent qui a constaté : la scène est chargée chez
-    local sent = 0
-    for agent in pairs(co.agents) do
-        sent = sent + 1
-        TriggerClientEvent('police:callouts:ambulance', agent, {
-            id = payload.id, vehNet = payload.vehNet, crew = payload.crew,
-            corpses = payload.corpses, target = payload.target,
-            driver = (agent == src),
-        })
-    end
-    AmbLog(src, 'Convoi annoncé à %d agent(s), meneur = %s.', sent, tostring(src))
+    Announce(payload, src)
     return true
 end
 
@@ -3332,7 +4843,7 @@ MaybeFinishMassIncident = function(co, src)
     end
 end
 
-LSLegacy.RegisterServerEvent('police:callouts:objectiveDone', function(data)
+LSLegacy.Events.Register('police:callouts:objectiveDone', function(data)
     local src = source
     local co = CalloutOf(src)
     if not co or co.state ~= 'active' then return end
@@ -3388,6 +4899,17 @@ LSLegacy.RegisterServerEvent('police:callouts:objectiveDone', function(data)
 
     -- Sinon, seule l'interaction ATTENDUE par le scénario le clôt.
     elseif obj == 'statement' and kind == 'statement' then
+        local netId = tonumber(data and data.netId)
+        local sp = netId and co.peds[netId]
+        if not sp or not AgentNear(src, sp, 4.0) then return end
+
+        -- Constatation de vol par effraction : la déposition initiale ne
+        -- clôt rien tant que tous les points relevés n'ont pas été
+        -- examinés — l'agent doit repasser voir le requérant après coup
+        -- (cf. examineComplete/closingLine, mis à jour par examinePoint).
+        local pts = co.examinePoints
+        if pts and #pts > 0 and not co.examineComplete then return end
+
         co.objectiveDone = true
         Notify(src, 'Déposition prise, constatations effectuées.', 'success')
 
@@ -3398,6 +4920,7 @@ LSLegacy.RegisterServerEvent('police:callouts:objectiveDone', function(data)
         if not p or p.role ~= 'deceased' or p.constated then
             return  -- corps déjà constaté ou requête invalide : ignoré
         end
+        if not AgentNear(src, p, 4.0) then return end
         p.constated = true
         co.deadConstated = (co.deadConstated or 0) + 1
         Notify(src, ('Décès constaté (%d/%d).')
@@ -3414,10 +4937,17 @@ LSLegacy.RegisterServerEvent('police:callouts:objectiveDone', function(data)
         return
 
     elseif obj == 'death' and kind == 'death' then
+        local netId = tonumber(data and data.netId)
+        local dp = netId and co.peds[netId]
+        if not dp or not AgentNear(src, dp, 4.0) then return end
         co.objectiveDone = true
+        dp.constated = true
         Notify(src, 'Décès constaté.', 'success')
 
-        -- Les secours viennent chercher le corps. En cas d'échec de
+        -- Les secours viennent chercher le corps comme d'habitude. Si
+        -- l'agent n'a pas eu le temps d'identifier/analyser avant leur
+        -- arrivée, tant pis pour lui — cf. CheckResolution (sc.familyContact)
+        -- qui bloque la prime complète tant que ce n'est pas fait.
         if DispatchAmbulance(co, src) then
             NotifyEngaged(co, 'Une ambulance est en route pour la levée de corps.',
                 'info')
@@ -3426,12 +4956,18 @@ LSLegacy.RegisterServerEvent('police:callouts:objectiveDone', function(data)
         end
 
     elseif obj == 'radio' and kind == 'radio' then
+        if not co.radioAsked then return end
         co.objectiveDone = true
         co.radioOff      = true
         Notify(src, 'La nuisance sonore a cessé.', 'success')
 
     elseif obj == 'animal' and kind == 'animal' then
         -- Un chien ne s'interpelle pas : l'intervention se clôt sur la
+        local ap = nil
+        for _, pd in pairs(co.peds) do
+            if pd.role == 'animal' and pd.state == 'dead' then ap = pd break end
+        end
+        if not ap or not AgentNear(src, ap, 4.0) then return end
         co.objectiveDone = true
         Notify(src, 'Mort de l\'animal constatée.', 'success')
         RemoveAnimals(co)
@@ -3445,14 +4981,39 @@ LSLegacy.RegisterServerEvent('police:callouts:objectiveDone', function(data)
     CheckResolution(co)
 end)
 
-LSLegacy.RegisterServerEvent('police:callouts:firstAid', function(data)
+LSLegacy.Events.Register('police:callouts:firstAid', function(data)
     local src = source
     local p, co = GetPed(src, data)
-    if not p or p.role ~= 'victim' or p.state == 'healed' then return end
+    if not p then return end
+
+    -- Suspect touché par balle mais vivant : soins requis avant clôture
+    -- (cf. CheckResolution), champ `healed` distinct de `state` pour ne
+    -- pas perturber le menottage/l'interpellation.
+    if p.role == 'suspect' then
+        if not p.wounded or p.healed then return end
+        if not AgentNear(src, p, 4.0) then return end
+        p.healed = true
+        Notify(src, 'Premiers soins prodigués à ' .. PedLabel(p) .. '.', 'success')
+        SyncEngaged(co)
+        CheckResolution(co)
+        return
+    end
+
+    if p.role ~= 'victim' or p.state == 'healed' then return end
     if not AgentNear(src, p, 4.0) then return end
 
     p.state = 'healed'
     co.victimHealed = true
+
+    -- Constatation médicale cohérente avec la scène, consignée sur la
+    -- fiche d'intervention — reprise ensuite par l'agent à sa façon
+    -- dans son propre PV (cf. D.WoundDescriptions, shared/dialogues.lua).
+    local D = Config.Police.Dialogues
+    local pool = D and D.WoundDescriptions and D.WoundDescriptions[co.scenarioId]
+    if pool and not p.woundDescription then
+        p.woundDescription = PickOne(pool)
+    end
+
     Notify(src, 'Premiers soins prodigués à ' .. PedLabel(p) .. '.', 'success')
 
     -- Tuerie de masse : les premiers soins sont une condition de
@@ -3467,8 +5028,44 @@ LSLegacy.RegisterServerEvent('police:callouts:firstAid', function(data)
     CheckResolution(co)
 end)
 
+-- Suspect touché par balle mais toujours vivant : détecté côté client
+-- (perte de vie sous seuil), persisté ici pour bloquer CheckResolution
+-- et rendre `callout_first_aid` disponible sur lui.
+LSLegacy.Events.Register('police:callouts:suspectWounded', function(data)
+    local src = source
+    local p, co = GetPed(src, data)
+    if not p or p.role ~= 'suspect' or p.wounded then return end
+    if p.state == 'dead' then return end
+
+    p.wounded = true
+    NotifyEngaged(co, PedLabel(p) .. ' est touché(e) et doit être soigné(e).', 'warning')
+    SyncEngaged(co)
+end)
+
+-- Rodéo urbain : vérification FOVES sur la moto d'un suspect. Le résultat
+-- n'est révélé qu'à cet instant (cf. SuspectsJson) — le tirage a déjà eu
+-- lieu à la création de la scène (p.bikeStolen, cf. SpawnVehicles).
+LSLegacy.Events.Register('police:callouts:checkFoves', function(data)
+    local src = source
+    local p, co = GetPed(src, data)
+    if not p or p.role ~= 'suspect' or not p.bikeNet then return end
+    -- Distance à LA MOTO, pas au suspect : l'agent contrôle la moto une
+    -- fois le fuyard déjà interpellé ou en fuite ailleurs, AgentNear (qui
+    -- ne connaît que p.entity) échouait alors même que l'agent est bien
+    -- à côté du véhicule.
+    local veh = NetworkGetEntityFromNetworkId(p.bikeNet)
+    if not veh or veh == 0 or not DoesEntityExist(veh) then return end
+    if not LSLegacy.Validate.Distance(GetEntityCoords(GetPlayerPed(src)), GetEntityCoords(veh), 6.0) then return end
+    p.fovesChecked = true
+    Notify(src, p.bikeStolen
+        and 'FOVES : ce véhicule est signalé volé.'
+        or 'FOVES : aucun signalement sur ce véhicule.',
+        p.bikeStolen and 'error' or 'success')
+    SyncEngaged(co)
+end)
+
 -- Tapage : on demande à un fêtard de couper la musique. Il s'exécute,
-LSLegacy.RegisterServerEvent('police:callouts:askRadioOff', function(data)
+LSLegacy.Events.Register('police:callouts:askRadioOff', function(data)
     local src = source
     local p, co = GetPed(src, data)
     if not p or p.role ~= 'suspect' then return end
@@ -3487,7 +5084,7 @@ LSLegacy.RegisterServerEvent('police:callouts:askRadioOff', function(data)
     end
 end)
 
-LSLegacy.RegisterServerEvent('police:callouts:radioOff', function()
+LSLegacy.Events.Register('police:callouts:radioOff', function()
     local src = source
     local co = CalloutOf(src)
     if not co or co.state ~= 'active' then return end
@@ -3500,7 +5097,7 @@ LSLegacy.RegisterServerEvent('police:callouts:radioOff', function()
     CheckResolution(co)
 end)
 
-LSLegacy.RegisterServerEvent('police:callouts:dismissBystander', function(data)
+LSLegacy.Events.Register('police:callouts:dismissBystander', function(data)
     local src = source
     local p, co = GetPed(src, data)
     if not p or p.role ~= 'bystander' then return end
@@ -3509,7 +5106,7 @@ LSLegacy.RegisterServerEvent('police:callouts:dismissBystander', function(data)
 end)
 
 -- Le client rapporte l'heure in-game (le serveur n'a pas d'horloge)
-LSLegacy.RegisterServerEvent('police:callouts:reportHour', function(hour)
+LSLegacy.Events.Register('police:callouts:reportHour', function(hour)
     local h = tonumber(hour)
     if h and h >= 0 and h <= 23 then CurrentHour = math.floor(h) end
 end)
@@ -3520,17 +5117,12 @@ end)
 local ADMIN_MIN_LEVEL = 3
 
 local function GetStaffLevel(src)
-    local p = GetPlayer(src)
-    if not p or not p.group then return 0 end
-    for level, name in pairs(Config.StaffGroups or {}) do
-        if p.group == name then return level end
-    end
-    return 0
+    return LSLegacy.Permissions.GetLevel(GetPlayer(src))
 end
 
 local function IsAdmin(src)
     if src == 0 then return true end   -- console
-    return GetStaffLevel(src) >= ADMIN_MIN_LEVEL
+    return LSLegacy.Permissions.Has(GetPlayer(src), ADMIN_MIN_LEVEL)
 end
 
 -- Refus explicite : une commande qui ne répond rien est indébogable.
@@ -3568,12 +5160,12 @@ Suggest('callouts', 'Activer ou désactiver les missions PNJ (admin)',
 local RunCommand   -- forward declaration, défini après les commandes
 
 -- Le client demande s'il a le droit d'utiliser les commandes admin, pour
-LSLegacy.RegisterServerEvent('police:callouts:askAdmin', function()
+LSLegacy.Events.Register('police:callouts:askAdmin', function()
     local src = source
     TriggerClientEvent('police:callouts:adminState', src, IsAdmin(src))
 end)
 
-LSLegacy.RegisterServerEvent('police:callouts:command', function(data)
+LSLegacy.Events.Register('police:callouts:command', function(data)
     local src = source
     if not data or type(data.cmd) ~= 'string' then return end
     local args = {}
@@ -3588,12 +5180,9 @@ RegisterCommand('missionpnj', function(source)
         print('[callouts] /missionpnj ne peut pas être utilisée depuis la console.')
         return
     end
-    DoRegister(source)
-end, false)
-
-RegisterCommand('missionPNJ', function(source)
-    if source == 0 then return end
-    DoRegister(source)
+    -- Bascule debug : inscription par défaut (Police Secours / Alpha).
+    -- L'inscription normale passe désormais par l'onglet Appel 17 du MDT.
+    DoRegister(source, C.Crews[1] and C.Crews[1].id or 'alpha')
 end, false)
 
 -- Active ou désactive le mode test (effectif simulé).
@@ -3687,7 +5276,7 @@ local function CmdMissionPnjAdmin(source, args)
     local src = source
     if not IsAdmin(src) then DenyAdmin(src) return end
     if not IsLawEnforcementOnDuty(src) then
-        Notify(src, 'Attribuez-vous le job police ou gendarmerie et prenez votre service via le menu admin ' ..
+        Notify(src, 'Attribuez-vous le job police ou shérif et prenez votre service via le menu admin ' ..
             'avant d\'utiliser les outils de test.', 'error')
         return
     end
@@ -3889,7 +5478,7 @@ local function RecordSpawnFail(scenarioId, zone, reason, x, y, z, manual, role)
 end
 
 -- Client → serveur : le validateur n'a pas trouvé de position correcte.
-LSLegacy.RegisterServerEvent('police:callouts:spawnFail', function(data)
+LSLegacy.Events.Register('police:callouts:spawnFail', function(data)
     local src = source
     local co = CalloutOf(src)
     if not co or not data then return end
@@ -3900,7 +5489,7 @@ LSLegacy.RegisterServerEvent('police:callouts:spawnFail', function(data)
 end)
 
 -- Signalement manuel par un agent : le PNJ le plus proche est enregistré
-LSLegacy.RegisterServerEvent('police:callouts:reportSpawn', function()
+LSLegacy.Events.Register('police:callouts:reportSpawn', function()
     local src = source
     local co = CalloutOf(src)
     if not co then
@@ -3939,7 +5528,7 @@ LSLegacy.RegisterServerEvent('police:callouts:reportSpawn', function()
 end)
 
 -- Signalement d'une intervention ENTIÈRE. Complémentaire de
-LSLegacy.RegisterServerEvent('police:callouts:reportLocation', function()
+LSLegacy.Events.Register('police:callouts:reportLocation', function()
     local src = source
     local co = CalloutOf(src)
     if not co then
@@ -3995,7 +5584,7 @@ LSLegacy.RegisterServerEvent('police:callouts:reportLocation', function()
 end)
 
 -- Signalement d'une INADÉQUATION scénario / emplacement.
-LSLegacy.RegisterServerEvent('police:callouts:reportMismatch', function()
+LSLegacy.Events.Register('police:callouts:reportMismatch', function()
     local src = source
     local co = CalloutOf(src)
     if not co then
@@ -4053,7 +5642,7 @@ CreateThread(function()
                 for _, pt in ipairs(a) do
                     checked = checked + 1
                     local d = #(vector3(pt.x, pt.y, pt.z) - vector3(v.x, v.y, v.z))
-                    if d > 120.0 then
+                    if d > 160.0 then
                         bad = bad + 1
                         print(('^1[ancrage]^7 « %s » / %s%s : %.0f m de %s — ' ..
                             'index probablement décalé.')
@@ -4092,6 +5681,12 @@ local ANCHOR_ROLES = {
     bystander = true, animal = true, wanderer = true,
     -- Braquage : les trois rôles se distinguent, et le véhicule de
     chief = true, driver = true, crew = true, vehicle = true,
+    -- Constatation de vol par effraction : la porte/serrure forcée à
+    -- examiner, distincte du requérant (caller) déjà relevé.
+    door = true,
+    -- Fenêtre forcée : mode opératoire distinct de la porte pour le
+    -- texte affiché à l'examen.
+    window = true,
 }
 
 -- Noms acceptés pour un rôle. Le requérant change de métier selon la
@@ -4129,6 +5724,8 @@ local ANCHOR_NAMES = {
                 'complice', 'crew' },
     vehicle = { 'vehicule', 'véhicule', 'voiture', 'bagnole', 'caisse',
                 'van', 'vehicle' },
+    door = { 'porte', 'serrure', 'entree', 'entrée', 'door' },
+    window = { 'fenetre', 'fenêtre', 'vitre', 'window' },
 }
 
 local ANCHOR_ALIAS = {}
@@ -4203,7 +5800,7 @@ local function NearestLocation(pos, category)
     return bestKey, bestLoc, bestDist
 end
 
-LSLegacy.RegisterServerEvent('police:callouts:anchorSurvey', function(data)
+LSLegacy.Events.Register('police:callouts:anchorSurvey', function(data)
     local src = source
     if not IsAdmin(src) then DenyAdmin(src) return end
 
@@ -4269,7 +5866,7 @@ AddEventHandler('playerDropped', function()
 end)
 
 -- Relevé d'une position pour un rôle, sur l'emplacement en cours.
-LSLegacy.RegisterServerEvent('police:callouts:anchorHere', function(data)
+LSLegacy.Events.Register('police:callouts:anchorHere', function(data)
     local src = source
     -- Même garde que /pnjrepere (anchorSurvey) : sans elle, n'importe
     if not IsAdmin(src) then DenyAdmin(src) return end
@@ -4339,7 +5936,7 @@ LSLegacy.RegisterServerEvent('police:callouts:anchorHere', function(data)
 end)
 
 -- Annulation du dernier relevé.
-LSLegacy.RegisterServerEvent('police:callouts:anchorUndo', function(data)
+LSLegacy.Events.Register('police:callouts:anchorUndo', function(data)
     local src = source
     if not IsAdmin(src) then DenyAdmin(src) return end
     local co = CalloutOf(src)
@@ -4566,7 +6163,7 @@ RegisterCommand('callouts',        CmdCallouts,        false)
 RegisterCommand('callout',         CmdCallout,         false)
 
 -- Actions du menu d'administration
-LSLegacy.RegisterServerEvent('police:callouts:adminAction', function(data)
+LSLegacy.Events.Register('police:callouts:adminAction', function(data)
     local src = source
     if not IsAdmin(src) then DenyAdmin(src) return end
     if not data or not data.action then return end
@@ -4657,7 +6254,7 @@ end)
 -- Aiguillage du relais client (F8) vers le bon handler
 RunCommand = function(src, cmd, args)
     if cmd == 'missionpnj' then
-        DoRegister(src)
+        DoRegister(src, C.Crews[1] and C.Crews[1].id or 'alpha')
     elseif cmd == 'missionpnjadmin' then
         CmdMissionPnjAdmin(src, args)
     elseif cmd == 'callouts' then
@@ -4702,6 +6299,255 @@ MdtQueries.getHistory = function(src, data, cb)
                  canManage = HasPermission(src, 'admin_mdt') })
         end
     )
+end
+
+-- Onglet Appel 17 — inscription au groupe d'intervention (unité + équipage).
+MdtQueries.getRegistration = function(src, data, cb)
+    local canManage = HasPermission(src, 'admin_mdt')
+    local units = {}
+    for _, u in ipairs(C.Units) do
+        local visible = u.locked or UnitVisible[u.id]
+        if visible or canManage then
+            units[#units + 1] = {
+                id = u.id, label = u.label, indicatif = u.indicatif,
+                locked = u.locked or false, visible = visible,
+            }
+        end
+    end
+    local crews = {}
+    for _, c in ipairs(C.Crews) do
+        crews[#crews + 1] = { id = c.id, label = c.label, count = CrewCount(c.id), max = C.CrewMaxSize }
+    end
+    local reg = Registered[src]
+    cb({
+        units = units, crews = crews, canManage = canManage,
+        current = reg and { unit = reg.unit, crew = reg.crew, callsign = Callsign(src) } or nil,
+    })
+end
+
+MdtQueries.setRegistration = function(src, data, cb)
+    -- CIC et équipage sont exclusifs : rejoindre un équipage quitte le
+    -- poste TN 97 le cas échéant.
+    if Cic.isOperator(src) then Cic.setActive(src, false) end
+    if Registered[src] then
+        -- Déjà inscrit : on repasse par la désinscription puis on ré-inscrit
+        DoRegister(src)
+    end
+    if data and data.unit and data.crew then
+        DoRegister(src, data.crew, data.unit)
+    end
+    local reg = Registered[src]
+    cb({ ok = reg ~= nil, current = reg and { unit = reg.unit, crew = reg.crew, callsign = Callsign(src) } or nil })
+end
+
+MdtQueries.leaveRegistration = function(src, data, cb)
+    if Registered[src] then DoRegister(src) end
+    cb({ ok = true })
+end
+
+MdtQueries.toggleUnit = function(src, data, cb)
+    if not HasPermission(src, 'admin_mdt') then
+        cb({ ok = false, reason = 'Réservé au commissaire.' })
+        return
+    end
+    local u = data and data.unit and UnitInfo(data.unit)
+    if not u or u.locked then
+        cb({ ok = false, reason = 'Unité invalide.' })
+        return
+    end
+    UnitVisible[u.id] = not UnitVisible[u.id]
+    cb({ ok = true, visible = UnitVisible[u.id] })
+end
+
+--  ONGLET « TN 97 » (CIC)
+
+-- Position d'un équipier en ligne de l'équipage — sert à suggérer
+-- l'équipage disponible le plus proche d'un appel au CIC.
+function Cic.crewPosition(crewId)
+    for s, r in pairs(Registered) do
+        if r.crew == crewId and IsLawEnforcementOnDuty(s) then
+            local ped = GetPlayerPed(s)
+            if ped and ped ~= 0 then
+                local c = GetEntityCoords(ped)
+                return { x = c.x, y = c.y, z = c.z }
+            end
+        end
+    end
+    return nil
+end
+
+-- Carte TN 97 : agents, véhicule d'équipage (un seul par équipage, celui
+-- du premier membre motorisé trouvé) et missions en cours. Positions
+-- lues côté serveur (GetEntityCoords sur l'entité réseau) pour ne pas
+-- dépendre du streaming client — un poste fixe doit voir tout le territoire.
+CreateThread(function()
+    while true do
+        Wait(3000)
+        if Cic.online() then
+            local agents, vehicles, crewSeen = {}, {}, {}
+            for sid, r in pairs(Registered) do
+                if IsLawEnforcementOnDuty(sid) then
+                    local ped = GetPlayerPed(sid)
+                    if ped and ped ~= 0 then
+                        local c = GetEntityCoords(ped)
+                        agents[#agents + 1] = {
+                            sid = sid, callsign = Callsign(sid),
+                            coords = { x = c.x, y = c.y, z = c.z },
+                        }
+                        if not crewSeen[r.crew] then
+                            local veh = GetVehiclePedIsIn(ped, false)
+                            if veh and veh ~= 0 then
+                                crewSeen[r.crew] = true
+                                local vc = GetEntityCoords(veh)
+                                vehicles[#vehicles + 1] = {
+                                    crew = r.crew, label = Callsign(sid),
+                                    coords = { x = vc.x, y = vc.y, z = vc.z },
+                                }
+                            end
+                        end
+                    end
+                end
+            end
+
+            local missions = {}
+            for _, co in pairs(Callouts) do
+                if co.state == 'pending' or co.state == 'active' then
+                    local loc = co.location.loc.coords
+                    missions[#missions + 1] = {
+                        id = co.id, label = co.scenario.label,
+                        zoneLabel = co.location.loc.label,
+                        pending = co.state == 'pending',
+                        coords = { x = loc.x, y = loc.y, z = loc.z },
+                    }
+                end
+            end
+
+            local payload = { agents = agents, vehicles = vehicles, missions = missions }
+            for cicSrc in pairs(Cic.operators) do
+                TriggerClientEvent('police:cic:mapData', cicSrc, payload)
+            end
+        end
+    end
+end)
+
+MdtQueries.cicToggle = function(src, data, cb)
+    local goingOn = not Cic.isOperator(src)
+    local ok = Cic.setActive(src, goingOn)
+    if not ok then
+        cb({ ok = false, reason = 'Formation CIC (BZ008) ou Commissaire requis.' })
+        return
+    end
+    cb({ ok = true, active = Cic.isOperator(src) })
+end
+
+MdtQueries.getCicBoard = function(src, data, cb)
+    if not LSLegacy.MDT.HasEffectivePermission(src, 'view_cic') and not HasPermission(src, 'admin_mdt') then
+        cb({ ok = false, reason = 'Formation CIC (BZ008) ou Commissaire requis.' })
+        return
+    end
+
+    local pending = {}
+    for _, co in pairs(Callouts) do
+        if co.state == 'pending' and co.cicPending then
+            local loc = co.location.loc.coords
+            pending[#pending + 1] = {
+                id = co.id, label = co.scenario.label, zoneLabel = co.location.loc.label,
+                danger = Cic.scenarioDanger(co.scenario), waitingSince = co.createdAt,
+                backup = false, coords = { x = loc.x, y = loc.y, z = loc.z },
+            }
+        elseif co.state == 'active' and co.backup and co.backup.cicPending then
+            local loc = co.location.loc.coords
+            pending[#pending + 1] = {
+                id = co.id, label = co.scenario.label, zoneLabel = co.location.loc.label,
+                danger = Cic.scenarioDanger(co.scenario), waitingSince = co.backup.at,
+                backup = true, coords = { x = loc.x, y = loc.y, z = loc.z },
+            }
+        end
+    end
+
+    -- Interventions en cours affectées par un CIC : réaffectation possible.
+    local active = {}
+    for _, co in pairs(Callouts) do
+        if co.state == 'active' and co.crew then
+            local loc = co.location.loc.coords
+            active[#active + 1] = {
+                id = co.id, label = co.scenario.label, zoneLabel = co.location.loc.label,
+                crew = co.crew, crewLabel = CrewLabel(co.crew),
+                coords = { x = loc.x, y = loc.y, z = loc.z },
+            }
+        end
+    end
+
+    local crews = {}
+    for _, c in ipairs(C.Crews) do
+        local members = {}
+        for s, r in pairs(Registered) do
+            if r.crew == c.id and IsLawEnforcementOnDuty(s) then
+                local co = CalloutOf(s)
+                members[#members + 1] = {
+                    name   = GetName(s),
+                    grade  = LSLegacy.MDT.GetGradeLabel('police', GetGrade(s)),
+                    unit   = (UnitInfo(r.unit) or {}).indicatif,
+                    status = co and co.agents[s] and co.agents[s].status or nil,
+                    mission = co and co.scenario.label or nil,
+                }
+            end
+        end
+        if #members > 0 then
+            local busy = IsCrewBusy(c.id)
+            crews[#crews + 1] = {
+                id = c.id, label = c.label, busy = busy, members = members,
+                coords = (not busy) and Cic.crewPosition(c.id) or nil,
+            }
+        end
+    end
+
+    cb({ pending = pending, active = active, crews = crews, history = Cic.history,
+        cicOnline = Cic.online(), isCic = Cic.isOperator(src) })
+end
+
+MdtQueries.cicDispatch = function(src, data, cb)
+    if not Cic.isOperator(src) then
+        cb({ ok = false, reason = 'Vous devez être CIC.' })
+        return
+    end
+    local co = data and Callouts[tonumber(data.id) or 0]
+    if not co then cb({ ok = false, reason = 'Appel introuvable.' }) return end
+
+    local crewId = data.crew
+    local valid = false
+    for _, cc in ipairs(C.Crews) do if cc.id == crewId then valid = true end end
+    if not valid then cb({ ok = false, reason = 'Équipage inconnu.' }) return end
+
+    local ok, reason
+    if co.state == 'pending' and co.cicPending then
+        if IsCrewBusy(crewId) then
+            ok, reason = false, 'Cet équipage est déjà engagé.'
+        else
+            ok = Cic.assignNew(co, crewId, src)
+            reason = ok and nil or 'Aucun agent disponible dans cet équipage.'
+        end
+    elseif co.state == 'active' and co.backup and co.backup.cicPending then
+        if IsCrewBusy(crewId) then
+            ok, reason = false, 'Cet équipage est déjà engagé.'
+        else
+            ok = Cic.assignBackup(co, crewId, src)
+            reason = ok and nil or 'Aucun agent disponible dans cet équipage.'
+        end
+    elseif co.state == 'active' and co.crew then
+        if crewId == co.crew then
+            ok, reason = false, 'Cet équipage est déjà sur place.'
+        elseif IsCrewBusy(crewId) then
+            ok, reason = false, 'Cet équipage est déjà engagé.'
+        else
+            ok = Cic.reassign(co, crewId, src)
+            reason = ok and nil or 'Aucun agent disponible dans cet équipage.'
+        end
+    else
+        ok, reason = false, "Cet appel n'est plus disponible."
+    end
+
+    cb({ ok = ok, reason = reason })
 end
 
 -- Nom d'affichage pour signer rapport et classement. GetName est le
@@ -4829,23 +6675,23 @@ MdtQueries.getSummary = function(src, data, cb)
     )
 end
 
-LSLegacy.RegisterServerEvent('mdtco:query', function(data)
+LSLegacy.Events.Register('mdtco:query', function(data)
     local src = source
     if not data or not data.action or not data.reqId then return end
     if not IsLawEnforcement(src) then return end
     if not HasPermission(src, 'view_callouts') then
-        LSLegacy.SendEventToClient('mdtco:queryResult', src, { reqId = data.reqId, result = false })
+        LSLegacy.Events.SendToClient('mdtco:queryResult', src, { reqId = data.reqId, result = false })
         return
     end
 
     local handler = MdtQueries[data.action]
     if not handler then
-        LSLegacy.SendEventToClient('mdtco:queryResult', src, { reqId = data.reqId, result = false })
+        LSLegacy.Events.SendToClient('mdtco:queryResult', src, { reqId = data.reqId, result = false })
         return
     end
 
     handler(src, data.data or {}, function(res)
-        LSLegacy.SendEventToClient('mdtco:queryResult', src, { reqId = data.reqId, result = res })
+        LSLegacy.Events.SendToClient('mdtco:queryResult', src, { reqId = data.reqId, result = res })
     end)
 end)
 
@@ -4854,6 +6700,10 @@ end)
 AddEventHandler('onResourceStop', function(res)
     if res ~= GetCurrentResourceName() then return end
     for _, co in pairs(Callouts) do DeleteAllEntities(co) end
+    -- Les convois d'ambulance ne sont pas rattachés à callout.peds/
+    -- vehicles : sans ceci, un convoi en transit au moment d'un restart
+    -- reste en jeu jusqu'à l'expiration de son propre délai (~105s).
+    for id in pairs(Ambulances) do ClearAmbulance(id) end
 end)
 
 AddEventHandler('onResourceStart', function(res)
@@ -4869,3 +6719,5 @@ end)
 function GetActiveCallouts() return Callouts end
 function GetActiveCallout(src) return src and CalloutOf(src) or nil end
 function GetCalloutRegistry() return Registered end
+-- Indicatif d'un agent inscrit (ex. « Police Secours Alpha »), ou nil.
+function GetCallsign(src) return Callsign(src) end

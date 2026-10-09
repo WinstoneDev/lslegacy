@@ -9,7 +9,6 @@ Config.Metro = {}
 -- Tarif du ticket (débité via le payment menu)
 Config.Metro.Price = 2
 
-Config.Metro.NotifyEvent = 'brutal_notify:SendAlert'
 
 -- Piste 3 = métro. Ne pas toucher à la piste 0 (fret).
 -- client/player/spawn.lua désactive cette piste et SetRandomTrains à

@@ -23,7 +23,7 @@ local UNARMED_HASH = GetHashKey("weapon_unarmed")
 local skills       = {}
 
 -- Applique les stats GTA selon le niveau (0-10 → stat 0-100)
-local function applyGTAStats()
+local function ApplyGTAStats()
     for skillName, statHash in pairs(GTA_STAT_HASHES) do
         if skills[skillName] then
             StatSetInt(statHash, math.min((skills[skillName].level or 0) * 10, 100), true)
@@ -32,7 +32,7 @@ local function applyGTAStats()
 end
 
 -- Effets gameplay par compétence ; appelé après chaque mise à jour et toutes les 30s (GTA reset ces valeurs)
-local function applySkillEffects()
+local function ApplySkillEffects()
     local pid       = PlayerId()
     local tir       = skills.tir       and skills.tir.level       or 0
     local force     = skills.force     and skills.force.level     or 0
@@ -52,17 +52,17 @@ local function applySkillEffects()
     SetPlayerVehicleDefenseModifier(pid, 1.0 + conduite * 0.02)
 end
 
-local function showLevelUpNotif(skillName, newLevel)
+local function ShowLevelUpNotif(skillName, newLevel)
     local label = SKILL_LABELS[skillName] or skillName
     LSLegacy.ShowNotification("Compétence en hausse", label .. " est passé niveau " .. newLevel .. " !", "success")
 end
 
-local function showLevelDownNotif(skillName, newLevel)
+local function ShowLevelDownNotif(skillName, newLevel)
     local label = SKILL_LABELS[skillName] or skillName
     LSLegacy.ShowNotification("Compétence en baisse", label .. " est repassé niveau " .. newLevel .. ".", "warning")
 end
 
-LSLegacy.RegisterClientEvent("LSLegacy:skills:init", function(data)
+LSLegacy.Events.Register("lslegacy:skillsInit", function(data)
     for k, v in pairs(data) do
         local xp = v.xp or 0
         -- Calcul local du niveau (pas besoin du serveur ici)
@@ -72,30 +72,30 @@ LSLegacy.RegisterClientEvent("LSLegacy:skills:init", function(data)
         end
         skills[k] = {xp = xp, level = level}
     end
-    applyGTAStats()
-    applySkillEffects()
+    ApplyGTAStats()
+    ApplySkillEffects()
 end)
 
-LSLegacy.RegisterClientEvent("LSLegacy:skills:update", function(skillName, xp, level)
+LSLegacy.Events.Register("lslegacy:skillsUpdate", function(skillName, xp, level)
     if not skills[skillName] then skills[skillName] = {} end
     skills[skillName].xp    = xp
     skills[skillName].level = level
-    applyGTAStats()
-    applySkillEffects()
+    ApplyGTAStats()
+    ApplySkillEffects()
 end)
 
-LSLegacy.RegisterClientEvent("LSLegacy:skills:levelUp", function(skillName, newLevel)
-    showLevelUpNotif(skillName, newLevel)
+LSLegacy.Events.Register("lslegacy:skillsLevelUp", function(skillName, newLevel)
+    ShowLevelUpNotif(skillName, newLevel)
 end)
 
-LSLegacy.RegisterClientEvent("LSLegacy:skills:levelDown", function(skillName, newLevel)
-    showLevelDownNotif(skillName, newLevel)
+LSLegacy.Events.Register("lslegacy:skillsLevelDown", function(skillName, newLevel)
+    ShowLevelDownNotif(skillName, newLevel)
 end)
 
 -- Demander les compétences dès que le joueur est initialisé
-LSLegacy.AddEventHandler("InitPlayer", function()
+LSLegacy.Events.AddHandler("lslegacy:initPlayer", function()
     Wait(4000)
-    LSLegacy.SendEventToServer("LSLegacy:skills:requestAll")
+    LSLegacy.Events.SendToServer("lslegacy:skillsRequestAll")
 end)
 
 -- Expose le niveau d'une compétence aux autres systèmes (injury, etc.)
@@ -107,8 +107,8 @@ end
 CreateThread(function()
     Wait(15000)
     while true do
-        applyGTAStats()
-        applySkillEffects()
+        ApplyGTAStats()
+        ApplySkillEffects()
         Wait(30000)
     end
 end)
@@ -129,27 +129,27 @@ CreateThread(function()
                 local vClass = GetVehicleClass(vehicle)
                 local speed  = GetEntitySpeed(vehicle)   -- m/s
                 if (vClass == 15 or vClass == 16) and speed > 10.0 then
-                    LSLegacy.SendEventToServer("LSLegacy:skills:addXP", "pilotage")
+                    LSLegacy.Events.SendToServer("lslegacy:skillsAddXP", "pilotage")
                 elseif vClass ~= 15 and vClass ~= 16 and speed > 5.0 then
-                    LSLegacy.SendEventToServer("LSLegacy:skills:addXP", "conduite")
+                    LSLegacy.Events.SendToServer("lslegacy:skillsAddXP", "conduite")
                 end
             end
         else
             if IsPedSwimmingUnderWater(ped) then
-                LSLegacy.SendEventToServer("LSLegacy:skills:addXP", "apnee")
+                LSLegacy.Events.SendToServer("lslegacy:skillsAddXP", "apnee")
             end
             if IsPedSprinting(ped) or IsPedRunning(ped) then
-                LSLegacy.SendEventToServer("LSLegacy:skills:addXP", "endurance")
+                LSLegacy.Events.SendToServer("lslegacy:skillsAddXP", "endurance")
             end
             if IsPedShooting(ped) then
-                LSLegacy.SendEventToServer("LSLegacy:skills:addXP", "tir")
+                LSLegacy.Events.SendToServer("lslegacy:skillsAddXP", "tir")
             end
             local _, weaponHash = GetCurrentPedWeapon(ped, true)
             if weaponHash == UNARMED_HASH and IsPedInMeleeCombat(ped) then
-                LSLegacy.SendEventToServer("LSLegacy:skills:addXP", "force")
+                LSLegacy.Events.SendToServer("lslegacy:skillsAddXP", "force")
             end
             if GetPedStealthMovement(ped) and GetEntitySpeed(ped) > 0.5 then
-                LSLegacy.SendEventToServer("LSLegacy:skills:addXP", "furtivite")
+                LSLegacy.Events.SendToServer("lslegacy:skillsAddXP", "furtivite")
             end
         end
 

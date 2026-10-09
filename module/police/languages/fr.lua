@@ -28,7 +28,6 @@ Lang.Police = {
     -- Véhicules
     garage_title        = 'Garage Police',
     no_vehicle_access   = 'Votre grade ne vous autorise pas ce véhicule.',
-    vehicle_spawned     = 'Véhicule sorti.',
 
     -- Actions policières
     action_cuff         = 'Menotter',

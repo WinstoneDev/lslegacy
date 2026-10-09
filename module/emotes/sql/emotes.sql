@@ -1,7 +1,7 @@
 -- =====================================================================
 --  MODULE EMOTES — Schéma SQL
 --  Table aussi créée automatiquement au démarrage de la ressource
---  (voir module/emotes/sv_emotes.lua). Ce fichier sert de référence
+--  (voir module/emotes/server/main.lua). Ce fichier sert de référence
 --  et permet un import manuel.
 -- =====================================================================
 

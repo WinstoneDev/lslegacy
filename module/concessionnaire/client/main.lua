@@ -9,7 +9,7 @@ Concessionnaire = Concessionnaire or {}
 local spawnedPeds = {}
 
 local function Notify(msg, type)
-    TriggerEvent(Config.Concessionnaire.NotifyEvent, 'Concessionnaire', msg, 5000, type or 'info')
+    TriggerEvent('notify', 'Concessionnaire', msg, type or 'info', 5000)
 end
 Concessionnaire.Notify = Notify
 
@@ -36,54 +36,58 @@ local function SpawnPed(cfg, options)
     return ped
 end
 
--- PNJ vendeur principal : catalogue + occasions
+-- PNJ vendeurs (un par site) : catalogue + occasions
 local function SpawnSellers()
-    local buyOptions = {
-        {
-            name = 'concess_browse',
-            icon = 'fa-solid fa-car-side',
-            label = Lang.Concessionnaire.browse_catalog,
-            distance = 2.5,
-            onSelect = function() Concessionnaire.OpenCatalog() end,
-        },
-    }
-    if Config.Concessionnaire.Occasion.enabled then
-        buyOptions[#buyOptions + 1] = {
-            name = 'concess_occasions',
-            icon = 'fa-solid fa-car-side',
-            label = Lang.Concessionnaire.occasion_option,
-            distance = 2.5,
-            onSelect = function() Concessionnaire.OpenOccasions() end,
-        }
-    end
-    SpawnPed(Config.Concessionnaire.Seller, buyOptions)
-
-    -- PNJ dédié à la revente
-    if Config.Concessionnaire.Resale.enabled and Config.Concessionnaire.ResaleSeller then
-        SpawnPed(Config.Concessionnaire.ResaleSeller, {
+    for _, site in ipairs(Config.Concessionnaire.Sites) do
+        local buyOptions = {
             {
-                name = 'concess_resale',
-                icon = 'fa-solid fa-hand-holding-dollar',
-                label = Lang.Concessionnaire.resale_option,
-                distance = 3.5,
-                onSelect = function() Concessionnaire.OpenResale() end,
+                name = 'concess_browse',
+                icon = 'fa-solid fa-car-side',
+                label = Lang.Concessionnaire.browse_catalog,
+                distance = 2.5,
+                onSelect = function() Concessionnaire.OpenCatalog(site) end,
             },
-        })
+        }
+        if Config.Concessionnaire.Occasion.enabled then
+            buyOptions[#buyOptions + 1] = {
+                name = 'concess_occasions',
+                icon = 'fa-solid fa-car-side',
+                label = Lang.Concessionnaire.occasion_option,
+                distance = 2.5,
+                onSelect = function() Concessionnaire.OpenOccasions(site) end,
+            }
+        end
+        SpawnPed(site.Seller, buyOptions)
+
+        -- PNJ dédié à la revente
+        if Config.Concessionnaire.Resale.enabled and site.ResaleSeller then
+            SpawnPed(site.ResaleSeller, {
+                {
+                    name = 'concess_resale',
+                    icon = 'fa-solid fa-hand-holding-dollar',
+                    label = Lang.Concessionnaire.resale_option,
+                    distance = 3.5,
+                    onSelect = function() Concessionnaire.OpenResale(site) end,
+                },
+            })
+        end
     end
 end
 
 -- ── Blip ─────────────────────────────────────────────────────────────
 
 local function CreateBlip()
-    local b = Config.Concessionnaire.Blip
-    local blip = AddBlipForCoord(b.coords.x, b.coords.y, b.coords.z)
-    SetBlipSprite(blip, b.sprite)
-    SetBlipColour(blip, b.color)
-    SetBlipScale(blip, b.scale)
-    SetBlipAsShortRange(blip, b.short)
-    BeginTextCommandSetBlipName('STRING')
-    AddTextComponentString(b.label)
-    EndTextCommandSetBlipName(blip)
+    for _, site in ipairs(Config.Concessionnaire.Sites) do
+        local b = site.Blip
+        local blip = AddBlipForCoord(b.coords.x, b.coords.y, b.coords.z)
+        SetBlipSprite(blip, b.sprite)
+        SetBlipColour(blip, b.color)
+        SetBlipScale(blip, b.scale)
+        SetBlipAsShortRange(blip, b.short)
+        BeginTextCommandSetBlipName('STRING')
+        AddTextComponentString(b.label)
+        EndTextCommandSetBlipName(blip)
+    end
 end
 
 -- ── Anti-trafic PNJ — UNIQUEMENT à l'intérieur du bâtiment ───────────
@@ -142,7 +146,7 @@ Citizen.CreateThread(function()
         local wait = 2000
         local pos  = GetEntityCoords(PlayerPedId())
         -- Actif seulement quand on est proche (économie de perfs)
-        if #(pos - z.center) < (math.max(z.size.x, z.size.y) + 40.0) then
+        if LSLegacy.Validate.Distance(pos, z.center, math.max(z.size.x, z.size.y) + 40.0) then
             wait = 500
             local mn, mx = GetTrafficBox()
 

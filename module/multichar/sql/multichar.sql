@@ -19,7 +19,7 @@ ALTER TABLE `players` ADD UNIQUE KEY `uq_players_identifier_slot` (`identifier`,
 -- -------------------------------------------------------------------
 -- Phase 2 (hors périmètre de cette migration) :
 --
--- De nombreux autres modules (police, gendarmerie, samu, pompiers,
+-- De nombreux autres modules (police, sheriff, ems, lsfd,
 -- mecanicien, ltd, mdt, adminmenu...) stockent des données propres au
 -- personnage (job, casier judiciaire, dossier prison, carrière, service
 -- actif...) mais les indexent aujourd'hui par `identifier` (le compte),
@@ -29,10 +29,10 @@ ALTER TABLE `players` ADD UNIQUE KEY `uq_players_identifier_slot` (`identifier`,
 -- personnage (`players.id`) — table par table, testée séparément.
 --
 -- Tables concernées (non-exhaustif, à vérifier au moment de la
--- migration de chaque module) : mecanicien_agents, gendarmerie_officers,
--- ltd_agents, samu_agents, mdt_med_records, mdt_med_entries,
+-- migration de chaque module) : mecanicien_agents, sheriff_deputies,
+-- ltd_agents, ems_agents, mdt_med_records, mdt_med_entries,
 -- mdt_med_treatments, mdt_med_calls, mdt_med_board, admin_warns,
--- pompiers_agents, police_officers, police_custody, police_prison,
+-- lsfd_agents, police_officers, police_custody, police_prison,
 -- mdt_agent_meta, mdt_agent_career, mdt_agent_assignments,
 -- mdt_agent_commendations, mdt_agent_skills, mdt_criminal_records,
 -- mdt_fines, mdt_warrants, mdt_custody, mdt_evidence,

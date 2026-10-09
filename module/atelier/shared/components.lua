@@ -59,3 +59,27 @@ function LSLegacy.Atelier.FindComponent(componentId)
     end
     return nil, nil
 end
+
+-- Zones de déformation visuelle : mêmes 5 points d'échantillonnage que la
+-- restauration AP (module/persistentvehicles/client/main.lua -> UpdateVehicleStatus),
+-- mappés sur les pièces de carrosserie qu'un impact à cet endroit dégrade.
+-- Approximatif par nature (GTA n'expose pas de santé par panneau, seulement une
+-- déformation globale par zone) : plusieurs pièces peuvent partager une même
+-- zone, auquel cas le dégât visuel n'est effacé qu'une fois TOUTES réparées
+-- (cf. server/vehicles.lua -> RepairComponent).
+LSLegacy.Atelier.DeformationZones = {
+    { id = 'avant',   offset = { x = 0.0,  y = 2.0,  z = 0.5 }, components = { 'capot', 'pare_choc_avant', 'aile_avg', 'aile_avd', 'phares' } },
+    { id = 'arriere', offset = { x = 0.0,  y = -2.0, z = 0.5 }, components = { 'pare_choc_arriere', 'coffre' } },
+    { id = 'toit',    offset = { x = 0.0,  y = 0.0,  z = 1.2 }, components = { 'vitres' } },
+    { id = 'gauche',  offset = { x = -1.0, y = 0.0,  z = 0.5 }, components = { 'portiere_avg', 'portiere_arg', 'bas_caisse' } },
+    { id = 'droite',  offset = { x = 1.0,  y = 0.0,  z = 0.5 }, components = { 'portiere_avd', 'portiere_ard', 'bas_caisse' } },
+}
+
+function LSLegacy.Atelier.FindDeformationZone(componentId)
+    for _, zone in ipairs(LSLegacy.Atelier.DeformationZones) do
+        for _, id in ipairs(zone.components) do
+            if id == componentId then return zone end
+        end
+    end
+    return nil
+end

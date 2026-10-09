@@ -1,44 +1,54 @@
 -- Suit qui occupe quelle place, pour éviter deux joueurs sur la même place d'un banc/canapé multi-places. Port de server/server.lua de mnr_sitanywhere.
-local occupied = {} -- [entity] = { [seatIndex] = source }
+-- Clé de suivi : netId pour les objets dynamiques réseautés, sinon "static:hash:x:y:z" pour les props YMAP statiques (non résolvables côté serveur).
+local occupied = {} -- [seatKey] = { [seatIndex] = source }
 
-lib.callback.register('sit:server:occupy', function(source, netId, seatIndex)
-    local entity = NetworkGetEntityFromNetworkId(netId)
-    if not DoesEntityExist(entity) then return false end
+LSLegacy.Security.RegisterRateLimit('sit:serverOccupy', 100)
+LSLegacy.Security.RegisterRateLimit('sit:serverGetFree', 100)
+LSLegacy.Callbacks.RegisterServer('sit:serverOccupy', function(source, cb, seatKey, seatIndex)
+    occupied[seatKey] = occupied[seatKey] or {}
+    if occupied[seatKey][seatIndex] then return cb(false) end
 
-    occupied[entity] = occupied[entity] or {}
-    if occupied[entity][seatIndex] then return false end
-
-    occupied[entity][seatIndex] = source
-    return true
+    occupied[seatKey][seatIndex] = source
+    cb(true)
 end)
 
-lib.callback.register('sit:server:getFree', function(source, netId, hash)
-    local entity = NetworkGetEntityFromNetworkId(netId)
-    if not DoesEntityExist(entity) then return false end
-
+LSLegacy.Callbacks.RegisterServer('sit:serverGetFree', function(source, cb, seatKey, hash)
     local model = Sit.Models[hash]
-    if not model then return false end
+    if not model then return cb(false) end
 
-    occupied[entity] = occupied[entity] or {}
+    occupied[seatKey] = occupied[seatKey] or {}
     for i = 1, model.maxSeats do
-        if not occupied[entity][i] then return i end
+        if not occupied[seatKey][i] then return cb(i) end
     end
-    return false
+    cb(false)
 end)
 
-RegisterNetEvent('sit:server:free', function(netId)
+RegisterNetEvent('sit:serverFree', function(seatKey)
     local src = source
-    local entity = NetworkGetEntityFromNetworkId(netId)
-    if not DoesEntityExist(entity) or not occupied[entity] then return end
+    if not occupied[seatKey] then return end
 
-    for seatIndex, occupant in pairs(occupied[entity]) do
+    for seatIndex, occupant in pairs(occupied[seatKey]) do
         if occupant == src then
-            occupied[entity][seatIndex] = nil
+            occupied[seatKey][seatIndex] = nil
         end
     end
 
-    if not next(occupied[entity]) then
-        occupied[entity] = nil
-        TriggerClientEvent('sit:client:unregister', src, netId)
+    if not next(occupied[seatKey]) then
+        occupied[seatKey] = nil
+        TriggerClientEvent('sit:clientUnregister', src, seatKey)
+    end
+end)
+
+AddEventHandler('playerDropped', function()
+    local src = source
+    for seatKey, seats in pairs(occupied) do
+        for seatIndex, occupant in pairs(seats) do
+            if occupant == src then
+                seats[seatIndex] = nil
+            end
+        end
+        if not next(seats) then
+            occupied[seatKey] = nil
+        end
     end
 end)

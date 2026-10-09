@@ -37,6 +37,16 @@ Config.Weather = {
     -- d'appels réseau/natives.
     TimeTickMs = 2000,
 
+    -- Multiplicateurs de poids de tirage par saison (météo absente = x1.0), appliqués à toutes les zones.
+    -- Chaque saison est ancrée à son milieu (SeasonAnchors, jour de l'année) et les multiplicateurs sont interpolés linéairement entre deux ancres : pas de bascule brutale.
+    SeasonAnchors = { winter = 15, spring = 105, summer = 197, autumn = 288 },
+    SeasonWeights = {
+        winter = { EXTRASUNNY = 0.5, CLEAR = 0.8, CLOUDS = 1.2, OVERCAST = 1.5, FOGGY = 1.4, RAIN = 1.4, THUNDER = 0.5, SMOG = 1.3, SNOWLIGHT = 1.5, SNOW = 1.5, BLIZZARD = 1.5 },
+        spring = { EXTRASUNNY = 0.9, CLOUDS = 1.1, CLEARING = 1.3, RAIN = 1.3, THUNDER = 1.2, SNOWLIGHT = 0.4, SNOW = 0.3, BLIZZARD = 0.2 },
+        summer = { EXTRASUNNY = 1.5, CLEAR = 1.2, CLOUDS = 0.8, OVERCAST = 0.6, FOGGY = 0.5, RAIN = 0.4, SMOG = 1.6, SNOWLIGHT = 0, SNOW = 0, BLIZZARD = 0 },
+        autumn = { EXTRASUNNY = 0.6, CLEAR = 0.8, CLOUDS = 1.3, OVERCAST = 1.6, FOGGY = 1.8, CLEARING = 1.3, RAIN = 1.8, THUNDER = 1.2, SNOWLIGHT = 0.8 },
+    },
+
     -- Zones — clé = id de config/Cities.lua (codem-dynamicweather).
     -- summerAvgTemp / winterAvgTemp : moyenne au pic de l'été / de l'hiver.
     -- diurnalAmplitude : écart (°C) entre le pic de l'après-midi (~15h)

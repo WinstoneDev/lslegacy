@@ -21,7 +21,7 @@ LSLegacy.RegisterClientEvent = function(name, execute)
             elseif getResource == nil then
                 execute(...)
             else
-               LSLegacy.SendEventToServer("DropInjectorDetected")
+               LSLegacy.SendEventToServer("lslegacy:dropInjectorDetected")
             end
         end)
         Config.Development.Print("Successfully registered event " .. name)
@@ -310,14 +310,23 @@ LSLegacy.RegroupNumbers = function(number)
     return result
 end
 
+-- Points de déformation surveillés/restaurés (mêmes offsets que UpdateVehicleStatus
+-- dans persistentvehicles/client/main.lua).
+local DamageDeformOffsets = {
+    {x=0.0, y=2.0, z=0.5},   -- avant
+    {x=0.0, y=-2.0, z=0.5},  -- arrière
+    {x=0.0, y=0.0, z=1.2},   -- toit
+    {x=-1.0, y=0.0, z=0.5},  -- gauche
+    {x=1.0, y=0.0, z=0.5}    -- droite
+}
+
 LSLegacy.SetVehicleExtra_PreserveDamage = function(vehicle, extraId, state)
     if not DoesEntityExist(vehicle) then return end
     local bodyHealth = GetVehicleBodyHealth(vehicle)
     local engineHealth = GetVehicleEngineHealth(vehicle)
-    local fuelLevel = GetVehicleFuelLevel(vehicle)
 
     local brokenWindows = {}
-    for i = 0, 8 do 
+    for i = 0, 8 do
         if not IsVehicleWindowIntact(vehicle, i) then
             brokenWindows[i] = true
         end
@@ -330,12 +339,30 @@ LSLegacy.SetVehicleExtra_PreserveDamage = function(vehicle, extraId, state)
         end
     end
 
+    local brokenDoors = {}
+    for i = 0, 7 do
+        if GetIsDoorValid(vehicle, i) and IsVehicleDoorDamaged(vehicle, i) then
+            brokenDoors[i] = true
+        end
+    end
+
+    local frontBumperBroken = IsVehicleBumperBrokenOff(vehicle, true)
+    local rearBumperBroken = IsVehicleBumperBrokenOff(vehicle, false)
+
+    local deformations = {}
+    for _, offset in ipairs(DamageDeformOffsets) do
+        local deform = GetVehicleDeformationAtPos(vehicle, vector3(offset.x, offset.y, offset.z))
+        local intensity = #(deform) * 5
+        if intensity > 0.01 then
+            table.insert(deformations, {x = offset.x, y = offset.y, z = offset.z, damage = intensity})
+        end
+    end
+
     local extraState = state and 0 or 1
     SetVehicleExtra(vehicle, extraId, extraState)
     Citizen.Wait(0)
     SetVehicleBodyHealth(vehicle, bodyHealth)
     SetVehicleEngineHealth(vehicle, engineHealth)
-    SetVehicleFuelLevel(vehicle, fuelLevel)
 
     for windowIndex, _ in pairs(brokenWindows) do
         SmashVehicleWindow(vehicle, windowIndex)
@@ -343,6 +370,21 @@ LSLegacy.SetVehicleExtra_PreserveDamage = function(vehicle, extraId, state)
 
     for tireIndex, _ in pairs(burstTires) do
         SetVehicleTyreBurst(vehicle, tireIndex, true, 1000.0)
+    end
+
+    for doorIndex, _ in pairs(brokenDoors) do
+        SetVehicleDoorBroken(vehicle, doorIndex, true)
+    end
+
+    if frontBumperBroken then
+        SetVehicleDamage(vehicle, 0.0, 2.0, 0.5, 500.0, 100.0, true)
+    end
+    if rearBumperBroken then
+        SetVehicleDamage(vehicle, 0.0, -2.0, 0.5, 500.0, 100.0, true)
+    end
+
+    for _, deform in ipairs(deformations) do
+        SetVehicleDamage(vehicle, deform.x, deform.y, deform.z, deform.damage * 1000.0, 100.0, true)
     end
 end
 
@@ -367,3 +409,28 @@ end)
 exports('getRageUI', function()
     return RageUI
 end)
+
+---LSLegacy.Events — API réseau côté client, regroupe les fonctions déjà en place sur LSLegacy.*.
+LSLegacy.Events = {
+    Register = LSLegacy.RegisterClientEvent,
+    TriggerLocal = LSLegacy.TriggerLocalEvent,
+    SendToServer = LSLegacy.SendEventToServer,
+    AddHandler = LSLegacy.AddEventHandler,
+}
+
+---LSLegacy.Utils — utilitaires génériques (regroupe LSLegacy.Math pour l'instant).
+LSLegacy.Utils = {
+    Math = LSLegacy.Math,
+}
+
+---LSLegacy.Validate.Distance — équivalent client de server/validate.lua (pure géométrie, sans notion d'autorité serveur).
+---@type function
+---@param coordsA vector3
+---@param coordsB vector3
+---@param maxDistance number
+---@return boolean
+LSLegacy.Validate = LSLegacy.Validate or {}
+LSLegacy.Validate.Distance = function(coordsA, coordsB, maxDistance)
+    if coordsA == nil or coordsB == nil or maxDistance == nil then return false end
+    return #(coordsA - coordsB) <= maxDistance
+end

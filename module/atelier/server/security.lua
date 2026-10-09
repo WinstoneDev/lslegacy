@@ -6,7 +6,7 @@ LSLegacy.Atelier = LSLegacy.Atelier or {}
 LSLegacy.Atelier.Agents = LSLegacy.Atelier.Agents or {}
 
 function LSLegacy.Atelier.GetPlayer(src)
-    return LSLegacy.ServerPlayers[src]
+    return LSLegacy.Players.Get(src)
 end
 
 -- Renvoie (companyId, company) si le job du joueur appartient à l'atelier, sinon nil.
@@ -35,6 +35,12 @@ function LSLegacy.Atelier.IsOnDuty(src)
     return agent ~= nil and agent.onDuty == true
 end
 
+-- Exposée en global pour le cœur MDT (DUTY_CHECKERS, mdt/server/main.lua),
+-- qui fait un lookup générique par job → fonction globale.
+function IsAtelierOnDuty(src)
+    return LSLegacy.Atelier.IsOnDuty(src)
+end
+
 -- Vérifie que src a la permission demandée dans SON entreprise.
 function LSLegacy.Atelier.HasPerm(src, perm)
     local companyId = LSLegacy.Atelier.GetCompany(src)
@@ -56,5 +62,26 @@ function LSLegacy.Atelier.CanAct(src, perm)
 end
 
 function LSLegacy.Atelier.Notify(src, msg, t)
-    TriggerClientEvent(Config.Atelier.NotifyEvent, src, 'Atelier', msg, 5000, t or 'info')
+    LSLegacy.Events.SendToClient('notify', src, 'Atelier', msg, t or 'info', 5000)
+end
+
+-- Le joueur le plus proche d'une entité (hors mécanicien) : distance TOUJOURS résolue côté serveur, jamais envoyée par le client.
+function LSLegacy.Atelier.GetNearestCustomer(entity, mecanoSrc, range)
+    range = range or 10.0
+    local coords = GetEntityCoords(entity)
+    local closestSrc, closestDist = nil, range
+
+    for src, p in pairs(LSLegacy.Players.GetAll()) do
+        if src ~= mecanoSrc then
+            local ped = GetPlayerPed(src)
+            if DoesEntityExist(ped) then
+                local dist = #(coords - GetEntityCoords(ped))
+                if dist < closestDist then
+                    closestDist = dist
+                    closestSrc  = src
+                end
+            end
+        end
+    end
+    return closestSrc
 end

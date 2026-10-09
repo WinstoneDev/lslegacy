@@ -66,7 +66,11 @@ S['decouverte_corps'] = {
         "Je promenais mon chien quand je l'ai vu par terre. J'ai cru qu'il dormait, puis j'ai compris.",
         "Ça fait un moment qu'il est là, personne ne s'arrêtait. J'ai fini par composer le 17.",
         "J'ai voulu lui parler, il ne réagissait plus du tout. Je n'ai pas su quoi faire d'autre.",
-        "Je sortais de chez moi et il était étendu là. Je ne l'avais jamais vu dans le quartier.",
+        -- Neutre géographiquement : la précédente version ("je sortais de
+        -- chez moi") n'avait aucun sens sur les points 'street' classés
+        -- industriels (Cypress Flats, Banning, Popular Street), où il n'y
+        -- a structurellement pas de logements.
+        "Je marchais par ici et il était étendu là. Je ne l'avais jamais vu dans le coin.",
     },
     label = 'Découverte de corps sur la voie publique',
     weight = 6, minAgents = 1, hours = nil,
@@ -86,6 +90,13 @@ S['decouverte_corps'] = {
     reward = 250,
     locations = 'street',
     allowFalseAlarm = false,
+    -- Identification du corps + prévenir un proche avant de clore.
+    familyContact = true,
+    autopsy = true,
+    -- Le timeout global (20 min) suffit rarement : identifier, analyser,
+    -- attendre les secours, PUIS traverser la carte pour prévenir un
+    -- proche prend largement plus de temps qu'une constatation classique.
+    timeout = 2400,
 }
 
 S['personne_errante'] = {
@@ -116,6 +127,12 @@ S['personne_errante'] = {
     -- régulièrement à l'intérieur de maisons inaccessibles.
     locations = 'street',
     allowFalseAlarm = false,
+    -- Une fois identifiée et déposée à l'hôpital, un proche doit être
+    -- prévenu avant de clore la mission.
+    familyContact = true,
+    -- Cf. decouverte_corps : trajet jusqu'à l'hôpital PUIS jusqu'au
+    -- proche à prévenir, le timeout global (20 min) est trop court.
+    timeout = 2400,
 }
 
 S['racolage'] = {
@@ -138,15 +155,26 @@ S['racolage'] = {
     fleeOn = { 'foot' },
     weapons = { mode = 'none' },
     hideChance = 0,
-    caller = 'witnesses',
+    -- Le texte décrit un riverain excédé ("chez nous", "des enfants dans
+    -- l'immeuble"), pas un passant générique.
+    caller = 'residents',
     pedPool = 'hookers',
     -- Elles se tiennent ensemble sur le trottoir ; la riveraine qui a
     -- appelé observe de plus loin.
     suspectCluster = 2.0,
     callerOffset   = 5.0,
     reward = 350,
+    -- Fouille : de quoi trouver quelque chose sans que ce soit systématique.
+    loot = { 'Argent liquide', 'Boîte de préservatifs', 'Sachet de stupéfiants' },
+    lootMin = 1,
+    lootMax = 2,
     locations = 'street',
     allowFalseAlarm = true,
+    falseAlarmIntro = {
+        "Finalement c'est juste une amie qui m'attendait, désolée du dérangement.",
+        "Elles sont reparties d'elles-mêmes, il n'y a plus personne devant chez nous.",
+        "Je crois avoir mal interprété la situation, excusez-moi de vous avoir dérangés.",
+    },
 }
 
 --  PALIER 2 — à partir de 2 agents enregistrés
@@ -180,13 +208,20 @@ S['vol_arrache'] = {
     -- La victime est encore aux prises avec ses agresseurs à l'arrivée.
     mauledVictim  = true,
     victimAssault = true,
-    -- Ils ne détalent qu'une fois les agents en vue, pas au premier
-    -- bruit de moteur : sans ça la scène est finie avant d'avoir
-    -- commencé.
-    fleeTrigger = 10.0,
+    -- Elle doit être secourue : ce n'est pas qu'une mise en scène de
+    -- l'agression, l'assistance fait partie de l'intervention.
+    requireAid = true,
+    -- Les soins ne suffisent pas à clore le dossier : il faut aussi son
+    -- identité et sa déposition (cf. CheckResolution, server/callouts.lua).
+    requireVictimReport = true,
     reward = 450,
     locations = 'street',
     allowFalseAlarm = true,
+    falseAlarmIntro = {
+        "Finalement j'ai juste fait tomber mon sac, personne ne me l'a arraché.",
+        "Je viens de le retrouver dans ma poche, fausse alerte, désolée du dérangement.",
+        "Ce n'était pas un vol, on s'est juste bousculés en se croisant sur le trottoir.",
+    },
 }
 
 S['bagarre_rue'] = {
@@ -224,6 +259,11 @@ S['bagarre_rue'] = {
     reward = 500,
     locations = 'street',
     allowFalseAlarm = true,
+    falseAlarmIntro = {
+        "Ils se sont réconciliés et sont repartis chacun de leur côté.",
+        "Ce n'était qu'une discussion animée, pas vraiment une bagarre en fait.",
+        "Ils ont fini par se calmer tout seuls avant votre arrivée.",
+    },
 }
 
 S['vol_vehicule'] = {
@@ -256,10 +296,14 @@ S['vol_vehicule'] = {
     suspectsAtVehicle = 2.0,
     -- Penchés sur le véhicule jusqu'à l'arrivée des agents.
     suspectScenario = 'WORLD_HUMAN_VEHICLE_MECHANIC',
-    fleeTrigger = 10.0,
     reward = 450,
     locations = 'parking',
     allowFalseAlarm = true,
+    falseAlarmIntro = {
+        "En fait c'est le propriétaire, il avait juste perdu ses clés.",
+        "C'était un dépanneur venu réparer la voiture, pas un voleur.",
+        "Fausse alerte, c'est mon mari qui essayait d'ouvrir sa propre portière.",
+    },
 }
 
 S['trafic_stup'] = {
@@ -283,23 +327,30 @@ S['trafic_stup'] = {
     suspectCluster = 2.5,
     behaviors = { passive = 10, flee = 90, aggressive = 0 },
     fleeOn = { 'foot' },
-    -- Ils connaissent le quartier et partent au premier regard : une
-    -- seconde de sprint en plus, et l'écart se creuse davantage avant
-    -- l'essoufflement.
-    fleeSprint = 17,
-    fleeSlowAt = 20,
+    -- Sprint initial standard, mais ils tiennent plus longtemps avant de
+    -- vraiment s'essouffler, et ralentissent moins fort une fois fatigués.
+    fleeSlowAt = 40,
+    fleeRateTired = 0.70,
     weapons = { mode = 'none' },
-    -- Toujours les deux sur eux, pas l'un au hasard.
+    -- Pas systématique : certains n'ont rien sur eux, d'autres juste
+    -- l'un ou l'autre, parfois les deux.
     loot = { 'Sachet de stupéfiants', 'Liasse de billets' },
-    lootAlways = true,
-    lootMin = 2,
+    lootMin = 1,
     lootMax = 2,
+    -- En fuite, celui qui a du stup sur lui peut s'en débarrasser en
+    -- le jetant au sol — à retrouver là où il est tombé.
+    stashDrop = true,
     hideChance = 0,
     caller = 'witnesses',
     pedPool = 'dealers',
     reward = 450,
     locations = 'dealpoint',
     allowFalseAlarm = true,
+    falseAlarmIntro = {
+        "En regardant mieux, ce ne sont que des voisins qui discutent.",
+        "Ils échangeaient juste des cigarettes, rien d'illégal en fait.",
+        "Je crois avoir mal jugé la situation, désolé du dérangement.",
+    },
 }
 
 S['personne_armee'] = {
@@ -333,21 +384,38 @@ S['personne_armee'] = {
     reward = 550,
     locations = 'street',
     allowFalseAlarm = true,
+    falseAlarmIntro = {
+        "En fait c'était une perceuse, pas une arme, désolé de vous avoir fait peur.",
+        "C'était un jouet, je m'en rends compte maintenant.",
+        "Il a rangé l'objet et s'est calmé, ce n'était peut-être rien du tout.",
+    },
+    -- Un attroupement de badauds près d'un individu armé et potentiellement
+    -- agressif n'est pas crédible (des passants s'éloigneraient plutôt),
+    -- cohérent avec les autres scénarios dangereux (cambriolage, tuerie de
+    -- masse).
+    bystanders = false,
 }
 
 S['delit_fuite'] = {
     id = 'delit_fuite',
+    -- Scène fixe : une voiture (le suspect) renverse un piéton (la
+    -- victime). Le conducteur descend mais ne porte pas secours — il
+    -- reste près du véhicule accidenté et ne prend la fuite À PIED qu'à
+    -- l'arrivée des agents (cf. suspectsAtVehicle/fleeTrigger). Les textes
+    -- ci-dessous doivent rester cohérents avec ça : jamais de "il n'a
+    -- même pas ralenti" ou "il a filé aussitôt" (ça, c'est un délit de
+    -- fuite classique où le conducteur ne s'arrête jamais).
     statementIntro = {
-        "La voiture a percuté puis le conducteur est descendu et il est parti en courant.",
-        "Il ne s'est même pas arrêté pour aider, il a filé aussitôt.",
-        "J'ai entendu le choc, quand je suis arrivé il abandonnait déjà son véhicule.",
+        "La voiture a percuté un piéton, le conducteur est descendu mais il n'a rien fait pour l'aider — il est resté planté à côté du véhicule.",
+        "Il a heurté quelqu'un et il est sorti de la voiture, mais il n'a pas porté secours. Il attendait juste là, à côté de la carcasse.",
+        "Le choc a été violent. Le conducteur est descendu, hébété, il n'a pas bougé de la voiture jusqu'à ce qu'il vous voie arriver.",
     },
-    label = 'Délit de fuite après accident',
+    label = 'Accident voie Publique',
     weight = 8, minAgents = 2, hours = nil,
     dispatch = {
-        "Accident avec délit de fuite %s. Un blessé sur place.",
-        "Collision signalée %s, le conducteur a quitté les lieux à pied.",
-        "Accident de la circulation %s, l'auteur s'est enfui.",
+        "Accident avec piéton renversé %s. Le conducteur serait resté sur place, sans porter secours.",
+        "Collision signalée %s, un piéton a été percuté par un véhicule.",
+        "Accident de la circulation %s, un piéton blessé au sol, le conducteur n'a pas porté assistance.",
     },
     suspects = { min = 1, max = 2 },
     behaviors = { passive = 10, flee = 90, aggressive = 0 },
@@ -357,13 +425,27 @@ S['delit_fuite'] = {
     -- Le conducteur est resté près de son véhicule et ne détale qu'à
     -- l'arrivée des agents, comme sur un vol de véhicule en cours.
     suspectsAtVehicle = 2.5,
-    fleeTrigger = 10.0,
     caller = 'witnesses',
     pedPool = 'street_crime',
     crash = true,
+    -- Le blessé de la collision doit être secouru, pas seulement le
+    -- fuyard interpellé.
+    requireAid = true,
+    -- La victime doit aussi être identifiée et entendue sur les faits
+    -- avant de clore — les soins seuls ne suffisent pas à constituer
+    -- le dossier.
+    requireVictimReport = true,
+    -- L'enlèvement du véhicule accidenté n'est plus une condition de
+    -- clôture : l'agent peut valider la mission sans avoir appelé la
+    -- fourrière (rester géré manuellement, hors mission).
     reward = 500,
     locations = 'street',
     allowFalseAlarm = true,
+    falseAlarmIntro = {
+        "Finalement la voiture ne l'a pas touché, il a juste trébuché tout seul en voulant l'éviter.",
+        "Ils se sont un peu accrochés mais il n'y a pas de blessé, plus de peur que de mal.",
+        "Fausse alerte, il n'y a pas eu de choc — juste une grosse frayeur pour les deux.",
+    },
 }
 
 S['ipm'] = {
@@ -384,10 +466,19 @@ S['ipm'] = {
     suspects = { min = 1, max = 1 },
     behaviors = { passive = 100, flee = 0, aggressive = 0 },
     weapons = { mode = 'none' },
-    loot = { 'Bouteille entamée' },
+    -- Pas systématique : parfois juste la bouteille, parfois aussi (ou
+    -- seulement) des stupéfiants.
+    loot = { 'Bouteille entamée', 'Sachet de stupéfiants' },
+    lootMax = 2,
     hideChance = 0,
     suspectsAtCaller = 3.0,
-    caller = 'clubbers',
+    -- Le texte ("il insulte les clients qui sortent") est le point de vue
+    -- d'un vigile/employé observant depuis l'établissement, pas celui
+    -- d'un client parmi d'autres.
+    caller = 'guards',
+    -- Le vigile/employé décrit comme observant depuis l'établissement ne
+    -- quitte pas son poste une fois la mission finie (cf. vol_etalage).
+    callerStays = true,
     pedPool = 'unstable',
     drunk = true,
     -- 20 % de chance qu'il se montre agressif quand un agent s'approche
@@ -397,6 +488,16 @@ S['ipm'] = {
     reward = 300,
     locations = 'nightlife',
     allowFalseAlarm = true,
+    falseAlarmIntro = {
+        "Il vient de se relever tout seul, ce n'était peut-être qu'un malaise.",
+        "Il a dessoûlé d'un coup, en fait il tenait très bien debout.",
+        "Je crois que j'ai exagéré, il n'était pas si ivre que ça.",
+    },
+    -- Taux d'alcoolémie consigné au rapport, pour appuyer l'interpellation.
+    breathalyzer = true,
+    -- Dépistage de stupéfiants : positif/négatif, avec les substances
+    -- détectées consignées au rapport si positif.
+    drugTest = true,
 }
 
 S['vol_etalage'] = {
@@ -434,13 +535,39 @@ S['vol_etalage'] = {
     reward = 350,
     locations = 'shop',
     allowFalseAlarm = true,
+    falseAlarmIntro = {
+        "Finalement il avait payé, j'ai mal regardé le ticket de caisse.",
+        "Je me suis trompé de personne, ce n'est pas lui qui volait.",
+        "Il a réglé les articles juste après, fausse alerte de ma part.",
+    },
+    -- Le vigile ne quitte pas son poste une fois la mission finie : ça
+    -- n'aurait aucun sens qu'il parte du magasin qu'il surveille.
+    callerStays = true,
+    -- « Proposer de payer les articles » (une fois identité + fouille
+    -- faites) : chance qu'il règle sur place plutôt que d'être interpellé.
+    -- S'il refuse, l'agent garde le choix de l'interpeller ou de quand
+    -- même le laisser repartir (cf. callout_move_along, inchangé).
+    payOff = true,
+    payOffChance = 55,
+    payOffLines = {
+        accept = {
+            "D'accord, je vais payer, j'ai de quoi régler.",
+            "Très bien, prenez, ça couvre les articles.",
+            "Bon, d'accord. Je ne veux pas d'histoires.",
+        },
+        refuse = {
+            "Je n'ai pas les moyens de payer ça.",
+            "Non, débrouillez-vous, je ne paierai rien.",
+            "Hors de question, faites ce que vous voulez.",
+        },
+    },
 }
 
 S['chien_dangereux'] = {
     id = 'chien_dangereux',
     bystanders = false,
     statementIntro = {
-        "Le chien n'est pas tenu, il a déjà foncé sur deux personnes.",
+        "Le chien n'est pas tenu, il a déjà foncé sur quelqu'un.",
         "Il a mordu quelqu'un tout à l'heure, le maître ne le contrôle plus du tout.",
         "L'animal est complètement déchaîné, plus personne n'ose passer par là.",
     },
@@ -449,7 +576,7 @@ S['chien_dangereux'] = {
     dispatch = {
         "Chien dangereux en divagation %s. Le maître serait sur place.",
         "Un riverain signale un chien agressif non tenu %s.",
-        "Animal dangereux signalé %s, plusieurs personnes menacées.",
+        "Animal dangereux signalé %s, des passants menacés.",
     },
     suspects = { min = 1, max = 1 },
     behaviors = { passive = 100, flee = 0, aggressive = 0 },
@@ -481,6 +608,10 @@ S['chien_dangereux'] = {
     -- être interpellé pour que l'intervention soit résolue.
     objective = 'animal',
     requireSuspects = true,
+    -- La victime mordue doit être soignée ET entendue avant la clôture,
+    -- pas seulement le maître interpellé (cf. CheckResolution).
+    requireAid = true,
+    requireVictimReport = true,
     suspectLabel = 'Maître de l\'animal',
     -- Le maître peut être entendu sur les faits : sa déposition
     -- s'ajoute à celle du requérant sur la fiche d'intervention.
@@ -495,6 +626,11 @@ S['chien_dangereux'] = {
     reward = 450,
     locations = 'residential',
     allowFalseAlarm = true,
+    falseAlarmIntro = {
+        "Le chien s'est calmé, en fait il jouait avec un enfant du quartier.",
+        "Ce n'était pas de l'agressivité, il avait juste eu peur d'un bruit.",
+        "Le maître l'a rattrapé, il est redevenu très calme depuis.",
+    },
 }
 
 --  PALIER 3 — à partir de 3 agents enregistrés
@@ -519,24 +655,29 @@ S['cambriolage'] = {
     suspects = { min = 3, max = 3 },
     -- Ils opèrent sur le logement, groupés.
     suspectCluster = 3.0,
-    behaviors = { passive = 25, flee = 75, aggressive = 0 },
+    behaviors = { passive = 0, flee = 75, aggressive = 25 },
     fleeOn = { 'foot' },
     -- Tous armés, couteau ou pistolet.
     weapons = { mode = 'perSuspect', max = 1, chance = 100,
                 pool = { 'WEAPON_KNIFE', 'WEAPON_PISTOL' } },
     -- Avant le déclenchement de la fuite, ils fouillent la maison au
-    -- lieu de rester figés (WORLD_HUMAN_WELDING sert déjà de posture de
-    -- « pillage » ailleurs — cf. HeistCrewPosture/looter).
-    suspectScenario = 'WORLD_HUMAN_WELDING',
+    -- lieu de rester figés — mais pas tous de la même façon : cf. la
+    -- liste d'ambiance dédiée (C.Ambience.byScenario.cambriolage.suspect).
     loot = { 'Bijoux dérobés', 'Liasse de billets', 'Montre de valeur' },
-    hideChance = 70,
+    -- Pas de planque : la fuite ou l'agression se déclenche directement
+    -- une fois la police repérée.
+    hideChance = 0,
     caller = 'residents',
     pedPool = 'gang',
     driver = true,
-    sound = 'alarm',
     reward = 900,
     locations = 'residential',
     allowFalseAlarm = true,
+    falseAlarmIntro = {
+        "C'était le propriétaire qui rentrait plus tôt que prévu, fausse alerte.",
+        "En fait c'est un artisan qui intervenait pour une réparation.",
+        "Les ombres que j'ai vues, c'était juste la famille qui déménageait des cartons.",
+    },
 }
 
 S['braquage_superette'] = {
@@ -573,14 +714,72 @@ S['braquage_superette'] = {
     pedPool = 'gang',
     driver = true,
     getawayOffset = 16.0,
-    fleeTrigger = 10.0,
     -- Mise en scène dynamique : scénario, rôles et réaction de groupe
     -- décidés à la création (cf. C.Heist dans config_callouts.lua).
     heist = true,
-    sound = 'alarm',
     reward = 1200,
     locations = 'shop',
     allowFalseAlarm = true,
+    falseAlarmIntro = {
+        "Fausse alerte, c'était un client pressé qui bousculait tout le monde.",
+        "En fait c'était un tournage pour une vidéo, personne n'était armé.",
+        "Le vendeur a mal interprété une blague entre clients.",
+    },
+    -- C.Heist.Clients peuple déjà la scène de civils cohérents (clients
+    -- au sol/planqués) : les badauds génériques feraient doubler la
+    -- population civile sur un simple point de vente.
+    bystanders = false,
+}
+
+S['rodeo_urbain'] = {
+    id = 'rodeo_urbain',
+    bystanders = false,
+    statementIntro = {
+        "Ça fait des tours en moto-cross depuis un moment, ça pétarade, impossible de dormir.",
+        "Ils font n'importe quoi avec leurs motos, des roues arrière en pleine rue, c'est dangereux.",
+        "Ça roule à toute vitesse en faisant des figures, ça va finir par blesser quelqu'un.",
+    },
+    label = 'Rodéo urbain',
+    weight = 6, minAgents = 3, hours = nil,
+    dispatch = {
+        "Rodéo urbain signalé %s. Plusieurs motos impliquées.",
+        "Rassemblement de motos-cross %s, nuisances et mise en danger des riverains.",
+        "Rodéo motorisé %s, plaintes pour le bruit et la vitesse.",
+    },
+    suspects = { min = 2, max = 5 },
+    -- Un rodéo à un seul motard n'en est pas un.
+    minSuspects = 2,
+    -- Ils tournent ensemble sur la zone, pas dispersés dans le quartier.
+    suspectCluster = 6.0,
+    behaviors = { passive = 0, flee = 100, aggressive = 0 },
+    fleeOn = { 'bike' },
+    -- Chaque suspect est déjà en selle de sa propre moto-cross dès le
+    -- début de la scène (cf. SpawnVehicles/BuildRoster, server/callouts.lua)
+    -- — contrairement au fleeOn='bike' générique où la moto n'est qu'une
+    -- roue de secours abandonnée à proximité.
+    suspectsOnBike = true,
+    helmetMissingChance = 40,
+    plateMissingChance  = 25,
+    stolenBikeChance     = 25,
+    -- Chance qu'un fuyard chute pendant la course-poursuite : passe alors
+    -- par le même circuit blessé/soigné que les autres scénarios (cf.
+    -- police:callouts:suspectWounded, D.WoundDescriptions.rodeo_urbain).
+    fallChance = 15,
+    weapons = { mode = 'none' },
+    hideChance = 0,
+    -- Pas de requérant en scène (comme tapage) : simple appel de
+    -- riverains, aucun témoin PNJ ni section dédiée dans le PV.
+    noCaller = true,
+    pedPool = 'bikers',
+    reward = 550,
+    -- Espace ouvert nécessaire pour rouler (parking, terrain dégagé).
+    locations = 'parking',
+    allowFalseAlarm = true,
+    falseAlarmIntro = {
+        "Ils sont repartis d'eux-mêmes avant votre arrivée, plus personne sur place.",
+        "Finalement ce n'étaient que des motos garées, personne ne roulait dessus.",
+        "Fausse alerte, ce n'était qu'un attroupement sans aucune moto en mouvement.",
+    },
 }
 
 --  PALIER 4 — à partir de 6 agents enregistrés (scénarios de foule)
@@ -604,16 +803,30 @@ S['tapage'] = {
     behaviors = { passive = 99, flee = 0, aggressive = 1 },
     weapons = { mode = 'none' },
     objective = 'radio',
+    -- Si un ou plusieurs fêtards sont interpellés, la mission n'aboutit
+    -- qu'une fois présentés au poste — sans ça, couper la musique
+    -- clôturait la mission immédiatement même avec quelqu'un encore
+    -- menotté dans le véhicule.
+    requireDeliverCuffed = true,
     hideChance = 0,
-    caller = 'residents',
+    noCaller = true,
     pedPool = 'clubbers',
     -- Ils font la fête AUTOUR de la voiture-sono, pas dispersés dans
     -- tout le quartier.
     suspectsAtVehicle = 2.0,
+    -- Ambiance de fête : WORLD_HUMAN_PARTYING ne s'anime pas correctement
+    -- hors boîte de nuit (le ped reste figé même si IsPedActiveInScenario
+    -- le déclare actif) — on passe directement par le pool de danses dédié
+    -- (cf. C.Ambience.byScenario.tapage.suspect, config_callouts.lua) via
+    -- PlayAmbience, qui fonctionne lui en extérieur.
     -- Le riverain qui se plaint observe de loin, il ne fait pas la fête.
     callerOffset = 12.0,
     sound = 'boombox',
-    reward = 400,
+    -- Relevé de 400 à 600 : la mobilisation requise (minAgents=6, palier
+    -- le plus haut avec rixe_soiree/tuerie_masse) n'était pas reflétée —
+    -- moins rémunérateur que des scénarios à 2 agents (bagarre_rue 500,
+    -- personne_armee 550).
+    reward = 600,
     -- Parking : espace ouvert et accessible. En résidentiel, la voiture
     -- se retrouvait régulièrement encastrée dans un bâtiment.
     locations = 'parking',
@@ -628,7 +841,7 @@ S['rixe_soiree'] = {
     id = 'rixe_soiree',
     statementIntro = {
         "Ça a dégénéré à la sortie, la sécurité est débordée.",
-        "Une bagarre a éclaté sur le trottoir, ils sont une dizaine maintenant.",
+        "Une bagarre a éclaté sur le trottoir, ça continue de plus belle.",
         "Ils se sont pris à partie dans la file, et tout le monde s'y est mis.",
     },
     label = 'Rixe en soirée',
@@ -651,10 +864,19 @@ S['rixe_soiree'] = {
     pedPool = 'clubbers',
     pedPoolExtra = 'brawlers',
     brawl = true,
+    -- Le témoin observe la rixe à distance, comme pour bagarre_rue
+    -- (callerOffset = 8.0) — sans quoi il pouvait être placé au milieu
+    -- de l'attroupement, plus dense ici (5-8 individus).
+    callerOffset = 10.0,
     sound = 'fight',
     reward = 800,
     locations = 'nightlife',
     allowFalseAlarm = true,
+    falseAlarmIntro = {
+        "Ils se sont réconciliés à l'intérieur, tout est rentré dans l'ordre.",
+        "La sécurité a géré la situation avant que ça ne dégénère vraiment.",
+        "Ce n'était qu'une discussion animée entre amis, rien de plus.",
+    },
 }
 
 --  TUERIE DE MASSE — mise en scène pilotée par C.MassShooting
@@ -696,8 +918,9 @@ S['tuerie_masse'] = {
     -- Comportement du suspect quand C.MassShooting le déclare `present` :
     -- très majoritairement en affrontement, arme automatique — c'est
     -- une tuerie de masse en cours, pas une simple menace armée.
-    behaviors = { passive = 10, flee = 15, aggressive = 75 },
-    fleeOn = { 'foot' },
+    behaviors = { flee = 15, aggressive = 85 },
+    fleeOn = { 'car' },
+    driver = true,
     weapons = { mode = 'perSuspect', max = 1, chance = 100,
                 pool = { 'WEAPON_SMG', 'WEAPON_ASSAULTRIFLE', 'WEAPON_MICROSMG' } },
     hideChance = 20,
@@ -712,4 +935,8 @@ S['tuerie_masse'] = {
     reward = 1800,
     locations = 'street',
     allowFalseAlarm = false,
+    -- Le système dédié C.MassShooting.Witnesses peuple déjà la scène de
+    -- témoins cohérents : les badauds génériques feraient apparaître des
+    -- civils en plus, en pleine zone de danger actif.
+    bystanders = false,
 }

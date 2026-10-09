@@ -2,10 +2,9 @@ Atelier = Atelier or {}
 Atelier.OnDuty    = false
 Atelier.CompanyId = nil
 Atelier.Grade     = 0
-Atelier.InUniform = false
 
 local function Notify(msg, type)
-    TriggerEvent(Config.Atelier.NotifyEvent, 'Atelier', msg, 5000, type or 'info')
+    TriggerEvent('notify', 'Atelier', msg, type or 'info', 5000)
 end
 
 -- Utilitaires
@@ -61,14 +60,14 @@ local function ToggleDuty(companyId)
     pendingDutyToggle = true
 
     if Atelier.OnDuty then
-        LSLegacy.SendEventToServer('atelier:offDuty')
+        LSLegacy.Events.SendToServer('atelier:offDuty')
     else
-        LSLegacy.SendEventToServer('atelier:onDuty')
+        LSLegacy.Events.SendToServer('atelier:onDuty')
     end
 end
 
 -- Le flag local ne bascule QU'À la confirmation serveur, pour éviter une désynchronisation en cas de refus.
-LSLegacy.RegisterClientEvent('atelier:dutyResult', function(data)
+LSLegacy.Events.Register('atelier:dutyResult', function(data)
     pendingDutyToggle = false
     if not data or not data.success then return end
 
@@ -83,159 +82,17 @@ LSLegacy.RegisterClientEvent('atelier:dutyResult', function(data)
     end
 end)
 
--- Tenue
-
-local function ApplyOutfit(outfit)
-    local ped    = PlayerPedId()
-    local isMale = GetEntityModel(ped) == GetHashKey('mp_m_freemode_01')
-    local t      = isMale and outfit.male or outfit.female
-    SetPedComponentVariation(ped, 3, t.torso_1,  t.torso_2,  2)
-    SetPedComponentVariation(ped, 4, t.pants_1,  t.pants_2,  2)
-    SetPedComponentVariation(ped, 6, t.shoes_1,  t.shoes_2,  2)
-    SetPedComponentVariation(ped, 8, t.tshirt_1, t.tshirt_2, 2)
-    SetPedPropIndex(ped, 0, t.helmet_1, t.helmet_2, false)
-end
-
-local function OpenClothingMenu(companyId, company)
-    if not Atelier.OnDuty or Atelier.CompanyId ~= companyId then
-        Notify("Vous devez être en service pour accéder au vestiaire.", 'error')
-        return
-    end
-
-    local options = {
-        {
-            title = 'Tenue civile',
-            description = 'Restaurer la tenue personnelle',
-            icon = 'fa-solid fa-shirt',
-            onSelect = function()
-                TriggerEvent('skinchanger:loadSkin', LSLegacy.PlayerData.skin)
-                Atelier.InUniform = false
-                Notify('Tenue civile restaurée.', 'success')
-            end,
-        },
-    }
-
-    for _, outfit in ipairs(company.outfits) do
-        local available = Atelier.Grade >= outfit.grade
-        options[#options + 1] = {
-            title = outfit.label,
-            description = available and ('Grade ' .. outfit.grade .. '+') or ('Grade ' .. outfit.grade .. '+ requis'),
-            icon = 'fa-solid fa-shirt',
-            disabled = not available,
-            onSelect = function()
-                ApplyOutfit(outfit)
-                Atelier.InUniform = true
-                Notify('Tenue appliquée : ' .. outfit.label, 'success')
-            end,
-        }
-    end
-
-    lib.registerContext({ id = 'atelier_clothing_' .. companyId, title = company.label .. ' — Vestiaire', options = options })
-    lib.showContext('atelier_clothing_' .. companyId)
-end
-
--- Garage (dépanneuses)
-
-local function OpenGarageMenu(companyId, company)
-    if not Atelier.OnDuty or Atelier.CompanyId ~= companyId then
-        Notify("Vous devez être en service pour accéder au garage.", 'error')
-        return
-    end
-
-    local options = {}
-    for category, vehicles in pairs(company.vehicles or {}) do
-        for _, veh in ipairs(vehicles) do
-            local available = Atelier.Grade >= veh.grade
-            options[#options + 1] = {
-                title = veh.label,
-                description = available and string.upper(veh.model) or ('Grade ' .. veh.grade .. '+ requis'),
-                icon = 'fa-solid fa-truck-pickup',
-                disabled = not available,
-                onSelect = function()
-                    LSLegacy.SendEventToServer('atelier:spawnVehicle', { model = veh.model, category = category, grade = veh.grade })
-                end,
-            }
-        end
-    end
-
-    lib.registerContext({ id = 'atelier_garage_' .. companyId, title = company.label .. ' — Garage', options = options })
-    lib.showContext('atelier_garage_' .. companyId)
-end
-
-LSLegacy.RegisterClientEvent('atelier:spawnVehicleClient', function(data)
-    if not data or not data.model then return end
-    local coords  = GetEntityCoords(PlayerPedId())
-    local heading = GetEntityHeading(PlayerPedId())
-    local hash    = GetHashKey(data.model)
-    RequestModel(hash)
-    local t = 0
-    while not HasModelLoaded(hash) and t < 100 do Wait(100) t = t + 1 end
-    if not HasModelLoaded(hash) then
-        Notify('Modèle introuvable : ' .. data.model, 'error')
-        return
-    end
-    local spawnX = coords.x + math.sin(math.rad(-heading)) * 5.0
-    local spawnY = coords.y + math.cos(math.rad(-heading)) * 5.0
-    local veh = CreateVehicle(hash, spawnX, spawnY, coords.z, heading, true, false)
-    SetVehicleNumberPlateText(veh, 'ATELIER')
-    SetPedIntoVehicle(PlayerPedId(), veh, -1)
-    SetModelAsNoLongerNeeded(hash)
-    Notify('Véhicule sorti.', 'success')
-end)
-
--- Zones ox_target — une par entreprise
-
+-- Prise de service depuis le tableau de bord du MDT (pas de zone physique au
+-- QG : chaque entreprise a son propre département MDT, cf. config_mdt.lua).
+-- On s'enregistre dans le registre du cœur MDT plutôt que de lui faire
+-- connaître ce module — même pattern que police/sheriff.
+LSLegacy.MDT = LSLegacy.MDT or {}
+LSLegacy.MDT.DutyToggles = LSLegacy.MDT.DutyToggles or {}
 for companyId, company in pairs(Config.Atelier.Companies) do
-    exports.ox_target:addBoxZone({
-        coords   = company.headquarters,
-        size     = vector3(2.0, 2.0, 2.0),
-        rotation = company.headquartersHeading,
-        debug    = false,
-        options  = {
-            {
-                name = 'atelier_duty_' .. companyId,
-                icon = 'fa-solid fa-right-from-bracket',
-                label = 'Prise / Fin de service',
-                distance = 2.5,
-                canInteract = function() return IsEmployeeOf(companyId) end,
-                onSelect = function() ToggleDuty(companyId) end,
-            },
-        },
-    })
-
-    exports.ox_target:addBoxZone({
-        coords   = company.clothingCoords,
-        size     = vector3(1.5, 1.5, 2.0),
-        rotation = company.headquartersHeading,
-        debug    = false,
-        options  = {
-            {
-                name = 'atelier_clothing_' .. companyId,
-                icon = 'fa-solid fa-shirt',
-                label = 'Vestiaire',
-                distance = 2.0,
-                canInteract = function() return IsEmployeeOf(companyId) end,
-                onSelect = function() OpenClothingMenu(companyId, company) end,
-            },
-        },
-    })
-
-    exports.ox_target:addBoxZone({
-        coords   = company.garageCoords,
-        size     = vector3(2.0, 2.0, 2.0),
-        rotation = company.headquartersHeading,
-        debug    = false,
-        options  = {
-            {
-                name = 'atelier_garage_' .. companyId,
-                icon = 'fa-solid fa-truck-pickup',
-                label = 'Garage',
-                distance = 2.0,
-                canInteract = function() return IsEmployeeOf(companyId) end,
-                onSelect = function() OpenGarageMenu(companyId, company) end,
-            },
-        },
-    })
+    LSLegacy.MDT.DutyToggles[company.job] = {
+        toggle   = function() ToggleDuty(companyId) end,
+        isOnDuty = function() return Atelier.OnDuty and Atelier.CompanyId == companyId end,
+    }
 end
 
 -- Init

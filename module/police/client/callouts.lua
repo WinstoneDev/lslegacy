@@ -11,7 +11,13 @@ local IsBrain      = false
 local StaticPeds   = {}      -- { key = ped }
 local StaticBlips  = {}
 local TargetedStatics = {}  -- { [key] = entité déjà équipée en ox_target }
-local RouteSwitched   = nil -- id d'appel dont l'itinéraire pointe l'hôpital
+-- id d'appel dont l'itinéraire pointe l'hôpital ou David (poste) : un
+-- callout hôpital n'a jamais de suspect, et un callout à suspects n'est
+-- jamais de type hôpital — les deux bascules ne se recoupent jamais.
+-- .custody / .hospital : deux bascules indépendantes (individu interpellé /
+-- personne errante) — une seule variable pour rester sous la limite de 200
+-- locales du chunk principal, mais deux clés pour ne pas se marcher dessus.
+local RouteSwitched   = { custody = nil, hospital = nil }
 local Dancing         = {}  -- { [netId] = true } fêtards en train de danser
 local RadioSceneDone  = nil -- id d'appel dont la scène de tapage est posée
 -- Le raccourci du menu administrateur ne s'active qu'après une première
@@ -79,10 +85,10 @@ local MeleeHits    = {}      -- { [netId] = { count, last } }
 local SoundState   = { alarm = false, thread = false }
 MyCrew             = nil     -- équipage courant (id)
 MyCrewLbl          = nil     -- libellé affiché
+MyCallsign         = nil     -- indicatif complet (ex. « Police Secours Alpha »)
 
 local function Notify(msg, type)
-    TriggerEvent(Config.Police.NotifyEvent, 'Police Nationale', msg,
-        Config.Police.NotifyDuration or 30000, type or 'info')
+    TriggerEvent('notify', 'Police Nationale', msg, type or 'info', Config.Police.NotifyDuration or 30000)
 end
 
 --  FILE D'ENVOI VERS LE SERVEUR
@@ -117,7 +123,7 @@ CreateThread(function()
     while true do
         if #outQueue > 0 then
             local e = table.remove(outQueue, 1)
-            LSLegacy.SendEventToServer(e.name, e.data)
+            LSLegacy.Events.SendToServer(e.name, e.data)
             Wait(SEND_SPACING)
         else
             Wait(100)
@@ -125,7 +131,7 @@ CreateThread(function()
     end
 end)
 
--- Missions conjointes : police et gendarmerie s'engagent sur les mêmes
+-- Missions conjointes : police et le shérif s'engagent sur les mêmes
 local function IsOnDuty()
     return LSLegacy.MDT.IsLocalLeoOnDuty()
 end
@@ -158,12 +164,43 @@ function PlayAnimFor2(ped, dict, anim, duration)
     Wait(duration)
 end
 
+-- Verrou d'action ox_target : empêche de lancer une seconde action pendant
+-- qu'une animation est en cours (double sélection, autre PNJ…) et fige le
+-- joueur pour l'empêcher de se déplacer. Annulable via la touche X.
+ActionBusy            = false
+CancelActionRequested = false
+
+RegisterCommand('callout_cancel_action', function()
+    if ActionBusy then CancelActionRequested = true end
+end, false)
+RegisterKeyMapping('callout_cancel_action', 'Missions PNJ — annuler l\'action en cours',
+    'keyboard', 'X')
+
+-- Joue l'anim pendant `duration` ms, joueur figé. Renvoie true si l'anim
+-- est allée à son terme, false si annulée (X) ou si une action était déjà
+-- en cours (appel ignoré) — l'appelant ne doit alors PAS valider l'action.
 local function PlayAnimFor(dict, anim, duration)
+    if ActionBusy then return false end
+    ActionBusy = true
+    CancelActionRequested = false
+
+    local ped = PlayerPedId()
     if LoadAnim(dict) then
-        TaskPlayAnim(PlayerPedId(), dict, anim, 8.0, -8.0, duration, 49, 0, false, false, false)
+        TaskPlayAnim(ped, dict, anim, 8.0, -8.0, duration, 49, 0, false, false, false)
     end
-    Wait(duration)
-    ClearPedTasks(PlayerPedId())
+    FreezeEntityPosition(ped, true)
+
+    local finished = true
+    local start = GetGameTimer()
+    while GetGameTimer() - start < duration do
+        Wait(0)
+        if CancelActionRequested then finished = false break end
+    end
+
+    FreezeEntityPosition(ped, false)
+    ClearPedTasks(ped)
+    ActionBusy = false
+    return finished
 end
 
 --  AMBIANCE DE SCÈNE
@@ -303,7 +340,13 @@ local function PlayAmbience(entity, role, opts)
         if list then
             local ctx = { entity = entity, night = AmbIsNight(), wall = nil }
             local tried = {}
-            for _ = 1, 3 do
+            -- Autant de tentatives que d'entrées dans le pool : certains
+            -- dictionnaires (contenu casino/braquage) ne sont pas fiables
+            -- hors de leur venue et échouent au chargement — s'arrêter
+            -- après 3 essais sur un pool de 10 laissait de bonnes chances
+            -- de tomber uniquement sur des dicts invalides et de retomber
+            -- sur la posture neutre de repli (ex : tapage sans danse).
+            for _ = 1, #list do
                 if not DoesEntityExist(entity) then return end
                 local v, idx = AmbPick(list, ctx, tried)
                 if not v then break end
@@ -562,7 +605,7 @@ local function SpawnStaticNpc(key)
     -- Filet de sécurité : un PNJ orphelin d'un précédent démarrage de la
     for _, e in ipairs(GetGamePool('CPed')) do
         if DoesEntityExist(e) and GetEntityModel(e) == GetHashKey(cfg.model)
-           and #(GetEntityCoords(e) - vector3(cfg.coords.x, cfg.coords.y, cfg.coords.z)) < 2.0 then
+           and LSLegacy.Validate.Distance(GetEntityCoords(e), vector3(cfg.coords.x, cfg.coords.y, cfg.coords.z), 2.0) then
             DeleteEntity(e)
         end
     end
@@ -591,6 +634,10 @@ local function SpawnStaticNpc(key)
         TaskStartScenarioInPlace(ped, cfg.scenario, 0, true)
     end
     StaticPeds[key] = ped
+    -- Rattache le PNJ statique à l'appel qui l'a (re)créé : si une mission
+    -- B réutilise ce slot avant que le nettoyage différé de la mission A
+    -- ne s'exécute, ce nettoyage tardif ne doit pas supprimer le PNJ de B.
+    TargetedStatics[key .. '_owner'] = Callout and Callout.id
 
     if cfg.blip then
         local blip = AddBlipForCoord(cfg.coords.x, cfg.coords.y, cfg.coords.z)
@@ -612,16 +659,9 @@ local function RemoveStaticNpc(key)
     end
     StaticPeds[key] = nil
     TargetedStatics[key] = nil
+    TargetedStatics[key .. '_owner'] = nil
     if StaticBlips[key] then RemoveBlip(StaticBlips[key]) StaticBlips[key] = nil end
 end
-
--- Anna est présente en permanence, en service comme hors service : elle
-CreateThread(function()
-    while true do
-        SpawnStaticNpc('register')
-        Wait(4000)
-    end
-end)
 
 --  BLIPS DE MISSION
 
@@ -647,11 +687,18 @@ local function CreateCalloutBlips()
     SetBlipColour(blip, 3)
     SetBlipScale(blip, 1.0)
     SetBlipAsShortRange(blip, false)
-    pcall(function()
-        SetBlipHighDetail(blip, true)
-        SetBlipRoute(blip, true)
-        SetBlipRouteColour(blip, 3)
-    end)
+    pcall(SetBlipHighDetail, blip, true)
+    -- Ne pas écraser l'itinéraire du proche à prévenir s'il est déjà
+    -- actif (ex : chien de garde qui recrée les blips manquants).
+    -- Ne jamais réactiver le trajet générique par-dessus un itinéraire
+    -- spécial déjà actif (proche à prévenir, hôpital, poste).
+    if not (FamilyContactBlip or (Callout and RouteSwitched
+           and (RouteSwitched.hospital == Callout.id or RouteSwitched.custody == Callout.id))) then
+        pcall(function()
+            SetBlipRoute(blip, true)
+            SetBlipRouteColour(blip, 3)
+        end)
+    end
     BeginTextCommandSetBlipName('STRING')
     AddTextComponentSubstringPlayerName('Intervention — ' .. (Callout.label or 'Appel 17'))
     EndTextCommandSetBlipName(blip)
@@ -672,11 +719,20 @@ local function RefreshCallerBlip()
         SetBlipColour(blip, 3)
         SetBlipScale(blip, 1.0)
         SetBlipAsShortRange(blip, false)
-        pcall(function()
-            SetBlipHighDetail(blip, true)
-            SetBlipRoute(blip, true)
-            SetBlipRouteColour(blip, 3)
-        end)
+        pcall(SetBlipHighDetail, blip, true)
+        -- Ne pas réactiver l'itinéraire du requérant si celui du proche
+        -- à prévenir est déjà en cours (mise à niveau tardive du blip,
+        -- p. ex. PNJ requérant pas encore répliqué au moment du clic
+        -- MDT) — ça ramenait le GPS vers le témoin en plein trajet.
+        -- Ne jamais réactiver le trajet générique par-dessus un itinéraire
+    -- spécial déjà actif (proche à prévenir, hôpital, poste).
+    if not (FamilyContactBlip or (Callout and RouteSwitched
+           and (RouteSwitched.hospital == Callout.id or RouteSwitched.custody == Callout.id))) then
+            pcall(function()
+                SetBlipRoute(blip, true)
+                SetBlipRouteColour(blip, 3)
+            end)
+        end
         BeginTextCommandSetBlipName('STRING')
         AddTextComponentSubstringPlayerName('Intervention — ' .. (Callout.label or 'Appel 17'))
         EndTextCommandSetBlipName(blip)
@@ -735,6 +791,178 @@ local function EngagedOnCallout()
     return false
 end
 
+-- Sachet de stupéfiants jeté par un dealer en fuite. Le ciblage porte
+-- sur l'OBJET au sol, jamais sur le suspect : impossible de le ramasser
+-- à distance de l'endroit où il est réellement tombé.
+-- Globales (pas `local`) : le fichier est déjà au plafond des 200
+-- locales de chunk principal admises par Lua 5.4.
+StashObjects = {}   -- [dropId] = entité objet
+
+function SpawnStashProp(drop)
+    if not drop or StashObjects[drop.id] then return end
+    local hash = GetHashKey(C.StashProp or 'ba_prop_battle_bag_02b')
+    if not LoadModel(C.StashProp or 'ba_prop_battle_bag_02b') then return end
+    local obj = CreateObject(hash, drop.x, drop.y, drop.z, false, false, false)
+    SetModelAsNoLongerNeeded(hash)
+    if not obj or obj == 0 then return end
+    PlaceObjectOnGroundProperly(obj)
+    FreezeEntityPosition(obj, true)
+    SetEntityAsMissionEntity(obj, true, true)
+    StashObjects[drop.id] = obj
+
+    exports.ox_target:addLocalEntity(obj, {
+        {
+            name = 'callout_pickup_stash', icon = 'fa-solid fa-bag-shopping',
+            label = 'Ramasser le sachet', distance = 1.5,
+            canInteract = function() return IsOnDuty() and EngagedOnCallout() end,
+            onSelect = function()
+                SendQ('police:callouts:pickupStash', { dropId = drop.id })
+            end,
+        },
+    })
+end
+
+function RemoveStashProp(dropId)
+    local obj = StashObjects[dropId]
+    if obj and DoesEntityExist(obj) then
+        pcall(function() exports.ox_target:removeLocalEntity(obj) end)
+        DeleteEntity(obj)
+    end
+    StashObjects[dropId] = nil
+end
+
+function ClearStashProps()
+    for id in pairs(StashObjects) do RemoveStashProp(id) end
+    StashObjects = {}
+end
+
+-- Proche à prévenir (personne errante / découverte de corps) : un PNJ
+-- synthétique posé à l'adresse tirée du pool de doorsteps (celui de
+-- constatation_effraction), pas un rôle de l'intervention — une seule
+-- adresse active à la fois puisque ces scénarios n'ont qu'un individu
+-- à identifier.
+-- Désormais matérialisé CÔTÉ SERVEUR (cf. server/callouts.lua, watchdog
+-- après suspectIdentify) dès qu'un agent engagé est à portée : réseauté,
+-- donc visible par TOUS les agents de l'équipage — l'ancienne version
+-- locale (isNetwork=false) n'existait que sur la machine de l'agent qui
+-- avait cliqué « À prévenir » dans le MDT, invisible pour ses coéquipiers.
+FamilyContactNpc  = nil
+FamilyContactBlip = nil
+
+-- Réaction du proche à l'annonce, tirée au hasard — découverte de corps
+-- (décès) vs personne errante (retrouvée saine et sauve).
+FAMILY_REACTION_DEATH = {
+    "Non... non, c'est pas possible, pas lui.",
+    "Je m'en doutais, il ne répondait plus depuis des jours...",
+    "Merci d'être venu me le dire en personne, agent.",
+    "Qu'est-ce qui s'est passé ? Il faut que je sache.",
+}
+FAMILY_REACTION_FOUND = {
+    "Oh, Dieu merci, on la cherchait partout !",
+    "Elle va bien ? Je peux aller la voir ?",
+    "Merci infiniment, agent, on était morts d'inquiétude.",
+    "Ça fait des heures qu'on n'arrivait pas à la joindre...",
+}
+
+function SpawnFamilyContactNpc(contact)
+    -- Pas encore matérialisé côté serveur (aucun agent n'était encore à
+    -- portée au moment du clic MDT) : rien à faire, le thread de veille
+    -- plus bas réessaiera dès que contact.netId apparaîtra via SyncEngaged.
+    if not contact or not contact.netId then return end
+    if FamilyContactNpc and DoesEntityExist(FamilyContactNpc) then return end
+    if not NetworkDoesNetworkIdExist(contact.netId) then return end
+    local ped = NetworkGetEntityFromNetworkId(contact.netId)
+    if not ped or ped == 0 or not DoesEntityExist(ped) then return end
+
+    -- Ped réseauté créé côté serveur (cf. server/callouts.lua) : on ne le
+    -- crée/déplace/gèle pas ici, seulement les flags de comportement
+    -- local et le ciblage — posé exactement comme le témoin de VPE
+    -- (jamais figé, jamais sondé), qui ne flotte jamais.
+    FamilyContactNpc = ped
+    SetEntityInvincible(ped, true)
+    SetBlockingOfNonTemporaryEvents(ped, true)
+    SetPedCanRagdoll(ped, false)
+    SetEntityCanBeDamaged(ped, false)
+    SetPedDiesWhenInjured(ped, false)
+    if not IsPedActiveInScenario(ped) then
+        TaskStartScenarioInPlace(ped, 'WORLD_HUMAN_STAND_IMPATIENT', 0, true)
+    end
+
+    exports.ox_target:addLocalEntity(ped, {
+        {
+            name = 'callout_family_notify', icon = 'fa-solid fa-comment',
+            label = 'Annoncer la nouvelle', distance = 2.0,
+            canInteract = function() return IsOnDuty() and EngagedOnCallout() end,
+            onSelect = function()
+                TaskTurnPedToFaceEntity(ped, PlayerPedId(), 900)
+                if not PlayAnimFor('amb@world_human_cop_idles@male@idle_a', 'idle_b', 3000) then return end
+                local pool = (Callout and Callout.scenarioId == 'decouverte_corps')
+                    and FAMILY_REACTION_DEATH or FAMILY_REACTION_FOUND
+                Notify('« ' .. pool[math.random(1, #pool)] .. ' »', 'info')
+                SendQ('police:callouts:familyNotified', {})
+            end,
+        },
+    })
+end
+
+function RemoveFamilyContactNpc()
+    -- Le ped appartient au serveur (réseauté) : seul lui le supprime
+    -- (DeleteAllEntities, à la clôture de mission) — on ne fait ici que
+    -- retirer le ciblage local et la référence.
+    if FamilyContactNpc and DoesEntityExist(FamilyContactNpc) then
+        pcall(function() exports.ox_target:removeLocalEntity(FamilyContactNpc) end)
+    end
+    FamilyContactNpc = nil
+end
+
+function SetFamilyContactRoute(contact)
+    if not contact then return end
+    if FamilyContactBlip and DoesBlipExist(FamilyContactBlip) then RemoveBlip(FamilyContactBlip) end
+    -- Un seul itinéraire actif à la fois côté moteur : couper celui du
+    -- requérant (blip de scène), sinon le GPS reste bloqué sur lui.
+    for _, ob in ipairs(CalloutBlips) do
+        if DoesBlipExist(ob) then pcall(SetBlipRoute, ob, false) end
+    end
+    local b = AddBlipForCoord(contact.x, contact.y, contact.z)
+    SetBlipSprite(b, 280)
+    SetBlipColour(b, 3)
+    SetBlipScale(b, 0.9)
+    BeginTextCommandSetBlipName('STRING')
+    AddTextComponentSubstringPlayerName('Famille à prévenir')
+    EndTextCommandSetBlipName(b)
+    SetBlipRoute(b, true)
+    SetBlipRouteColour(b, 3)
+    FamilyContactBlip = b
+    SpawnFamilyContactNpc(contact)
+end
+
+function ClearFamilyContactRoute()
+    if FamilyContactBlip and DoesBlipExist(FamilyContactBlip) then RemoveBlip(FamilyContactBlip) end
+    FamilyContactBlip = nil
+    -- Le proche reste en jeu le temps du nettoyage serveur de la mission
+    -- (DeleteAllEntities, C.CleanupDelay) : on ne retire ici que le
+    -- ciblage local.
+    RemoveFamilyContactNpc()
+end
+
+-- Le PNJ se matérialise de façon asynchrone côté serveur (dès qu'un agent
+-- est à portée) : ce thread réessaie la résolution locale à chaque fois
+-- qu'un netId apparaît via SyncEngaged, pour tous les agents engagés —
+-- pas seulement celui qui a cliqué « À prévenir » dans le MDT.
+CreateThread(function()
+    while true do
+        Wait(3000)
+        if FamilyContactBlip and not (FamilyContactNpc and DoesEntityExist(FamilyContactNpc)) and Callout then
+            for _, p in ipairs(Callout.peds or {}) do
+                if p.familyContact and not p.familyContact.notified and p.familyContact.netId then
+                    SpawnFamilyContactNpc(p.familyContact)
+                    break
+                end
+            end
+        end
+    end
+end)
+
 -- Véhicule-sono du tapage
 
 local BoomboxTargeted  = nil
@@ -758,6 +986,11 @@ local function AttachBoomboxTarget(veh)
 end
 
 function StopBoombox()
+    -- Seul point de sortie de la sono : la zone ox_target posée par
+    -- AttachBoomboxTarget n'était jamais retirée explicitement ailleurs.
+    if BoomboxTargeted then
+        pcall(function() exports.ox_target:removeLocalEntity(BoomboxTargeted) end)
+    end
     if not Callout or not Callout.boomboxNet then return end
     local veh = NetworkDoesNetworkIdExist(Callout.boomboxNet)
         and NetworkGetEntityFromNetworkId(Callout.boomboxNet) or nil
@@ -770,6 +1003,208 @@ function StopBoombox()
         end)
     end
     BoomboxSilenced = true
+end
+
+-- RODÉO URBAIN — figures sur place, chute en fuite, vérification FOVES.
+-- Globales (pas `local`) : le fichier est déjà au plafond des 200
+-- variables locales de portée fichier, refusée par luac5.4 sinon.
+RodeoFovesTargeted = {}
+RodeoLoopStarted   = nil
+
+-- Véhicules de mission (motos du rodéo, voiture-sono, véhicule accidenté…)
+-- que le système anti-vol du trafic ambiant (client/population.lua,
+-- IsAmbientVehicle) ne doit PAS verrouiller : un PNJ de mission au volant
+-- est autrement traité comme n'importe quel trafic généré, empêchant les
+-- agents d'y monter (ex. impossible de conduire la moto d'un motard
+-- interpellé/en fuite). Reconstruit à chaque synchro (cf. sync handler).
+PoliceMissionVehicleNets = {}
+
+function RefreshPoliceMissionVehicleNets()
+    local nets = {}
+    if Callout then
+        if Callout.boomboxNet   then nets[Callout.boomboxNet]   = true end
+        if Callout.driverVehNet then nets[Callout.driverVehNet] = true end
+        if Callout.targetVehNet then nets[Callout.targetVehNet] = true end
+        if Callout.crashVehNet  then nets[Callout.crashVehNet]  = true end
+        for _, p in ipairs(Callout.peds or {}) do
+            if p.bikeNet then nets[p.bikeNet] = true end
+        end
+    end
+    PoliceMissionVehicleNets = nets
+end
+
+-- Cible ox_target posée sur la moto dès qu'elle est en streaming. Le
+-- résultat (volée ou non) n'est connu du serveur qu'après cette demande
+-- explicite (cf. police:callouts:checkFoves) — sans ça, la fiche MDT
+-- répondrait à la place du contrôle qu'elle est censée motiver.
+function AttachFovesTarget(veh, p)
+    if not veh or RodeoFovesTargeted[p.netId] then return end
+    RodeoFovesTargeted[p.netId] = true
+    exports.ox_target:addLocalEntity(veh, {
+        {
+            name = 'callout_rodeo_foves', icon = 'fa-solid fa-magnifying-glass',
+            label = 'Vérifier le FOVES', distance = 2.5,
+            canInteract = function()
+                if not IsOnDuty() or not EngagedOnCallout() then return false end
+                local cur = PedData(p.netId)
+                return not (cur and cur.fovesChecked)
+            end,
+            onSelect = function()
+                SendQ('police:callouts:checkFoves', { netId = p.netId })
+            end,
+        },
+    })
+end
+
+-- Chute pendant la fuite, tirée à la création de la scène (p.willFall) —
+-- même circuit blessé/soigné que les autres scénarios une fois signalée
+-- (cf. police:callouts:suspectWounded, server/callouts.lua).
+function ScheduleRodeoFall(p, entity, bike)
+    SetTimeout(3000 + math.random(0, 4000), function()
+        if not Callout or not DoesEntityExist(entity) or not DoesEntityExist(bike) then return end
+        if not IsPedInVehicle(entity, bike, false) then return end
+        local cur = PedData(p.netId)
+        if not cur or cur.state ~= 'idle' or cur.wounded then return end
+        RequestControl(entity)
+        SetPedToRagdoll(entity, 1500, 2500, 0, false, false, false)
+        SetTimeout(2200, function()
+            if DoesEntityExist(entity) and not IsPedInAnyVehicle(entity, false) then
+                SendQ('police:callouts:suspectWounded', { netId = p.netId })
+            end
+        end)
+    end)
+end
+
+-- Déjà en selle depuis le début de la scène (cf. p.inCar, SpawnVehicles
+-- côté serveur) : pose la cible FOVES dès qu'une moto est en streaming,
+-- et fait faire des figures à chaque motard tant qu'il n'a pas fui.
+function StartRodeoLoop()
+    if not Callout then return end
+    local calloutId = Callout.id
+    if RodeoLoopStarted == calloutId then return end
+    RodeoLoopStarted = calloutId
+    -- Jamais vidée entre deux missions sinon : un netId recyclé par une
+    -- intervention rodéo PRÉCÉDENTE restait marqué « déjà ciblé » pour
+    -- toujours, et la cible FOVES n'était alors plus jamais posée sur la
+    -- moto qui hérite de ce même netId.
+    RodeoFovesTargeted = {}
+
+    CreateThread(function()
+        while Callout and Callout.id == calloutId do
+            -- Passe 1 : possession/cible FOVES + rattrapage de la montée.
+            -- TaskWarpPedIntoVehicle (serveur, cf. SpawnVehicles) peut
+            -- échouer silencieusement — même leçon que le conducteur de
+            -- la voiture-sono du tapage (cf. RadioDriverSeated un peu
+            -- plus haut dans ce fichier) : un client reprend la main et
+            -- réessaie tant que le motard n'est pas effectivement assis.
+            local allMounted = true
+            for _, p in ipairs(Callout.peds or {}) do
+                if p.role == 'suspect' and p.bikeNet
+                   and NetworkDoesNetworkIdExist(p.bikeNet) then
+                    local veh = NetworkGetEntityFromNetworkId(p.bikeNet)
+                    if veh and veh ~= 0 and DoesEntityExist(veh) then
+                        pcall(NetworkRequestControlOfEntity, veh)
+                        AttachFovesTarget(veh, p)
+
+                        -- p.state == 'idle' : un suspect mort/menotté/soigné
+                        -- avant d'avoir pu s'asseoir ne doit plus jamais être
+                        -- rewarpé dans la moto — sans ce garde, un PNJ tué au
+                        -- sol se relevait, était rassis d'office, puis
+                        -- retombait mort en boucle à chaque passage (1 s).
+                        -- not st.fleeing : ce rattrapage ne vaut que pour la
+                        -- MISE EN SELLE initiale. Une fois la fuite lancée,
+                        -- un motard projeté au sol par une collision (corps
+                        -- éjecté à plusieurs mètres) ne doit pas être
+                        -- téléporté d'office sur sa moto pour reprendre la
+                        -- course comme si rien ne s'était passé.
+                        local st0 = BrainState[p.netId]
+                        if p.inCar and p.state == 'idle' and not (st0 and st0.fleeing) then
+                            local ped = NetworkDoesNetworkIdExist(p.netId)
+                                and NetworkGetEntityFromNetworkId(p.netId) or nil
+                            if ped and ped ~= 0 and DoesEntityExist(ped) then
+                                if not IsPedInVehicle(ped, veh, false) then
+                                    allMounted = false
+                                    if IsBrain and RequestControl(ped) then
+                                        ClearPedTasks(ped)
+                                        SetPedIntoVehicle(ped, veh, -1)
+                                    end
+                                end
+                            else
+                                allMounted = false
+                            end
+                        end
+                    else
+                        allMounted = false
+                    end
+                end
+            end
+
+            -- Passe 2 : figures/fuite, seulement une fois TOUT LE MONDE
+            -- effectivement en selle — sinon certains démarraient pendant
+            -- que d'autres étaient encore en train de monter (ou plantés
+            -- à pied faute d'avoir réussi à s'asseoir).
+            for _, p in ipairs(Callout.peds or {}) do
+                if p.role == 'suspect' and p.bikeNet
+                   and NetworkDoesNetworkIdExist(p.bikeNet) then
+                    local veh = NetworkGetEntityFromNetworkId(p.bikeNet)
+                    if veh and veh ~= 0 and DoesEntityExist(veh) then
+                        if IsBrain and p.inCar and allMounted then
+                            local st = BrainState[p.netId]
+                            -- p.state == 'idle' et not p.identified : sans ça, un
+                            -- motard en train d'être interpellé (menotté,
+                            -- soigné…) avant même d'avoir fui continuait à
+                            -- se voir réassigner des dérapages/wheelies.
+                            if not (st and st.fleeing) and p.state == 'idle'
+                               and not p.identified then
+                                local ped = NetworkGetEntityFromNetworkId(p.netId)
+                                if ped and ped ~= 0 and DoesEntityExist(ped)
+                                   and IsPedInVehicle(ped, veh, false)
+                                   and GetPedInVehicleSeat(veh, -1) == ped then
+                                    RequestControl(ped)
+                                    -- TaskVehicleTempAction (dérapage à l'aveugle,
+                                    -- sans pathfinding) pouvait envoyer la moto
+                                    -- percuter un mur, un véhicule garé ou une
+                                    -- autre moto du groupe. TaskVehicleDriveWander
+                                    -- utilise le réseau routier et contourne
+                                    -- véhicules/objets/piétons — même effet de
+                                    -- « tours » sur place (zone réduite), mais qui
+                                    -- tient compte du décor.
+                                    TaskVehicleDriveWander(ped, veh, math.random(8, 12),
+                                        C.RodeoIdleDrivingStyle)
+                                end
+                            elseif st and st.fleeing then
+                                -- Filet de sécurité : une moto censée fuir
+                                -- mais restée immobile plusieurs secondes
+                                -- (tâche jamais vraiment prise, contrôle
+                                -- réseau refusé au moment du déclenchement,
+                                -- coincée contre un obstacle…) repart au
+                                -- lieu de rester plantée indéfiniment —
+                                -- symptôme vu : un seul motard qui roule
+                                -- sur plusieurs censés fuir en même temps.
+                                local ped = NetworkGetEntityFromNetworkId(p.netId)
+                                if ped and ped ~= 0 and DoesEntityExist(ped)
+                                   and IsPedInVehicle(ped, veh, false) then
+                                    if GetEntitySpeed(veh) < 1.0 then
+                                        st.rodeoStuckTicks = (st.rodeoStuckTicks or 0) + 1
+                                        if st.rodeoStuckTicks >= 3 then
+                                            st.rodeoStuckTicks = 0
+                                            RequestControl(ped)
+                                            TaskVehicleDriveWander(ped, veh, 25.0,
+                                                C.RodeoFleeDrivingStyle)
+                                        end
+                                    else
+                                        st.rodeoStuckTicks = 0
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+
+            Wait(1000)
+        end
+    end)
 end
 
 -- Fait danser un fêtard. L'animation tourne tant qu'il n'a pas été
@@ -805,36 +1240,6 @@ function StartDancing(ped, p)
     end)
 end
 
--- Test rapide en jeu de combos son/soundset pour PLAY_SOUND_FROM_ENTITY,
-RegisterCommand('testson', function(source, args)
-    local name = args[1]
-    local set  = args[2]
-    if not name or not set then
-        print('^3[testson]^7 usage : /testson NomDuSon NomDuSoundset')
-        return
-    end
-    local ped = PlayerPedId()
-    local veh = GetVehiclePedIsIn(ped, false)
-    if veh == 0 then
-        veh = GetClosestVehicle(GetEntityCoords(ped), 5.0, 0, 70)
-    end
-    if not veh or veh == 0 then
-        print('^1[testson]^7 aucun véhicule à proximité')
-        return
-    end
-    local loaded = RequestScriptAudioBank(set, true)
-    print(('^3[testson]^7 chargement banc "%s" — loaded=%s'):format(set, tostring(loaded)))
-    local soundId = GetSoundId()
-    local ok, err = pcall(function()
-        PlaySoundFromEntity(soundId, name, veh, set, false, 0)
-    end)
-    print(('^2[testson]^7 "%s"/"%s" sur véhicule %s — ok=%s err=%s')
-        :format(name, set, tostring(veh), tostring(ok), tostring(err)))
-    CreateThread(function()
-        Wait(4000)
-        ReleaseSoundId(soundId)
-    end)
-end, false)
 
 -- Maintien de la musique. Exécuté par TOUS les agents engagés : les
 local function StartBoombox()
@@ -957,8 +1362,18 @@ local function LayoutRadioScene()
     end
 
     -- Fêtards qui dansent : tentée par CHAQUE client, à chaque tour de
+    -- boucle — mais seulement pour ceux jamais encore approchés. Sans le
+    -- filtre sur l'état, un fêtard interpellé (identifié, menotté…) que
+    -- StartDancing venait tout juste d'arrêter était aussitôt relancé au
+    -- tour suivant, dès que Dancing[netId] retombait à nil : il se
+    -- remettait à danser après chaque fin d'animation.
+    local resolvedStates = {
+        cuffed = true, stunned = true, delivered = true,
+        dispersed = true, escaped = true, dead = true,
+    }
     for _, p in ipairs(Callout.peds or {}) do
-        if p.role == 'suspect' and not p.inCar and not Dancing[p.netId] then
+        if p.role == 'suspect' and not p.inCar and not Dancing[p.netId]
+           and not p.identified and not resolvedStates[p.state] then
             local ped = EntityFromNet(p.netId, 5)
             if ped and DoesEntityExist(ped) then StartDancing(ped, p) end
         end
@@ -1049,9 +1464,14 @@ local function IsAimedAtBy(entity)
             local ped = GetPlayerPed(pl)
             if ped and ped ~= 0 and DoesEntityExist(ped) then
                 if #(GetEntityCoords(ped) - mine) <= (B.AimDist or 18.0) then
-                    -- Visée libre (clavier) ou visée verrouillée
-                    local aiming = IsPlayerFreeAiming(pl)
-                        or IsPlayerTargettingAnything(pl)
+                    -- CE PNJ précisément, pas « l'agent vise quelque chose
+                    -- dans le tas » — IsPlayerTargettingAnything/
+                    -- IsPlayerFreeAiming ignorent la cible et faisaient donc
+                    -- lever les mains à TOUS les suspects proches dès qu'un
+                    -- seul était visé (flagrant dès qu'ils sont regroupés,
+                    -- ex. rodéo urbain).
+                    local aiming = IsPlayerFreeAimingAtEntity(pl, entity)
+                        or IsPlayerTargettingEntity(pl, entity)
                     local drawn = GetSelectedPedWeapon(ped) ~= UNARMED_HASH
                     if aiming and drawn then
                         return true, ped
@@ -1586,34 +2006,50 @@ local function PlaceCorpseAtGround(corpse, netId, anchor)
 
     if not DoesEntityExist(corpse) then return false end
 
-    -- 5. Effondrement puis mort (ragdoll physique)
-    if not RequestControl(corpse) then
-        CorpseLog('contrôle réseau', 'ÉCHEC avant effondrement — PNJ probablement resté debout')
-    end
-    SetPedToRagdoll(corpse, 20000, 20000, 0, false, false, false)
-    Wait(CFG.RagdollDelay or 500)
-    if not DoesEntityExist(corpse) then return false end
+    -- 5. Effondrement puis mort (ragdoll physique). Si RequestControl
+    -- échoue, le ragdoll/dégâts qui suivent n'ont silencieusement aucun
+    -- effet (entité pas possédée) — le corps restait alors gelé DEBOUT à
+    -- la bonne position, la vérification finale (étape 6) ne contrôlant
+    -- que le sol, jamais l'état de mort. On boucle donc jusqu'à confirmer
+    -- IsPedDeadOrDying, avec un nouveau RequestControl à chaque tentative.
+    local killed = false
+    for attempt = 1, 3 do
+        if not DoesEntityExist(corpse) then return false end
+        if not RequestControl(corpse) then
+            CorpseLog('contrôle réseau', ('ÉCHEC tentative %d avant effondrement'):format(attempt))
+        end
+        SetPedToRagdoll(corpse, 20000, 20000, 0, false, false, false)
+        Wait(CFG.RagdollDelay or 500)
+        if not DoesEntityExist(corpse) then return false end
 
-    -- Le coup de grâce doit être LE TIR lui-même : un `ApplyDamageToPed`
-    SetEntityHealth(corpse, 200)
-    if CFG.BloodDecal ~= false and DoesEntityExist(corpse) then
-        -- Le corps est encore invisible (chute masquée, cf.
-        SetCorpseVisible(corpse, netId, true)
-        local bc = GetEntityCoords(corpse)
-        -- L'entité "propriétaire" du tir ne doit JAMAIS être le corps
-        pcall(function()
-            ShootSingleBulletBetweenCoords(
-                bc.x, bc.y, bc.z + 2.0,
-                bc.x, bc.y, bc.z,
-                500, false, GetHashKey('WEAPON_PISTOL'), 0,
-                false, false, 1.0)
-        end)
+        -- Le coup de grâce doit être LE TIR lui-même : un `ApplyDamageToPed`
+        SetEntityHealth(corpse, 200)
+        if CFG.BloodDecal ~= false and DoesEntityExist(corpse) then
+            -- Le corps est encore invisible (chute masquée, cf.
+            SetCorpseVisible(corpse, netId, true)
+            local bc = GetEntityCoords(corpse)
+            -- L'entité "propriétaire" du tir ne doit JAMAIS être le corps
+            pcall(function()
+                ShootSingleBulletBetweenCoords(
+                    bc.x, bc.y, bc.z + 2.0,
+                    bc.x, bc.y, bc.z,
+                    500, false, GetHashKey('WEAPON_PISTOL'), 0,
+                    false, false, 1.0)
+            end)
+        end
+        Wait(100)
+        if DoesEntityExist(corpse) and not IsPedDeadOrDying(corpse, true) then
+            -- Filet de sécurité si le tir n'a pas suffi à achever le PNJ.
+            ApplyDamageToPed(corpse, 400, false)
+            Wait(100)
+        end
+
+        if DoesEntityExist(corpse) and IsPedDeadOrDying(corpse, true) then
+            killed = true
+            break
+        end
     end
-    Wait(100)
-    if DoesEntityExist(corpse) and not IsPedDeadOrDying(corpse, true) then
-        -- Filet de sécurité si le tir n'a pas suffi à achever le PNJ.
-        ApplyDamageToPed(corpse, 400, false)
-    end
+    CorpseLog('mort confirmée', tostring(killed))
 
     -- 6. Vérification finale
     Wait(CFG.VerifyDelay or 2000)
@@ -1757,12 +2193,12 @@ local function RunDoorstepWait(entity, p)
 
         -- Il ne doit jamais s'éloigner de son entrée.
         local function Leash()
-            if #(GetEntityCoords(entity) - anchor) <= leash then return end
+            if LSLegacy.Validate.Distance(GetEntityCoords(entity), anchor, leash) then return end
             DoorLog('rappel vers l\'entrée')
             TaskGoStraightToCoord(entity, anchor.x, anchor.y, anchor.z, 1.0, 6000,
                 baseHead, 0.3)
             local t = 0
-            while t < 60 and Alive() and #(GetEntityCoords(entity) - anchor) > 0.6 do
+            while t < 60 and Alive() and not LSLegacy.Validate.Distance(GetEntityCoords(entity), anchor, 0.6) do
                 Wait(100) t = t + 1
             end
         end
@@ -1976,7 +2412,14 @@ local function LayoutDeathScene()
     end
     SceneRetries = 0
 
-    -- 2) Le corps, posé par la séquence dédiée. Le verrou n'est armé
+    -- 2) Le corps, posé par la séquence dédiée. Verrouillé tout de suite
+    -- pour éviter deux poses concurrentes (le sondage tourne toutes les
+    -- 500 ms, largement plus court que la séquence complète) — mais
+    -- LIBÉRÉ si la pose échoue : sans ça, un PlaceCorpseAtGround en échec
+    -- (contrôle réseau jamais obtenu, corps jamais tué) verrouillait la
+    -- scène à vie et le PNJ restait figé debout, sans jamais être
+    -- retenté, alors qu'il reste interpellable/constatable comme si de
+    -- rien n'était.
     SceneLaidOut = Callout.id
     local calloutId = Callout.id
 
@@ -1985,8 +2428,11 @@ local function LayoutDeathScene()
         SetCorpseVisible(corpse, corpseNet, false)
 
         local ok = PlaceCorpseAtGround(corpse, corpseNet, anchor)
-        if not ok and SP.Debug then
-            print('^1[corps]^7 pose non concluante — voir le journal ci-dessus.')
+        if not ok then
+            if SceneLaidOut == calloutId then SceneLaidOut = nil end
+            if SP.Debug then
+                print('^1[corps]^7 pose non concluante — nouvelle tentative au prochain sondage.')
+            end
         end
 
         -- Révélation dans TOUS les cas, y compris si la pose a échoué :
@@ -2395,10 +2841,22 @@ local function StopSceneAmbience(netId, entity, faceEntity)
     ClearPedTasks(entity)
     ClearPedSecondaryTask(entity)
     SetMoveRate(entity, 1.0)
-    if faceEntity and DoesEntityExist(faceEntity) then
+
+    -- Une seule tâche finale assignée : TaskStandStill après un
+    -- TaskTurnPedToFaceEntity annulait le tour dans le même appel, avant
+    -- même que l'animation de rotation n'ait eu le temps de s'amorcer.
+    -- Un individu menotté garde sa posture mains dans le dos : sans ça,
+    -- ClearPedTasks() ci-dessus efface l'animation lancée une seule fois
+    -- au menottage (BrainState[netId].cuffAnim), qui ne sera jamais rejouée.
+    local cur = PedData(netId)
+    if cur and cur.state == 'cuffed' and LoadAnim('mp_arresting') then
+        TaskPlayAnim(entity, 'mp_arresting', 'idle', 8.0, -8.0, -1, 49, 0,
+            false, false, false)
+    elseif faceEntity and DoesEntityExist(faceEntity) then
         TaskTurnPedToFaceEntity(entity, faceEntity, 900)
+    else
+        TaskStandStill(entity, -1)
     end
-    TaskStandStill(entity, -1)
 end
 
 -- Boucle d'ambiance d'un PNJ. Lancée une seule fois par PNJ, sur le
@@ -2441,12 +2899,12 @@ local function RunSceneAmbience(entity, p)
             RequestControl(entity)
 
             -- Laisse : il ne quitte jamais les abords de son poste.
-            if #(GetEntityCoords(entity) - anchor) > leash + 1.0 then
+            if not LSLegacy.Validate.Distance(GetEntityCoords(entity), anchor, leash + 1.0) then
                 TaskGoStraightToCoord(entity, anchor.x, anchor.y, anchor.z,
                     1.2, 6000, baseHead, 0.4)
                 local t = 0
                 while t < 50 and Alive()
-                      and #(GetEntityCoords(entity) - anchor) > 1.0 do
+                      and not LSLegacy.Validate.Distance(GetEntityCoords(entity), anchor, 1.0) do
                     Wait(100) t = t + 1
                 end
             end
@@ -2518,6 +2976,44 @@ local function RunSceneAmbience(entity, p)
     end)
 end
 
+-- Oriente un PNJ de mission vers l'agent qui vient de déclencher une
+-- interaction (bouton ox_target). Jamais sur un corps ni sur un blessé
+-- au sol (WoundedPed) : ceux-ci gardent leur posture quoi qu'il arrive.
+-- Coupe aussi l'ambiance de scène en cours pour éviter qu'elle ne
+-- réassigne une tâche concurrente pendant le dialogue.
+function BeginPedInteraction(entity, p)
+    if not entity or not DoesEntityExist(entity) then return false end
+    if IsPedDeadOrDying(entity, true) then return false end
+    if p then
+        if p.state == 'dead' then return false end
+        if WoundedPed[p.netId] then return false end
+    end
+    local officer = PlayerPedId()
+    if not officer or officer == 0 or not DoesEntityExist(officer) then return false end
+
+    if p and p.netId then
+        RequestControl(entity)
+        StopSceneAmbience(p.netId, entity, officer)
+    else
+        RequestControl(entity)
+        ClearPedTasks(entity)
+        TaskTurnPedToFaceEntity(entity, officer, 900)
+    end
+    return true
+end
+
+-- Fin de l'interaction : relance l'ambiance de scène du PNJ (marche,
+-- danse, observation…) là où BeginPedInteraction l'avait coupée. Ne
+-- touche pas un mort ni un blessé, et rien à faire si la mission a pris
+-- fin entre-temps.
+function EndPedInteraction(entity, p)
+    if not p or not p.netId then return end
+    if not entity or not DoesEntityExist(entity) then return end
+    if p.state == 'dead' or WoundedPed[p.netId] then return end
+    if not Callout then return end
+    RunSceneAmbience(entity, p)
+end
+
 -- Groupe de relation partagé par l'animal et son maître.
 local AnimalGroup = nil
 
@@ -2549,6 +3045,31 @@ local function EnsureMassSuspectGroup()
         pcall(SetRelationshipBetweenGroups, 0, MassSuspectGroup, MassSuspectGroup)
     end
     return MassSuspectGroup
+end
+
+-- Rixe de rue : les protagonistes doivent RÉELLEMENT se battre entre eux.
+-- EnsureMassSuspectGroup ne convient pas ici : ses membres sont mis
+-- « compagnons » (relation 0, la plus amicale) pour ÉVITER qu'ils se
+-- battent — l'exact inverse de ce que veut une bagarre. Sans groupe
+-- dédié, un suspect visé par TaskCombatPed considère son agresseur comme
+-- un ami et panique/fuit au lieu de riposter : c'est ce qui ressemblait
+-- à une fuite généralisée alors que la rixe devait rester sur place.
+-- Global (pas de `local`) : le fichier est déjà à la limite des 200
+-- variables locales de portée fichier, refusée par luac5.4 sinon.
+BrawlGroup = nil
+
+function EnsureBrawlGroup()
+    if BrawlGroup then return BrawlGroup end
+    local ok, hash = pcall(function()
+        local _, h = AddRelationshipGroup('LSL_BRAWL')
+        return h
+    end)
+    if ok and hash then
+        BrawlGroup = hash
+        -- 5 = haine : ils se considèrent comme de vrais adversaires.
+        pcall(SetRelationshipBetweenGroups, 5, BrawlGroup, BrawlGroup)
+    end
+    return BrawlGroup
 end
 
 -- Braquage : même mécanique que EnsureMassSuspectGroup — sans groupe de
@@ -2624,7 +3145,13 @@ local function HeistCivilPosture(entity, posture)
     local fearPool = A and A.bystander
 
     if posture == 'down' then
-        SetPedToRagdoll(entity, 600000, 600000, 0, false, false, false)
+        -- 'down' est l'état de scène dominant (cf. C.Heist.Scenes) : un
+        -- simple ragdoll laissait les civils s'effondrer sans jamais
+        -- jouer les animations de peur/reddition prévues pour eux.
+        local applied = fearPool and TryPostureMix(entity, fearPool)
+        if not applied then
+            SetPedToRagdoll(entity, 600000, 600000, 0, false, false, false)
+        end
     elseif posture == 'crouch' or posture == 'hide' or posture == 'counter'
            or posture == 'handsup' or posture == 'frozen' then
         local applied = fearPool and TryPostureMix(entity, fearPool)
@@ -2949,7 +3476,7 @@ local function ApplyInitialTask(p, entity)
         SetPedCanRagdollFromPlayerImpact(entity, false)
 
         if Callout and Callout.victimAssault then
-            -- Encore aux prises avec ses agresseurs : debout, elle se
+            -- Encore aux prises avec ses agresseurs (chien compris) : debout, elle se
             SetPedCanRagdoll(entity, false)
             TaskStandStill(entity, -1)
             Speak(entity, p.netId, 'hurt')
@@ -3012,8 +3539,15 @@ local function ApplyInitialTask(p, entity)
             return
         end
 
-        -- Tuerie de masse : plusieurs suspects doivent rester alliés, pas
-        if Callout and Callout.massIncident then
+        -- Plusieurs suspects doivent rester alliés entre eux, pas se
+        -- battre : sans groupe de relation commun, un pool `gang` peut
+        -- piocher des modèles de factions natives hostiles l'une à
+        -- l'autre (cambriolage notamment). Le braquage a son propre
+        -- groupe d'équipe posé plus tard (StartHeistScene).
+        if Callout and Callout.brawl then
+            local grp = EnsureBrawlGroup()
+            if grp then SetPedRelationshipGroupHash(entity, grp) end
+        elseif Callout and not Callout.heist then
             local grp = EnsureMassSuspectGroup()
             if grp then SetPedRelationshipGroupHash(entity, grp) end
         end
@@ -3025,9 +3559,25 @@ local function ApplyInitialTask(p, entity)
         if p.behavior == 'aggressive' then
             SetBlockingOfNonTemporaryEvents(entity, false)
             -- Tuerie de masse : s'en prend à qui est le plus proche,
-            local target = Callout and Callout.massIncident
+            local massIncident = Callout and Callout.massIncident
+            local target = massIncident
                 and NearestThreatPed(entity) or NearestEngagedPed(entity)
-            if target then TaskCombatPed(entity, target, 0, 16) end
+            if target then
+                TaskCombatPed(entity, target, 0, 16)
+            elseif massIncident then
+                -- Personne à portée à l'instant du spawn (agents encore en
+                -- approche) : sans ceci le PNJ restait figé jusqu'au contact
+                -- physique au lieu de s'engager dès qu'une cible entre en jeu.
+                CreateThread(function()
+                    local tries = 0
+                    while tries < 30 and DoesEntityExist(entity) and not IsEntityDead(entity) do
+                        local t = NearestThreatPed(entity)
+                        if t then TaskCombatPed(entity, t, 0, 16) return end
+                        tries = tries + 1
+                        Wait(1000)
+                    end
+                end)
+            end
             Speak(entity, p.netId, 'combat')
         elseif p.behavior == 'passive' and Callout and Callout.brawl then
             -- Rixe : les individus se battent réellement entre eux tant
@@ -3050,8 +3600,17 @@ local function ApplyInitialTask(p, entity)
                 CreateThread(function() MakeDrunk(entity) end)
             end
 
-            -- Un individu qui attend n'est pas figé au garde-à-vous :
-            PlayAmbience(entity, 'suspect', { keep = p.hidden or nil })
+            -- Tapage : occupés à danser, pas simplement en faction.
+            if Callout and Callout.suspectScenario then
+                TaskStartScenarioInPlace(entity, Callout.suspectScenario, 0, true)
+                Wait(300)
+                if DoesEntityExist(entity) and not IsPedActiveInScenario(entity) then
+                    PlayAmbience(entity, 'suspect', { keep = p.hidden or nil })
+                end
+            else
+                -- Un individu qui attend n'est pas figé au garde-à-vous :
+                PlayAmbience(entity, 'suspect', { keep = p.hidden or nil })
+            end
         else -- flee : attend le déclenchement
             SetBlockingOfNonTemporaryEvents(entity, true)
 
@@ -3092,7 +3651,10 @@ local function ApplyInitialTask(p, entity)
                     PlayAmbience(entity, 'suspect')
                 end
             else
-                TaskStandStill(entity, -1)
+                -- Pas de posture unique imposée : chacun tire la sienne
+                -- dans la liste d'ambiance du scénario (cambriolage —
+                -- tout le monde ne fouille pas de la même façon).
+                PlayAmbience(entity, 'suspect')
             end
         end
     end
@@ -3100,6 +3662,11 @@ end
 
 local function TriggerFlee(p, entity, st)
     if st.fleeing then return end
+    -- Sans ce contrôle réseau, l'assignation de tâche qui suit peut être
+    -- silencieusement ignorée si ce client n'est pas propriétaire de
+    -- l'entité (cas de la propagation en chaîne aux complices — cf. plus
+    -- bas — où l'appelant n'a jamais explicitement demandé le contrôle).
+    RequestControl(entity)
     st.fleeing   = true
     st.fleeStart = GetGameTimer()
     st.fleeStage = 1
@@ -3110,24 +3677,85 @@ local function TriggerFlee(p, entity, st)
     SetBlockingOfNonTemporaryEvents(entity, false)
     Speak(entity, p.netId, 'flee')
 
+    -- Groupe soudé (cambriolage résidentiel, suspectCluster défini) :
+    -- dès qu'un complice repère l'agent, tous les autres réagissent en
+    -- même temps, au lieu de se faire cueillir un par un chacun avec son
+    -- propre rayon de détection individuel.
+    if Callout and Callout.suspectCluster and Callout.peds then
+        for _, op in ipairs(Callout.peds) do
+            if op.role == 'suspect' and op.netId ~= p.netId and op.behavior == 'flee' then
+                local ost = BrainState[op.netId] or {}
+                BrainState[op.netId] = ost
+                if not ost.fleeing then
+                    local oe = PedEntity(op)
+                    if oe then TriggerFlee(op, oe, ost) end
+                end
+            end
+        end
+    end
+
     if p.fleeOn == 'bike' and p.bikeNet then
         local bike = NetworkDoesNetworkIdExist(p.bikeNet)
             and NetworkGetEntityFromNetworkId(p.bikeNet) or nil
-        if bike and bike ~= 0 and DoesEntityExist(bike)
-           and #(GetEntityCoords(entity) - GetEntityCoords(bike)) < 25.0 then
-            TaskEnterVehicle(entity, bike, 10000, -1, 2.0, 1, 0)
-            st.onBike = true
-            SetTimeout(6000, function()
-                if DoesEntityExist(entity) and IsPedInVehicle(entity, bike, false) then
-                    TaskVehicleDriveWander(entity, bike, 25.0, 786603)
-                end
-            end)
-            return
+        if bike and bike ~= 0 and DoesEntityExist(bike) then
+            -- Rodéo urbain : déjà en selle depuis le début de la scène
+            -- (cf. p.inCar) — fuite immédiate, sans repasser par la
+            -- marche jusqu'à la moto.
+            if p.inCar and IsPedInVehicle(entity, bike, false) then
+                st.onBike = true
+                TaskVehicleDriveWander(entity, bike, 25.0, C.RodeoFleeDrivingStyle)
+                if p.willFall then ScheduleRodeoFall(p, entity, bike) end
+                return
+            end
+            if LSLegacy.Validate.Distance(GetEntityCoords(entity), GetEntityCoords(bike), 25.0) then
+                TaskEnterVehicle(entity, bike, 10000, -1, 2.0, 1, 0)
+                st.onBike = true
+                SetTimeout(6000, function()
+                    if DoesEntityExist(entity) and IsPedInVehicle(entity, bike, false) then
+                        TaskVehicleDriveWander(entity, bike, 25.0, C.RodeoFleeDrivingStyle)
+                        if p.willFall then ScheduleRodeoFall(p, entity, bike) end
+                    end
+                end)
+                return
+            end
         end
     elseif p.fleeOn == 'car' and p.isDriver and Callout and Callout.driverVehNet then
         local car = NetworkDoesNetworkIdExist(Callout.driverVehNet)
             and NetworkGetEntityFromNetworkId(Callout.driverVehNet) or nil
         if car and car ~= 0 and DoesEntityExist(car) then
+            -- Tuerie de masse : repli en tirant vers le véhicule au lieu
+            -- d'y marcher tranquillement, avant d'embarquer et de fuir.
+            if Callout.massIncident and p.weapon then
+                local cc = GetEntityCoords(car)
+                local threat = NearestThreatPed(entity)
+                local tc = threat and GetEntityCoords(threat) or GetEntityCoords(entity)
+                local okShoot = pcall(function()
+                    TaskGoToCoordWhileShootingAtCoord(entity, cc.x, cc.y, cc.z,
+                        tc.x, tc.y, tc.z, true, 0, 0, 1.5, false, false, 0)
+                end)
+                if not okShoot and threat then
+                    TaskCombatPed(entity, threat, 0, 16)
+                end
+                st.onBike = true
+                CreateThread(function()
+                    local deadline = GetGameTimer() + 15000
+                    while DoesEntityExist(entity) and DoesEntityExist(car)
+                          and GetGameTimer() < deadline
+                          and #(GetEntityCoords(entity) - GetEntityCoords(car)) > 3.0 do
+                        Wait(250)
+                    end
+                    if DoesEntityExist(entity) and DoesEntityExist(car) then
+                        TaskEnterVehicle(entity, car, 8000, -1, 2.0, 1, 0)
+                        SetTimeout(4000, function()
+                            if DoesEntityExist(entity) and IsPedInVehicle(entity, car, false) then
+                                SetVehicleEngineOn(car, true, true, false)
+                                TaskVehicleDriveWander(entity, car, 30.0, 786603)
+                            end
+                        end)
+                    end
+                end)
+                return
+            end
             SetPedIntoVehicle(entity, car, -1)
             SetVehicleEngineOn(car, true, true, false)
             TaskVehicleDriveWander(entity, car, 30.0, 786603)
@@ -3160,6 +3788,22 @@ local function TriggerFlee(p, entity, st)
             SetPedDropsInventoryWeapon(entity, GetHashKey(cur.weapon), 0.0, 0.0, 0.0, 1)
             RemoveWeaponFromPed(entity, GetHashKey(cur.weapon))
             SendQ('police:callouts:suspectDropWeapon', { netId = p.netId })
+        end)
+    end
+
+    -- Trafic de stup : le dealer en fuite peut jeter son sachet. Il
+    -- tombe là où il se trouve à cet instant précis — pas sur lui.
+    local hasStash = false
+    for _, it in ipairs(p.items or {}) do
+        if it == 'Sachet de stupéfiants' then hasStash = true break end
+    end
+    if Callout and Callout.stashDrop and p.role == 'suspect' and hasStash
+       and math.random(1, 100) <= (C.DropStashChance or 35) then
+        SetTimeout(math.random(1000, 10000), function()
+            if not Callout or not DoesEntityExist(entity) then return end
+            local c = GetEntityCoords(entity)
+            SendQ('police:callouts:suspectDropStash',
+                { netId = p.netId, x = c.x, y = c.y, z = c.z })
         end)
     end
 end
@@ -3205,10 +3849,43 @@ local function HeistSpotted()
     return false
 end
 
+-- Cible et engage le combat pour un braqueur. Si personne n'est
+-- résolvable à l'instant précis de la décision (agent encore en
+-- approche, entité pas encore streamée), une simple tentative unique
+-- laissait le braqueur figé jusqu'à ce qu'on le bouscule physiquement —
+-- même défaut que la tuerie de masse à Elgin Avenue. Global (pas
+-- `local`) : le fichier est déjà au plafond des 200 locales de chunk.
+function HeistEngage(e)
+    local tgt = NearestEngagedPed(e)
+    if tgt then
+        TaskCombatPed(e, tgt, 0, 16)
+        return
+    end
+    CreateThread(function()
+        local tries = 0
+        while tries < 30 and DoesEntityExist(e) and not IsEntityDead(e) do
+            local t = NearestEngagedPed(e)
+            if t then TaskCombatPed(e, t, 0, 16) return end
+            tries = tries + 1
+            Wait(1000)
+        end
+    end)
+end
+
 -- Applique la réaction choisie par le chef à TOUT le groupe.
 local function HeistApply(reaction)
     local V = (C.Heist or {}).Vehicle or {}
     HeistLog('réaction du groupe : %s', reaction)
+
+    -- Repli en voiture : un braqueur peut être abandonné sur place, qui
+    -- fuira alors à pied pendant que le reste embarque normalement.
+    local stranded = {}
+    if reaction == 'flee_car' and #(Heist.crew or {}) > 0
+       and math.random(1, 100) <= (V.StrandChance or 30) then
+        local left = Heist.crew[math.random(1, #Heist.crew)]
+        stranded[left.netId] = true
+        HeistLog('un braqueur est abandonné sur place, fuite à pied')
+    end
 
     for i, m in ipairs(Heist.crew or {}) do
         local e = PedEntity(m)
@@ -3230,8 +3907,7 @@ local function HeistApply(reaction)
                 SetBlockingOfNonTemporaryEvents(e, false)
                 SetPedCombatAttributes(e, 46, true)
                 SetPedCombatAttributes(e, 5, false)   -- ne charge pas
-                local tgt = NearestEngagedPed(e)
-                if tgt then TaskCombatPed(e, tgt, 0, 16) end
+                HeistEngage(e)
                 -- Un retranché arme au poing est engagé au combat : sans
                 SendQ('police:callouts:suspectCombat',
                     { netId = m.netId, combat = true })
@@ -3240,8 +3916,7 @@ local function HeistApply(reaction)
                 SetBlockingOfNonTemporaryEvents(e, false)
                 SetPedCombatAttributes(e, 46, true)
                 SetPedCombatAttributes(e, 5, true)
-                local tgt = NearestEngagedPed(e)
-                if tgt then TaskCombatPed(e, tgt, 0, 16) end
+                HeistEngage(e)
                 Speak(e, m.netId, 'combat')
                 SendQ('police:callouts:suspectCombat',
                     { netId = m.netId, combat = true })
@@ -3250,13 +3925,22 @@ local function HeistApply(reaction)
                 -- Repli sur le véhicule : ils embarquent l'un après
                 local veh = Heist.veh
                 -- Une place fixe par braqueur (au lieu de -2 « n'importe
+
+                if stranded[m.netId] then
+                    -- Abandonné par ses complices : il fuit à pied, pas
+                    local st = BrainState[m.netId] or {}
+                    BrainState[m.netId] = st
+                    SetBlockingOfNonTemporaryEvents(e, false)
+                    TriggerFlee(m, e, st)
+                    goto continueCrew
+                end
+
                 local seat = i - 1
                 if veh and DoesEntityExist(veh) then
                     SetBlockingOfNonTemporaryEvents(e, false)
                     if m.weapon then
                         SetPedCombatAttributes(e, 46, true)
-                        local tgt = NearestEngagedPed(e)
-                        if tgt then TaskCombatPed(e, tgt, 0, 16) end
+                        HeistEngage(e)
                         Speak(e, m.netId, 'combat')
                         SendQ('police:callouts:suspectCombat',
                             { netId = m.netId, combat = true })
@@ -3287,6 +3971,7 @@ local function HeistApply(reaction)
                 TriggerFlee(m, e, st)
             end
         end
+        ::continueCrew::
     end
 
     -- Le conducteur : il attend que quelqu'un monte, puis démarre.
@@ -3302,7 +3987,15 @@ local function HeistApply(reaction)
                 SetPedIntoVehicle(de, veh, -1)
             end
 
-            local deadline = GetGameTimer() + (V.LeaveDelay or 4000) + 20000
+            -- Effectif attendu à bord : tout l'équipage, sauf le
+            -- braqueur éventuellement abandonné (cf. `stranded` dans
+            -- HeistApply), qui lui fuit à pied dès le départ.
+            local expected = 0
+            for _, m in ipairs(Heist.crew or {}) do
+                if not stranded[m.netId] then expected = expected + 1 end
+            end
+
+            local deadline = GetGameTimer() + 20000
             while GetGameTimer() < deadline do
                 Wait(400)
                 if not DoesEntityExist(veh) or not DoesEntityExist(de) then return end
@@ -3310,11 +4003,15 @@ local function HeistApply(reaction)
                 if not Heist then return end
                 local aboard = 0
                 for _, m in ipairs(Heist.crew or {}) do
-                    local e = PedEntity(m)
-                    if e and IsPedInVehicle(e, veh, false) then aboard = aboard + 1 end
+                    if not stranded[m.netId] then
+                        local e = PedEntity(m)
+                        if e and IsPedInVehicle(e, veh, false) then aboard = aboard + 1 end
+                    end
                 end
-                -- Dès qu'un braqueur est à bord, on démarre. Les autres
-                if aboard > 0 then
+                -- Normalement on attend tout le monde. Si un braqueur est
+                -- neutralisé/coincé en route, le délai de garde ci-dessus
+                -- fait quand même partir le véhicule au bout de 20 s.
+                if aboard >= expected then
                     Wait(V.LeaveDelay or 4000)
                     break
                 end
@@ -3325,6 +4022,17 @@ local function HeistApply(reaction)
                 TaskVehicleDriveWander(de, veh, V.DriveSpeed or 30.0,
                     V.DriveStyle or 786469)
                 HeistLog('le véhicule démarre')
+
+                -- Les passagers armés d'un pistolet tirent sur la police
+                -- pendant la fuite (le couteau ne permet pas le tir).
+                for _, m in ipairs(Heist.crew or {}) do
+                    if not stranded[m.netId] and m.weapon == 'WEAPON_PISTOL' then
+                        local e = PedEntity(m)
+                        if e and DoesEntityExist(e) and IsPedInVehicle(e, veh, false) then
+                            HeistDriveByPolice(e, veh, m.netId)
+                        end
+                    end
+                end
             end
         end)
     end
@@ -3515,7 +4223,7 @@ local function StartHeistScene()
                     local cur = PedData(m.netId)
                     if cur and cur.state == 'idle' and not cur.escaped then
                         local e = PedEntity(m)
-                        if e and #(GetEntityCoords(e) - Heist.anchor) < 60.0 then
+                        if e and LSLegacy.Validate.Distance(GetEntityCoords(e), Heist.anchor, 60.0) then
                             active = active + 1
                         end
                     end
@@ -3564,6 +4272,50 @@ CreateThread(function()
     end
 end)
 
+-- Détection de mort — tourne chez CHAQUE agent, pas seulement le
+-- « cerveau ». La détection d'origine (boucle principale) n'était vue
+-- QUE par le client cerveau : si le PNJ mourait loin de LUI (fusillade
+-- pendant une course-poursuite, chacun de son côté), son propre exemplaire
+-- de l'entité pouvait ne jamais être streamé chez lui — la mort n'était
+-- alors jamais rapportée, le PNJ restait considéré vivant côté serveur
+-- (déposition, embarquement… toujours possibles sur un corps).
+CreateThread(function()
+    while true do
+        Wait(500)
+        if Callout then
+            for _, p in ipairs(Callout.peds or {}) do
+                if p.state ~= 'dead' and NetworkDoesNetworkIdExist(p.netId) then
+                    local de = NetworkGetEntityFromNetworkId(p.netId)
+                    if de and de ~= 0 and DoesEntityExist(de) then
+                        local st = BrainState[p.netId] or {}
+                        BrainState[p.netId] = st
+                        if not st.reportedDead and IsPedDeadOrDying(de, true) then
+                            st.reportedDead = true
+                            local killerSrc = nil
+                            local killer = GetPedSourceOfDeath(de)
+                            if killer and killer ~= 0 and IsPedAPlayer(killer) then
+                                local pl = NetworkGetPlayerIndexFromPed(killer)
+                                if pl and pl ~= -1 then
+                                    killerSrc = GetPlayerServerId(pl)
+                                end
+                            end
+                            local cause = 0
+                            pcall(function() cause = GetPedCauseOfDeath(de) or 0 end)
+                            SendQ('police:callouts:suspectDead', {
+                                netId = p.netId, killer = killerSrc,
+                                cause = cause,
+                                combat = st.lastCombat
+                                    or IsPedInCombat(de, PlayerPedId())
+                                    or IsPedShooting(de) or nil,
+                            })
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
 -- Pose des corps de la tuerie de masse — tourne chez CHAQUE agent
 CreateThread(function()
     while true do
@@ -3586,6 +4338,76 @@ end)
 
 -- Boucle principale du cerveau.
 CreateThread(function()
+    -- Cambriolage : le chauffeur reste dehors, avec vue sur la rue — c'est
+    -- SA vue de l'agent qui doit alerter tout le groupe (y compris ceux
+    -- dans la maison), pas la bulle de proximité par défaut
+    -- (C.FleeTriggerDistance, 5 m) appliquée individuellement à chaque
+    -- suspect, qui obligeait l'agent à se retrouver juste à côté d'eux
+    -- avant qu'ils ne réagissent. Locale à ce thread (pas au fichier) :
+    -- la limite Lua des 200 locales du chunk principal est déjà atteinte.
+    -- Braquage : le chauffeur, exclu de heistHeld (cf. fix mains levées),
+    -- a sa PROPRE vue sur l'agent — indépendante de la mise en scène du
+    -- magasin (HeistSpotted, ancrée sur la scène, pas sur lui).
+    local function DriverSpotsOfficer(entity)
+        if not Callout then return false end
+        local mine  = GetEntityCoords(entity)
+        local sight = (C.Heist and C.Heist.DriverSightDist) or 30.0
+        for _, a in ipairs(Callout.agents or {}) do
+            local pl = GetPlayerFromServerId(a.src)
+            if pl and pl ~= -1 then
+                local ped = GetPlayerPed(pl)
+                if ped and ped ~= 0 and DoesEntityExist(ped) then
+                    local pc = GetEntityCoords(ped)
+                    if #(pc - mine) <= sight then
+                        local ok, clear = pcall(function()
+                            local h = StartExpensiveSynchronousShapeTestLosProbe(
+                                mine.x, mine.y, mine.z + 1.0,
+                                pc.x, pc.y, pc.z + 1.0, 1, 0, 4)
+                            local _, hit = GetShapeTestResult(h)
+                            return hit ~= 1
+                        end)
+                        if ok and clear then return true end
+                    end
+                end
+            end
+        end
+        return false
+    end
+
+    local function CambriolageDriverSpotted()
+        if not Callout or Callout.scenarioId ~= 'cambriolage' then return false end
+        local driverPed
+        for _, dp in ipairs(Callout.peds or {}) do
+            if dp.isDriver then driverPed = dp break end
+        end
+        if not driverPed or not NetworkDoesNetworkIdExist(driverPed.netId) then return false end
+        local entity = NetworkGetEntityFromNetworkId(driverPed.netId)
+        if not entity or entity == 0 or not DoesEntityExist(entity) then return false end
+
+        local mine  = GetEntityCoords(entity)
+        local sight = C.CambriolageDriverSightDist or 35.0
+        for _, a in ipairs(Callout.agents or {}) do
+            local pl = GetPlayerFromServerId(a.src)
+            if pl and pl ~= -1 then
+                local ped = GetPlayerPed(pl)
+                if ped and ped ~= 0 and DoesEntityExist(ped) then
+                    local pc = GetEntityCoords(ped)
+                    if #(pc - mine) <= sight then
+                        local ok, clear = pcall(function()
+                            local h = StartExpensiveSynchronousShapeTestLosProbe(
+                                mine.x, mine.y, mine.z + 1.0,
+                                pc.x, pc.y, pc.z + 1.0, 1, 0, 4)
+                            local _, hit = GetShapeTestResult(h)
+                            return hit ~= 1
+                        end)
+                        if ok and clear then return true end
+                    end
+                end
+            end
+        end
+        return false
+    end
+
     while true do
         Wait(500)
         if IsBrain and Callout then
@@ -3597,6 +4419,8 @@ CreateThread(function()
                     LayoutDeathScene()
                 end
             end
+
+            local cambriolageSpotted = CambriolageDriverSpotted()
 
             for _, p in ipairs(Callout.peds or {}) do
                 local resolved = (p.state == 'delivered' or p.state == 'dead'
@@ -3629,6 +4453,26 @@ CreateThread(function()
                                     or IsPedInCombat(de, PlayerPedId())
                                     or IsPedShooting(de) or nil,
                             })
+                        end
+                    end
+                end
+
+                -- BLESSURE PAR BALLE (suspect vivant) — sous le seuil de
+                -- vie, signalé au serveur pour bloquer la clôture tant
+                -- qu'il n'est pas soigné (cf. suspectWounded).
+                if p.role == 'suspect' and p.state ~= 'dead' and not p.wounded
+                   and NetworkDoesNetworkIdExist(p.netId) then
+                    local we = NetworkGetEntityFromNetworkId(p.netId)
+                    if we and we ~= 0 and DoesEntityExist(we) and not IsPedDeadOrDying(we, true) then
+                        local st = BrainState[p.netId] or {}
+                        BrainState[p.netId] = st
+                        if not st.reportedWounded then
+                            local ratio = GetEntityHealth(we) / math.max(1, GetEntityMaxHealth(we))
+                            if ratio <= (C.WoundedHealthRatio or 0.5)
+                               and HasEntityBeenDamagedByAnyWeapon(we, 2) then
+                                st.reportedWounded = true
+                                SendQ('police:callouts:suspectWounded', { netId = p.netId })
+                            end
                         end
                     end
                 end
@@ -3699,11 +4543,30 @@ CreateThread(function()
                     local st = BrainState[p.netId] or {}
                     BrainState[p.netId] = st
                     if not st.dispersed then
-                        st.dispersed = true
                         local ent = NetworkGetEntityFromNetworkId(p.netId)
-                        if ent and ent ~= 0 and DoesEntityExist(ent) then
-                            RequestControl(ent)
-                            ClearPedTasks(ent)
+                        -- Marqué « fait » SEULEMENT si le contrôle réseau a
+                        -- réellement été obtenu : sinon les tâches posées
+                        -- ci-dessous s'exécutent silencieusement pour rien
+                        -- (entité pas possédée), le PNJ restait relâché
+                        -- mais toujours hostile — sans retenter, puisque
+                        -- st.dispersed était déjà verrouillé à true.
+                        if ent and ent ~= 0 and DoesEntityExist(ent) and RequestControl(ent) then
+                            st.dispersed = true
+                            ClearPedTasksImmediately(ent)
+                            -- Rixe (bagarre_rue/rixe_soiree) : le groupe de
+                            -- relation dédié (LSL_BRAWL, haine mutuelle —
+                            -- cf. EnsureBrawlGroup) et les attributs de
+                            -- combat forcé restaient actifs après la
+                            -- relâche. Un individu laissé libre redevenait
+                            -- alors hostile envers le reste du groupe, y
+                            -- compris ceux déjà menottés dans le véhicule.
+                            if Callout and Callout.brawl then
+                                SetPedRelationshipGroupHash(ent, GetHashKey('CIVMALE'))
+                                SetPedCombatAttributes(ent, 46, false)
+                                SetPedCombatAttributes(ent, 5, false)
+                                BrawlShield[ent] = nil
+                                SetProtect(ent, 'brawl', false)
+                            end
                             SetBlockingOfNonTemporaryEvents(ent, false)
                             SetPedKeepTask(ent, true)
                             TaskWanderStandard(ent, 10.0, 10)
@@ -3718,7 +4581,15 @@ CreateThread(function()
                         BrainState[p.netId] = BrainState[p.netId] or {}
                         local st = BrainState[p.netId]
 
-                        if not st.init then
+                        -- Sans RequestControl, ApplyInitialTask s'exécute
+                        -- parfois alors que le client n'a pas encore
+                        -- l'autorité réseau sur ce PNJ (créé côté serveur) :
+                        -- les tâches posées (combat/anti-fuite/rixe…) ne
+                        -- prennent pas, et il tourne sur l'IA GTA par
+                        -- défaut — qui, elle, fuit un agent armé à
+                        -- proximité. C'est exactement ce qui ressemblait à
+                        -- des PNJ « partant en courant » sans raison.
+                        if not st.init and RequestControl(entity) then
                             st.init = true
                             ApplyInitialTask(p, entity)
                         end
@@ -3788,7 +4659,7 @@ CreateThread(function()
                         -- Tuerie de masse : un suspect agressif re-choisit
                         if Callout.massIncident and p.role == 'suspect' and p.weapon
                            and (p.behavior == 'aggressive'
-                                or (p.behavior == 'flee' and st.fleeing))
+                                or (p.behavior == 'flee' and st.fleeing and not st.onBike))
                            and p.state == 'idle'
                            and (now - (st.threatTick or 0)) > 4000 then
                             st.threatTick = now
@@ -3808,7 +4679,14 @@ CreateThread(function()
                         end
 
                         -- BRAQUAGE : le groupe est piloté par la décision
+                        -- Le chauffeur reste dans le véhicule de fuite,
+                        -- hors de portée réelle du preneur d'otages : sans
+                        -- exclusion ici, IsAimedAtBy (distance seule, pas
+                        -- un vrai ciblage) le fait lever les mains dès
+                        -- qu'un agent vise QUELQU'UN dans le rayon, même
+                        -- sans jamais l'avoir visé lui.
                         local heistHeld = Callout.heist and p.role == 'suspect'
+                            and not p.isDriver
                             and Heist and Heist.id == Callout.id
                             and not Heist.decided
 
@@ -3828,6 +4706,37 @@ CreateThread(function()
                             elseif st.handsUp and (now - (st.handsUpTick or 0)) > 4000 then
                                 st.handsUpTick = now
                                 TaskHandsUp(entity, -1, 0, -1, false)
+                            end
+
+                        elseif Callout.heist and p.role == 'suspect' and p.isDriver
+                               and Heist and Heist.id == Callout.id and not Heist.decided
+                               and p.behavior ~= 'flee' and not st.driverPanicRolled then
+                            -- Chauffeur laissé de côté par heistHeld : sa
+                            -- propre chance de repérer l'agent AVANT que le
+                            -- groupe n'ait décidé.
+                            if DriverSpotsOfficer(entity) then
+                                st.driverPanicRolled = true
+                                local H = C.Heist or {}
+                                if math.random(1, 100) <= (H.DriverPanicChance or 25) then
+                                    p.behavior = 'flee'
+                                    TriggerFlee(p, entity, st)
+
+                                    -- Réaliste : le reste de l'équipe entend
+                                    -- la voiture partir en trombe et
+                                    -- comprend que la police est là — même
+                                    -- décision que si le magasin l'avait
+                                    -- repérée lui-même (cf. la boucle de
+                                    -- détection dédiée, HeistSpotted).
+                                    Heist.decided = true
+                                    HeistLog('le chauffeur détale (police repérée) — le chef décide…')
+                                    local calloutId = Callout.id
+                                    CreateThread(function()
+                                        Wait(H.DecideWait or 1200)
+                                        if not Heist or not Callout
+                                           or Callout.id ~= calloutId then return end
+                                        HeistApply(HeistDecide(Heist.scene))
+                                    end)
+                                end
                             end
 
                         elseif p.state == 'stunned' then
@@ -3850,8 +4759,25 @@ CreateThread(function()
                                 -- Il a choisi l'affrontement : on entretient
                                 if (now - (st.turnTick or 0)) > 5000 then
                                     st.turnTick = now
-                                    local tgt = NearestEngagedPed(entity)
-                                    if tgt then TaskCombatPed(entity, tgt, 0, 16) end
+                                    -- NearestEngagedPed prend le PLUS PROCHE
+                                    -- parmi TOUS les agents affectés à
+                                    -- l'appel, sans plafond de distance : si
+                                    -- le seul « plus proche » restant est en
+                                    -- fait loin (reste de l'équipe repartie
+                                    -- ailleurs sur la scène), le combat le
+                                    -- fait courir vers lui à travers la
+                                    -- carte — ce qui ressemble à une fuite
+                                    -- alors que la rixe doit se régler sur
+                                    -- place. Sans agent à portée réelle, il
+                                    -- tient sa position au lieu de partir
+                                    -- à sa poursuite.
+                                    local tgt, tdist = NearestEngagedPed(entity)
+                                    if tgt and tdist and tdist <= (BR.CombatRange or 25.0) then
+                                        TaskCombatPed(entity, tgt, 0, 16)
+                                    else
+                                        ClearPedTasks(entity)
+                                        TaskStandStill(entity, -1)
+                                    end
                                 end
 
                             elseif dist > (BR.NoticeDist or 12.0) then
@@ -3862,12 +4788,25 @@ CreateThread(function()
                                     st.brawlTick = now
 
                                     -- Adversaires APPARIÉS : sans ça, tous
+                                    -- Plafonné (CombatRange) : les derniers
+                                    -- restants d'un groupe peuvent être
+                                    -- dispersés (l'un déjà menotté ailleurs)
+                                    -- — pas de sens à courir loin pour
+                                    -- rejoindre le seul "adversaire" éligible.
                                     local mine = GetEntityCoords(entity)
-                                    local foe, best = nil, 9999.0
+                                    local cap = BR.CombatRange or 25.0
+                                    local foe, best = nil, cap
                                     for _, o in ipairs(Callout.peds or {}) do
                                         if o.role == 'suspect' and o.netId ~= p.netId
                                            and o.state ~= 'cuffed' and o.state ~= 'dead'
                                            and o.state ~= 'delivered' and o.state ~= 'stunned'
+                                           -- Laissé libre : ne doit plus être
+                                           -- désigné comme cible, sinon un
+                                           -- suspect encore en train de se
+                                           -- battre le ramène de force dans
+                                           -- la rixe via TaskCombatPed, qui
+                                           -- ignore les groupes de relation.
+                                           and o.state ~= 'dispersed'
                                            and NetworkDoesNetworkIdExist(o.netId) then
                                             local oe = NetworkGetEntityFromNetworkId(o.netId)
                                             if oe and oe ~= 0 and DoesEntityExist(oe)
@@ -3951,8 +4890,17 @@ CreateThread(function()
                                         SetPedCombatAttributes(entity, 46, true)
                                         SetPedCombatAttributes(entity, 5, true)
                                         SetPedAlertness(entity, 3)
-                                        local tgt = NearestEngagedPed(entity)
-                                        if tgt then TaskCombatPed(entity, tgt, 0, 16) end
+                                        -- Même plafond que l'entretien
+                                        -- périodique ci-dessus : l'agent
+                                        -- qui l'a mis en joue est forcément
+                                        -- proche (IsAimedAtBy le garantit),
+                                        -- mais NearestEngagedPed pourrait
+                                        -- renvoyer un autre agent de
+                                        -- l'équipe plus loin.
+                                        local tgt, tdist = NearestEngagedPed(entity)
+                                        if tgt and tdist and tdist <= (BR.CombatRange or 25.0) then
+                                            TaskCombatPed(entity, tgt, 0, 16)
+                                        end
                                         Speak(entity, p.netId, 'combat')
                                         SendQ('police:callouts:suspectCombat',
                                             { netId = p.netId, combat = true })
@@ -3960,7 +4908,63 @@ CreateThread(function()
                                 end
                             end
 
+                            -- Garde-fou générique (identique à la branche
+                            -- suspect standard, cf. plus bas) : un brawler
+                            -- « turned » en plein combat peut s'éloigner
+                            -- (IA de combat, recul, poursuite manquée) sans
+                            -- jamais lever les mains. Cette branche ne
+                            -- retombe JAMAIS dans la branche générique
+                            -- (elseif mutuellement exclusifs) : sans ce
+                            -- filet, il reste bloqué en 'idle' pour
+                            -- toujours et la mission ne se termine jamais.
+                            if dist > C.EscapeDistance then
+                                st.farSince = st.farSince or now
+                                if not st.reportedEscape
+                                   and (now - st.farSince) > (C.EscapeDelay * 1000) then
+                                    st.reportedEscape = true
+                                    SendQ('police:callouts:suspectEscaped',
+                                        { netId = p.netId })
+                                end
+                            else
+                                st.farSince = nil
+                            end
+
                         elseif p.role == 'suspect' and not st.surrendered then
+
+                            -- À bord d'un véhicule et mis en joue : il lève
+                            -- les mains sans en sortir (la police l'en fait
+                            -- descendre ensuite, cf. callout_out_vehicle).
+                            if p.state == 'idle' and not st.lastCombat
+                               and IsPedInAnyVehicle(entity, false) then
+                                if not st.vehHandsUp then
+                                    if IsAimedAtBy(entity) then
+                                        st.vehHandsUp  = true
+                                        st.handsUpTick = now
+                                        RequestControl(entity)
+                                        SetPedKeepTask(entity, true)
+                                        TaskHandsUp(entity, -1, 0, -1, false)
+                                        Speak(entity, p.netId, 'surrender')
+                                        SendQ('police:callouts:suspectSurrender',
+                                            { netId = p.netId })
+                                    end
+                                elseif (now - (st.handsUpTick or 0)) > 4000 then
+                                    st.handsUpTick = now
+                                    TaskHandsUp(entity, -1, 0, -1, false)
+                                end
+                            elseif st.vehHandsUp and not IsPedInAnyVehicle(entity, false) then
+                                st.vehHandsUp = false
+                            end
+
+                            -- Mis en joue à pied, sans fuir (ex. personne
+                            -- armée) : il lève les mains, y compris s'il
+                            -- était hostile — sans ça, un individu debout
+                            -- (passif ou agressif, flee=0) n'avait aucun
+                            -- moyen de se rendre à la vue d'une arme.
+                            if not st.vehHandsUp and p.behavior ~= 'flee'
+                               and not IsPedInAnyVehicle(entity, false)
+                               and IsAimedAtBy(entity) then
+                                Surrender(p, entity, st)
+                            end
 
                             -- Report de l'état de combat (sert au §arme létale)
                             local inCombat = st.lastCombat or false
@@ -3984,10 +4988,11 @@ CreateThread(function()
                             local dist = NearestEngagedDistance(entity)
 
                             -- Déclenchement de la fuite
-                            if p.behavior == 'flee' and not st.fleeing then
+                            if p.behavior == 'flee' and not st.fleeing
+                               and not st.vehHandsUp then
                                 local trigger = (Callout and Callout.fleeTrigger)
                                     or C.FleeTriggerDistance
-                                if dist <= trigger then
+                                if dist <= trigger or cambriolageSpotted then
                                     if Callout.massIncident and p.weapon
                                        and not st.threatBurstDone then
                                         -- Tuerie de masse : avant de fuir,
@@ -4049,9 +5054,11 @@ CreateThread(function()
                                     st.fleeStage = stage
                                     local rate = 1.0
                                     if stage == 2 then
-                                        rate = C.FleeRateTired or 0.50
+                                        rate = (Callout and Callout.fleeRateTired)
+                                            or C.FleeRateTired or 0.50
                                     elseif stage == 3 then
-                                        rate = C.FleeRateExhausted or 0.35
+                                        rate = (Callout and Callout.fleeRateExhausted)
+                                            or C.FleeRateExhausted or 0.35
                                     end
                                     SetMoveRate(entity, rate)
                                     if stage == 2 then
@@ -4059,10 +5066,29 @@ CreateThread(function()
                                     end
                                 end
 
-                                -- Dès qu'il a ralenti, un agent au contact
+                                -- Dès qu'il a ralenti, un agent au contact le
+                                -- met à bout de souffle ; il ne lève les
+                                -- mains que si l'agent le met vraiment en joue.
                                 if stage >= 2
                                    and dist <= (C.FleeSurrenderDist or 10.0) then
-                                    Surrender(p, entity, st)
+                                    if IsAimedAtBy(entity) then
+                                        Surrender(p, entity, st)
+                                    elseif not st.outOfBreath then
+                                        st.outOfBreath = true
+                                        RequestControl(entity)
+                                        ClearPedTasks(entity)
+                                        SetMoveRate(entity, 1.0)
+                                        if LoadAnim('re@construction') then
+                                            TaskPlayAnim(entity, 're@construction',
+                                                'out_of_breath', 8.0, -8.0, -1,
+                                                1, 0, false, false, false)
+                                        end
+                                    end
+                                elseif st.outOfBreath and (dist > (C.FleeSurrenderDist or 10.0)
+                                       or stage < 2) then
+                                    -- L'agent s'est éloigné ou il a repris son
+                                    -- souffle : la fuite peut reprendre.
+                                    st.outOfBreath = false
                                 end
 
                                 -- Garde-fou : durée de fuite maximale
@@ -4089,40 +5115,24 @@ CreateThread(function()
 
                         elseif p.role == 'animal' then
                             local officer, odist = NearestEngagedPed(entity)
+                            local officerNear = officer and odist
+                                and odist < (C.AnimalAggroDist or 10.0)
 
-                            -- Tant qu'aucun agent n'est en vue, la cible
-                            if not st.dogTarget
-                               and (not odist or odist >= (C.AnimalAggroDist or 10.0))
-                               and (now - (st.dogTick or 0)) > 4000 then
-                                st.dogTick = now
-                                local prey = nil
-                                for _, o in ipairs(Callout.peds or {}) do
-                                    if o.role == 'victim' and o.state ~= 'healed'
-                                       and NetworkDoesNetworkIdExist(o.netId) then
-                                        local ve = NetworkGetEntityFromNetworkId(o.netId)
-                                        if ve and ve ~= 0 and DoesEntityExist(ve)
-                                           and not IsEntityDead(ve) then
-                                            prey = ve break
-                                        end
-                                    end
-                                end
-                                if prey and not IsPedInCombat(entity, prey) then
-                                    ClearPedTasks(entity)
-                                    TaskCombatPed(entity, prey, 0, 16)
-                                end
-                            end
-
-                            -- Dès qu'un agent approche, le chien lâche sa
-                            if officer and odist
-                               and odist < (C.AnimalAggroDist or 10.0) then
+                            if officerNear then
+                                -- Le chien lâche sa proie pour l'agent le plus
+                                -- proche : premier arrivé, premier mordu. Une
+                                -- fois verrouillé sur lui, on ne relance plus
+                                -- la tâche : IsPedInCombat ne renvoie jamais
+                                -- vrai pour un chien, la relancer en boucle
+                                -- annulait sa morsure toutes les 4 secondes.
                                 if st.dogTarget ~= officer then
                                     st.dogTarget = officer
-                                    st.dogTick   = now
-                                    ClearPedTasks(entity)
-                                    TaskCombatPed(entity, officer, 0, 16)
-                                elseif (now - (st.dogTick or 0)) > 4000
-                                       and not IsPedInCombat(entity, officer) then
-                                    st.dogTick = now
+                                    -- ClearPedTasks (mou) laissait le cycle de
+                                    -- morsure en cours se terminer tout seul —
+                                    -- le chien restait bloqué sur la victime
+                                    -- au sol au lieu de basculer sur l'agent
+                                    -- (cf. bug tapage/radioWalk, même cause).
+                                    ClearPedTasksImmediately(entity)
                                     TaskCombatPed(entity, officer, 0, 16)
                                 end
 
@@ -4141,6 +5151,27 @@ CreateThread(function()
                                             end
                                         end
                                     end
+                                end
+
+                            elseif not st.dogTarget then
+                                -- Pas d'agent à portée : il s'acharne sur sa
+                                -- proie initiale, une seule fois — même
+                                -- raison que ci-dessus, pas de relance en
+                                -- boucle qui annulerait sa morsure.
+                                local prey = nil
+                                for _, o in ipairs(Callout.peds or {}) do
+                                    if o.role == 'victim' and o.state ~= 'healed'
+                                       and NetworkDoesNetworkIdExist(o.netId) then
+                                        local ve = NetworkGetEntityFromNetworkId(o.netId)
+                                        if ve and ve ~= 0 and DoesEntityExist(ve)
+                                           and not IsEntityDead(ve) then
+                                            prey = ve break
+                                        end
+                                    end
+                                end
+                                if prey then
+                                    st.dogTarget = prey
+                                    TaskCombatPed(entity, prey, 0, 16)
                                 end
                             end
 
@@ -4261,6 +5292,10 @@ local function SetTaserShield(on)
                 local e = NetworkGetEntityFromNetworkId(p.netId)
                 if e and e ~= 0 and DoesEntityExist(e) and not TaserShield[e] then
                     TaserShield[e] = true
+                    -- SetEntityInvincible n'a d'effet que sur le client qui
+                    -- simule l'entité : sans prise de contrôle réseau, le
+                    -- bouclier ne protège pas réellement le PNJ du tir.
+                    RequestControl(e)
                     SetProtect(e, 'taser', true)
                 end
             end
@@ -4355,18 +5390,31 @@ AddEventHandler('gameEventTriggered', function(name, args)
     local p, netId = PedFromEntity(victim)
     if not p or p.role == 'caller' or p.role == 'deceased' then return end
 
+    -- Coup mortel : le tireur est la source la plus fiable pour l'arme et
+    -- l'auteur, capturés au moment même du coup. GetPedSourceOfDeath, lui,
+    -- se révèle intermittent après coup selon l'arme (explosifs, mêlée…),
+    -- ce qui laissait certaines bavures hors-pistolet/fusil sans enquête.
+    if IsPedDeadOrDying(victim, true) then
+        SendQ('police:callouts:suspectKillHit',
+            { netId = netId, weapon = GetSelectedPedWeapon(PlayerPedId()) })
+    end
+
     local weaponHash = GetSelectedPedWeapon(PlayerPedId())
     local wname, cfg = NonLethalFor(weaponHash)
     if not wname then return end
-
-    -- Le taser est géré par le thread dédié ci-dessus, pas ici : la
-    if wname == 'WEAPON_STUNGUN' then return end
 
     -- Plancher de PV : impossible de tuer sous les coups ou au taser
     if GetEntityHealth(victim) < C.NonLethalHealthFloor then
         SetEntityHealth(victim, C.NonLethalHealthFloor)
     end
     ClearPedBloodDamage(victim)
+
+    -- Le taser est géré par le thread dédié ci-dessus (mise au sol
+    -- scriptée) : seul le plancher de PV ci-dessus s'applique ici, en
+    -- filet de sécurité si l'invincibilité posée par le bouclier n'a pas
+    -- pris effet (entité pas encore sous notre contrôle réseau). On ne
+    -- compte pas ce coup dans le combo de coups portés à mains nues.
+    if wname == 'WEAPON_STUNGUN' then return end
 
     local now = GetGameTimer()
     MeleeHits[netId] = MeleeHits[netId] or { count = 0, last = 0 }
@@ -4448,7 +5496,7 @@ function BagBody(entity, p)
     end
 
     Notify('Levée de corps en cours…', 'info')
-    PlayAnimFor('amb@medic@standing@kneel@base', 'base', C.BodyBagDuration)
+    if not PlayAnimFor('amb@medic@standing@kneel@base', 'base', C.BodyBagDuration) then return end
 
     if not DoesEntityExist(entity) then return end
     local c = GetEntityCoords(entity)
@@ -4541,6 +5589,45 @@ local function NearestPoliceVehicle()
     return best
 end
 
+-- Véhicule de police le plus proche d'un point donné, peu importe son
+-- occupation (contrairement à NearestPoliceVehicle, réservé au transport).
+function NearestPoliceVehicleTo(coords, maxDist)
+    local best, bestDist = nil, maxDist or 9999.0
+    for _, veh in ipairs(GetGamePool('CVehicle')) do
+        if IsPoliceVehicle(veh) then
+            local d = #(GetEntityCoords(veh) - coords)
+            if d < bestDist then best, bestDist = veh, d end
+        end
+    end
+    return best
+end
+
+-- Braquage, repli en voiture : un passager armé d'un pistolet arrose le
+-- véhicule de police le plus proche pendant la fuite. TaskDriveBy suit
+-- seul sa cible tant qu'elle ne change pas ; on ne relance la tâche que
+-- si un autre véhicule devient plus proche ou si la cible a disparu.
+function HeistDriveByPolice(ped, veh, netId)
+    CreateThread(function()
+        local current = nil
+        while Callout and DoesEntityExist(ped) and DoesEntityExist(veh)
+              and IsPedInVehicle(ped, veh, false) do
+            local cur = PedData(netId)
+            if not cur or cur.state == 'dead' or cur.state == 'cuffed'
+               or cur.state == 'stunned' then break end
+
+            local target = NearestPoliceVehicleTo(GetEntityCoords(veh), 80.0)
+            if target and target ~= current then
+                current = target
+                TaskDriveBy(ped, 0, target, 0.0, 0.0, 0.0, 100.0, 100, true,
+                    GetHashKey('FIRING_PATTERN_FULL_AUTO'))
+            elseif not target then
+                current = nil
+            end
+            Wait(3000)
+        end
+    end)
+end
+
 -- Accompagnement d'une personne à protéger (pas un suspect)
 
 Escorting = nil   -- entité actuellement accompagnée
@@ -4598,21 +5685,39 @@ exports.ox_target:addGlobalPed({
             local p = PedFromEntity(data.entity)
             if not p then return end
             -- Le PNJ range son téléphone et se tourne vers l'agent avant
-            StopSceneAmbience(p.netId, data.entity, PlayerPedId())
-            PlayAnimFor('amb@world_human_cop_idles@male@idle_a', 'idle_b', 3000)
+            BeginPedInteraction(data.entity, p)
+            if not PlayAnimFor('amb@world_human_cop_idles@male@idle_a', 'idle_b', 3000) then
+                EndPedInteraction(data.entity, p)
+                return
+            end
             -- Le témoignage ne CLÔT la mission que sur une constatation de
             SendQ('police:callouts:objectiveDone', { kind = 'statement', netId = p.netId })
             TriggerEvent('police:callouts:witnessStatement', p)
+            -- Pas de EndPedInteraction : une fois le témoignage recueilli,
+            -- le requérant/témoin reste simplement debout — son animation
+            -- d'ambiance (salut, téléphone…) ne doit pas se rejouer.
         end,
     },
     {
         name = 'callout_identify', icon = 'fa-solid fa-id-card',
         label = 'Contrôler l\'identité', distance = 2.0,
         canInteract = function(e)
-            -- Une victime se laisse toujours identifier ; un mis en cause
-            return TargetPed(e, { suspect = true, victim = true }, function(p)
+            -- Une victime ou un corps se laisse toujours identifier ;
+            -- un mis en cause (ou une personne errante) doit être
+            -- maîtrisé ou coopératif.
+            return TargetPed(e, {
+                suspect = true, victim = true, wanderer = true,
+                deceased = true, dead = true,
+            }, function(p)
                 if p.identified then return false end
                 if p.role == 'victim' then return true end
+                -- Réservé aux scénarios qui exploitent réellement
+                -- l'identification (personne errante, découverte de
+                -- corps) : pas de bouton « identifier » sur les corps
+                -- d'une tuerie de masse ou d'un chien dangereux.
+                if p.role == 'deceased' then
+                    return Callout and Callout.familyContact == true
+                end
                 return p.state == 'cuffed' or p.state == 'stunned'
                     or p.behavior == 'passive'
             end)
@@ -4620,9 +5725,13 @@ exports.ox_target:addGlobalPed({
         onSelect = function(data)
             local p = PedFromEntity(data.entity)
             if not p then return end
-            StopSceneAmbience(p.netId, data.entity, PlayerPedId())
-            PlayAnimFor('amb@world_human_cop_idles@male@idle_a', 'idle_b', 2500)
+            BeginPedInteraction(data.entity, p)
+            if not PlayAnimFor('amb@world_human_cop_idles@male@idle_a', 'idle_b', 2500) then
+                EndPedInteraction(data.entity, p)
+                return
+            end
             SendQ('police:callouts:suspectIdentify', { netId = p.netId })
+            EndPedInteraction(data.entity, p)
         end,
     },
     {
@@ -4637,13 +5746,17 @@ exports.ox_target:addGlobalPed({
         onSelect = function(data)
             local p = PedFromEntity(data.entity)
             if not p then return end
-            StopSceneAmbience(p.netId, data.entity, PlayerPedId())
-            PlayAnimFor('amb@world_human_cop_idles@male@idle_a', 'idle_b', 2500)
+            BeginPedInteraction(data.entity, p)
+            if not PlayAnimFor('amb@world_human_cop_idles@male@idle_a', 'idle_b', 2500) then
+                EndPedInteraction(data.entity, p)
+                return
+            end
             if p.permitValid then
                 Notify('Permis de port d\'arme valide.', 'success')
             else
                 Notify('Aucun permis valide présenté.', 'error')
             end
+            EndPedInteraction(data.entity, p)
         end,
     },
     {
@@ -4651,17 +5764,28 @@ exports.ox_target:addGlobalPed({
         label = 'Laisser repartir', distance = 2.0,
         canInteract = function(e)
             -- Disponible sur tous les scénarios, sauf refus explicite.
+            -- Armé : refusé, sauf permis de port d'arme valide (cf.
+            -- callout_weapon_permit / sc.weaponPermit).
             if not Callout or not Callout.moveAlong then return false end
             return TargetPed(e, { suspect = true }, function(p)
-                if p.weapon then return false end
+                if p.weapon and not p.permitValid then return false end
+                -- Touché par balle et pas soigné : le relâchement serait
+                -- irréversible (cf. police:callouts:moveAlong, serveur).
+                if p.wounded and not p.healed then return false end
                 return p.behavior == 'passive' and p.state == 'idle'
             end)
         end,
         onSelect = function(data)
             local p = PedFromEntity(data.entity)
             if not p then return end
-            PlayAnimFor('amb@world_human_cop_idles@male@idle_a', 'idle_b', 2000)
+            BeginPedInteraction(data.entity, p)
+            if not PlayAnimFor('amb@world_human_cop_idles@male@idle_a', 'idle_b', 2000) then
+                EndPedInteraction(data.entity, p)
+                return
+            end
             SendQ('police:callouts:moveAlong', { netId = p.netId })
+            -- Pas de EndPedInteraction : le PNJ va partir (dispersed), pas
+            -- reprendre son ambiance de scène.
         end,
     },
     {
@@ -4676,14 +5800,14 @@ exports.ox_target:addGlobalPed({
         onSelect = function(data)
             local p = PedFromEntity(data.entity)
             if not p then return end
-            local dict = 'mp_arresting'
-            if LoadAnim(dict) then
-                TaskPlayAnim(PlayerPedId(), dict, 'a_uncuff', 8.0, -8.0,
-                    Config.Police.Actions.cuffDuration, 49, 0, false, false, false)
+            BeginPedInteraction(data.entity, p)
+            if not PlayAnimFor('mp_arresting', 'a_uncuff', Config.Police.Actions.cuffDuration) then
+                EndPedInteraction(data.entity, p)
+                return
             end
-            Wait(Config.Police.Actions.cuffDuration)
-            ClearPedTasks(PlayerPedId())
             SendQ('police:callouts:suspectCuffed', { netId = p.netId })
+            -- Pas de EndPedInteraction : passe en 'cuffed', posture propre
+            -- (mains dans le dos) déjà gérée par StopSceneAmbience/cur.state.
         end,
     },
     {
@@ -4697,9 +5821,15 @@ exports.ox_target:addGlobalPed({
         onSelect = function(data)
             local p = PedFromEntity(data.entity)
             if not p then return end
-            -- Pas de StopSceneAmbience ici : une victime au sol garde sa
-            PlayAnimFor('amb@world_human_cop_idles@male@idle_a', 'idle_b', 3000)
+            -- BeginPedInteraction no-op sur un blessé au sol (WoundedPed) :
+            -- il garde sa posture. Ne tourne que si elle est déjà valide.
+            BeginPedInteraction(data.entity, p)
+            if not PlayAnimFor('amb@world_human_cop_idles@male@idle_a', 'idle_b', 3000) then
+                EndPedInteraction(data.entity, p)
+                return
+            end
             SendQ('police:callouts:victimStatement', { netId = p.netId })
+            EndPedInteraction(data.entity, p)
         end,
     },
     {
@@ -4717,9 +5847,13 @@ exports.ox_target:addGlobalPed({
         onSelect = function(data)
             local p = PedFromEntity(data.entity)
             if not p then return end
-            StopSceneAmbience(p.netId, data.entity, PlayerPedId())
-            PlayAnimFor('amb@world_human_cop_idles@male@idle_a', 'idle_b', 3000)
+            BeginPedInteraction(data.entity, p)
+            if not PlayAnimFor('amb@world_human_cop_idles@male@idle_a', 'idle_b', 3000) then
+                EndPedInteraction(data.entity, p)
+                return
+            end
             SendQ('police:callouts:interrogate', { netId = p.netId })
+            EndPedInteraction(data.entity, p)
         end,
     },
     {
@@ -4739,12 +5873,107 @@ exports.ox_target:addGlobalPed({
         onSelect = function(data)
             local p = PedFromEntity(data.entity)
             if not p then return end
-            PlayAnimFor('amb@world_human_cop_idles@male@idle_a', 'idle_b',
-                Config.Police.Actions.searchDuration)
+            BeginPedInteraction(data.entity, p)
+            if not PlayAnimFor('amb@world_human_cop_idles@male@idle_a', 'idle_b',
+                Config.Police.Actions.searchDuration) then
+                EndPedInteraction(data.entity, p)
+                return
+            end
             if p.state == 'dead' and DoesEntityExist(data.entity) then
                 RemoveAllPedWeapons(data.entity, true)
             end
             SendQ('police:callouts:suspectSearched', { netId = p.netId })
+            EndPedInteraction(data.entity, p)
+        end,
+    },
+    {
+        -- Vol à l'étalage uniquement (cf. sc.payOff) : une fois identité
+        -- et fouille faites, propose de régler la marchandise sur place.
+        name = 'callout_pay_off', icon = 'fa-solid fa-money-bill-wave',
+        label = 'Proposer de payer les articles', distance = 2.0,
+        canInteract = function(e)
+            if not Callout or not Callout.payOff then return false end
+            return TargetPed(e, { suspect = true }, function(p)
+                if p.payOffAsked then return false end
+                if not p.identified or not p.searched then return false end
+                return p.state == 'idle' and p.behavior == 'passive'
+            end)
+        end,
+        onSelect = function(data)
+            local p = PedFromEntity(data.entity)
+            if not p then return end
+            BeginPedInteraction(data.entity, p)
+            if not PlayAnimFor('amb@world_human_cop_idles@male@idle_a', 'idle_b', 2500) then
+                EndPedInteraction(data.entity, p)
+                return
+            end
+            SendQ('police:callouts:offerPayOff', { netId = p.netId })
+            -- Pas de EndPedInteraction : s'il accepte, il part (dispersed) ;
+            -- s'il refuse, il reprend son ambiance normalement via SyncEngaged.
+        end,
+    },
+    {
+        name = 'callout_breathalyzer', icon = 'fa-solid fa-wine-bottle',
+        label = 'Faire souffler dans l\'alcootest', distance = 2.0,
+        canInteract = function(e)
+            return TargetPed(e, { suspect = true }, function(p)
+                if not Callout or not Callout.breathalyzer then return false end
+                if p.breathalyzer then return false end
+                if p.state == 'cuffed' or p.state == 'stunned' then return true end
+                return p.state == 'idle' and p.behavior == 'passive'
+            end)
+        end,
+        onSelect = function(data)
+            local p = PedFromEntity(data.entity)
+            if not p then return end
+            BeginPedInteraction(data.entity, p)
+            if not PlayAnimFor('amb@world_human_cop_idles@male@idle_a', 'idle_b', 3000) then
+                EndPedInteraction(data.entity, p)
+                return
+            end
+            SendQ('police:callouts:breathalyzer', { netId = p.netId })
+            EndPedInteraction(data.entity, p)
+        end,
+    },
+    {
+        name = 'callout_drugtest', icon = 'fa-solid fa-vial',
+        label = 'Faire un test de dépistage', distance = 2.0,
+        canInteract = function(e)
+            return TargetPed(e, { suspect = true }, function(p)
+                if not Callout or not Callout.drugTest then return false end
+                if p.drugTest then return false end
+                if p.state == 'cuffed' or p.state == 'stunned' then return true end
+                return p.state == 'idle' and p.behavior == 'passive'
+            end)
+        end,
+        onSelect = function(data)
+            local p = PedFromEntity(data.entity)
+            if not p then return end
+            BeginPedInteraction(data.entity, p)
+            if not PlayAnimFor('amb@world_human_cop_idles@male@idle_a', 'idle_b', 3000) then
+                EndPedInteraction(data.entity, p)
+                return
+            end
+            SendQ('police:callouts:drugTest', { netId = p.netId })
+            EndPedInteraction(data.entity, p)
+        end,
+    },
+    {
+        name = 'callout_autopsy', icon = 'fa-solid fa-magnifying-glass',
+        label = 'Analyser le corps', distance = 2.0,
+        canInteract = function(e)
+            return TargetPed(e, { deceased = true, dead = true }, function(p)
+                if not Callout or not Callout.autopsy then return false end
+                return not p.causeOfDeath
+            end)
+        end,
+        onSelect = function(data)
+            local p = PedFromEntity(data.entity)
+            if not p then return end
+            TaskStartScenarioInPlace(PlayerPedId(), 'CODE_HUMAN_MEDIC_KNEEL', 0, true)
+            Wait(4000)
+            ClearPedTasks(PlayerPedId())
+            SendQ('police:callouts:autopsy', { netId = p.netId })
         end,
     },
     {
@@ -4756,7 +5985,9 @@ exports.ox_target:addGlobalPed({
         onSelect = function(data)
             local p = PedFromEntity(data.entity)
             if not p then return end
+            BeginPedInteraction(data.entity, p)
             SendQ('police:callouts:pickupWeapon', { netId = p.netId })
+            EndPedInteraction(data.entity, p)
         end,
     },
     {
@@ -4816,7 +6047,8 @@ exports.ox_target:addGlobalPed({
                 return
             end
 
-            TaskEnterVehicle(ped, veh, 10000, seat, 1.5, 1, 0)
+            -- 1.0 = marche : un individu menotté ne court pas jusqu'au véhicule.
+            TaskEnterVehicle(ped, veh, 10000, seat, 1.0, 1, 0)
             -- Repli si la tâche échoue ou traîne (portière bloquée, etc.)
             SetTimeout(10500, function()
                 if DoesEntityExist(ped) and DoesEntityExist(veh)
@@ -4846,13 +6078,16 @@ exports.ox_target:addGlobalPed({
         name = 'callout_first_aid', icon = 'fa-solid fa-kit-medical',
         label = 'Prodiguer les premiers soins', distance = 2.0,
         canInteract = function(e)
-            return TargetPed(e, { victim = true }, function(p) return p.state ~= 'healed' end)
+            return TargetPed(e, { victim = true, suspect = true }, function(p)
+                if p.role == 'suspect' then return p.wounded == true and not p.healed end
+                return p.state ~= 'healed'
+            end)
         end,
         onSelect = function(data)
             local p = PedFromEntity(data.entity)
             if not p then return end
             -- On ne touche PAS à la posture du blessé ici : l'arrêt de
-            PlayAnimFor('amb@medic@standing@kneel@base', 'base', C.FirstAidDuration)
+            if not PlayAnimFor('amb@medic@standing@kneel@base', 'base', C.FirstAidDuration) then return end
             SendQ('police:callouts:firstAid', { netId = p.netId })
         end,
     },
@@ -4871,10 +6106,15 @@ exports.ox_target:addGlobalPed({
         end,
         onSelect = function(data)
             local p = PedFromEntity(data.entity)
-            PlayAnimFor('amb@medic@standing@kneel@base', 'base', 5000)
+            if not PlayAnimFor('amb@medic@standing@kneel@base', 'base', 5000) then return end
             SendQ('police:callouts:objectiveDone',
                 { kind = 'death', netId = p and p.netId or nil })
-            if p then BagBody(data.entity, p) end
+            -- Découverte de corps : le corps doit rester visible/ciblable
+            -- pour l'identité et l'analyse — pas de mise en housse tant
+            -- que ces étapes ne sont pas terminées (cf. sc.familyContact).
+            if p and not (Callout and Callout.familyContact) then
+                BagBody(data.entity, p)
+            end
         end,
     },
     {
@@ -4888,7 +6128,12 @@ exports.ox_target:addGlobalPed({
         onSelect = function(data)
             local p = PedFromEntity(data.entity)
             if not p then return end
+            BeginPedInteraction(data.entity, p)
             SendQ('police:callouts:askRadioOff', { netId = p.netId })
+            -- Pas de EndPedInteraction : le fêtard va se lever et marcher
+            -- vers la voiture (police:callouts:radioWalk) — relancer
+            -- l'ambiance ici démarrait RunSceneAmbience en parallèle, qui
+            -- reprenait la main sur le ped et le faisait rester à danser.
         end,
     },
     {
@@ -4901,7 +6146,7 @@ exports.ox_target:addGlobalPed({
             end)
         end,
         onSelect = function()
-            PlayAnimFor('amb@medic@standing@kneel@base', 'base', 4000)
+            if not PlayAnimFor('amb@medic@standing@kneel@base', 'base', 4000) then return end
             SendQ('police:callouts:objectiveDone', { kind = 'animal' })
         end,
     },
@@ -4971,7 +6216,7 @@ exports.ox_target:addGlobalVehicle({
         name = 'callout_load_vehicle', icon = 'fa-solid fa-car-side',
         label = 'Installer la personne à l\'arrière', distance = 3.5,
         canInteract = function(entity)
-            if not IsOnDuty() or not EngagedOnCallout() then return false end
+            if not IsOnDuty() then return false end
             if not IsPoliceVehicle(entity) then return false end
             if not FreeRearSeat(entity) then return false end
             return PersonToLoad() ~= nil
@@ -4989,7 +6234,7 @@ exports.ox_target:addGlobalVehicle({
         name = 'callout_unload_vehicle', icon = 'fa-solid fa-person-walking',
         label = 'Faire sortir la personne', distance = 3.5,
         canInteract = function(entity)
-            if not IsOnDuty() or not EngagedOnCallout() then return false end
+            if not IsOnDuty() then return false end
             if not IsPoliceVehicle(entity) then return false end
             for _, seat in ipairs(C.TransportSeats) do
                 local occupant = GetPedInVehicleSeat(entity, seat)
@@ -5007,33 +6252,40 @@ exports.ox_target:addGlobalVehicle({
             end
         end,
     },
+    {
+        -- Le véhicule du/des suspect(s) lui-même (voiture de fuite,
+        -- arrêtée après une course-poursuite…) : on cible la voiture
+        -- pour extraire l'occupant sans avoir à monter à côté de lui.
+        name = 'callout_extract_suspect', icon = 'fa-solid fa-car-burst',
+        label = 'Extraire l\'occupant du véhicule', distance = 3.0,
+        canInteract = function(entity)
+            if not IsOnDuty() then return false end
+            if IsPoliceVehicle(entity) then return false end
+            for seat = -1, 5 do
+                local occupant = GetPedInVehicleSeat(entity, seat)
+                if occupant and occupant ~= 0 then
+                    local p = PedFromEntity(occupant)
+                    if p and (p.role == 'suspect' or p.role == 'wanderer') then
+                        return true
+                    end
+                end
+            end
+            return false
+        end,
+        onSelect = function(data)
+            for seat = -1, 5 do
+                local occupant = GetPedInVehicleSeat(data.entity, seat)
+                if occupant and occupant ~= 0 then
+                    local p = PedFromEntity(occupant)
+                    if p and (p.role == 'suspect' or p.role == 'wanderer') then
+                        UnloadFromVehicle(occupant, data.entity)
+                        return
+                    end
+                end
+            end
+        end,
+    },
 })
-
--- Anna, Mike, Jessie : entités locales, ciblage par entité
-CreateThread(function()
-    while true do
-        Wait(2000)
-        if StaticPeds['register'] and DoesEntityExist(StaticPeds['register'])
-           and not StaticPeds['register_targeted'] then
-            exports.ox_target:addLocalEntity(StaticPeds['register'], {
-                {
-                    name = 'callout_register', icon = 'fa-solid fa-clipboard-list',
-                    label = 'Mission Police Secours', distance = 2.0,
-                    canInteract = function() return IsOnDuty() end,
-                    onSelect = function()
-                        if Registered then
-                            -- Déjà inscrit : la même interaction fait sortir
-                            SendQ('police:callouts:register', {})
-                        else
-                            SendQ('police:callouts:askCrews', {})
-                        end
-                    end,
-                },
-            })
-            StaticPeds['register_targeted'] = true
-        end
-    end
-end)
 
 local function AttachCustodyTarget(key, label, isHospital)
     local ped = StaticPeds[key]
@@ -5046,13 +6298,20 @@ local function AttachCustodyTarget(key, label, isHospital)
         {
             name = 'callout_deliver_' .. key, icon = 'fa-solid fa-building-shield',
             label = label, distance = 3.0,
-            canInteract = function() return IsOnDuty() and EngagedOnCallout() end,
+            -- Fenêtre de grâce : un individu déjà menotté au moment où la
+            -- mission se clôt reste présentable tant que LastCalloutSnapshot
+            -- existe (cf. police:callouts:ended), même sans mission active.
+            canInteract = function()
+                return IsOnDuty() and (EngagedOnCallout() or LastCalloutSnapshot ~= nil)
+            end,
             onSelect = function()
-                if not Callout then return end
+                local peds = (Callout and Callout.peds)
+                    or (LastCalloutSnapshot and LastCalloutSnapshot.peds)
+                if not peds then return end
                 -- Liste des individus présentables à proximité
                 local options = {}
                 local npcCoords = C.Npcs[key].coords
-                for _, p in ipairs(Callout.peds or {}) do
+                for _, p in ipairs(peds) do
                     local wanted = isHospital and (p.role == 'wanderer') or (p.role == 'suspect')
                     local okState = isHospital or (p.state == 'cuffed')
                     if wanted and okState and NetworkDoesNetworkIdExist(p.netId) then
@@ -5082,32 +6341,6 @@ local function AttachCustodyTarget(key, label, isHospital)
     })
 end
 
--- Le véhicule-sono du tapage
-CreateThread(function()
-    while true do
-        Wait(2000)
-        if StaticPeds['register'] and DoesEntityExist(StaticPeds['register'])
-           and not StaticPeds['register_targeted'] then
-            exports.ox_target:addLocalEntity(StaticPeds['register'], {
-                {
-                    name = 'callout_register', icon = 'fa-solid fa-clipboard-list',
-                    label = 'Mission Police Secours', distance = 2.0,
-                    canInteract = function() return IsOnDuty() end,
-                    onSelect = function()
-                        if Registered then
-                            -- Déjà inscrit : la même interaction fait sortir
-                            SendQ('police:callouts:register', {})
-                        else
-                            SendQ('police:callouts:askCrews', {})
-                        end
-                    end,
-                },
-            })
-            StaticPeds['register_targeted'] = true
-        end
-    end
-end)
-
 --  SIGNALEMENT DU REQUÉRANT (faillible)
 
 -- Le signalement est construit UNE SEULE FOIS par le serveur à la
@@ -5115,6 +6348,14 @@ AddEventHandler('police:callouts:witnessStatement', function(caller)
     if not Callout then return end
 
     local who = caller.label or 'Le requérant'
+
+    -- Constatation de vol par effraction : une fois tous les points
+    -- examinés, le prochain contact avec le requérant remplace le
+    -- témoignage initial par sa phrase de clôture (départ au commissariat).
+    if Callout.examineComplete and Callout.closingLine then
+        Notify(who .. ' : « ' .. Callout.closingLine .. ' »', 'info')
+        return
+    end
 
     -- Témoin nommé (tuerie de masse) : sa PROPRE déposition, distincte
     local lines = (caller.witness and caller.statementLines) or Callout.statementLines
@@ -5235,7 +6476,24 @@ local function BuildHudLines()
     if Callout.falseAlarm then
         lines[#lines + 1] = { t = '~y~Interroger le requérant', s = 0.28 }
     elseif obj == 'statement' then
-        lines[#lines + 1] = { t = '~y~Prendre la déposition', s = 0.28 }
+        lines[#lines + 1] = Callout.statementTaken
+            and { t = '~g~Déposition prise', s = 0.28 }
+            or { t = '~y~Prendre la déposition', s = 0.28 }
+        local pts = Callout.examinePoints or {}
+        if #pts > 0 then
+            local done = 0
+            for _, pt in ipairs(pts) do
+                if Callout.examineNotes and Callout.examineNotes[pt.id] then done = done + 1 end
+            end
+            if done < #pts then
+                lines[#lines + 1] = { t = ('~y~Faire les constatations (%d/%d)'):format(done, #pts), s = 0.28 }
+            elseif not Callout.objectiveDone then
+                lines[#lines + 1] = { t = '~g~Constatations effectuées', s = 0.28 }
+                lines[#lines + 1] = { t = '~y~Reparler au requérant', s = 0.28 }
+            else
+                lines[#lines + 1] = { t = '~g~Constatations effectuées', s = 0.28 }
+            end
+        end
     elseif obj == 'death' and Callout.massIncident then
         -- Tuerie de masse : trois fronts distincts, chacun avec son
         local pending, cuffed, killed = 0, 0, 0
@@ -5244,7 +6502,9 @@ local function BuildHudLines()
                 if p.state == 'dead' then killed = killed + 1
                 elseif p.state == 'cuffed' or p.state == 'stunned'
                     or p.state == 'delivered' then cuffed = cuffed + 1
-                elseif p.state ~= 'escaped' then pending = pending + 1 end
+                elseif p.state ~= 'escaped' and p.state ~= 'dispersed' then
+                    pending = pending + 1
+                end
             end
         end
         if pending > 0 then
@@ -5254,24 +6514,60 @@ local function BuildHudLines()
             lines[#lines + 1] = { t = ('~g~%d tué(s)~s~  ·  ~g~%d capturé(s)'):format(killed, cuffed), s = 0.27 }
         end
 
-        local deadLeft = math.max(0, (Callout.deadTotal or 0) - (Callout.deadConstated or 0))
-        local aidLeft  = math.max(0, (Callout.aidTotal or 0) - (Callout.aidGiven or 0))
-        if aidLeft > 0 then
-            lines[#lines + 1] = { t = ('~r~%d blessé(s) à soigner'):format(aidLeft), s = 0.28 }
-        end
-        if deadLeft > 0 then
-            lines[#lines + 1] = { t = ('~r~%d corps à constater'):format(deadLeft), s = 0.28 }
-        end
-        if pending == 0 and aidLeft == 0 and deadLeft == 0 then
-            lines[#lines + 1] = { t = '~g~Scène sécurisée', s = 0.28 }
+        -- Le nombre de victimes/blessés n'est révélé qu'une fois sur les
+        -- lieux : le connaître dès l'acceptation de l'appel retirait toute
+        -- tension — l'agent doit découvrir ce qui l'attend en arrivant.
+        local onScene = Callout.coords and #(GetEntityCoords(PlayerPedId())
+            - vector3(Callout.coords.x, Callout.coords.y, Callout.coords.z))
+            <= (C.MassIncidentRevealDist or 30.0)
+
+        if not onScene then
+            lines[#lines + 1] = { t = '~y~Rendez-vous sur les lieux', s = 0.28 }
+        else
+            local deadLeft = math.max(0, (Callout.deadTotal or 0) - (Callout.deadConstated or 0))
+            local aidLeft  = math.max(0, (Callout.aidTotal or 0) - (Callout.aidGiven or 0))
+            if aidLeft > 0 then
+                lines[#lines + 1] = { t = ('~r~%d blessé(s) à soigner'):format(aidLeft), s = 0.28 }
+            end
+            if deadLeft > 0 then
+                lines[#lines + 1] = { t = ('~r~%d corps à constater'):format(deadLeft), s = 0.28 }
+            end
+            if pending == 0 and aidLeft == 0 and deadLeft == 0 then
+                lines[#lines + 1] = { t = '~g~Scène sécurisée', s = 0.28 }
+            end
         end
 
     elseif obj == 'death' then
-        lines[#lines + 1] = { t = '~y~Constater le décès', s = 0.28 }
+        if Callout.objectiveDone then
+            lines[#lines + 1] = { t = '~g~Décès constaté', s = 0.28 }
+        else
+            lines[#lines + 1] = { t = '~y~Constater le décès', s = 0.28 }
+        end
     elseif obj == 'hospital' then
-        lines[#lines + 1] = { t = '~y~Conduire la personne à l\'hôpital', s = 0.28 }
+        local delivered = false
+        for _, p in ipairs(Callout.peds or {}) do
+            if p.role == 'wanderer' and p.state == 'delivered' then delivered = true break end
+        end
+        if delivered then
+            lines[#lines + 1] = { t = '~g~Personne déposée à l\'hôpital', s = 0.28 }
+        else
+            lines[#lines + 1] = { t = '~y~Conduire la personne à l\'hôpital', s = 0.28 }
+        end
     elseif obj == 'radio' then
         lines[#lines + 1] = { t = '~y~Faire cesser la nuisance sonore', s = 0.28 }
+        -- Indicatif seulement : avec 5 à 8 fêtards, exiger l'identité de
+        -- tout le monde serait excessif — un simple rappel visuel.
+        local idDone, idTotal = 0, 0
+        for _, p in ipairs(Callout.peds or {}) do
+            if p.role == 'suspect' then
+                idTotal = idTotal + 1
+                if p.identified then idDone = idDone + 1 end
+            end
+        end
+        if idTotal > 0 then
+            lines[#lines + 1] = { t = ('~y~Identifier les personnes contrôlées (%d/%d)')
+                :format(idDone, idTotal), s = 0.28 }
+        end
     elseif obj == 'animal' then
         lines[#lines + 1] = { t = '~y~Neutraliser l\'animal puis constater sa mort', s = 0.28 }
         -- Le maître répond de la divagation : l'objectif animalier ne
@@ -5282,7 +6578,9 @@ local function BuildHudLines()
                     if p.state == 'cuffed' or p.state == 'stunned' then
                         cuffed = cuffed + 1
                     elseif p.state ~= 'delivered' and p.state ~= 'dead'
-                       and p.state ~= 'escaped' then pending = pending + 1 end
+                       and p.state ~= 'escaped' and p.state ~= 'dispersed' then
+                        pending = pending + 1
+                    end
                 end
             end
             lines[#lines + 1] = { t = ('~y~%d maître à interpeller~s~  ·  ~g~%d maîtrisé(s)')
@@ -5294,11 +6592,39 @@ local function BuildHudLines()
             if p.role == 'suspect' then
                 if p.state == 'cuffed' or p.state == 'stunned' then cuffed = cuffed + 1
                 elseif p.state ~= 'delivered' and p.state ~= 'dead'
-                   and p.state ~= 'escaped' then pending = pending + 1 end
+                   and p.state ~= 'escaped' and p.state ~= 'dispersed' then
+                    pending = pending + 1
+                end
             end
         end
         lines[#lines + 1] = { t = ('~y~%d à interpeller~s~  ·  ~g~%d maîtrisé(s)'):format(
             pending, cuffed), s = 0.28 }
+    end
+
+    -- Délit de fuite : le blessé de la collision doit aussi être secouru.
+    if Callout.requireAid then
+        local aidLeft = 0
+        for _, p in ipairs(Callout.peds or {}) do
+            if p.role == 'victim' and p.state ~= 'healed' then aidLeft = aidLeft + 1 end
+        end
+        if aidLeft > 0 then
+            lines[#lines + 1] = { t = '~r~Porter assistance au blessé', s = 0.28 }
+        end
+    end
+
+    -- Personne errante / découverte de corps : identifier, puis prévenir
+    -- un proche avant de pouvoir clôturer.
+    if Callout.familyContact then
+        for _, p in ipairs(Callout.peds or {}) do
+            if p.role == 'wanderer' or p.role == 'deceased' then
+                if not p.identified then
+                    lines[#lines + 1] = { t = '~y~Établir son identité', s = 0.28 }
+                elseif p.familyContact and not p.familyContact.notified then
+                    lines[#lines + 1] = { t = '~r~Prévenir un proche', s = 0.28 }
+                end
+                break
+            end
+        end
     end
 
     -- Rappel du raccourci : sans lui, personne ne sait que les renforts
@@ -5333,6 +6659,18 @@ local function BuildHudLines()
         lines[#lines + 1] = { t = ('~c~── %s ──')
             :format(Callout.ownerLabel or 'Mis en cause'), s = 0.27 }
         lines[#lines + 1] = { t = '~w~' .. Callout.ownerStatement, s = 0.27 }
+    end
+
+    -- Notes relevées sur les points d'examen (porte forcée, fenêtre
+    -- brisée…), une fois examinés.
+    if Callout.examineNotes and next(Callout.examineNotes) then
+        lines[#lines + 1] = { t = '~c~── Constatations ──', s = 0.27 }
+        for _, pt in ipairs(Callout.examinePoints or {}) do
+            local note = Callout.examineNotes[pt.id]
+            if note then
+                lines[#lines + 1] = { t = '~w~' .. note, s = 0.27 }
+            end
+        end
     end
 
     return lines
@@ -5465,14 +6803,125 @@ end)
 
 --  RÉCEPTION DES ÉVÉNEMENTS SERVEUR
 
-LSLegacy.RegisterClientEvent('police:callouts:registerState', function(state, crewId, crewLabel)
+LSLegacy.Events.Register('police:callouts:registerState', function(state, crewId, crewLabel, callsign)
     Registered = state == true
     MyCrew     = state and crewId or nil
     MyCrewLbl  = state and crewLabel or nil
+    MyCallsign = state and callsign or nil
     if not state then ClearPrompt() end
 end)
 
-LSLegacy.RegisterClientEvent('police:callouts:incoming', function(data)
+--  CARTE TN 97 (CIC) — agents, véhicule d'équipage, missions en cours
+-- Coordonnées poussées par le serveur (police:cic:mapData) : pas de
+-- dépendance au streaming des entités, un poste fixe doit voir tout le
+-- territoire. Réservé au joueur posté au CIC (police:cic:state).
+
+-- Globaux (et non locaux) : le fichier est déjà à la limite Lua des 200
+-- variables locales de niveau fichier.
+AmCic           = false
+CicAgentBlips   = {}   -- { [sid] = blip }
+CicVehicleBlips = {}   -- { [crewId] = blip }
+CicMissionBlips = {}   -- { [calloutId] = blip }
+
+function ClearCicMapBlips()
+    for _, t in ipairs({ CicAgentBlips, CicVehicleBlips, CicMissionBlips }) do
+        for k, blip in pairs(t) do
+            if DoesBlipExist(blip) then RemoveBlip(blip) end
+            t[k] = nil
+        end
+    end
+end
+
+LSLegacy.Events.Register('police:cic:state', function(state)
+    AmCic = state == true
+    if not AmCic then ClearCicMapBlips() end
+end)
+
+LSLegacy.Events.Register('police:cic:mapData', function(data)
+    if not AmCic then return end
+
+    local seenAgents, seenVehicles, seenMissions = {}, {}, {}
+
+    for _, a in ipairs(data.agents or {}) do
+        seenAgents[a.sid] = true
+        local blip = CicAgentBlips[a.sid]
+        if not blip or not DoesBlipExist(blip) then
+            -- Rond bleu : agent.
+            blip = AddBlipForCoord(a.coords.x, a.coords.y, a.coords.z)
+            SetBlipSprite(blip, 1)
+            SetBlipColour(blip, 3)
+            SetBlipScale(blip, 0.85)
+            SetBlipCategory(blip, 7)
+            SetBlipAsShortRange(blip, true)
+            CicAgentBlips[a.sid] = blip
+        else
+            SetBlipCoords(blip, a.coords.x, a.coords.y, a.coords.z)
+        end
+        BeginTextCommandSetBlipName('STRING')
+        AddTextComponentSubstringPlayerName(a.callsign or 'Agent')
+        EndTextCommandSetBlipName(blip)
+    end
+    for sid, blip in pairs(CicAgentBlips) do
+        if not seenAgents[sid] then
+            if DoesBlipExist(blip) then RemoveBlip(blip) end
+            CicAgentBlips[sid] = nil
+        end
+    end
+
+    for _, v in ipairs(data.vehicles or {}) do
+        seenVehicles[v.crew] = true
+        local blip = CicVehicleBlips[v.crew]
+        if not blip or not DoesBlipExist(blip) then
+            -- Carré bleu : véhicule d'équipage (sprite 56 = icône véhicule).
+            blip = AddBlipForCoord(v.coords.x, v.coords.y, v.coords.z)
+            SetBlipSprite(blip, 56)
+            SetBlipColour(blip, 3)
+            SetBlipScale(blip, 0.85)
+            SetBlipCategory(blip, 7)
+            SetBlipAsShortRange(blip, true)
+            CicVehicleBlips[v.crew] = blip
+        else
+            SetBlipCoords(blip, v.coords.x, v.coords.y, v.coords.z)
+        end
+        BeginTextCommandSetBlipName('STRING')
+        AddTextComponentSubstringPlayerName(v.label or 'Véhicule')
+        EndTextCommandSetBlipName(blip)
+    end
+    for crew, blip in pairs(CicVehicleBlips) do
+        if not seenVehicles[crew] then
+            if DoesBlipExist(blip) then RemoveBlip(blip) end
+            CicVehicleBlips[crew] = nil
+        end
+    end
+
+    for _, m in ipairs(data.missions or {}) do
+        seenMissions[m.id] = true
+        local blip = CicMissionBlips[m.id]
+        if not blip or not DoesBlipExist(blip) then
+            blip = AddBlipForCoord(m.coords.x, m.coords.y, m.coords.z)
+            SetBlipSprite(blip, 280)
+            SetBlipScale(blip, 1.0)
+            SetBlipAsShortRange(blip, true)
+            CicMissionBlips[m.id] = blip
+        else
+            SetBlipCoords(blip, m.coords.x, m.coords.y, m.coords.z)
+        end
+        -- Rouge tant que non affectée, orange une fois prise en charge.
+        SetBlipColour(blip, m.pending and 1 or 5)
+        BeginTextCommandSetBlipName('STRING')
+        AddTextComponentSubstringPlayerName((m.label or 'Appel 17') ..
+            (m.zoneLabel and (' — ' .. m.zoneLabel) or ''))
+        EndTextCommandSetBlipName(blip)
+    end
+    for id, blip in pairs(CicMissionBlips) do
+        if not seenMissions[id] then
+            if DoesBlipExist(blip) then RemoveBlip(blip) end
+            CicMissionBlips[id] = nil
+        end
+    end
+end)
+
+LSLegacy.Events.Register('police:callouts:incoming', function(data)
     Incoming = data
     Notify(data.message, 'info')
     PlaySoundFrontend(-1, 'Menu_Accept', 'Phone_SoundSet_Default', true)
@@ -5495,14 +6944,14 @@ LSLegacy.RegisterClientEvent('police:callouts:incoming', function(data)
     )
 end)
 
-LSLegacy.RegisterClientEvent('police:callouts:cancelled', function(data)
+LSLegacy.Events.Register('police:callouts:cancelled', function(data)
     if Incoming and data and Incoming.id == data.id then Incoming = nil end
     ClearPrompt()
     if data and data.taken then return end
     Notify(C.Dispatch.unpicked, 'warning')
 end)
 
-LSLegacy.RegisterClientEvent('police:callouts:backupRequested', function(data)
+LSLegacy.Events.Register('police:callouts:backupRequested', function(data)
     Notify(data.message, 'warning')
     PlaySoundFrontend(-1, 'Menu_Accept', 'Phone_SoundSet_Default', true)
     -- Un refus de renfort ne classe pas l'appel : l'équipage engagé
@@ -5511,13 +6960,25 @@ LSLegacy.RegisterClientEvent('police:callouts:backupRequested', function(data)
     end, nil, C.BackupTimeout)
 end)
 
+-- Notification CIC : pas de prompt d'acceptation, l'opérateur traite
+-- l'appel depuis l'onglet TN 97 du MDT.
+LSLegacy.Events.Register('police:callouts:cicIncoming', function(data)
+    if not data then return end
+    Notify((data.backup and 'Renfort demandé — ' or 'Nouvel Appel 17 — ') .. (data.message or ''), 'info')
+    PlaySoundFrontend(-1, 'Menu_Accept', 'Phone_SoundSet_Default', true)
+end)
+
+LSLegacy.Events.Register('police:callouts:cicCancelled', function(data)
+    Notify('Appel classé sans suite — aucun équipage affecté à temps.', 'warning')
+end)
+
 --  MENU D'ADMINISTRATION (/missionpnjadmin)
 
 local function AdminAction(action, value)
     SendQ('police:callouts:adminAction', { action = action, value = value })
 end
 
-LSLegacy.RegisterClientEvent('police:callouts:adminMenuData', function(data)
+LSLegacy.Events.Register('police:callouts:adminMenuData', function(data)
     if not data then return end
 
     -- Dès la première ouverture, la touche L rouvre le menu sans passer
@@ -5631,40 +7092,55 @@ LSLegacy.RegisterClientEvent('police:callouts:adminMenuData', function(data)
     lib.showContext('callout_admin')
 end)
 
---  CHOIX DE L'ÉQUIPAGE (Police Secours)
+--  POINTS D'EXAMEN FIXES (constatation de vol par effraction : porte
+--  forcée, fenêtre brisée…) — zones ox_target posées sur les coordonnées
+--  relevées à la main, indépendantes de tout PNJ.
 
-LSLegacy.RegisterClientEvent('police:callouts:crewState', function(data)
-    if not data or not data.crews then return end
+ExamineZones = {}   -- { [id] = idZoneOxTarget }
 
-    local options = {}
-    for _, c in ipairs(data.crews) do
-        local full = c.count >= c.max
-        options[#options + 1] = {
-            title       = c.label,
-            description = ('%d / %d agents%s'):format(c.count, c.max,
-                full and ' — complet' or ''),
-            icon        = full and 'user-slash' or 'users',
-            disabled    = full,
-            onSelect    = function()
-                SendQ('police:callouts:register', { crew = c.id })
-            end,
-        }
+function ClearExaminePoints()
+    for id, zoneId in pairs(ExamineZones) do
+        exports.ox_target:removeZone(zoneId)
+        ExamineZones[id] = nil
     end
+end
 
-    lib.registerContext({
-        id      = 'callout_crews',
-        title   = 'Mission Police Secours',
-        options = options,
-    })
-    lib.showContext('callout_crews')
-end)
+function CreateExaminePoints()
+    ClearExaminePoints()
+    for _, pt in ipairs((Callout and Callout.examinePoints) or {}) do
+        ExamineZones[pt.id] = exports.ox_target:addSphereZone({
+            coords = vector3(pt.x, pt.y, pt.z),
+            radius = 1.0,
+            debug = false,
+            options = {
+                {
+                    name = 'callout_examine_' .. pt.id,
+                    icon = 'fa-solid fa-magnifying-glass',
+                    label = 'Examiner ' .. (pt.label or 'la scène'),
+                    distance = 2.0,
+                    canInteract = function()
+                        if not IsOnDuty() or not EngagedOnCallout() then return false end
+                        return not (Callout and Callout.examineNotes
+                            and Callout.examineNotes[pt.id])
+                    end,
+                    onSelect = function()
+                        if not PlayAnimFor('amb@world_human_cop_idles@male@idle_a',
+                            'idle_b', 2500) then return end
+                        SendQ('police:callouts:examinePoint', { id = pt.id })
+                    end,
+                },
+            },
+        })
+    end
+end
 
-LSLegacy.RegisterClientEvent('police:callouts:sync', function(payload)
+LSLegacy.Events.Register('police:callouts:sync', function(payload)
     -- On compare l'IDENTIFIANT de l'appel, pas le simple fait que
     local first = (Callout == nil) or (Callout.id ~= payload.id)
     if first and Callout then
         -- Ménage de la mission précédente restée en mémoire
         ClearCalloutBlips()
+        ClearExaminePoints()
         StopAlarm()
         StopBoombox()
     end
@@ -5674,12 +7150,14 @@ LSLegacy.RegisterClientEvent('police:callouts:sync', function(payload)
     end
 
     Callout = payload
+    RefreshPoliceMissionVehicleNets()
     Incoming = nil
     -- L'équipage est engagé d'un bloc : l'invite Y/N des coéquipiers
     ClearPrompt()
 
     if first then
         CreateCalloutBlips()
+        CreateExaminePoints()
         SpawnStaticNpc('custody')
         AttachCustodyTarget('custody', 'Présenter l\'individu', false)
         if payload.hospitalNpc then
@@ -5688,12 +7166,23 @@ LSLegacy.RegisterClientEvent('police:callouts:sync', function(payload)
         end
         if payload.sound == 'boombox' then StartBoombox() end
         if payload.sound == 'alarm' then StartAlarm() end
+        if payload.suspectsOnBike then StartRodeoLoop() end
     end
     RefreshCuffedBlips()
     RefreshCallerBlip()
+
+    -- Sachets de stup jetés en fuite : un prop par chute, tant qu'il
+    -- n'a pas été ramassé (ou que la scène ne s'est pas terminée).
+    for _, drop in ipairs(payload.drops or {}) do
+        if drop.picked then
+            RemoveStashProp(drop.id)
+        else
+            SpawnStashProp(drop)
+        end
+    end
 end)
 
-LSLegacy.RegisterClientEvent('police:callouts:brainAssigned', function(id)
+LSLegacy.Events.Register('police:callouts:brainAssigned', function(id)
     if Callout and Callout.id == id then
         IsBrain = true
         BrainState = {}
@@ -5701,7 +7190,7 @@ LSLegacy.RegisterClientEvent('police:callouts:brainAssigned', function(id)
 end)
 
 -- Tapage : l'individu désigné se dirige vers la voiture, coupe la sono
-LSLegacy.RegisterClientEvent('police:callouts:radioWalk', function(data)
+LSLegacy.Events.Register('police:callouts:radioWalk', function(data)
     if not data or not data.netId or not Callout then return end
 
     CreateThread(function()
@@ -5718,7 +7207,10 @@ LSLegacy.RegisterClientEvent('police:callouts:radioWalk', function(data)
         end
 
         RequestControl(ped)
-        ClearPedTasks(ped)
+        -- ClearPedTasks (sortie « propre ») laisse le PNJ finir sa boucle de
+        -- danse en cours avant de réagir — plusieurs secondes de retard
+        -- perçu. Immediate coupe net, il part marcher tout de suite.
+        ClearPedTasksImmediately(ped)
         SetBlockingOfNonTemporaryEvents(ped, true)
 
         if veh then
@@ -5735,7 +7227,7 @@ LSLegacy.RegisterClientEvent('police:callouts:radioWalk', function(data)
                 while GetGameTimer() < timeout do
                     Wait(300)
                     if not DoesEntityExist(ped) or not DoesEntityExist(veh) then break end
-                    if #(GetEntityCoords(ped) - GetEntityCoords(veh)) < 2.5 then break end
+                    if LSLegacy.Validate.Distance(GetEntityCoords(ped), GetEntityCoords(veh), 2.5) then break end
                 end
 
                 if DoesEntityExist(ped) and DoesEntityExist(veh) then
@@ -5767,7 +7259,7 @@ LSLegacy.RegisterClientEvent('police:callouts:radioWalk', function(data)
 end)
 
 -- Prise en charge hospitalière : la personne et l'infirmière entrent
-LSLegacy.RegisterClientEvent('police:callouts:hospitalIntake', function(data)
+LSLegacy.Events.Register('police:callouts:hospitalIntake', function(data)
     if not data or not data.netId then return end
 
     StopEscort()
@@ -5803,7 +7295,7 @@ LSLegacy.RegisterClientEvent('police:callouts:hospitalIntake', function(data)
             Wait(1000)
             local arrived = false
             if person and DoesEntityExist(person) then
-                if #(GetEntityCoords(person) - dest) < 2.5 then arrived = true end
+                if LSLegacy.Validate.Distance(GetEntityCoords(person), dest, 2.5) then arrived = true end
             else
                 arrived = true
             end
@@ -5816,7 +7308,7 @@ LSLegacy.RegisterClientEvent('police:callouts:hospitalIntake', function(data)
 end)
 
 -- Fin de mission : les figurants s'en vont d'eux-mêmes plutôt que de
-LSLegacy.RegisterClientEvent('police:callouts:releaseScene', function(list)
+LSLegacy.Events.Register('police:callouts:releaseScene', function(list)
     for _, item in ipairs(list or {}) do
         -- Coupe toute boucle d'ambiance encore active pour ce PNJ.
         SceneStop[item.netId] = true
@@ -5848,25 +7340,50 @@ LSLegacy.RegisterClientEvent('police:callouts:releaseScene', function(list)
     end
 end)
 
-LSLegacy.RegisterClientEvent('police:callouts:ended', function(data)
+-- Petit bip MDT : un proche à prévenir vient de devenir consultable.
+LSLegacy.Events.Register('police:callouts:mdtPing', function()
+    PlaySoundFrontend(-1, 'Menu_Accept', 'Phone_SoundSet_Default', true)
+end)
+
+LSLegacy.Events.Register('police:callouts:ended', function(data)
     StopEscort()
     -- La housse reste en place le temps que le serveur nettoie la scène,
     SetTimeout(C.CleanupDelay * 1000, ClearBodyBags)
     StopAlarm()
     StopBoombox()
     ClearCalloutBlips()
+    ClearExaminePoints()
+    ClearStashProps()
+    ClearFamilyContactRoute()
     ClearPrompt()
     -- Mike et Jessie restent le temps du nettoyage : Jessie est en train
+    -- Si l'agent est réengagé sur une nouvelle mission avant l'expiration
+    -- de ce délai, SpawnStaticNpc réutilise le PNJ encore présent et le
+    -- rattache à la nouvelle mission (TargetedStatics[key..'_owner']) —
+    -- on ne le supprime donc ici que s'il appartient toujours à CETTE
+    -- mission qui se termine.
+    local endedId = data and data.id
+    -- Un individu déjà menotté au moment où la mission se clôt (timeout,
+    -- admin…) reste présentable au poste tant que la scène n'a pas été
+    -- nettoyée — sans cette copie, Callout=nil coupait aussitôt tout accès
+    -- à la liste des PNJ à présenter (cf. AttachCustodyTarget, plus bas).
+    -- Global (pas de `local`) : le fichier est déjà à la limite des 200
+    -- variables locales de portée fichier.
+    LastCalloutSnapshot = { id = endedId, peds = Callout and Callout.peds or {} }
     SetTimeout(C.CleanupDelay * 1000, function()
-        RemoveStaticNpc('custody')
-        RemoveStaticNpc('hospital')
+        if TargetedStatics['custody_owner'] == endedId then RemoveStaticNpc('custody') end
+        if TargetedStatics['hospital_owner'] == endedId then RemoveStaticNpc('hospital') end
+        if LastCalloutSnapshot and LastCalloutSnapshot.id == endedId then
+            LastCalloutSnapshot = nil
+        end
     end)
     Callout      = nil
+    PoliceMissionVehicleNets = {}
     Incoming     = nil
     IsBrain       = false
     SceneLaidOut   = nil
     SceneRetries   = 0
-    RouteSwitched  = nil
+    RouteSwitched  = { custody = nil, hospital = nil }
     RadioSceneDone = nil
     RadioDriverSeated = {}
     onSceneFor     = nil
@@ -5895,7 +7412,7 @@ LSLegacy.RegisterClientEvent('police:callouts:ended', function(data)
 end)
 
 -- Masquage du corps piloté par le cerveau pendant sa mise en scène.
-LSLegacy.RegisterClientEvent('police:callouts:corpseVisible', function(data)
+LSLegacy.Events.Register('police:callouts:corpseVisible', function(data)
     if not data or not data.netId then return end
     if not NetworkDoesNetworkIdExist(data.netId) then return end
     local e = NetworkGetEntityFromNetworkId(data.netId)
@@ -5928,11 +7445,11 @@ local function AmbEntity(netId, tries)
 end
 
 -- Diagnostic de la levée de corps, renvoyé par le serveur.
-LSLegacy.RegisterClientEvent('police:callouts:ambulanceDebug', function(msg)
+LSLegacy.Events.Register('police:callouts:ambulanceDebug', function(msg)
     print('^3[ambulance]^7 ' .. tostring(msg))
 end)
 
-LSLegacy.RegisterClientEvent('police:callouts:ambulance', function(data)
+LSLegacy.Events.Register('police:callouts:ambulance', function(data)
     if not data then return end
     print(('^2[ambulance]^7 Événement reçu — convoi #%s, meneur ici : %s')
         :format(tostring(data.id), tostring(data.driver)))
@@ -6122,8 +7639,8 @@ LSLegacy.RegisterClientEvent('police:callouts:ambulance', function(data)
                 Wait(400)
                 if not DoesEntityExist(veh) then return end
                 local vp = GetEntityCoords(veh)
-                if #(vp - target) <= 10.0 then break end
-                if #(vp - prev) < 0.6 then break end   -- ne progresse plus
+                if LSLegacy.Validate.Distance(vp, target, 10.0) then break end
+                if LSLegacy.Validate.Distance(vp, prev, 0.6) then break end   -- ne progresse plus
                 prev = vp
             end
         end
@@ -6210,11 +7727,13 @@ LSLegacy.RegisterClientEvent('police:callouts:ambulance', function(data)
         print('^2[ambulance]^7 Corps pris en charge.')
         SendQ('police:callouts:ambulanceLoaded', { id = data.id })
 
-        -- Remontée et départ
-        for _, ped in ipairs(crew) do
+        -- Remontée et départ — chacun reprend le siège qu'il avait à l'aller
+        -- (voir l'embarquement initial ci-dessus) : sinon tous visent « -2 »
+        -- (n'importe quel siège) et se disputent la place de chauffeur.
+        for i, ped in ipairs(crew) do
             if DoesEntityExist(ped) and DoesEntityExist(veh) then
                 ClearPedTasks(ped)
-                TaskEnterVehicle(ped, veh, 15000, -2, 1.5, 1, 0)
+                TaskEnterVehicle(ped, veh, 15000, (i == 1) and -1 or (i - 2), 1.5, 1, 0)
             end
         end
         Wait(A.BoardDelay or 6000)
@@ -6230,12 +7749,12 @@ LSLegacy.RegisterClientEvent('police:callouts:ambulance', function(data)
 end)
 
 -- Déposition du mis en cause, recueillie sur place.
-LSLegacy.RegisterClientEvent('police:callouts:ownerStatement', function(data)
+LSLegacy.Events.Register('police:callouts:ownerStatement', function(data)
     if not data or not data.text then return end
     Notify((data.label or 'L\'individu') .. ' : « ' .. data.text .. ' »', 'info')
 end)
 
-LSLegacy.RegisterClientEvent('police:callouts:searchResult', function(data)
+LSLegacy.Events.Register('police:callouts:searchResult', function(data)
     if not data then return end
     if not data.items or #data.items == 0 then
         Notify('Fouille de ' .. (data.label or 'l\'individu') .. ' : rien à signaler.', 'info')
@@ -6306,25 +7825,40 @@ end, false)
 
 local IsAdminCached = false
 
-LSLegacy.RegisterClientEvent('police:callouts:adminState', function(state)
+LSLegacy.Events.Register('police:callouts:adminState', function(state)
     IsAdminCached = state == true
 end)
 
 -- On interroge le serveur au démarrage puis périodiquement : le niveau
+-- staff n'est connu côté client qu'après cet aller-retour. Avant, un
+-- admin réel se voyait refuser /missionpnjadmin par IsAdminCached qui
+-- valait encore `false` — la première requête ne partait qu'après 30 s.
 CreateThread(function()
-    while true do
-        Wait(30000)
+    -- Ressaies rapprochés au tout début : si le personnage n'est pas
+    -- encore totalement chargé côté serveur au premier essai (group
+    -- pas encore résolu), IsAdmin renverrait faux à tort.
+    for _ = 1, 5 do
         SendQ('police:callouts:askAdmin', {})
-        Wait(270000)
+        if IsAdminCached then break end
+        Wait(5000)
+    end
+    while true do
+        Wait(300000)
+        SendQ('police:callouts:askAdmin', {})
     end
 end)
 
--- `adminOnly` : la commande ne fait rien pour un non-admin, sans même
+-- `adminOnly` n'est qu'un filtre d'UX (évite un aller-retour inutile pour
+-- un non-admin) : IsAdminCached peut être encore désynchronisé (retries en
+-- cours, poll toutes les 300s) et faire croire à tort qu'un admin réel ne
+-- l'est pas — le serveur revalide de toute façon IsAdmin() pour chaque
+-- commande (CmdMissionPnjAdmin, CmdCallout, CmdCallouts) et répond avec le
+-- vrai message si refus, donc on ne bloque plus ici : on ne fait que
+-- forcer un rafraîchissement du cache avant d'envoyer, au cas où.
 local function RelayCommand(name, adminOnly)
     RegisterCommand(name, function(_, args)
         if adminOnly and not IsAdminCached then
-            Notify('Commande réservée à l\'administration.', 'error')
-            return
+            SendQ('police:callouts:askAdmin', {})
         end
         SendQ('police:callouts:command', { cmd = name, args = args or {} })
     end, false)
@@ -6332,6 +7866,7 @@ end
 
 -- Appel de renfort : accessible directement, sans passer par le menu
 RegisterCommand('pnjdebug', function()
+    if not IsAdminCached then return end
     print('^2[pnjdebug]^7 ═══ ÉTAT DU CIBLAGE ═══')
     print(('^2[pnjdebug]^7 en service   : %s'):format(tostring(IsOnDuty())))
     print(('^2[pnjdebug]^7 inscrit      : %s'):format(tostring(Registered)))
@@ -6373,6 +7908,7 @@ TriggerEvent('chat:addSuggestion', '/pnjdebug',
 
 -- Signalement manuel d'un PNJ mal placé
 RegisterCommand('signalpnj', function()
+    if not IsAdminCached then return end
     if not Callout then
         print('^1[signalpnj]^7 Vous n\'êtes engagé sur aucune intervention.')
         Notify('Vous n\'êtes engagé sur aucune intervention.', 'error')
@@ -6384,7 +7920,7 @@ RegisterCommand('signalpnj', function()
 end, false)
 
 -- Confirmation du serveur : le PNJ a bien été enregistré au registre.
-LSLegacy.RegisterClientEvent('police:callouts:spawnReported', function(data)
+LSLegacy.Events.Register('police:callouts:spawnReported', function(data)
     if not data then return end
     print('^2[signalpnj]^7 ═══ PNJ SIGNALÉ ═══')
     print(('^2[signalpnj]^7 scénario  : %s'):format(tostring(data.scenario)))
@@ -6420,6 +7956,8 @@ local SURVEY_COLOUR = {
     bystander = { 170,  90, 220 },   -- violet  : les badauds
     deceased  = {  25,  25,  25 },   -- noir    : la personne décédée
     wanderer  = { 255, 120, 190 },   -- rose    : la personne perdue
+    door      = {  90,  90,  90 },   -- gris    : la porte/serrure forcée
+    window    = {  90, 160, 200 },   -- bleu clair : la fenêtre forcée
 }
 local SURVEY_DEFAULT = { 200, 200, 200 }
 
@@ -6467,6 +8005,7 @@ local function SurveyPoints(key, scenarioId)
 end
 
 RegisterCommand('pnjrepere', function(_, args)
+    if not IsAdminCached then return end
     local sc = args and args[1]
     SendQ('police:callouts:anchorSurvey', { scenario = sc and tostring(sc) or '' })
 end, false)
@@ -6475,12 +8014,22 @@ end, false)
 local PnjBlips   = {}
 local PnjBlipSet = nil
 
+-- Scénario/catégorie affiché en continu par /pnjblips : sert à faire
+-- apparaître automatiquement les marqueurs au sol quand on approche
+-- physiquement d'un emplacement, sans passer par /pnjrepere.
+-- Globales (pas `local`) : le fichier est déjà au plafond des 200
+-- locales de chunk principal admises par Lua 5.4.
+PnjBlipScenario = nil
+PnjBlipCategory = nil
+
 local function ClearPnjBlips()
     for _, b in ipairs(PnjBlips) do
         if DoesBlipExist(b) then RemoveBlip(b) end
     end
     PnjBlips   = {}
     PnjBlipSet = nil
+    PnjBlipScenario = nil
+    PnjBlipCategory = nil
 end
 
 -- État des relevés d'un emplacement pour un scénario donné.
@@ -6554,6 +8103,7 @@ local PNJ_BLIP_STYLE = {
 }
 
 RegisterCommand('pnjblips', function(_, args)
+    if not IsAdminCached then return end
     local arg = args and args[1] and tostring(args[1]):lower() or nil
 
     if not arg or arg == 'off' or arg == 'stop' then
@@ -6638,13 +8188,49 @@ RegisterCommand('pnjblips', function(_, args)
     end
 
     PnjBlipSet = arg
+    PnjBlipScenario = scenarioId
+    PnjBlipCategory = category
     print(('^2[repères]^7 %d emplacement(s) — ^2%d complet(s)^7, ' ..
         '^2%d validé(s)^7, ^3%d générique(s)^7, ^1%d sans relevé^7.')
         :format(#PnjBlips, tally.scoped, tally.validated,
             tally.generic, tally.none))
     print('^2[repères]^7 /pnjblips ' .. arg .. ' à nouveau pour les effacer.')
+    print('^2[repères]^7 En approchant d\'un emplacement, les marqueurs au ' ..
+        'sol de la scène (requérant, individus, porte…) s\'affichent seuls.')
     Notify(('%d emplacements affichés sur la carte.'):format(#PnjBlips), 'success')
 end, false)
+
+-- Marqueurs au sol automatiques : dès qu'on approche physiquement d'un
+-- emplacement déjà relevé pour le scénario/catégorie affiché par
+-- /pnjblips, toutes les positions de la scène s'affichent au sol —
+-- pas seulement le rôle qu'on est venu relever, toute la mise en
+-- scène (requérant, individus, badauds, porte…), sans /pnjrepere.
+CreateThread(function()
+    while true do
+        if PnjBlipCategory and C.Locations[PnjBlipCategory] then
+            local pc  = GetEntityCoords(PlayerPedId())
+            local near = false
+            for i, loc in ipairs(C.Locations[PnjBlipCategory]) do
+                local v = loc.coords
+                if #(pc - vector3(v.x, v.y, v.z)) < 40.0 then
+                    near = true
+                    local key = PnjBlipCategory .. ':' .. i
+                    for _, pt in ipairs(SurveyPoints(key, PnjBlipScenario)) do
+                        local c    = SURVEY_COLOUR[pt.role] or SURVEY_DEFAULT
+                        local drop = SURVEY_DROP[pt.role] or 0.95
+                        local size = SURVEY_SIZE[pt.role] or 0.7
+                        DrawMarker(1, pt.x, pt.y, pt.z - drop,
+                            0.0, 0.0, 0.0, 0.0, 0.0, 0.0, size, size, 0.35,
+                            c[1], c[2], c[3], 170, false, false, 2, false, nil, nil, false)
+                    end
+                end
+            end
+            Wait(near and 0 or 300)
+        else
+            Wait(1000)
+        end
+    end
+end)
 
 TriggerEvent('chat:addSuggestion', '/pnjblips',
     'Afficher sur la carte les lieux d\'un scénario (2ᵉ appel : effacer)', {
@@ -6652,7 +8238,7 @@ TriggerEvent('chat:addSuggestion', '/pnjblips',
     })
 
 AddEventHandler('onResourceStop', function(res)
-    if res == GetCurrentResourceName() then ClearPnjBlips() end
+    if res == GetCurrentResourceName() then ClearPnjBlips() ClearCicMapBlips() end
 end)
 
 TriggerEvent('chat:addSuggestion', '/pnjrepere',
@@ -6660,7 +8246,7 @@ TriggerEvent('chat:addSuggestion', '/pnjrepere',
         { name = 'scénario', help = 'braquage_superette, vol_etalage, … — vide pour arrêter' },
     })
 
-LSLegacy.RegisterClientEvent('police:callouts:anchorSurveyState', function(data)
+LSLegacy.Events.Register('police:callouts:anchorSurveyState', function(data)
     if not data or not data.active then
         Survey = nil
         if data and data.tooFar then
@@ -6751,6 +8337,7 @@ CreateThread(function()
 end)
 
 RegisterCommand('pnjposition', function(_, args)
+    if not IsAdminCached then return end
     local role = args and args[1]
     if not role then
         print('^1[ancrage]^7 Usage : /pnjposition <rôle>')
@@ -6764,6 +8351,7 @@ RegisterCommand('pnjposition', function(_, args)
             'passant, corps, chien')
         print('^1[ancrage]^7   braquage         : chef, conducteur, ' ..
             'braqueur, vehicule')
+        print('^1[ancrage]^7   effraction       : porte, serrure, fenetre, vitre')
         print('^1[ancrage]^7 Les noms anglais d\'origine restent acceptés ' ..
             '(caller, suspect, wanderer…).')
         Notify('Précisez le rôle : /pnjposition requerant', 'error')
@@ -6799,6 +8387,7 @@ end, false)
 
 -- Annulation du dernier point relevé. Sans argument, le plus récent
 RegisterCommand('pnjannule', function(_, args)
+    if not IsAdminCached then return end
     local role = args and args[1]
     if not Callout and not Survey then
         print('^1[ancrage]^7 Aucune intervention et aucun repérage en cours.')
@@ -6813,7 +8402,7 @@ TriggerEvent('chat:addSuggestion', '/pnjannule',
         { name = 'rôle', help = 'vide pour le dernier point, ou requerant, individu, vehicule…' },
     })
 
-LSLegacy.RegisterClientEvent('police:callouts:anchorUndone', function(data)
+LSLegacy.Events.Register('police:callouts:anchorUndone', function(data)
     if not data then return end
 
     -- Les marques au sol sont reconstruites depuis la liste renvoyée :
@@ -6834,11 +8423,11 @@ end)
 
 TriggerEvent('chat:addSuggestion', '/pnjposition',
     'Relever la position correcte d\'un PNJ pour ce lieu', {
-        { name = 'rôle', help = 'requerant, vigile, caissier, individu, voleur, victime, badaud, corps, chien, errant, chef, conducteur, braqueur, vehicule' },
+        { name = 'rôle', help = 'requerant, vigile, caissier, individu, voleur, victime, badaud, corps, chien, errant, chef, conducteur, braqueur, vehicule, porte, fenetre' },
     })
 
 -- Rôle refusé : on restitue la liste entière, pas un extrait.
-LSLegacy.RegisterClientEvent('police:callouts:anchorRoles', function(data)
+LSLegacy.Events.Register('police:callouts:anchorRoles', function(data)
     if not data then return end
     print(('^1[ancrage]^7 « %s » n\'est pas un rôle connu.')
         :format(tostring(data.given)))
@@ -6848,7 +8437,7 @@ LSLegacy.RegisterClientEvent('police:callouts:anchorRoles', function(data)
     end
 end)
 
-LSLegacy.RegisterClientEvent('police:callouts:anchorSaved', function(data)
+LSLegacy.Events.Register('police:callouts:anchorSaved', function(data)
     if not data then return end
 
     -- Mémorisé pour l'affichage au sol : le relevé apparaît aussitôt,
@@ -6869,7 +8458,7 @@ LSLegacy.RegisterClientEvent('police:callouts:anchorSaved', function(data)
     print('^2[ancrage]^7 /pnjpositions pour obtenir le bloc complet.')
 end)
 
-LSLegacy.RegisterClientEvent('police:callouts:anchorDump', function(data)
+LSLegacy.Events.Register('police:callouts:anchorDump', function(data)
     if data and data.cleared then
         -- Le brouillon serveur est vidé : les marques de session aussi,
         SurveyDraft = {}
@@ -6890,6 +8479,7 @@ end)
 
 -- Signalement d'un EMPLACEMENT entier
 RegisterCommand('signallieu', function()
+    if not IsAdminCached then return end
     if not Callout then
         print('^1[signallieu]^7 Vous n\'êtes engagé sur aucune intervention.')
         Notify('Vous n\'êtes engagé sur aucune intervention.', 'error')
@@ -6900,7 +8490,7 @@ RegisterCommand('signallieu', function()
 end, false)
 
 -- Registre des placements ratés, renvoyé par le serveur.
-LSLegacy.RegisterClientEvent('police:callouts:spawnStats', function(data)
+LSLegacy.Events.Register('police:callouts:spawnStats', function(data)
     local rows = (data and data.rows) or {}
 
     if data and data.cleared then
@@ -6954,7 +8544,7 @@ end, false)
 TriggerEvent('chat:addSuggestion', '/signalscenario',
     'Signaler un type d\'intervention inadapté à ce lieu (le lieu reste bon)')
 
-LSLegacy.RegisterClientEvent('police:callouts:mismatchReported', function(data)
+LSLegacy.Events.Register('police:callouts:mismatchReported', function(data)
     if not data then return end
     print('^3[signalscenario]^7 ═══════════ À TRANSMETTRE ═══════════')
     print(('^3[signalscenario]^7 scénario inadapté : %s'):format(tostring(data.scenario)))
@@ -6972,7 +8562,7 @@ TriggerEvent('chat:addSuggestion', '/signallieu',
     'Signaler TOUTE l\'intervention : emplacement à supprimer')
 
 -- Rapport complet renvoyé par le serveur, prêt à être transmis.
-LSLegacy.RegisterClientEvent('police:callouts:locationReported', function(data)
+LSLegacy.Events.Register('police:callouts:locationReported', function(data)
     if not data then return end
     print('^1[signallieu]^7 ═══════════ À TRANSMETTRE ═══════════')
     print(('^1[signallieu]^7 scénario  : %s'):format(tostring(data.scenario)))
@@ -6997,6 +8587,7 @@ end)
 
 -- Capture d'un emplacement de mission
 RegisterCommand('lieu', function(_, args)
+    if not IsAdminCached then return end
     local cat = args and args[1]
     local known = { street = true, residential = true, shop = true,
         dealpoint = true, nightlife = true, parking = true, doorstep = true }
@@ -7025,6 +8616,7 @@ TriggerEvent('chat:addSuggestion', '/lieu',
     })
 
 RegisterCommand('doorstep', function()
+    if not IsAdminCached then return end
     local ped = PlayerPedId()
     local c   = GetEntityCoords(ped)
     local h   = GetEntityHeading(ped)
@@ -7043,6 +8635,62 @@ end, false)
 
 TriggerEvent('chat:addSuggestion', '/doorstep',
     'Capturer un seuil d\'habitation pour les constatations d\'effraction')
+
+-- OUTIL TEMPORAIRE — cercle du rayon de détection des suspects
+--
+-- Affiche un disque bleu au point d'ancrage de la scène en cours, avec
+-- le rayon actuellement utilisé pour déclencher la fuite/l'alerte des
+-- PNJ (portée de vue du braquage, ou déclencheur générique sinon). Sert
+-- à juger visuellement s'il faut l'augmenter ou le réduire dans
+-- config_callouts.lua (C.Heist.SightDist / C.FleeTriggerDistance).
+-- Global (pas de `local`) : le fichier est déjà au plafond des 200
+-- locales de niveau fichier autorisées par Lua 5.4.
+DetectRadius = { on = false, last = nil }
+
+RegisterCommand('rayondetection', function()
+    if not IsAdminCached then return end
+    DetectRadius.on = not DetectRadius.on
+    Notify(('Cercle de détection %s.'):format(
+        DetectRadius.on and 'activé' or 'désactivé'), 'info')
+end, false)
+
+TriggerEvent('chat:addSuggestion', '/rayondetection',
+    'Debug : afficher le rayon de détection des suspects sur la mission en cours')
+
+CreateThread(function()
+    while true do
+        if DetectRadius.on and Callout then
+            local center, radius, source
+
+            if Heist and Heist.id == Callout.id and Heist.anchor then
+                center = Heist.anchor
+                radius = (C.Heist or {}).SightDist or 35.0
+                source = 'C.Heist.SightDist'
+            else
+                center = SceneReference() or Callout.coords
+                radius = Callout.fleeTrigger or C.FleeTriggerDistance
+                source = Callout.fleeTrigger and 'scénario.fleeTrigger'
+                    or 'C.FleeTriggerDistance'
+            end
+
+            if center and radius then
+                DrawMarker(1, center.x, center.y, center.z - 1.0,
+                    0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                    radius * 2.0, radius * 2.0, 1.0,
+                    40, 120, 255, 70, false, false, 2, false, nil, nil, false)
+
+                if DetectRadius.last ~= radius then
+                    DetectRadius.last = radius
+                    print(('^5[rayon]^7 %s = %.1f m, centré sur (%.1f, %.1f, %.1f)')
+                        :format(source, radius, center.x, center.y, center.z))
+                end
+            end
+            Wait(0)
+        else
+            Wait(500)
+        end
+    end
+end)
 
 RegisterCommand('lacher', function()
     if not Escorting then
@@ -7085,7 +8733,6 @@ RelayCommand('callouts',        true)
 
 -- Raccourci du menu administrateur
 RegisterCommand('police_admin_menu', function()
-    if not IsAdminCached then return end
     if not AdminMenuUsed then
         Notify('Ouvrez d\'abord le menu avec /missionpnjadmin.', 'error')
         return
@@ -7106,6 +8753,7 @@ TriggerEvent('chat:addSuggestion', '/callouts', 'Activer ou désactiver les miss
 --  BASCULE D'ITINÉRAIRE — PERSONNE ERRANTE
 
 CreateThread(function()
+    local flapStreak = 0
     while true do
         Wait(1500)
         if Callout and Callout.objective == 'hospital' then
@@ -7123,35 +8771,155 @@ CreateThread(function()
                 end
             end
 
-            if aboard then
-                -- Réappliqué en continu : les chiens de garde recréent
-                for _, b in ipairs(CalloutBlips) do
-                    if DoesBlipExist(b) then pcall(SetBlipRoute, b, false) end
-                end
+            -- Un aller-retour réseau d'un seul tick (netId pas encore
+            -- répliqué) ne doit pas suffire à rebasculer l'itinéraire :
+            -- il faut 2 lectures cohérentes de suite avant d'agir. Une
+            -- fois basculé vers l'hôpital, l'itinéraire y reste — pas de
+            -- retour automatique vers le requérant (ça faisait des
+            -- allers-retours à chaque micro-coupure réseau du netId).
+            local wantSwitch = aboard and RouteSwitched.hospital ~= Callout.id
+            if wantSwitch then
+                flapStreak = flapStreak + 1
+            else
+                flapStreak = 0
+            end
+
+            if flapStreak >= 2 then
+                flapStreak = 0
                 local hb = StaticBlips['hospital']
+                -- Ne jamais annoncer un itinéraire qui n'existe pas
                 if hb and DoesBlipExist(hb) then
+                    for _, b in ipairs(CalloutBlips) do
+                        if DoesBlipExist(b) then pcall(SetBlipRoute, b, false) end
+                    end
                     pcall(function()
                         SetBlipRoute(hb, true)
                         SetBlipRouteColour(hb, 2)
                     end)
-                end
-                if RouteSwitched ~= Callout.id then
-                    RouteSwitched = Callout.id
+                    RouteSwitched.hospital = Callout.id
                     Notify('Direction l\'hôpital — itinéraire mis à jour.', 'info')
                 end
+            end
+        else
+            flapStreak = 0
+        end
+    end
+end)
 
-            elseif not aboard and RouteSwitched == Callout.id then
-                -- Elle est ressortie du véhicule : on remet le cap sur
-                RouteSwitched = nil
-                local hb = StaticBlips['hospital']
-                if hb and DoesBlipExist(hb) then pcall(SetBlipRoute, hb, false) end
-                if CalloutBlips[1] and DoesBlipExist(CalloutBlips[1]) then
-                    pcall(function()
-                        SetBlipRoute(CalloutBlips[1], true)
-                        SetBlipRouteColour(CalloutBlips[1], 3)
-                    end)
+--  BASCULE D'ITINÉRAIRE — INDIVIDU INTERPELLÉ
+
+-- Même principe que pour la personne errante : dès qu'un suspect
+-- menotté monte dans un véhicule de police, l'itinéraire GPS bascule
+-- vers David (remise des individus au poste).
+CreateThread(function()
+    local flapStreak = 0
+    while true do
+        Wait(1500)
+        if Callout then
+            local aboard = false
+            for _, p in ipairs(Callout.peds or {}) do
+                if p.role == 'suspect' and (p.state == 'cuffed' or p.state == 'stunned')
+                   and NetworkDoesNetworkIdExist(p.netId) then
+                    local e = NetworkGetEntityFromNetworkId(p.netId)
+                    if e and e ~= 0 and DoesEntityExist(e)
+                       and IsPedInAnyVehicle(e, false) then
+                        aboard = true
+                        break
+                    end
                 end
             end
+
+            -- Cf. thread « personne errante » : lissage anti-flapping réseau.
+            local wantSwitch = aboard and RouteSwitched.custody ~= Callout.id
+            local wantRevert = (not aboard) and RouteSwitched.custody == Callout.id
+            if wantSwitch or wantRevert then
+                flapStreak = flapStreak + 1
+            else
+                flapStreak = 0
+            end
+
+            if flapStreak >= 2 then
+                flapStreak = 0
+                if wantSwitch then
+                    local cb = StaticBlips['custody']
+                    if cb and DoesBlipExist(cb) then
+                        for _, b in ipairs(CalloutBlips) do
+                            if DoesBlipExist(b) then pcall(SetBlipRoute, b, false) end
+                        end
+                        local hb = StaticBlips['hospital']
+                        if hb and DoesBlipExist(hb) then pcall(SetBlipRoute, hb, false) end
+                        pcall(function()
+                            SetBlipRoute(cb, true)
+                            SetBlipRouteColour(cb, 3)
+                        end)
+                        RouteSwitched.custody = Callout.id
+                        Notify('Direction le poste — itinéraire mis à jour.', 'info')
+                    end
+
+                elseif wantRevert then
+                    RouteSwitched.custody = nil
+                    local cb = StaticBlips['custody']
+                    if cb and DoesBlipExist(cb) then pcall(SetBlipRoute, cb, false) end
+                    if CalloutBlips[1] and DoesBlipExist(CalloutBlips[1]) then
+                        pcall(function()
+                            SetBlipRoute(CalloutBlips[1], true)
+                            SetBlipRouteColour(CalloutBlips[1], 3)
+                        end)
+                    end
+                end
+            end
+        else
+            flapStreak = 0
+        end
+    end
+end)
+
+--  CONTACT FAMILLE — itinéraire déclenché depuis le MDT
+
+-- L'itinéraire (et le PNJ sur place) n'apparaissent QUE lorsque l'agent
+-- clique sur « À prévenir » dans la fiche Appel 17 (cf. interventions.js
+-- côté MDT) — pas d'itinéraire imposé automatiquement. Un petit bip MDT
+-- (police:callouts:mdtPing) prévient l'agent dès que le bouton devient
+-- pertinent (personne errante : après dépôt à l'hôpital ; découverte de
+-- corps : dès l'identification — cf. serveur, suspectIdentify/suspectDelivered).
+RegisterNUICallback('mdtco:familyRoute', function(data, cb)
+    local id = tonumber(data and data.calloutId)
+    if not Callout or not id or Callout.dbId ~= id or not Callout.peds then
+        cb({ ok = false, msg = 'Intervention non active.' })
+        return
+    end
+
+    local target = nil
+    for _, p in ipairs(Callout.peds) do
+        if p.familyContact and not p.familyContact.notified then
+            if p.role == 'deceased'
+               or (p.role == 'wanderer' and p.state == 'delivered') then
+                target = p.familyContact
+                break
+            end
+        end
+    end
+
+    if not target then
+        cb({ ok = false, msg = 'Rien à transmettre pour le moment.' })
+        return
+    end
+
+    SetFamilyContactRoute(target)
+    Notify('Itinéraire vers le proche à prévenir.', 'info')
+    cb({ ok = true })
+end)
+
+-- Nettoyage si la mission se termine pendant que l'itinéraire est actif.
+CreateThread(function()
+    local hadRoute = false
+    while true do
+        Wait(1500)
+        if Callout then
+            hadRoute = FamilyContactBlip ~= nil
+        elseif hadRoute then
+            hadRoute = false
+            ClearFamilyContactRoute()
         end
     end
 end)
@@ -7228,7 +8996,10 @@ end)
 
 CreateThread(function()
     while true do
-        Wait(0)
+        -- Wait(0) uniquement quand le rendu debug est actif, comme les
+        -- autres boucles de debug du fichier — sinon coût CPU/frame
+        -- permanent et inutile même hors debug.
+        Wait((Callout and Callout.debug) and 0 or 500)
         if Callout and Callout.debug then
             local c = Callout.coords
             DrawMarker(1, c.x, c.y, c.z - 1.0, 0, 0, 0, 0, 0, 0,
@@ -7274,7 +9045,7 @@ end)
 local pending = {}
 local reqSeq  = 0
 
-LSLegacy.RegisterClientEvent('mdtco:queryResult', function(payload)
+LSLegacy.Events.Register('mdtco:queryResult', function(payload)
     if not payload or not payload.reqId then return end
     local cb = pending[payload.reqId]
     if not cb then return end
@@ -7282,31 +9053,38 @@ LSLegacy.RegisterClientEvent('mdtco:queryResult', function(payload)
     cb(payload.result)
 end)
 
-local function coQuery(action, data, cb)
+local function CoQuery(action, data, cb)
     reqSeq = reqSeq + 1
     local id = reqSeq
     pending[id] = cb
-    LSLegacy.SendEventToServer('mdtco:query', { reqId = id, action = action, data = data })
+    LSLegacy.Events.SendToServer('mdtco:query', { reqId = id, action = action, data = data })
     SetTimeout(15000, function()
         if pending[id] then pending[id] = nil cb(false) end
     end)
 end
 
-local function readCallback(nuiName, action)
+local function ReadCallback(nuiName, action)
     RegisterNUICallback(nuiName, function(data, cb)
-        coQuery(action, type(data) == 'table' and data or {}, function(res)
+        CoQuery(action, type(data) == 'table' and data or {}, function(res)
             cb(res == nil and false or res)
         end)
     end)
 end
 
-readCallback('mdtco:getHistory',    'getHistory')
-readCallback('mdtco:getStats',      'getStats')
-readCallback('mdtco:getSummary',    'getSummary')
-readCallback('mdtco:deleteCallout', 'deleteCallout')
-readCallback('mdtco:resetStats',    'resetStats')
-readCallback('mdtco:saveReport',    'saveReport')
-readCallback('mdtco:closeCase',     'closeCase')
+ReadCallback('mdtco:getHistory',    'getHistory')
+ReadCallback('mdtco:getStats',      'getStats')
+ReadCallback('mdtco:getSummary',    'getSummary')
+ReadCallback('mdtco:deleteCallout', 'deleteCallout')
+ReadCallback('mdtco:resetStats',    'resetStats')
+ReadCallback('mdtco:saveReport',    'saveReport')
+ReadCallback('mdtco:closeCase',     'closeCase')
+ReadCallback('mdtco:getRegistration',  'getRegistration')
+ReadCallback('mdtco:setRegistration',  'setRegistration')
+ReadCallback('mdtco:leaveRegistration','leaveRegistration')
+ReadCallback('mdtco:toggleUnit',       'toggleUnit')
+ReadCallback('mdtco:cicToggle',        'cicToggle')
+ReadCallback('mdtco:getCicBoard',      'getCicBoard')
+ReadCallback('mdtco:cicDispatch',      'cicDispatch')
 
 --  NETTOYAGE
 
@@ -7319,5 +9097,6 @@ AddEventHandler('onResourceStop', function(res)
     end
     for _, b in pairs(StaticBlips) do if DoesBlipExist(b) then RemoveBlip(b) end end
     ClearCalloutBlips()
+    ClearExaminePoints()
     StopAlarm()
 end)

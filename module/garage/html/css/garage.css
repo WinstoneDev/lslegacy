@@ -1,0 +1,59 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; background: transparent; overflow: hidden; font-family: 'Segoe UI', Roboto, Arial, sans-serif; color: #eef1f6; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+.hidden { display: none !important; }
+
+/* Fenêtre flottante au-dessus du véhicule */
+#hud { position: fixed; inset: 0; pointer-events: none; }
+.card {
+    position: absolute; transform: translate(-50%, -100%);
+    width: 270px; padding: 12px 14px 11px;
+    /* pas de backdrop-filter : CEF le peint en noir opaque dans une iframe transparente,
+       et le scale via transform floute le texte → on utilise zoom (voir garage.js) */
+    background: rgba(16, 19, 27, 0.92); border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 12px;
+    box-shadow: 0 10px 28px rgba(0,0,0,0.55);
+    will-change: left, top;
+}
+.card::after {
+    content: ''; position: absolute; left: 50%; bottom: -7px; width: 12px; height: 12px;
+    background: rgba(16, 19, 27, 0.92); border-right: 1px solid rgba(255,255,255,0.14); border-bottom: 1px solid rgba(255,255,255,0.14);
+    transform: translateX(-50%) rotate(45deg);
+}
+.card .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 7px; }
+.card .name { font-weight: 700; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card .plate { font-family: 'Consolas', monospace; font-size: 13px; font-weight: 700; letter-spacing: 1px; padding: 1px 6px; border-radius: 4px; background: #f2f2f2; color: #111; }
+.card .slot { font-size: 11px; color: #9aa4b5; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+.row { display: grid; grid-template-columns: 78px 1fr 38px; align-items: center; gap: 8px; font-size: 12.5px; margin: 4px 0; }
+.row .lbl { color: #b6bfcf; }
+.row .val { text-align: right; font-variant-numeric: tabular-nums; }
+.bar { height: 7px; border-radius: 4px; background: rgba(255,255,255,0.10); overflow: hidden; }
+.bar > i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #3ad17e, #7ee2a8); transition: width .25s; }
+.bar.warn > i { background: linear-gradient(90deg, #f0b232, #ffd36b); }
+.bar.bad > i { background: linear-gradient(90deg, #e5484d, #ff7b7f); }
+.bar.fuel > i { background: linear-gradient(90deg, #3b82f6, #7fb2ff); }
+.mods { display: flex; gap: 5px; margin-top: 7px; }
+.mod { flex: 1; text-align: center; font-size: 10.5px; color: #9aa4b5; }
+.mod .pips { display: flex; gap: 2px; justify-content: center; margin-bottom: 2px; }
+.mod .pips i { width: 8px; height: 5px; border-radius: 2px; background: rgba(255,255,255,0.14); }
+.mod .pips i.on { background: #ffb703; }
+.mod.turbo .pips i.on { background: #ff5d8f; }
+
+/* Showroom */
+#showroom {
+    position: fixed; right: 3vw; top: 50%; transform: translateY(-50%);
+    width: 340px; padding: 18px 20px 14px;
+    background: rgba(12, 14, 20, 0.94); border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,0.55);
+}
+.sr-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.sr-name { font-size: 20px; font-weight: 700; }
+.sr-plate { font-family: 'Consolas', monospace; font-size: 13px; letter-spacing: 1.5px; padding: 2px 8px; border-radius: 4px; background: #f2f2f2; color: #111; }
+.sr-section { margin: 12px 0 6px; font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: #7f8aa0; }
+#showroom .row { grid-template-columns: 96px 1fr 40px; font-size: 12px; margin: 5px 0; }
+#showroom .bar { height: 8px; }
+.sr-mod { display: grid; grid-template-columns: 96px 1fr 40px; align-items: center; gap: 8px; font-size: 12px; margin: 5px 0; }
+.sr-mod .pips { display: flex; gap: 3px; }
+.sr-mod .pips i { flex: 1; height: 8px; border-radius: 3px; background: rgba(255,255,255,0.12); }
+.sr-mod .pips i.on { background: #ffb703; }
+.sr-mod.turbo .pips i.on { background: #ff5d8f; }
+.sr-foot { margin-top: 14px; font-size: 10px; color: #7f8aa0; text-align: center; }

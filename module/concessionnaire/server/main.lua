@@ -2,12 +2,21 @@
 --  CONCESSIONNAIRE — Serveur principal
 --  Validation stricte : prix/modèle re-vérifiés depuis Config (jamais client)
 --  Possession enregistrée dans owned_vehicles (standard ESX)
+
+local rateLimits = {
+    ['concessionnaire:buy'] = 10, ['concessionnaire:sell'] = 10,
+    ['concessionnaire:getOccasions'] = 15, ['concessionnaire:buyOccasion'] = 10,
+    ['concessionnaire:persistDelivered'] = 10, ['concessionnaire:canBuyForJob'] = 10,
+}
+for eventName, limit in pairs(rateLimits) do
+    LSLegacy.Security.RegisterRateLimit(eventName, limit)
+end
 -- ═══════════════════════════════════════════════════════════════════
 
-local function GetPlayer(src) return LSLegacy.ServerPlayers[src] end
+local function GetPlayer(src) return LSLegacy.Players.Get(src) end
 
 local function Notify(src, msg, t)
-    TriggerClientEvent(Config.Concessionnaire.NotifyEvent, src, 'Concessionnaire', msg, 5000, t or 'info')
+    LSLegacy.Events.SendToClient('notify', src, 'Concessionnaire', msg, t or 'info', 5000)
 end
 
 -- ── Table de possession (compatible ESX / lb-phone) ──────────────────
@@ -85,6 +94,14 @@ local function FindCatalogEntryByHash(hash)
         end
     end
     return nil
+end
+
+-- Résout un site par id (livraison) — retombe sur le premier si absent/inconnu.
+local function FindSite(id)
+    for _, s in ipairs(Config.Concessionnaire.Sites) do
+        if s.id == id then return s end
+    end
+    return Config.Concessionnaire.Sites[1]
 end
 
 -- ── Plaques ──────────────────────────────────────────────────────────
@@ -193,11 +210,26 @@ local function PersistDelivered(plate, netId)
 end
 
 -- Le client renvoie le netId du véhicule livré une fois spawn/coloré.
-LSLegacy.RegisterServerEvent('concessionnaire:persistDelivered', function(data)
+LSLegacy.Events.Register('concessionnaire:persistDelivered', function(data)
     local src = source
     if not GetPlayer(src) then return end
     if not data or not data.plate or not data.netId then return end
     PersistDelivered(data.plate, data.netId)
+end)
+
+-- ── Achat pour l'entreprise : l'agent porte la carte entreprise (valide) de son job ─────
+--  Le paiement se fait obligatoirement avec cette carte, sur le compte entreprise (module/society).
+local function CanBuyForJob(player)
+    local cfg = Config.Concessionnaire.JobPurchase
+    if not cfg or not cfg.enabled then return false end
+    if not player.job or player.job == 'unemployed' then return false end
+    return LSLegacy.Society and LSLegacy.Society.HasCompanyCard(player) or false
+end
+
+LSLegacy.Callbacks.RegisterServer('concessionnaire:canBuyForJob', function(src, cb)
+    local player = GetPlayer(src)
+    if not player or not CanBuyForJob(player) then return cb(false) end
+    cb({ job = player.job, label = LSLegacy.Jobs.GetJobLabel(player.job) or player.job })
 end)
 
 -- ── Finalisation d'un achat (neuf ou occasion) ──────────────────────
@@ -205,21 +237,30 @@ end)
 --  snapshot (optionnel) : { tuning, status } repris d'une occasion (props de
 --  concessionnaire_occasions) — restitué à l'identique. Sans snapshot (achat
 --  neuf) : véhicule flambant neuf, couleur choisie (primary/secondary) ou d'origine.
-local function DeliverPurchase(src, player, entry, plate, primary, secondary, snapshot)
+--  forJob : achat entreprise (chef de job) → possession au job, pas au joueur.
+local function DeliverPurchase(src, player, entry, plate, primary, secondary, snapshot, forJob, siteId)
     -- Garde-fou : plaque toujours ≤ 8 (identique à ce que le jeu affichera)
     plate = CapPlate(plate)
     local model = GetHashKey(entry.model)
 
-    MySQL.Async.execute(
-        'INSERT INTO owned_vehicles (owner, character_id, plate, type, job, stored) ' ..
-        'VALUES (@owner, @charId, @plate, @type, NULL, 0)',
-        {
-            ['@owner'] = player.identifier,
-            ['@charId'] = player["boutique-id"],
-            ['@plate'] = plate,
-            ['@type']  = entry.vtype,
-        }
-    )
+    if forJob then
+        MySQL.Async.execute(
+            'INSERT INTO owned_vehicles (owner, character_id, plate, type, job, stored) ' ..
+            'VALUES (NULL, NULL, @plate, @type, @job, 0)',
+            { ['@plate'] = plate, ['@type'] = entry.vtype, ['@job'] = player.job }
+        )
+    else
+        MySQL.Async.execute(
+            'INSERT INTO owned_vehicles (owner, character_id, plate, type, job, stored) ' ..
+            'VALUES (@owner, @charId, @plate, @type, NULL, 0)',
+            {
+                ['@owner'] = player.identifier,
+                ['@charId'] = player["boutique-id"],
+                ['@plate'] = plate,
+                ['@type']  = entry.vtype,
+            }
+        )
+    end
 
     if Config.Concessionnaire.GiveKey then
         exports.lslegacy:giveVehicleKey(src, plate, model, entry.label)
@@ -242,6 +283,7 @@ local function DeliverPurchase(src, player, entry, plate, primary, secondary, sn
         status    = status,
     }
 
+    local site = FindSite(siteId)
     TriggerClientEvent('concessionnaire:deliverVehicle', src, {
         model     = entry.model,
         plate     = plate,
@@ -249,11 +291,11 @@ local function DeliverPurchase(src, player, entry, plate, primary, secondary, sn
         secondary = secondary,
         tuning    = tuning,
         status    = status,
-        coords    = Config.Concessionnaire.Delivery.coords,
-        heading   = Config.Concessionnaire.Delivery.heading,
+        coords    = site.Delivery.coords,
+        heading   = site.Delivery.heading,
     })
 
-    TriggerClientEvent('concessionnaire:buyResult', src, { success = true, label = entry.label })
+    TriggerClientEvent('concessionnaire:buyResult', src, { success = true, label = entry.label, forJob = forJob or false })
 end
 
 -- ── Paiement : carte uniquement, via le menu de paiement TPE partagé ──────
@@ -271,22 +313,27 @@ LSLegacy.Bank.RegisterPaymentResultHandler('concessionnaire', function(token, su
     end
     local player = GetPlayer(pending.src)
     if not player then return end
-    DeliverPurchase(pending.src, player, pending.entry, pending.plate, pending.primary, pending.secondary, pending.snapshot)
+    DeliverPurchase(pending.src, player, pending.entry, pending.plate, pending.primary, pending.secondary, pending.snapshot, pending.forJob, pending.siteId)
 end)
 
 -- Met l'achat en attente de paiement carte et ouvre le TPE sur l'acheteur.
 -- `onFail` (optionnel) : rollback à exécuter si le paiement échoue (ex.
 -- remettre en vente une occasion déjà retirée du marché).
-local function QueuePurchase(src, entry, plate, primary, secondary, price, snapshot, onFail)
+local function QueuePurchase(src, entry, plate, primary, secondary, price, snapshot, onFail, forJob, siteId)
     local token = ('concess_%d_%d'):format(src, math.random(100000, 999999))
+    local buyer = GetPlayer(src)
     PendingPurchases[token] = {
         src = src, entry = entry, plate = plate,
         primary = primary, secondary = secondary, snapshot = snapshot, onFail = onFail,
+        forJob = forJob or false, siteId = siteId,
     }
     -- Purge de sécurité si le joueur abandonne/déconnecte avant de payer.
     Citizen.SetTimeout(120000, function() PendingPurchases[token] = nil end)
-    LSLegacy.Bank.OpenPaymentMenu(src, 'Achat véhicule - ' .. entry.label, price, {
+    local title = (forJob and 'Achat entreprise - ' or 'Achat véhicule - ') .. entry.label
+    LSLegacy.Bank.OpenPaymentMenu(src, title, price, {
         allowCash = false,
+        -- achat entreprise : seule la carte entreprise du job est acceptée (débit du compte entreprise)
+        society = (forJob and buyer) and buyer.job or nil,
         meta = { type = 'concessionnaire', refId = token },
     })
 end
@@ -307,7 +354,7 @@ end
 
 -- ── Achat (neuf) ─────────────────────────────────────────────────────
 
-LSLegacy.RegisterServerEvent('concessionnaire:buy', function(data)
+LSLegacy.Events.Register('concessionnaire:buy', function(data)
     local src = source
     local player = GetPlayer(src)
     if not player then return end
@@ -316,6 +363,12 @@ LSLegacy.RegisterServerEvent('concessionnaire:buy', function(data)
     local entry = FindCatalogEntry(data.model)
     if not entry then
         TriggerClientEvent('concessionnaire:buyResult', src, { success = false, reason = 'invalid_vehicle' })
+        return
+    end
+
+    local forJob = data.forJob == true
+    if forJob and not CanBuyForJob(player) then
+        TriggerClientEvent('concessionnaire:buyResult', src, { success = false, reason = 'not_boss' })
         return
     end
 
@@ -332,13 +385,13 @@ LSLegacy.RegisterServerEvent('concessionnaire:buy', function(data)
         end
 
         local price = entry.price + extra + (paint and Config.Concessionnaire.PaintPrice or 0)
-        QueuePurchase(src, entry, plate, primary, secondary, price)
+        QueuePurchase(src, entry, plate, primary, secondary, price, nil, nil, forJob, data.site)
     end)
 end)
 
 -- ── Revente ──────────────────────────────────────────────────────────
 
-LSLegacy.RegisterServerEvent('concessionnaire:sell', function(data)
+LSLegacy.Events.Register('concessionnaire:sell', function(data)
     local src = source
     local player = GetPlayer(src)
     if not player then return end
@@ -417,7 +470,7 @@ end)
 
 -- ── Marché de l'occasion : liste ─────────────────────────────────────
 
-LSLegacy.RegisterServerEvent('concessionnaire:getOccasions', function()
+LSLegacy.Events.Register('concessionnaire:getOccasions', function()
     local src = source
     if not GetPlayer(src) then return end
     if not Config.Concessionnaire.Occasion.enabled then
@@ -442,12 +495,17 @@ end)
 
 -- ── Marché de l'occasion : achat ─────────────────────────────────────
 
-LSLegacy.RegisterServerEvent('concessionnaire:buyOccasion', function(data)
+LSLegacy.Events.Register('concessionnaire:buyOccasion', function(data)
     local src = source
     local player = GetPlayer(src)
     if not player then return end
     if not Config.Concessionnaire.Occasion.enabled then return end
     if not data or not data.id then return end
+    local forJob = data.forJob == true
+    if forJob and not CanBuyForJob(player) then
+        TriggerClientEvent('concessionnaire:buyResult', src, { success = false, reason = 'not_boss' })
+        return
+    end
 
     -- Occasion : achat TEL QUEL. Aucune modification autorisée
     -- (ni peinture ni plaque perso) — on ignore volontairement data.paint,
@@ -504,6 +562,6 @@ LSLegacy.RegisterServerEvent('concessionnaire:buyOccasion', function(data)
         local price = occ.price
 
         -- 4) Paiement carte (rollback occasion si échec/annulation)
-        QueuePurchase(src, entry, plate, nil, nil, price, snapshot, restoreOccasion)
+        QueuePurchase(src, entry, plate, nil, nil, price, snapshot, restoreOccasion, forJob, data.site)
     end)
 end)

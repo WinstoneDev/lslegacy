@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tuning</title>
+    <link href="https://fonts.googleapis.com/css?family=Inter:400,500,600,700,800|Rajdhani:600,700" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="css/tuning.css">
+</head>
+
+<body>
+    <div id="tuning-root" class="tuning-hidden">
+        <header class="tuning-topbar tuning-sidepanel">
+            <div class="tuning-brand">
+                <span class="tuning-logo-mark" id="tuningLogoMark">T</span>
+                <div class="tuning-brand-text">
+                    <div class="tuning-brand-name" id="tuningBrandName">Atelier</div>
+                    <div class="tuning-brand-sub">Poste de tuning</div>
+                </div>
+            </div>
+
+            <nav class="tuning-tabs">
+                <button class="tuning-tab active" data-tab="performance" id="tabPerformance">Performance</button>
+                <button class="tuning-tab" data-tab="esthetique" id="tabEsthetique">Esthétique</button>
+                <button class="tuning-tab" data-tab="clean" id="tabClean">Nettoyer</button>
+            </nav>
+
+            <button class="tuning-close-btn" id="tuningCloseBtn" title="Fermer">&#10005;</button>
+        </header>
+
+        <aside class="tuning-sidepanel tuning-side-left">
+            <main class="tuning-content" id="tuningContent"></main>
+        </aside>
+
+        <aside class="tuning-sidepanel tuning-side-right">
+            <div class="tuning-cart-header">Panier</div>
+            <div class="tuning-cart-list" id="cartList"></div>
+
+            <div class="tuning-cart-discount">
+                <label for="cartDiscount">Réduction</label>
+                <div class="tuning-discount-input">
+                    <input type="number" id="cartDiscount" min="0" max="100" step="1" value="0">
+                    <span>%</span>
+                </div>
+            </div>
+
+            <div class="tuning-paymode">
+                <button class="tuning-paymode-btn active" data-mode="customer" id="paymodeCustomer">Facturer client</button>
+                <button class="tuning-paymode-btn" data-mode="company" id="paymodeCompany">Société</button>
+            </div>
+
+            <div class="tuning-cart-totals">
+                <div class="tuning-cart-row"><span>Sous-total</span><span id="cartSubtotal">0$</span></div>
+                <div class="tuning-cart-row" id="cartDiscountRow"><span>Réduction</span><span id="cartDiscountAmount">-0$</span></div>
+                <div class="tuning-cart-row tuning-cart-row-total"><span>Total</span><b id="cartTotal">0$</b></div>
+            </div>
+
+            <button class="tuning-apply-btn" id="cartCheckoutBtn" disabled>Payer</button>
+            <div class="tuning-cart-hint">Cliquer-glisser l'écran pour tourner autour du véhicule · Molette pour zoomer</div>
+        </aside>
+    </div>
+
+    <script src="js/tuning.js"></script>
+</body>
+
+</html>

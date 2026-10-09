@@ -14,8 +14,8 @@ end
 local function StartCarry(carrierSrc, carriedSrc)
     Links[carrierSrc] = carriedSrc
     Links[carriedSrc] = carrierSrc
-    TriggerClientEvent('lslegacy_carry:client:start', carrierSrc, carrierSrc, carriedSrc)
-    TriggerClientEvent('lslegacy_carry:client:start', carriedSrc, carrierSrc, carriedSrc)
+    TriggerClientEvent('lslegacy_carry:clientStart', carrierSrc, carrierSrc, carriedSrc)
+    TriggerClientEvent('lslegacy_carry:clientStart', carriedSrc, carrierSrc, carriedSrc)
 end
 
 local function StopCarry(src)
@@ -23,12 +23,12 @@ local function StopCarry(src)
     Links[src] = nil
     if partner then
         Links[partner] = nil
-        TriggerClientEvent('lslegacy_carry:client:stop', partner)
+        TriggerClientEvent('lslegacy_carry:clientStop', partner)
     end
-    TriggerClientEvent('lslegacy_carry:client:stop', src)
+    TriggerClientEvent('lslegacy_carry:clientStop', src)
 end
 
-LSLegacy.RegisterServerEvent('lslegacy_carry:request', function(targetServerId)
+LSLegacy.Events.Register('lslegacy_carry:request', function(targetServerId)
     local src = source
     local target = tonumber(targetServerId)
     if not target or GetPlayerName(target) == nil or target == src then return end
@@ -41,11 +41,11 @@ LSLegacy.RegisterServerEvent('lslegacy_carry:request', function(targetServerId)
         -- Inconscient : pas besoin de consentement.
         StartCarry(src, target)
     else
-        TriggerClientEvent('lslegacy_carry:client:request', target, src)
+        TriggerClientEvent('lslegacy_carry:clientRequest', target, src)
     end
 end)
 
-LSLegacy.RegisterServerEvent('lslegacy_carry:confirm', function(requesterServerId)
+LSLegacy.Events.Register('lslegacy_carry:confirm', function(requesterServerId)
     local src = source
     local requester = tonumber(requesterServerId)
     if not requester or GetPlayerName(requester) == nil then return end
@@ -55,7 +55,7 @@ LSLegacy.RegisterServerEvent('lslegacy_carry:confirm', function(requesterServerI
     StartCarry(requester, src)
 end)
 
-LSLegacy.RegisterServerEvent('lslegacy_carry:cancel', function()
+LSLegacy.Events.Register('lslegacy_carry:cancel', function()
     StopCarry(source)
 end)
 

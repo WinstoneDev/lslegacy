@@ -1,5 +1,5 @@
 /* ════════════════════════════════════════════════════════════════
-   MDT MÉDICAL (SAMU) — Vues NUI
+   MDT MÉDICAL (EMS) — Vues NUI
    ────────────────────────────────────────────────────────────────
    Ce fichier est chargé APRÈS mdt.js et n'en modifie rien : il
    s'enregistre dans les deux points d'extension exposés par mdt.js
@@ -8,7 +8,7 @@
    Il réutilise les helpers globaux de mdt.js (esc, setContent,
    emptyState, fetchNui, openModal, confirmAction, fmtDate, b, has).
 
-   Toutes les lectures passent par `mdtmed:*` (pont dédié SAMU), donc
+   Toutes les lectures passent par `mdtmed:*` (pont dédié EMS), donc
    aucun handler du MDT police n'est appelé ici.
    ════════════════════════════════════════════════════════════════ */
 

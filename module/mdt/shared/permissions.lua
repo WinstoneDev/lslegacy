@@ -7,7 +7,7 @@
 --  donc identique et sûr dans les deux contextes.
 --
 --  RÈGLE D'OR (sécurité) : côté serveur, toujours résoudre job/grade
---  depuis LSLegacy.GetPlayerFromId(src) — jamais depuis le client.
+--  depuis LSLegacy.Players.Get(src) — jamais depuis le client.
 
 LSLegacy = LSLegacy or {}
 LSLegacy.MDT = LSLegacy.MDT or {}
@@ -121,19 +121,31 @@ function LSLegacy.MDT.IsInLawEnforcement(job)
 end
 
 -- Registre des bascules de prise de service, alimenté côté CLIENT par
--- chaque module métier (police, gendarmerie…), indexé par job. Le cœur
+-- chaque module métier (police, shérif…), indexé par job. Le cœur
 -- MDT s'en sert pour le bouton du tableau de bord sans dépendre d'un
 -- module particulier.
 LSLegacy.MDT.DutyToggles = LSLegacy.MDT.DutyToggles or {}
 
 -- CLIENT — le joueur local est-il en service dans une force de l'ordre ?
 -- Sert de garde aux actions de terrain (menottage, escorte, relevés) :
--- elles sont ouvertes à la police comme à la gendarmerie.
+-- elles sont ouvertes à la police comme au shérif.
 function LSLegacy.MDT.IsLocalLeoOnDuty()
     local job = LSLegacy.PlayerData and LSLegacy.PlayerData.job
     if not job or not LSLegacy.MDT.IsInLawEnforcement(job) then return false end
     local entry = LSLegacy.MDT.DutyToggles[job]
     return (entry and type(entry.isOnDuty) == 'function' and entry.isOnDuty()) == true
+end
+
+-- CLIENT — le joueur local possède-t-il une permission dans son département
+-- RÉEL (résolu depuis son job actuel, pas codé en dur) : un adjoint du shérif sur une
+-- action de terrain partagée avec la police doit être évalué sur sa propre
+-- grille de grades.
+function LSLegacy.MDT.LocalHasPermission(perm)
+    local job = LSLegacy.PlayerData and LSLegacy.PlayerData.job
+    local depName = LSLegacy.MDT.GetDepartmentForJob(job)
+    if not depName then return false end
+    local grade = tonumber(LSLegacy.PlayerData.job_grade) or 0
+    return LSLegacy.MDT.HasPermission(depName, grade, perm)
 end
 
 -- Données d'un grade d'un département.

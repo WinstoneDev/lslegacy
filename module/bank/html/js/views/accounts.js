@@ -10,7 +10,7 @@ function renderAccountDetail(root, account) {
             <div>
                 <div class="bank-hero-label">Compte n°${account.id}</div>
                 <div class="bank-hero-amount" style="${negative ? 'color:var(--bank-red)' : ''}">${fmtMoney(account.amountMoney)}</div>
-                <div class="bank-hero-iban">IBAN ${esc(account.iban)}</div>
+                <div class="bank-hero-iban">IBAN ${ibanHtml(account.iban)}</div>
             </div>
             <span class="bank-hero-badge">${esc(tierLabel(account.card_tier))}</span>
         </div>
@@ -97,7 +97,7 @@ window.BankViews.accounts = function (root, ctx) {
                 <div class="bank-account-item" onclick="callH('${H(() => showView('accounts', { accountId: a.id }))}')">
                     <div class="bank-account-main">
                         <div class="bank-account-id">Compte n°${a.id} ${a.courant ? '<span class="bank-badge bank-badge-green" style="margin-left:8px;">Courant</span>' : ''}</div>
-                        <div class="bank-account-iban">${esc(a.iban)}</div>
+                        <div class="bank-account-iban">${ibanHtml(a.iban)}</div>
                     </div>
                     <div class="bank-account-amount ${Number(a.amountMoney) < 0 ? 'negative' : ''}">${fmtMoney(a.amountMoney)}</div>
                 </div>

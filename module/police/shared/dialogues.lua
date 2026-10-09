@@ -86,11 +86,22 @@ D.ProfilesByPlace = {
 -- Certains scénarios désignent explicitement leur requérant : le vigile
 -- d'un vol à l'étalage, le propriétaire d'un logement cambriolé. Le
 -- profil est alors imposé, sans tirage.
+-- constatation_effraction varie selon le lieu : un propriétaire chez lui,
+-- mais un commerçant sur un magasin, un employé sur un site industriel
+-- (cf. le champ `place` posé à la main sur ces emplacements précis).
 D.ProfileByScenario = {
-    constatation_effraction = 'proprietaire',
+    constatation_effraction = {
+        ['*'] = 'proprietaire', magasin = 'commercant',
+        magasin_arriere = 'commercant', industriel = 'employe',
+    },
     cambriolage             = 'habitant',
     vol_etalage             = 'vigile',
     tapage                  = 'habitant',
+    -- Le requérant EST le caissier braqué (e.cashier=true, cf. BuildRoster) :
+    -- sans ce forçage, le profil tiré au hasard pouvait tomber sur
+    -- « client » ou « commerçant », des textes incompatibles avec le fait
+    -- que c'est lui qui a été mis en joue derrière la caisse.
+    braquage_superette      = 'employe',
 }
 
 -- Le pool de PNJ d'origine peut lui aussi trancher.
@@ -110,34 +121,162 @@ D.Fallback = {
     "J'ai préféré prévenir la police, ça n'avait pas l'air normal.",
 }
 
+-- CONSTATATIONS MÉDICALES — décrivent les blessures relevées sur une
+-- VICTIME (pas un suspect touché par balle, qui a son propre libellé
+-- générique) au moment des premiers soins, cohérentes avec la nature de
+-- la scène. Consignées sur la fiche d'intervention (pas dans le PV en
+-- texte libre) : c'est à l'agent de les reprendre à sa façon dans son
+-- rapport, cf. police:callouts:firstAid (server) / infoRow (MDT).
+D.WoundDescriptions = {
+    vol_arrache = {
+        "Écorchures au niveau du poignet, marques de traction compatibles avec l'arrachement du sac.",
+        "Contusion à l'épaule suite à la bousculade, pas de fracture apparente.",
+        "Griffure superficielle au cou, la victime a été agrippée par-derrière.",
+        "Genou éraflé après une chute au sol pendant l'agression.",
+    },
+    delit_fuite = {
+        "Traumatisme à la jambe, la victime ne peut plus prendre appui — fracture suspectée.",
+        "Hématome frontal et légère perte de repères, choc à la tête contre le capot.",
+        "Contusions multiples sur le flanc, compatibles avec un choc à faible vitesse.",
+        "Douleurs au dos et à la nuque, pas de plaie ouverte visible.",
+    },
+    chien_dangereux = {
+        "Morsures profondes à l'avant-bras, plaies encore ouvertes.",
+        "Lacérations multiples au mollet, saignement modéré.",
+        "Plaie punctiforme à la main, l'animal a lâché prise avant l'arrivée des agents.",
+        "Griffures superficielles sur la jambe et morsure plus marquée à la cheville.",
+    },
+    rodeo_urbain = {
+        "Fracture suspectée à la clavicule après une chute à vitesse réduite, pas de plaie ouverte.",
+        "Brûlures de contact au mollet, jambe restée coincée sous la moto après la chute.",
+        "Abrasions étendues à l'avant-bras et à la hanche, glissade sur plusieurs mètres au sol.",
+        "Traumatisme au poignet et à l'épaule, chute en tentant de redresser la moto en pleine vitesse.",
+    },
+}
+
 D.Lines = {}
 local L = D.Lines
 
 --  CONSTATATION DE VOL PAR EFFRACTION
---  Le requérant est chez lui, devant sa porte forcée.
+--  Le requérant est chez lui, devant sa porte forcée. Chaque profil se
+--  décline en `door`/`window` : le texte doit rester cohérent avec le
+--  SEUL point d'entrée relevé sur ce lieu (cf. ctx.entryKind, tiré une
+--  fois pour toutes côté serveur — un cambrioleur ne force pas les deux).
 L.constatation_effraction = {
     habitation = {
         proprietaire = {
-            "On a forcé ma porte pendant que j'étais sorti. Je n'ai touché à rien, je vous attendais.",
-            "Je rentre du travail et tout est retourné. La serrure a sauté, ils sont passés par là.",
-            "Ma voisine m'a prévenu, la porte était grande ouverte. Je n'ose pas trop regarder ce qui manque.",
-            "Ils ont fracturé pendant la journée. Il y a des traces sur le montant, venez voir.",
-            "J'ai trouvé la porte entrebâillée en rentrant. Je ne suis pas entré, j'ai appelé depuis le palier.",
+            door = {
+                "On a forcé ma porte pendant que j'étais sorti. Je n'ai touché à rien, je vous attendais.",
+                "Je rentre du travail et tout est retourné. La serrure a sauté, ils sont passés par là.",
+                "Ma voisine m'a prévenu, la porte était grande ouverte. Je n'ose pas trop regarder ce qui manque.",
+                "Ils ont fracturé pendant la journée. Il y a des traces sur le montant, venez voir.",
+                "J'ai trouvé la porte entrebâillée en rentrant. Je ne suis pas entré, j'ai appelé depuis le palier.",
+            },
+            window = {
+                "On a forcé la fenêtre du salon pendant que j'étais sorti. Je n'ai touché à rien, je vous attendais.",
+                "Je rentre du travail et tout est retourné. La vitre est brisée, ils sont passés par là.",
+                "Ma voisine m'a prévenu, la fenêtre était grande ouverte. Je n'ose pas trop regarder ce qui manque.",
+                "Ils ont fracturé pendant la journée. Il y a des éclats de verre au sol, venez voir.",
+                "J'ai trouvé la fenêtre entrouverte en rentrant. Je ne suis pas entré, j'ai appelé depuis le palier.",
+            },
         },
         habitant = {
-            "C'est chez moi. La serrure est arrachée, je n'ai touché à rien depuis.",
-            "J'habite ici. En rentrant, la porte ne fermait plus, elle avait été forcée.",
+            door = {
+                "C'est chez moi. La serrure est arrachée, je n'ai touché à rien depuis.",
+                "J'habite ici. En rentrant, la porte ne fermait plus, elle avait été forcée.",
+            },
+            window = {
+                "C'est chez moi. La fenêtre est brisée, je n'ai touché à rien depuis.",
+                "J'habite ici. En rentrant, la fenêtre du rez-de-chaussée était cassée.",
+            },
+        },
+    },
+    magasin = {
+        commercant = {
+            door = {
+                "On a forcé le rideau pendant la nuit, la caisse a été fouillée.",
+                "La porte de service a été défoncée. Je n'ai touché à rien avant votre arrivée.",
+                "J'ouvre le magasin et je trouve la serrure arrachée. Rien n'a l'air rangé à l'intérieur.",
+            },
+            window = {
+                "On a brisé la vitrine pendant la nuit, la caisse a été fouillée.",
+                "Une fenêtre a été forcée à l'arrière. Je n'ai touché à rien avant votre arrivée.",
+                "J'ouvre le magasin et je trouve une vitre cassée. Rien n'a l'air rangé à l'intérieur.",
+            },
+        },
+    },
+    magasin_arriere = {
+        commercant = {
+            door = {
+                "La porte de service à l'arrière a été forcée, j'ai vu ça en sortant les poubelles.",
+                "Quelqu'un est passé par l'arrière-boutique, la serrure de secours a été arrachée.",
+                "J'ai trouvé le local de livraison ouvert par effraction, à l'arrière du magasin.",
+            },
+            window = {
+                "La fenêtre à l'arrière a été brisée, j'ai vu ça en sortant les poubelles.",
+                "Quelqu'un est passé par la fenêtre de l'arrière-boutique, le carreau est cassé au sol.",
+                "J'ai trouvé le local de livraison avec une vitre forcée, à l'arrière du magasin.",
+            },
+        },
+    },
+    industriel = {
+        employe = {
+            door = {
+                "Le cadenas de l'entrepôt a été forcé pendant la nuit, j'ai trouvé ça en arrivant ce matin.",
+                "La porte de service du bâtiment a été fracturée. Je n'ai touché à rien, j'ai appelé direct.",
+                "En ouvrant ce matin, la serrure était arrachée. Ça n'était pas comme ça hier soir.",
+            },
+            window = {
+                "Une fenêtre de l'entrepôt a été forcée pendant la nuit, j'ai trouvé ça en arrivant ce matin.",
+                "Une vitre du bâtiment a été brisée. Je n'ai touché à rien, j'ai appelé direct.",
+                "En arrivant ce matin, une fenêtre était cassée. Ça n'était pas comme ça hier soir.",
+            },
         },
     },
     ['*'] = {
         ['*'] = {
-            "La porte a été forcée. Je n'ai rien déplacé en attendant votre arrivée.",
-            "Il y a eu une effraction. J'ai préféré vous attendre dehors.",
+            door = {
+                "La porte a été forcée. Je n'ai rien déplacé en attendant votre arrivée.",
+                "Il y a eu une effraction. J'ai préféré vous attendre dehors.",
+            },
+            window = {
+                "La fenêtre a été forcée. Je n'ai rien déplacé en attendant votre arrivée.",
+                "Il y a eu une effraction. J'ai préféré vous attendre dehors.",
+            },
         },
     },
 }
 
 --  DÉCOUVERTE DE CORPS SUR LA VOIE PUBLIQUE
+--  CLÔTURE DE CONSTATATION (vol par effraction) — dite par le requérant
+--  quand l'agent revient le voir APRÈS avoir examiné tous les points
+--  relevés (porte/fenêtre) : il annonce qu'il va porter plainte.
+D.ClosingLines = {}
+D.ClosingLines.constatation_effraction = {
+    proprietaire = {
+        "Merci d'avoir vérifié. Je passerai déposer plainte au commissariat dans la journée.",
+        "D'accord, je m'en occupe. Je viendrai déposer plainte dès que possible.",
+        "Très bien, merci d'être venus. Je passerai au commissariat pour la plainte.",
+    },
+    habitant = {
+        "Merci d'être passés. J'irai déposer plainte au commissariat.",
+        "D'accord, je préviens le propriétaire et on ira déposer plainte ensemble.",
+    },
+    commercant = {
+        "D'accord, je ferme la boutique et je vais déposer plainte au commissariat juste après.",
+        "Très bien, je passerai au commissariat dans la journée pour la plainte.",
+        "Merci d'être venus. Je m'occupe de la plainte dès que j'ai fini l'inventaire.",
+    },
+    employe = {
+        "Bien reçu, j'en informe mon responsable et on ira déposer plainte au commissariat.",
+        "D'accord, je fais mon rapport et on passera déposer plainte ensemble.",
+    },
+    ['*'] = {
+        "Très bien, merci d'être passés. J'irai déposer plainte au commissariat.",
+        "D'accord, merci pour votre aide. Je passerai déposer plainte au commissariat.",
+    },
+}
+
 L.decouverte_corps = {
     residentiel = {
         habitant = {
@@ -496,7 +635,7 @@ L.bagarre_rue = {
     },
     industriel = {
         ouvrier = {
-            "Ça a dégénéré entre deux gars à la sortie du poste. On n'a pas réussi à les calmer.",
+            "Ça a dégénéré à la sortie du poste. On n'a pas réussi à les calmer.",
             "On a entendu du bruit depuis l'atelier et on les a trouvés en train de se battre dehors.",
         },
         vigile = {
@@ -556,14 +695,14 @@ L.vol_vehicule = {
     parking = {
         automobiliste = {
             "Je revenais à ma voiture quand je les ai vus s'acharner sur celle d'à côté.",
-            "Ils sont en train de forcer une portière, deux rangées plus loin.",
+            "Ils sont en train de forcer une portière, juste là.",
             "J'ai entendu l'alarme se déclencher et je les ai vus autour du véhicule.",
         },
         passant = {
             "Ils tournent autour des voitures depuis un moment, là ils en ont ouvert une.",
         },
         employe = {
-            "Je surveille les allées et venées depuis l'entrée : ils forcent un véhicule au fond.",
+            "Je surveille les allées et venues depuis l'entrée : ils sont en train de forcer un véhicule.",
         },
     },
     industriel = {
@@ -729,85 +868,91 @@ L.personne_armee = {
 }
 
 --  DÉLIT DE FUITE
+--  Scène fixe : une voiture renverse un piéton. Le conducteur descend
+--  mais ne porte pas secours — il reste près du véhicule jusqu'à ce
+--  qu'il voie la police, puis prend la fuite à pied. Jamais de "il n'a
+--  pas ralenti"/"il a filé aussitôt" : ça décrirait un délit de fuite
+--  classique où le conducteur ne s'arrête jamais, ce qui contredit la
+--  mise en scène (cf. suspectsAtVehicle/fleeTrigger, scenarios.lua).
 L.delit_fuite = {
     urbain = {
         passant = {
-            "Il a percuté puis il a continué sa route sans s'arrêter.",
-            "Le choc a été violent, il n'a même pas ralenti.",
+            "Il a percuté quelqu'un en pleine rue. Il est descendu mais il n'a rien fait pour l'aider, il est resté planté là.",
+            "Le choc a été violent, il est sorti de la voiture complètement hébété, sans bouger de place.",
         },
         habitant = {
-            "J'ai entendu le choc depuis chez moi, il était déjà loin quand je suis descendu.",
+            "J'ai entendu le choc depuis chez moi. Quand je suis descendu, le conducteur était toujours à côté de sa voiture.",
         },
         employe = {
-            "J'ai vu l'accident depuis l'entrée, le conducteur a pris la fuite aussitôt.",
+            "J'ai vu l'accident depuis l'entrée. Le conducteur est descendu mais il n'a porté secours à personne.",
         },
     },
     plage = {
         promeneur = {
-            "Il roulait trop vite sur le front de mer, il a percuté et il a filé.",
+            "Il roulait trop vite sur le front de mer, il a percuté quelqu'un et il est resté à côté de la voiture sans réagir.",
         },
         touriste = {
-            "J'ai vu la voiture heurter puis repartir immédiatement.",
+            "J'ai vu la voiture heurter un piéton. Le conducteur est sorti mais il n'a rien fait, il attendait juste là.",
         },
         passant = {
-            "Il ne s'est pas arrêté, il a accéléré après le choc.",
+            "Il ne l'a pas vu traverser. Depuis, il est resté debout à côté de sa voiture, complètement figé.",
         },
     },
     residentiel = {
         habitant = {
-            "J'ai entendu le choc depuis chez moi. Le conducteur est reparti sans s'arrêter.",
-            "Il a percuté un véhicule en stationnement devant l'immeuble et il a filé.",
+            "J'ai entendu le choc depuis chez moi. Le conducteur est descendu mais il n'a pas porté secours, il est resté devant l'immeuble.",
+            "Il a renversé quelqu'un devant l'immeuble et il est resté là, sans bouger, jusqu'à maintenant.",
         },
         passant = {
-            "Il a heurté quelqu'un et il est reparti sans même ralentir.",
+            "Il a heurté quelqu'un et il est resté debout à côté de sa voiture, sans lui porter secours.",
         },
         promeneur = {
-            "J'ai tout vu, il n'a pas freiné une seconde après le choc.",
+            "J'ai tout vu, il est descendu après le choc mais il n'a rien fait pour l'aider.",
         },
     },
     industriel = {
         chauffeur = {
-            "Il m'a touché en manœuvrant et il est reparti sans descendre.",
-            "J'ai vu la scène depuis ma cabine, il ne s'est pas arrêté.",
+            "Il a percuté quelqu'un en manœuvrant et il est resté planté là, sans réagir.",
+            "J'ai vu la scène depuis ma cabine, il est descendu mais il n'a rien fait pour l'aider.",
         },
         ouvrier = {
-            "Ça s'est passé devant l'entrée du site, il a percuté et il a filé.",
+            "Ça s'est passé devant l'entrée du site, il a renversé un collègue et il est resté sans bouger à côté de la voiture.",
         },
         vigile = {
-            "J'ai le numéro partiel sur ma vidéo, il est reparti immédiatement.",
+            "J'ai tout sur ma vidéo, il est descendu de la voiture mais il n'a porté secours à personne.",
         },
         employe = {
-            "Il a heurté un véhicule du parc et il ne s'est pas arrêté.",
+            "Il a renversé quelqu'un sur le parking du site et il est resté planté là, sans réagir.",
         },
     },
     parking = {
         automobiliste = {
-            "Il a embouti ma voiture en reculant et il est parti sans laisser de mot.",
-            "J'ai vu le choc depuis l'autre allée, il n'est même pas descendu.",
+            "Il a renversé quelqu'un en reculant et il est resté à côté de sa voiture, sans réagir.",
+            "J'ai vu le choc depuis l'autre allée, il est descendu mais il n'a rien fait pour l'aider.",
         },
         passant = {
-            "Il a heurté un véhicule en manœuvrant et il a quitté le parking aussitôt.",
+            "Il a percuté quelqu'un en manœuvrant et il est resté planté là, sans lui porter secours.",
         },
         employe = {
-            "Ça s'est passé à l'entrée du parking, il a percuté puis il a accéléré.",
+            "Ça s'est passé à l'entrée du parking, il a renversé quelqu'un et il est resté sur place, hébété.",
         },
     },
     centre = {
         passant = {
-            "Il a renversé quelqu'un et il a continué sa route sans s'arrêter.",
-            "Le choc a été violent, il n'a pas ralenti une seconde.",
+            "Il a renversé quelqu'un en pleine rue et il est resté debout à côté de la voiture, sans réagir.",
+            "Le choc a été violent, il est descendu mais il n'a porté secours à personne.",
         },
         employe = {
-            "J'ai vu la scène depuis la vitrine, le conducteur a pris la fuite.",
+            "J'ai vu la scène depuis la vitrine, le conducteur est resté à côté de sa voiture sans bouger.",
         },
         client = {
-            "Je traversais quand ça s'est produit, il est reparti immédiatement.",
+            "Je traversais quand ça s'est produit, il est resté planté là après le choc, sans rien faire.",
         },
     },
     ['*'] = {
         ['*'] = {
-            "Le conducteur ne s'est pas arrêté après le choc.",
-            "Il a percuté puis il a pris la fuite sans descendre du véhicule.",
+            "Le conducteur est resté à côté du véhicule sans porter secours.",
+            "Il a renversé un piéton et il est resté sur place, sans réagir.",
         },
     },
 }
@@ -1004,8 +1149,9 @@ L.cambriolage = {
 L.braquage_superette = {
     magasin = {
         employe = {
-            "Ils sont entrés armés et ont exigé la caisse. Je me suis mis à terre.",
-            "J'étais en caisse quand ils sont arrivés. Ils ont tout vidé et menacé le gérant.",
+            "Ils sont entrés armés et ont exigé la caisse. Ils m'ont mis en joue, je n'ai pas résisté.",
+            "J'étais en caisse quand ils sont arrivés. Ils m'ont braqué et ont vidé le tiroir.",
+            "Ils m'ont ordonné d'ouvrir la caisse sous la menace. Je leur ai tout donné.",
         },
         commercant = {
             "C'est ma boutique. Ils ont braqué la caisse et menacé tout le monde.",
@@ -1066,7 +1212,7 @@ L.tapage = {
 L.rixe_soiree = {
     bar = {
         fetard = {
-            "Ça a dégénéré à la sortie, ils sont une dizaine à se battre.",
+            "Ça a dégénéré à la sortie, ça se bat sévèrement.",
             "Une dispute à l'intérieur a fini dehors. Maintenant tout le monde s'y met.",
             "Ils sont sortis pour régler ça et ça a tourné à la bagarre générale.",
         },
@@ -1244,15 +1390,18 @@ SL.personne_armee = {
     },
 }
 
+-- Le suspect est resté près du véhicule après le choc, il n'a fui à
+-- pied qu'à l'arrivée des agents (cf. L.delit_fuite) : ses répliques ne
+-- doivent jamais sous-entendre qu'il a quitté les lieux avant.
 SL.delit_fuite = {
     ['*'] = {
         nie      = { "Je n'ai rien senti, je ne savais pas qu'il y avait un choc.",
                      "Ce n'était pas moi au volant." },
-        justifie = { "J'ai paniqué, je suis parti chercher de l'aide.",
-                     "Je n'avais pas mes papiers, j'ai eu peur." },
+        justifie = { "J'ai paniqué, je ne savais plus quoi faire, je suis resté sans bouger.",
+                     "Je n'avais pas mes papiers, j'ai eu peur en vous voyant arriver." },
         provoque = { "La voiture est là, personne n'est mort.",
                      "Vous n'avez aucun témoin." },
-        avoue    = { "J'ai pris peur et je suis parti. C'est ma faute." },
+        avoue    = { "J'ai eu peur en vous voyant arriver, j'ai couru sans réfléchir. C'est ma faute." },
         silence  = { "Je veux un avocat." },
     },
 }
@@ -1372,7 +1521,7 @@ VL.vol_arrache = {
             "Je me suis accrochée à la lanière, c'est là qu'ils m'ont poussée.",
         },
         soigne = {
-            "Ils étaient au moins deux. Ils m'ont bousculée et ils ont arraché mon sac.",
+            "Ils m'ont bousculée et ils ont arraché mon sac.",
             "J'avais mon téléphone à la main, ils me l'ont pris de force.",
         },
     },
@@ -1402,16 +1551,18 @@ VL.vol_arrache = {
     },
 }
 
+-- Cf. L.delit_fuite : le conducteur reste près du véhicule après le
+-- choc, il ne prend la fuite à pied qu'à l'arrivée des agents.
 VL.delit_fuite = {
     ['*'] = {
         blesse = {
-            "La voiture m'a percutée et elle n'a pas ralenti. Je n'ai pas vu la plaque.",
-            "J'ai entendu le moteur accélérer, puis plus rien. Je me suis réveillée au sol.",
-            "Il roulait vite. Il ne s'est même pas arrêté pour voir si j'étais vivante.",
+            "La voiture m'a percutée d'un coup. Je n'ai pas vu la plaque, tout est allé trop vite.",
+            "J'ai entendu le moteur, puis plus rien. Je me suis réveillée au sol.",
+            "Il roulait vite. Je l'ai vu descendre, mais je n'arrivais plus à parler.",
         },
         soigne = {
-            "Le conducteur est descendu, il m'a regardée, puis il est reparti en courant.",
-            "C'était une voiture claire. Il a pris la fuite immédiatement après le choc.",
+            "Il est descendu de la voiture mais il n'a rien fait pour m'aider, il est juste resté là.",
+            "Il n'a même pas essayé de m'aider. Il attendait à côté de sa voiture, sans bouger.",
         },
     },
     centre = {
@@ -1427,7 +1578,7 @@ VL.delit_fuite = {
             "Je sortais du site, il ne m'a pas vue en manœuvrant.",
         },
         soigne = {
-            "Il a reculé sans regarder, puis il est reparti sans descendre.",
+            "Il est resté planté là après le choc, il n'a pas cherché à m'aider.",
         },
     },
 }
@@ -1500,7 +1651,7 @@ L.tuerie_masse = {
             "Je l'ai regardé droit dans les yeux avant de courir. Il n'avait pas l'air de viser qui que ce soit en particulier.",
         },
         vu_vehicule = {
-            "Il est parti dans une voiture sombre, en direction de la route principale.",
+            "Il est parti dans une voiture sombre, ça s'est passé très vite.",
             "J'ai vu la voiture démarrer en trombe, mais je n'ai pas retenu la plaque.",
             "Une berline garée là est repartie tout de suite après les coups de feu.",
         },

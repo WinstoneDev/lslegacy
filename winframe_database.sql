@@ -99,7 +99,7 @@ CREATE TABLE IF NOT EXISTS `banlist` (
 -- -------------------------------------------------------------
 --  TABLE : bankaccounts
 --  Comptes bancaires des joueurs (système Maze Bank).
---  Créée/chargée dans : module/bank/sv_bank.lua
+--  Créée/chargée dans : module/bank/server/main.lua
 -- -------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `bankaccounts` (
     `id`           INT(11)       NOT NULL AUTO_INCREMENT,
@@ -153,7 +153,7 @@ CREATE TABLE IF NOT EXISTS `bankaccounts` (
 -- -------------------------------------------------------------
 --  TABLE : bank_livrets
 --  Livrets d'épargne (Livret A, LDDS, Compte à terme) rattachés
---  à un compte bancaire. Créée/chargée dans : module/bank/sv_bank.lua
+--  à un compte bancaire. Créée/chargée dans : module/bank/server/main.lua
 -- -------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `bank_livrets` (
     `id`                     INT(11)      NOT NULL AUTO_INCREMENT,
@@ -177,7 +177,7 @@ CREATE TABLE IF NOT EXISTS `bank_livrets` (
 -- -------------------------------------------------------------
 --  TABLE : bank_interest_rates
 --  Taux d'intérêt par type de livret, éditables en direct par le
---  panneau admin de la banque. Créée/chargée dans : module/bank/sv_bank.lua
+--  panneau admin de la banque. Créée/chargée dans : module/bank/server/main.lua
 -- -------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `bank_interest_rates` (
     `livret_type`                       VARCHAR(20) NOT NULL,
@@ -195,7 +195,7 @@ CREATE TABLE IF NOT EXISTS `bank_interest_rates` (
 --  TABLE : bank_card_tiers
 --  Paliers de carte (Standard/Premier/Platinum) : coût, plafonds,
 --  découvert autorisé, agios. Éditables en direct par le panneau
---  admin. Créée/chargée dans : module/bank/sv_bank.lua
+--  admin. Créée/chargée dans : module/bank/server/main.lua
 -- -------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `bank_card_tiers` (
     `tier`                   VARCHAR(20) NOT NULL,
@@ -215,7 +215,7 @@ CREATE TABLE IF NOT EXISTS `bank_card_tiers` (
 -- -------------------------------------------------------------
 --  TABLE : persistent_vehicles
 --  Véhicules persistants sauvegardés dans le monde.
---  Créée/chargée dans : module/persistent_vehicles/sv_persistent.lua
+--  Créée/chargée dans : module/persistentvehicles/server/main.lua
 -- -------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `persistent_vehicles` (
     `id`            INT(11)      NOT NULL AUTO_INCREMENT,
@@ -288,7 +288,7 @@ CREATE TABLE IF NOT EXISTS `datastore` (
 -- -------------------------------------------------------------
 --  TABLE : admin_warns
 --  Historique des avertissements donnés par le staff.
---  Créée/chargée dans : module/adminmenu/sv_admin.lua
+--  Créée/chargée dans : module/adminmenu/server/main.lua
 -- -------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `admin_warns` (
     `id`                INT(11)      NOT NULL AUTO_INCREMENT,
@@ -305,7 +305,7 @@ CREATE TABLE IF NOT EXISTS `admin_warns` (
 -- -------------------------------------------------------------
 --  TABLE : support_tickets
 --  Tickets d'aide ouverts par les joueurs (/report) et suivis par le staff.
---  Créée/chargée dans : module/adminmenu/sv_admin.lua
+--  Créée/chargée dans : module/adminmenu/server/main.lua
 -- -------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `support_tickets` (
     `id`                 INT(11) NOT NULL AUTO_INCREMENT,
@@ -433,11 +433,11 @@ CREATE TABLE IF NOT EXISTS `farm_shop_stock` (
 
 
 -- -------------------------------------------------------------
---  TABLE : gendarmerie_officers
---  Registre des agents du métier Gendarmerie (prise/fin de service).
---  Créée/chargée dans : module/gendarmerie/server/main.lua
+--  TABLE : sheriff_deputies
+--  Registre des agents du métier Sheriff (prise/fin de service).
+--  Créée/chargée dans : module/sheriff/server/main.lua
 -- -------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `gendarmerie_officers` (
+CREATE TABLE IF NOT EXISTS `sheriff_deputies` (
     `id`         INT(11)      NOT NULL AUTO_INCREMENT,
     `identifier` VARCHAR(60)  NOT NULL,
     `name`       VARCHAR(100) NOT NULL DEFAULT '',
@@ -514,11 +514,11 @@ CREATE TABLE IF NOT EXISTS `mecanicien_stock` (
 
 
 -- -------------------------------------------------------------
---  TABLE : pompiers_agents
---  Registre des agents du métier Pompiers (prise/fin de service).
---  Créée/chargée dans : module/pompiers/server/main.lua
+--  TABLE : lsfd_agents
+--  Registre des agents du métier LSFD (prise/fin de service).
+--  Créée/chargée dans : module/lsfd/server/main.lua
 -- -------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `pompiers_agents` (
+CREATE TABLE IF NOT EXISTS `lsfd_agents` (
     `id`         INT(11)      NOT NULL AUTO_INCREMENT,
     `identifier` VARCHAR(60)  NOT NULL,
     `name`       VARCHAR(100) NOT NULL DEFAULT '',
@@ -526,18 +526,18 @@ CREATE TABLE IF NOT EXISTS `pompiers_agents` (
     `duty_since` DATETIME              DEFAULT NULL,
     `last_seen`  DATETIME              DEFAULT NULL,
     PRIMARY KEY (`id`),
-    KEY `idx_pa_identifier` (`identifier`)
+    KEY `idx_la_identifier` (`identifier`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 -- -------------------------------------------------------------
---  TABLE : samu_agents
---  Registre des agents du métier SAMU (prise/fin de service).
+--  TABLE : ems_agents
+--  Registre des agents du métier EMS (prise/fin de service).
 --  Le dossier médical (mdt_med_*) est documenté séparément dans
---  module/samu/sql/medical.sql.
---  Créée/chargée dans : module/samu/server/main.lua
+--  module/ems/sql/medical.sql.
+--  Créée/chargée dans : module/ems/server/main.lua
 -- -------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `samu_agents` (
+CREATE TABLE IF NOT EXISTS `ems_agents` (
     `id`         INT(11)      NOT NULL AUTO_INCREMENT,
     `identifier` VARCHAR(60)  NOT NULL,
     `name`       VARCHAR(100) NOT NULL DEFAULT '',
@@ -627,7 +627,7 @@ CREATE TABLE IF NOT EXISTS `police_custody` (
     `officer_id`   VARCHAR(60)  NOT NULL DEFAULT '',
     `officer_name` VARCHAR(100) NOT NULL DEFAULT '',
 
-    -- Département ayant procédé au placement (police, gendarmerie, ...)
+    -- Département ayant procédé au placement (police, shérif, ...)
     `department`   VARCHAR(50)  NOT NULL DEFAULT 'police',
 
     PRIMARY KEY (`id`),
@@ -864,7 +864,7 @@ CREATE TABLE IF NOT EXISTS `police_blood_traces` (
 --  TABLE : exit_sleeping
 --  État des PNJ « ped hors-ligne » laissés endormis à la déconnexion.
 --  Aucun CREATE TABLE explicite dans le module (table attendue pré-existante) —
---  lue/écrite dans : module/pedOffline/server/main.lua, module/pedOffline/class/main.lua
+--  lue/écrite dans : module/pedoffline/server/main.lua, module/pedoffline/class/main.lua
 -- -------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `exit_sleeping` (
     -- Identifiant du joueur endormi (clé naturelle)
@@ -885,7 +885,7 @@ CREATE TABLE IF NOT EXISTS `exit_sleeping` (
 -- =============================================================
 --  - keyhanger_boards          → module/keyhanger/keyhanger.sql
 --  - mdt_* (22 tables police)  → module/mdt/sql/mdt.sql
---  - mdt_med_* (SAMU)          → module/samu/sql/medical.sql
+--  - mdt_med_* (EMS)          → module/ems/sql/medical.sql
 --  - atelier_* (4 tables)      → module/atelier/sql/atelier.sql
 --  - emotes_favorites          → module/emotes/sql/emotes.sql
 --  - phone_* (lb-phone)        → [Autres]/lb-phone/phone.sql (ressource tierce)
@@ -904,8 +904,8 @@ CREATE TABLE IF NOT EXISTS `exit_sleeping` (
 --    6. admin_warns, support_tickets
 --    7. owned_vehicles, concessionnaire_occasions
 --    8. fourriere, interim_stations, farm_shop_stock
---    9. gendarmerie_officers, ltd_agents, ltd_stock,
---       mecanicien_agents, mecanicien_stock, pompiers_agents, samu_agents
+--    9. sheriff_deputies, ltd_agents, ltd_stock,
+--       mecanicien_agents, mecanicien_stock, lsfd_agents, ems_agents
 --   10. police_officers, police_cuffed, police_radio_channels,
 --       police_custody, police_prison
 --   11. police_callouts, police_callout_agents

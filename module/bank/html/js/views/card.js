@@ -13,6 +13,16 @@ function tierRow(tier, cfg, selected, onClick) {
     `;
 }
 
+async function toggleBlockCard(account) {
+    await fetchNui('bank:blockCard', { id: account.id, blocked: !account.card_blocked });
+    toast(account.card_blocked ? 'Déblocage demandé.' : 'Blocage demandé.');
+}
+
+async function replaceCard(account) {
+    await fetchNui('bank:replaceCard', { id: account.id });
+    toast('Nouvelle carte commandée.');
+}
+
 async function createCard(accountId, tier) {
     await fetchNui('bank:createCard', { id: accountId, tier });
     toast('Demande de carte envoyée.');
@@ -81,6 +91,23 @@ function renderCardForAccount(root, account) {
         </div>
 
         ${hasCard ? `
+        <div class="bank-section-title">Sécurité</div>
+        <div class="bank-card">
+            <div class="bank-card-row">
+                <div>
+                    <div style="font-weight:700;font-size:14px;">${account.card_blocked ? 'Carte bloquée' : 'Bloquer la carte'}</div>
+                    <div style="font-size:12px;color:var(--bank-text-dim);margin-top:2px;">${account.card_blocked ? 'Aucun paiement ni retrait accepté. Débloquez-la si vous l\'avez retrouvée.' : 'Carte perdue ou volée : bloque immédiatement tous les paiements.'}</div>
+                </div>
+                <button class="bank-btn ${account.card_blocked ? 'bank-btn-secondary' : 'bank-btn-danger'} bank-btn-sm" onclick="callH('${H(() => toggleBlockCard(account))}')">${account.card_blocked ? 'Débloquer' : 'Bloquer'}</button>
+            </div>
+            <div class="bank-card-row" style="margin-top:10px;">
+                <div>
+                    <div style="font-weight:700;font-size:14px;">Commander une nouvelle carte</div>
+                    <div style="font-size:12px;color:var(--bank-text-dim);margin-top:2px;">Nouveau numéro et nouveau code PIN. L'ancienne carte devient définitivement invalide.</div>
+                </div>
+                <button class="bank-btn bank-btn-secondary bank-btn-sm" onclick="callH('${H(() => replaceCard(account))}')">Remplacer</button>
+            </div>
+        </div>
         <div class="bank-section-title">Code PIN</div>
         <div class="bank-card bank-card-row">
             <div style="font-size:22px;font-weight:800;letter-spacing:4px;font-variant-numeric:tabular-nums;" id="bankCardPinValue">••••</div>
@@ -113,7 +140,7 @@ window.BankViews.card = function (root, ctx) {
                     <div class="bank-account-id">Compte n°${a.id}</div>
                     <div class="bank-account-iban">${a.card_infos ? 'Carte ' + esc(a.card_infos.card_type) : 'Aucune carte'}</div>
                 </div>
-                <span class="bank-badge ${tierBadgeClass(a.card_tier)}">${tierLabel(a.card_tier)}</span>
+                ${a.card_blocked ? '<span class="bank-badge bank-badge-red" style="margin-right:6px;">Bloquée</span>' : ''}<span class="bank-badge ${tierBadgeClass(a.card_tier)}">${tierLabel(a.card_tier)}</span>
             </div>
         `).join('')}
     `;

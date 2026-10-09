@@ -1,18 +1,19 @@
 --  MODULE POLICE NATIONALE — Actions policières (serveur)
 --  Validation stricte : job/grade depuis ServerPlayers, jamais client
 
-local CuffedPlayers = {}    -- { [src] = { officer = officerSrc, time = ts } }
+-- Indexé par identifier (et non src) pour survivre à une déconnexion/reconnexion :
+-- sans ça, un joueur menotté n'a qu'à se déco/reco pour s'évader.
+local CuffedPlayers = {}    -- { [identifier] = { officer = officerSrc, time = ts } }
 local EscortLinks   = {}    -- { [targetSrc] = officerSrc }
 
 local function Notify(src, msg, t)
-    TriggerClientEvent(Config.Police.NotifyEvent, src, 'Police Nationale', msg,
-        Config.Police.NotifyDuration or 30000, t or 'info')
+    LSLegacy.Events.SendToClient('notify', src, 'Police Nationale', msg, t or 'info', Config.Police.NotifyDuration or 30000)
 end
 
 --  MENOTTAGE
 
 -- Relaie le signal de début d'animation vers la cible
-LSLegacy.RegisterServerEvent('police:cuffStart', function(data)
+LSLegacy.Events.Register('police:cuffStart', function(data)
     local src = source
     if not IsLawEnforcementOnDuty(src) then return end
     if not data or not data.target then return end
@@ -21,38 +22,53 @@ LSLegacy.RegisterServerEvent('police:cuffStart', function(data)
     TriggerClientEvent('police:cuffAnimation', target, { duration = data.duration or 3000 })
 end)
 
-LSLegacy.RegisterServerEvent('police:cuff', function(data)
+LSLegacy.Events.Register('police:cuff', function(data)
     local src = source
     if not IsLawEnforcementOnDuty(src) then return end
     if not data or not data.target then return end
 
     local target  = tonumber(data.target)
-    if not GetPlayer(target) then return end
+    local tp      = GetPlayer(target)
+    if not tp then return end
+    local targetIdent = tp.identifier
 
     if data.cuffed then
-        if CuffedPlayers[target] then
+        if CuffedPlayers[targetIdent] then
             Notify(src, Lang.Police.already_cuffed, 'error')
             return
         end
-        CuffedPlayers[target] = { officer = src, time = os.time() }
+        CuffedPlayers[targetIdent] = { officer = src, time = os.time() }
         TriggerClientEvent('police:setCuffed', target, true)
         Notify(src,    string.format(Lang.Police.cuffed_other, GetName(target)), 'success')
         Notify(target, Lang.Police.cuffed, 'error')
     else
-        if not CuffedPlayers[target] then
+        if not CuffedPlayers[targetIdent] then
             Notify(src, Lang.Police.not_cuffed, 'error')
             return
         end
-        CuffedPlayers[target] = nil
+        CuffedPlayers[targetIdent] = nil
         TriggerClientEvent('police:setCuffed', target, false)
         Notify(src,    string.format(Lang.Police.uncuffed_other, GetName(target)), 'success')
         Notify(target, Lang.Police.uncuffed, 'info')
     end
 end)
 
+-- Réapplique l'état menotté à la reconnexion (survit à une déco/reco)
+AddEventHandler('registerPlayer', function()
+    local src   = source
+    local ident = GetIdent(src)
+    if not ident then return end
+    Citizen.CreateThread(function()
+        Wait(5000)
+        if CuffedPlayers[ident] then
+            TriggerClientEvent('police:setCuffed', src, true)
+        end
+    end)
+end)
+
 --  FOUILLE
 
-LSLegacy.RegisterServerEvent('police:search', function(data)
+LSLegacy.Events.Register('police:search', function(data)
     local src = source
     if not IsLawEnforcementOnDuty(src) then return end
     if not data or not data.target then return end
@@ -72,11 +88,12 @@ LSLegacy.RegisterServerEvent('police:search', function(data)
 
     TriggerClientEvent('police:searchResult', src, { items = items, target = target })
     Notify(target, 'Vous avez été fouillé(e) par un agent.', 'warning')
+    IncrementPoliceStat(GetIdent(src), GetCharacterId(src), GetName(src), 'searches_count', 1)
 end)
 
 --  PALPATION DE SÉCURITÉ
 
-LSLegacy.RegisterServerEvent('police:palpation', function(data)
+LSLegacy.Events.Register('police:palpation', function(data)
     local src = source
     if not IsLawEnforcementOnDuty(src) then return end
     if not data or not data.target then return end
@@ -104,11 +121,12 @@ LSLegacy.RegisterServerEvent('police:palpation', function(data)
         target  = target,
     })
     Notify(target, 'Vous avez fait l\'objet d\'une palpation de sécurité.', 'warning')
+    IncrementPoliceStat(GetIdent(src), GetCharacterId(src), GetName(src), 'searches_count', 1)
 end)
 
 --  CONTRÔLE D'IDENTITÉ
 
-LSLegacy.RegisterServerEvent('police:idCheck', function(data)
+LSLegacy.Events.Register('police:idCheck', function(data)
     local src = source
     if not IsLawEnforcementOnDuty(src) then return end
     if not data or not data.target then return end
@@ -133,7 +151,7 @@ end)
 
 --  CONTRÔLE PERMIS
 
-LSLegacy.RegisterServerEvent('police:licenseCheck', function(data)
+LSLegacy.Events.Register('police:licenseCheck', function(data)
     local src = source
     if not IsLawEnforcementOnDuty(src) then return end
     if not data or not data.target then return end
@@ -163,7 +181,7 @@ end)
 
 --  ESCORTE
 
-LSLegacy.RegisterServerEvent('police:escort', function(data)
+LSLegacy.Events.Register('police:escort', function(data)
     local src = source
     if not IsLawEnforcementOnDuty(src) then return end
     if not data or not data.target then return end
@@ -182,7 +200,7 @@ end)
 
 --  MISE EN VÉHICULE
 
-LSLegacy.RegisterServerEvent('police:putInVehicle', function(data)
+LSLegacy.Events.Register('police:putInVehicle', function(data)
     local src = source
     if not IsLawEnforcementOnDuty(src) then return end
     if not data or not data.target or not data.vehNet then return end
@@ -199,7 +217,7 @@ LSLegacy.RegisterServerEvent('police:putInVehicle', function(data)
     Notify(src,    string.format(Lang.Police.put_in_veh, tName), 'success')
 end)
 
-LSLegacy.RegisterServerEvent('police:getOutVehicle', function(data)
+LSLegacy.Events.Register('police:getOutVehicle', function(data)
     local src = source
     if not IsLawEnforcementOnDuty(src) then return end
     if not data or not data.target then return end
@@ -213,7 +231,7 @@ end)
 
 --  SAISIE D'OBJET
 
-LSLegacy.RegisterServerEvent('police:seizeItem', function(data)
+LSLegacy.Events.Register('police:seizeItem', function(data)
     local src = source
     if not IsLawEnforcementOnDuty(src) then return end
     if not data or not data.target or not data.itemName then return end
@@ -253,11 +271,12 @@ LSLegacy.RegisterServerEvent('police:seizeItem', function(data)
     end
 end)
 
--- Nettoyage
+-- Nettoyage : l'escorte est une relation de suivi éphémère, propre à la
+-- session ; l'état menotté (indexé par identifier) est volontairement
+-- conservé pour survivre à la déconnexion, cf. registerPlayer ci-dessus.
 AddEventHandler('playerDropped', function()
     local src = source
-    CuffedPlayers[src] = nil
-    EscortLinks[src]   = nil
+    EscortLinks[src] = nil
     for target, officer in pairs(EscortLinks) do
         if officer == src then EscortLinks[target] = nil end
     end

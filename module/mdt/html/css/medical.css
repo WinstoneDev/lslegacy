@@ -1,12 +1,12 @@
 /* ════════════════════════════════════════════════════════════════
-   MDT MÉDICAL (SAMU) — Styles
+   MDT MÉDICAL (EMS) — Styles
    ────────────────────────────────────────────────────────────────
    Additif à mdt.css : ce fichier ne redéfinit AUCUNE classe du MDT
    police, il n'ajoute que des classes préfixées `med-` (plus deux
    utilitaires de formulaire absents du thème : .mdt-label / .mdt-check).
    Le thème (couleurs, rayons, police) est hérité des variables CSS
    de mdt.css — `--mdt-blue-dk` est déjà écrasé à l'ouverture par la
-   couleur du département, donc le rouge SAMU s'applique tout seul.
+   couleur du département, donc le rouge EMS s'applique tout seul.
    ════════════════════════════════════════════════════════════════ */
 
 :root {

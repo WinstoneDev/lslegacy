@@ -16,7 +16,7 @@ local function GetServerIdFromPed(ped)
     return GetPlayerServerId(playerIndex)
 end
 
-local function playAnim(entity, dict, anim, blendIn, blendOut, duration, flags)
+local function PlayAnim(entity, dict, anim, blendIn, blendOut, duration, flags)
     if not HasAnimDictLoaded(dict) then
         RequestAnimDict(dict)
         while not HasAnimDictLoaded(dict) do Wait(100) end
@@ -49,13 +49,13 @@ end
 
 local function CancelCarry()
     if not role then return end
-    LSLegacy.SendEventToServer('lslegacy_carry:cancel')
+    LSLegacy.Events.SendToServer('lslegacy_carry:cancel')
     StopCarry()
 end
 
 local function PlayCarrier(carriedSrc)
     local ped = PlayerPedId()
-    playAnim(ped, CARRIER_ANIM.dict, CARRIER_ANIM.anim, 8.0, 8.0, -1, CARRIER_ANIM.flags)
+    PlayAnim(ped, CARRIER_ANIM.dict, CARRIER_ANIM.anim, 8.0, 8.0, -1, CARRIER_ANIM.flags)
     role, partnerSrc = 'carrier', carriedSrc
     LSLegacy.IsCarrying = true
 end
@@ -66,14 +66,14 @@ local function PlayCarried(carrierSrc)
     local carrierPed    = carrierPlayer ~= -1 and GetPlayerPed(carrierPlayer)
     if not carrierPed or carrierPed == 0 or not DoesEntityExist(carrierPed) then return end
 
-    playAnim(ped, CARRIED_ANIM.dict, CARRIED_ANIM.anim, 8.0, 8.0, -1, CARRIED_ANIM.flags)
+    PlayAnim(ped, CARRIED_ANIM.dict, CARRIED_ANIM.anim, 8.0, 8.0, -1, CARRIED_ANIM.flags)
     AttachEntityToEntity(ped, carrierPed, ATTACH[1], ATTACH[2], ATTACH[3], ATTACH[4],
         ATTACH[5], ATTACH[6], ATTACH[7], false, false, false, false, 2, false)
     role, partnerSrc = 'carried', carrierSrc
     LSLegacy.IsBeingCarried = true
 end
 
-LSLegacy.RegisterClientEvent('lslegacy_carry:client:start', function(carrierSrc, carriedSrc)
+LSLegacy.Events.Register('lslegacy_carry:clientStart', function(carrierSrc, carriedSrc)
     local mySrc = GetPlayerServerId(PlayerId())
     if mySrc == carrierSrc then
         PlayCarrier(carriedSrc)
@@ -82,7 +82,7 @@ LSLegacy.RegisterClientEvent('lslegacy_carry:client:start', function(carrierSrc,
     end
 end)
 
-LSLegacy.RegisterClientEvent('lslegacy_carry:client:stop', function()
+LSLegacy.Events.Register('lslegacy_carry:clientStop', function()
     StopCarry()
 end)
 
@@ -136,7 +136,7 @@ local function StartCarry(targetPed)
     local targetSrc = GetServerIdFromPed(targetPed)
     if not targetSrc then return end
 
-    LSLegacy.SendEventToServer('lslegacy_carry:request', targetSrc)
+    LSLegacy.Events.SendToServer('lslegacy_carry:request', targetSrc)
 end
 
 RegisterCommand('porter', function()
@@ -153,7 +153,7 @@ end, false)
 
 -- Demande de portage : la cible (consciente) doit accepter
 
-LSLegacy.RegisterClientEvent('lslegacy_carry:client:request', function(requesterServerId)
+LSLegacy.Events.Register('lslegacy_carry:clientRequest', function(requesterServerId)
     local requesterName = GetPlayerName(GetPlayerFromServerId(requesterServerId)) or 'Un joueur'
     Notify(('%s souhaite vous porter. Y pour accepter, L pour refuser.'):format(requesterName), 'info')
 
@@ -162,7 +162,7 @@ LSLegacy.RegisterClientEvent('lslegacy_carry:client:request', function(requester
         while GetGameTimer() < timeout do
             Wait(0)
             if IsControlJustPressed(1, 246) then -- Y
-                LSLegacy.SendEventToServer('lslegacy_carry:confirm', requesterServerId)
+                LSLegacy.Events.SendToServer('lslegacy_carry:confirm', requesterServerId)
                 return
             elseif IsControlJustPressed(1, 182) then -- L
                 return

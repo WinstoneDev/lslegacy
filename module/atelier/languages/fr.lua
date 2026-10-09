@@ -6,7 +6,6 @@ Lang.Atelier = {
     duty_on                 = 'Prise de service enregistrée.',
     duty_off                  = 'Fin de service enregistrée.',
     action_cooldown             = 'Attendez avant de répéter cette action.',
-    vehicle_spawned                = 'Véhicule sorti.',
 
     -- Diagnostic
     diagnose_title       = 'Diagnostic véhicule',

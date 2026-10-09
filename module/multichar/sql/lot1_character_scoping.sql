@@ -5,7 +5,7 @@
 --  Corrige aussi le bug de doublon à la prise de service : 5 des 6 tables
 --  "agent" n'avaient qu'un index normal sur `identifier`, pas une
 --  contrainte UNIQUE, donc leur `ON DUPLICATE KEY UPDATE` ne se
---  déclenchait jamais (gendarmerie_officers avait déjà la bonne
+--  déclenchait jamais (sheriff_deputies avait déjà la bonne
 --  contrainte). La nouvelle contrainte UNIQUE porte sur `character_id`.
 -- =============================================================
 
@@ -55,22 +55,22 @@ DELETE t1 FROM `ltd_agents` t1
         AND (t1.last_seen < t2.last_seen OR (t1.last_seen = t2.last_seen AND t1.id < t2.id));
 ALTER TABLE `ltd_agents` ADD UNIQUE KEY `uq_la_character` (`character_id`);
 
--- samu_agents
-ALTER TABLE `samu_agents` ADD COLUMN `character_id` INT NULL AFTER `identifier`;
-UPDATE `samu_agents` t JOIN `players` p ON p.identifier = t.identifier AND p.slot = 1
+-- ems_agents
+ALTER TABLE `ems_agents` ADD COLUMN `character_id` INT NULL AFTER `identifier`;
+UPDATE `ems_agents` t JOIN `players` p ON p.identifier = t.identifier AND p.slot = 1
     SET t.character_id = p.`boutique-id`;
-DELETE t1 FROM `samu_agents` t1
-    INNER JOIN `samu_agents` t2
+DELETE t1 FROM `ems_agents` t1
+    INNER JOIN `ems_agents` t2
         ON t1.identifier = t2.identifier
         AND (t1.last_seen < t2.last_seen OR (t1.last_seen = t2.last_seen AND t1.id < t2.id));
-ALTER TABLE `samu_agents` ADD UNIQUE KEY `uq_sa_character` (`character_id`);
+ALTER TABLE `ems_agents` ADD UNIQUE KEY `uq_sa_character` (`character_id`);
 
--- gendarmerie_officers (avait déjà UNIQUE(identifier), remplacée par UNIQUE(character_id))
-ALTER TABLE `gendarmerie_officers` ADD COLUMN `character_id` INT NULL AFTER `identifier`;
-UPDATE `gendarmerie_officers` t JOIN `players` p ON p.identifier = t.identifier AND p.slot = 1
+-- sheriff_deputies (avait déjà UNIQUE(identifier), remplacée par UNIQUE(character_id))
+ALTER TABLE `sheriff_deputies` ADD COLUMN `character_id` INT NULL AFTER `identifier`;
+UPDATE `sheriff_deputies` t JOIN `players` p ON p.identifier = t.identifier AND p.slot = 1
     SET t.character_id = p.`boutique-id`;
-ALTER TABLE `gendarmerie_officers` DROP INDEX `uq_go_identifier`;
-ALTER TABLE `gendarmerie_officers` ADD UNIQUE KEY `uq_go_character` (`character_id`);
+ALTER TABLE `sheriff_deputies` DROP INDEX `uq_go_identifier`;
+ALTER TABLE `sheriff_deputies` ADD UNIQUE KEY `uq_go_character` (`character_id`);
 
 -- police_radio_channels (table créée mais non utilisée actuellement par le code — migrée par cohérence)
 ALTER TABLE `police_radio_channels` ADD COLUMN `character_id` INT NULL AFTER `identifier`;

@@ -2,9 +2,37 @@
 LSLegacy.DataStore = {}
 LSLegacy.DataStores = {}
 
+-- Mêmes MarkDirty/SaveDirty que côté joueur (voir server/player/player.lua) :
+-- seuls les datastores réellement modifiés depuis le dernier tick sont réécrits.
+local DataStoreMethods = {}
+LSLegacy.DataStoreMeta = {__index = DataStoreMethods}
+
+DataStoreMethods.MarkDirty = function(self)
+    self._dirty = true
+end
+
+DataStoreMethods.SaveDirty = function(self, id)
+    if not self._dirty then return end
+    if type(self.inventory) ~= "table" then
+        self.inventory = json.decode(self.inventory)
+    end
+    MySQL.Async.execute(
+        'UPDATE datastore SET inventory = @inventory, money = @money, dirty = @dirty, weight = @weight WHERE id = @id',
+        {
+            ['@id'] = id,
+            ['@inventory'] = json.encode(self.inventory),
+            ['@money'] = self.money or 0,
+            ['@dirty'] = self.dirty or 0,
+            ['@weight'] = self.maxWeight or 0
+        }
+    )
+    self._dirty = false
+end
+
 Citizen.CreateThread(function()
     MySQL.Async.fetchAll('SELECT * FROM datastore', {}, function(result)
         for k, v in pairs(result) do
+            setmetatable(v, LSLegacy.DataStoreMeta)
             LSLegacy.DataStores[v.name] = v
             -- La colonne BDD se nomme 'weight' mais le code utilise 'maxWeight' :
             -- on remappe au chargement pour éviter les comparaisons number/nil.
@@ -31,16 +59,10 @@ Citizen.CreateThread(function()
                     { ['@name'] = name, ['@type'] = datastore.type },
                     function(id)
                         if id then
-                            MySQL.Async.execute(
-                                'UPDATE datastore SET inventory = @inventory, money = @money, dirty = @dirty, weight = @weight WHERE id = @id',
-                                {
-                                    ['@id'] = id,
-                                    ['@inventory'] = json.encode(datastore.inventory),
-                                    ['@money'] = datastore.money or 0,
-                                    ['@dirty'] = datastore.dirty or 0,
-                                    ['@weight'] = datastore.maxWeight or 0
-                                }
-                            )
+                            -- Ligne déjà en base : on ne réécrit que si le datastore a
+                            -- réellement changé depuis le dernier tick (voir MarkDirty
+                            -- dans LSLegacy.DataStore.Add/Remove*).
+                            datastore:SaveDirty(id)
                         else
                             MySQL.Async.execute(
                                 'INSERT INTO datastore (type, name, inventory, money, dirty, weight) VALUES (@type, @name, @inventory, @money, @dirty, @weight)',
@@ -53,6 +75,7 @@ Citizen.CreateThread(function()
                                     ['@weight'] = datastore.maxWeight or 0
                                 }
                             )
+                            datastore._dirty = false
                         end
                     end
                 )
@@ -86,7 +109,13 @@ LSLegacy.DataStore.GetInventoryWeight = function(inventory)
     local weight = 0
 
     for key, value in pairs(inventory) do
-        weight = weight + Config.Items[value.name].weight * value.count
+        -- def peut être nil : les items d'une ressource externe (restaurants)
+        -- disparaissent du registre quand celle-ci est arrêtée, alors qu'ils
+        -- restent stockés en base.
+        local def = Config.Items[value.name]
+        if def then
+            weight = weight + def.weight * value.count
+        end
     end
     return weight
 end
@@ -119,10 +148,14 @@ end
 ---@return any
 ---@public
 LSLegacy.DataStore.AddMoney = function(datastore, amount)
-    if not datastore or not amount then return end
+    if not datastore then return false end
+    amount = LSLegacy.Validate.PositiveInteger(amount)
+    if not amount then return false end
     if not datastore.money then datastore.money = 0 end
     datastore.money = datastore.money + amount
-    LSLegacy.SendEventToClient('UpdateDatastore', source, LSLegacy.DataStores)
+    datastore:MarkDirty()
+    LSLegacy.Events.SendToClient('lslegacy:updateDatastore', source, LSLegacy.DataStores)
+    return true
 end
 
 ---AddDirtyMoney
@@ -132,10 +165,14 @@ end
 ---@return any
 ---@public
 LSLegacy.DataStore.AddDirtyMoney = function(datastore, amount)
-    if not datastore or not amount then return end
+    if not datastore then return false end
+    amount = LSLegacy.Validate.PositiveInteger(amount)
+    if not amount then return false end
     if not datastore.dirty then datastore.dirty = 0 end
     datastore.dirty = datastore.dirty + amount
-    LSLegacy.SendEventToClient('UpdateDatastore', source, LSLegacy.DataStores)
+    datastore:MarkDirty()
+    LSLegacy.Events.SendToClient('lslegacy:updateDatastore', source, LSLegacy.DataStores)
+    return true
 end
 
 ---RemoveMoney
@@ -145,12 +182,17 @@ end
 ---@return any
 ---@public
 LSLegacy.DataStore.RemoveMoney = function(datastore, amount)
-    if not datastore or not amount then return false end
+    if not datastore then return false end
+    amount = LSLegacy.Validate.PositiveInteger(amount)
+    if not amount then return false end
     if not datastore.money then datastore.money = 0 end
     if datastore.money >= amount then
         datastore.money = datastore.money - amount
-        LSLegacy.SendEventToClient('UpdateDatastore', source, LSLegacy.DataStores)
+        datastore:MarkDirty()
+        LSLegacy.Events.SendToClient('lslegacy:updateDatastore', source, LSLegacy.DataStores)
+        return true
     end
+    return false
 end
 
 ---RemoveDirtyMoney
@@ -160,12 +202,17 @@ end
 ---@return any
 ---@public
 LSLegacy.DataStore.RemoveDirtyMoney = function(datastore, amount)
-    if not datastore or not amount then return false end
+    if not datastore then return false end
+    amount = LSLegacy.Validate.PositiveInteger(amount)
+    if not amount then return false end
     if not datastore.dirty then datastore.dirty = 0 end
     if datastore.dirty >= amount then
         datastore.dirty = datastore.dirty - amount
-        LSLegacy.SendEventToClient('UpdateDatastore', source, LSLegacy.DataStores)
+        datastore:MarkDirty()
+        LSLegacy.Events.SendToClient('lslegacy:updateDatastore', source, LSLegacy.DataStores)
+        return true
     end
+    return false
 end
 
 ---GetMoney
@@ -210,7 +257,8 @@ LSLegacy.DataStore.GetInventoryItem = function(datastore, item)
         end
     end
     if count ~= 0 then
-        return {count = count, label = Config.Items[item].label, uniqueId = data.uniqueId, data = data.data}
+        local def = Config.Items[item]
+        return {count = count, label = def and def.label or item, uniqueId = data.uniqueId, data = data.data}
     else
         return nil
     end
@@ -228,9 +276,17 @@ end
 LSLegacy.DataStore.AddItemInInventory = function(datastore, item, quantity, newLabel, uniqueId, data)
     if not datastore then return end
     if not item then return end
+    quantity = LSLegacy.Validate.PositiveInteger(quantity)
     if not quantity then return end
     local exist = false
     local source = source
+
+    -- Péremption (module/foodapi) : le mode dépend du conteneur — frigo
+    -- professionnel (figé), frigo domestique (ralenti) ou simple stockage.
+    if LSLegacy.Perishable and LSLegacy.Perishable.Is and LSLegacy.Perishable.Is(item) then
+        data = LSLegacy.Perishable.Stamp(item, data,
+            LSLegacy.Perishable.ModeForDataStore(datastore.name, datastore.type))
+    end
     if LSLegacy.Inventory.DoesItemExists(item) then
         if LSLegacy.DataStore.CanStoreItem(datastore, item, quantity) then
             local inventory = datastore.inventory
@@ -258,7 +314,8 @@ LSLegacy.DataStore.AddItemInInventory = function(datastore, item, quantity, newL
                 end
             end
             datastore.inventory = inventory
-            LSLegacy.SendEventToClient('UpdateDatastore', source, LSLegacy.DataStores)
+            datastore:MarkDirty()
+            LSLegacy.Events.SendToClient('lslegacy:updateDatastore', source, LSLegacy.DataStores)
         end
     end
 end
@@ -274,10 +331,12 @@ end
 LSLegacy.DataStore.RemoveItemInInventory = function(datastore, item, quantity, itemLabel)
     if not datastore then return end
     if not item then return end
+    quantity = LSLegacy.Validate.PositiveInteger(quantity)
     if not quantity then return end
     local source = source
     local inventory = datastore.inventory
-    local label = itemLabel or Config.Items[item].label
+    local def = Config.Items[item]
+    local label = itemLabel or (def and def.label) or item
     local removed = false
 
     for k, v in pairs(inventory) do
@@ -311,7 +370,8 @@ LSLegacy.DataStore.RemoveItemInInventory = function(datastore, item, quantity, i
         end
     end
     datastore.inventory = inventory
-    LSLegacy.SendEventToClient('UpdateDatastore', source, LSLegacy.DataStores)
+    datastore:MarkDirty()
+    LSLegacy.Events.SendToClient('lslegacy:updateDatastore', source, LSLegacy.DataStores)
 end
 
 ---RegisterDataStore
@@ -326,11 +386,23 @@ LSLegacy.DataStore.RegisterDataStore = function(name, data)
         Config.Development.Print("DataStore " .. name .. " already exists.")
         return
     end
+    setmetatable(data, LSLegacy.DataStoreMeta)
     LSLegacy.DataStores[name] = data
-    LSLegacy.SendEventToClient('UpdateDatastore', source, LSLegacy.DataStores)
+    LSLegacy.Events.SendToClient('lslegacy:updateDatastore', source, LSLegacy.DataStores)
 end
 
-LSLegacy.RegisterServerEvent('RegisterDataStore', function(name, data)
-    if not name or not data then return end
-    LSLegacy.DataStore.RegisterDataStore(name, data)
+-- Event réseau : contenu toujours forcé vide côté serveur, jamais celui du client.
+LSLegacy.Events.Register('lslegacy:registerDataStore', function(name, data)
+    local player = LSLegacy.Validate.Player(source)
+    if not player then return end
+    if type(name) ~= "string" or type(data) ~= "table" then return end
+    local maxWeight = LSLegacy.Validate.PositiveInteger(data.maxWeight, {allowZero = true}) or 0
+    LSLegacy.DataStore.RegisterDataStore(name, {
+        name = name,
+        type = data.type,
+        inventory = {},
+        money = 0,
+        dirty = 0,
+        maxWeight = maxWeight
+    })
 end)

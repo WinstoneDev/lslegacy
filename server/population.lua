@@ -1,0 +1,2 @@
+-- lockNpcVehicle géré entièrement côté client (voir client/population.lua) :
+-- le lock véhicule se réplique nativement via onesync, aucun relais serveur requis.

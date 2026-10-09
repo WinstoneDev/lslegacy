@@ -21,6 +21,10 @@ Lang.Concessionnaire = {
 
     -- Fiche véhicule
     buy              = 'Acheter — %s $',
+    buy_job          = 'Acheter pour l\'entreprise — %s $',
+    job_purchase     = 'Achat entreprise',
+    job_purchase_on  = 'Activé — le véhicule appartiendra à %s',
+    job_purchase_off = 'Désactivé — achat personnel',
     stat_speed       = 'Vitesse max',
     stat_accel       = 'Accélération',
     stat_braking     = 'Freinage',
@@ -67,6 +71,8 @@ Lang.Concessionnaire = {
 
     -- Résultats achat
     bought           = 'Vous avez acheté : %s. Votre véhicule vous attend à la livraison.',
+    bought_job       = 'Véhicule d\'entreprise acheté : %s. Rangez-le dans un garage de votre service.',
+    not_boss         = 'Il vous faut la carte entreprise de votre service pour acheter au nom de l\'entreprise.',
     not_enough_cash  = 'Vous n\'avez pas assez d\'argent liquide.',
     not_enough_bank  = 'Fonds insuffisants sur votre compte courant.',
     purchase_failed  = 'La transaction a échoué.',

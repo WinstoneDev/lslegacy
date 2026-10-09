@@ -2,7 +2,7 @@
    Banque — Noyau NUI : état global, communication Lua, routeur de
    vues. Les fichiers js/views/*.js ne font que du rendu ; toute la
    logique métier (validations, calculs, BDD) vit côté serveur
-   (module/bank/sv_bank.lua), comme le reste de ce module.
+   (module/bank/server/main.lua), comme le reste de ce module.
    ════════════════════════════════════════════════════════════════ */
 
 const RES = 'lslegacy';
@@ -17,6 +17,9 @@ const BankState = {
     atmAccountId: null,
     adminRates: null,
     adminCardTiers: null,
+    beneficiaries: [],
+    context: {},          // { job, jobLabel, isBoss, hasSociety, societyAccountId }
+    societyAccount: null,
     view: 'dashboard',
     viewCtx: null,
 };
@@ -62,6 +65,35 @@ async function fetchNui(name, data) {
         return await resp.json();
     } catch (e) { return null; }
 }
+
+/* IBAN cliquable → presse-papiers (délégation : fonctionne dans toutes les vues) */
+function ibanHtml(iban) {
+    return `<span class="bank-iban" data-iban="${esc(iban)}" title="Cliquer pour copier">${esc(iban)}</span>`;
+}
+
+function copyToClipboard(text) {
+    const done = () => toast('IBAN copié : ' + text);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done).catch(() => legacyCopy(text, done));
+    } else {
+        legacyCopy(text, done);
+    }
+}
+function legacyCopy(text, done) {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) { toast('Copie impossible.', 'error'); }
+    ta.remove();
+}
+
+document.addEventListener('click', function (e) {
+    const t = e.target.closest && e.target.closest('.bank-iban');
+    if (!t) return;
+    e.preventDefault();
+    e.stopPropagation();
+    copyToClipboard(t.dataset.iban);
+}, true);
 
 function toast(message, type) {
     const t = document.createElement('div');
@@ -163,6 +195,9 @@ function applyOpenPayload(data) {
     if (data.adminRates) BankState.adminRates = data.adminRates;
     if (data.adminCardTiers) BankState.adminCardTiers = data.adminCardTiers;
     BankState.atmAccountId = data.atmAccountId || null;
+    BankState.beneficiaries = data.beneficiaries || [];
+    BankState.context = data.context || {};
+    BankState.societyAccount = data.societyAccount || null;
     BankState.view = BankState.mode === 'atm' ? 'atm' : 'dashboard';
     BankState.viewCtx = null;
 
@@ -172,7 +207,7 @@ function applyOpenPayload(data) {
     el('bankBrandName').textContent = BankState.displayName;
 
     const courant = getCourantAccount();
-    el('bankBrandSub').textContent = courant ? ('IBAN ' + courant.iban) : 'Aucun compte courant';
+    el('bankBrandSub').innerHTML = courant ? ('IBAN ' + ibanHtml(courant.iban)) : 'Aucun compte courant';
 
     root.classList.remove('bank-hidden');
     render();
@@ -193,7 +228,7 @@ window.addEventListener('message', function (event) {
             BankState.accounts = data.accounts || [];
             if (!el('bank-root').classList.contains('bank-hidden')) {
                 const courant = getCourantAccount();
-                el('bankBrandSub').textContent = courant ? ('IBAN ' + courant.iban) : 'Aucun compte courant';
+                el('bankBrandSub').innerHTML = courant ? ('IBAN ' + ibanHtml(courant.iban)) : 'Aucun compte courant';
                 refreshCurrentView();
             }
             break;
@@ -208,6 +243,13 @@ window.addEventListener('message', function (event) {
         case 'bank:adminCardTiers':
             BankState.adminCardTiers = data.tiers || null;
             if (!el('bank-root').classList.contains('bank-hidden')) refreshCurrentView();
+            break;
+        case 'bank:beneficiaries':
+            BankState.beneficiaries = data.beneficiaries || [];
+            if (!el('bank-root').classList.contains('bank-hidden')) refreshCurrentView();
+            break;
+        case 'bank:societyAccount':
+            BankState.societyAccount = data.account || null;
             break;
     }
 });

@@ -9,7 +9,7 @@ Interim.TrailerFuel = 0
 Interim.Capacity    = CFG.Economy.trailerCapacity
 
 local function Notify(msg, t)
-    TriggerEvent(CFG.NotifyEvent, 'Intérimaire', msg, 5000, t or 'info')
+    TriggerEvent('notify', 'Intérimaire', msg, t or 'info', 5000)
 end
 
 local spawnedPed = nil
@@ -35,33 +35,24 @@ local function SpawnPed()
             label = 'Prendre le service (intérimaire)',
             distance = CFG.Actions.interactionRange,
             canInteract = function() return not Interim.OnDuty end,
-            onSelect = function() LSLegacy.SendEventToServer('interim:startDuty') end,
+            onSelect = function() LSLegacy.Events.SendToServer('interim:startDuty') end,
         },
         {
             name = 'interim_end_duty',
             icon = 'fa-solid fa-right-from-bracket',
             label = 'Terminer le service',
             distance = CFG.Actions.interactionRange,
-            canInteract = function() return Interim.OnDuty end,
-            onSelect = function() LSLegacy.SendEventToServer('interim:endDuty') end,
+            canInteract = function() return true end,
+            onSelect = function()
+                LSLegacy.Events.SendToServer('interim:endDuty')
+                LSLegacy.Events.SendToServer('farm:metier:endService', { metier = 'chauffeur_citerne' })
+            end,
         },
     })
 end
 
-local function CreateBlip()
-    local c = CFG.Ped.coords
-    local b = AddBlipForCoord(c.x, c.y, c.z)
-    SetBlipSprite(b, 318)
-    SetBlipColour(b, 5)
-    SetBlipScale(b, 0.8)
-    SetBlipAsShortRange(b, true)
-    BeginTextCommandSetBlipName('STRING')
-    AddTextComponentSubstringPlayerName('Intérim — Essence')
-    EndTextCommandSetBlipName(b)
-end
-
--- État envoyé par le serveur (source de vérité). NB : un seul LSLegacy.RegisterClientEvent par nom d'event est exécuté dans le resource — c'est ici que syncState est réellement traité, et on délègue l'affichage du blip citerne à Interim.ShowTankPoint (posé par refuel.lua) pour éviter un second enregistrement mort.
-LSLegacy.RegisterClientEvent('interim:syncState', function(data)
+-- État envoyé par le serveur (source de vérité). NB : un seul LSLegacy.Events.Register par nom d'event est exécuté dans le resource — c'est ici que syncState est réellement traité, et on délègue l'affichage du blip citerne à Interim.ShowTankPoint (posé par refuel.lua) pour éviter un second enregistrement mort.
+LSLegacy.Events.Register('interim:syncState', function(data)
     if not data then return end
     Interim.OnDuty      = data.onDuty and true or false
     Interim.Attached    = data.attached and true or false
@@ -102,7 +93,6 @@ end)
 CreateThread(function()
     Wait(1000)
     SpawnPed()
-    CreateBlip()
 end)
 
 AddEventHandler('onResourceStop', function(res)

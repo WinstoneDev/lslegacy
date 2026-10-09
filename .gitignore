@@ -3,3 +3,4 @@
 *.log
 module/police/sceneanchors.json
 module/police/spawnfails.json
+claude-memory-export/

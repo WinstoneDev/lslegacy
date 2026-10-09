@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MDT</title>
     <link rel="stylesheet" href="css/mdt.css">
-    <!-- Styles du MDT médical (SAMU) — additif, ne surcharge rien de mdt.css -->
+    <!-- Styles du MDT médical (EMS) — additif, ne surcharge rien de mdt.css -->
     <link rel="stylesheet" href="css/medical.css">
     <!-- Styles de l'onglet Interventions (missions PNJ) — additif également -->
     <link rel="stylesheet" href="css/interventions.css">
@@ -19,7 +19,7 @@
             <!-- ── En-tête ───────────────────────────────────── -->
             <header class="mdt-header">
                 <div class="mdt-brand">
-                    <div class="mdt-logo">🛡️</div>
+                    <div class="mdt-logo" id="mdt-logo">🛡️</div>
                     <div class="mdt-title">
                         <h1 id="mdt-dep-label">Police Nationale</h1>
                         <span class="mdt-subtitle">Mobile Data Terminal</span>
@@ -38,6 +38,9 @@
                 <nav class="mdt-sidebar" id="mdt-sidebar"></nav>
                 <main class="mdt-content" id="mdt-content"></main>
             </div>
+
+            <!-- ── Poignée de redimensionnement (coin bas-droit) ─── -->
+            <div class="mdt-resize-handle" id="mdt-resize-handle"></div>
         </div>
 
         <!-- ── Conteneur de modale (formulaires) ─────────────── -->
@@ -57,14 +60,25 @@
     </div>
 
     <script src="js/mdt.js"></script>
-    <!-- Vues du MDT médical (SAMU). Doit être chargé APRÈS mdt.js : il
+    <!-- Vues du MDT médical (EMS). Doit être chargé APRÈS mdt.js : il
          réutilise ses helpers et s'enregistre dans ses points d'extension. -->
     <script src="js/medical.js"></script>
     <!-- Onglet Interventions (missions PNJ). Même contrainte : après mdt.js. -->
     <script src="js/interventions.js"></script>
     <!-- Tableau de bord des forces de l'ordre. Doit être chargé APRÈS
-         medical.js : il récupère le dashboard SAMU déjà enregistré pour le
+         medical.js : il récupère le dashboard EMS déjà enregistré pour le
          laisser servir le département médical. -->
     <script src="js/dashboard.js"></script>
+    <!-- Tableau de bord Kebab King (restaurant, pas de concept policier).
+         Doit être chargé APRÈS dashboard.js : il récupère le dashboard
+         "forces de l'ordre" déjà enregistré pour laisser les autres
+         départements inchangés — même mécanique que dashboard.js/medical.js. -->
+    <script src="js/kebabking.js"></script>
+    <!-- Onglet Garage (module/garage). Après mdt.js. -->
+    <script src="js/garage.js"></script>
+    <script src="js/society.js"></script>
+    <script src="js/boutique.js"></script>
+    <script src="js/parts.js"></script>
+    <script src="js/grades.js"></script>
 </body>
 </html>

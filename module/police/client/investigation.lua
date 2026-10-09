@@ -6,14 +6,14 @@ local Investigation = {}
 local activeScenes  = {}  -- { [sceneId] = { coords, blip, secured } }
 
 local function Notify(msg, type)
-    TriggerEvent(Config.Police.NotifyEvent, '🔬 PTS', msg, 5000, type or 'info')
+    TriggerEvent('notify', '🔬 PTS', msg, type or 'info', 5000)
 end
 
 -- Vérifie que le joueur est PTS ou a access aux preuves
 
 local function CanInvestigate()
     if not LSLegacy.MDT.IsLocalLeoOnDuty() then return false end
-    return LSLegacy.MDT.HasPermission('police', Police.GetGrade(), 'view_evidence')
+    return LSLegacy.MDT.LocalHasPermission('view_evidence')
 end
 
 -- Animation d'investigation
@@ -33,17 +33,17 @@ end
 Investigation.CollectFingerprints = function(targetSrc)
     Notify(Lang.Police.inv_collect_fp, 'info')
     InvestigateAnim(4000)
-    LSLegacy.SendEventToServer('police:inv:collectFingerprints', { target = targetSrc })
+    LSLegacy.Events.SendToServer('police:inv:collectFingerprints', { target = targetSrc })
 end
 
-LSLegacy.RegisterClientEvent('police:inv:fingerprintsResult', function(data)
+LSLegacy.Events.Register('police:inv:fingerprintsResult', function(data)
     if not data then return end
     if data.ref then
         Notify(string.format(Lang.Police.inv_fp_collected, data.ref), 'success')
     end
 end)
 
-LSLegacy.RegisterClientEvent('police:inv:fingerprintsMatch', function(data)
+LSLegacy.Events.Register('police:inv:fingerprintsMatch', function(data)
     if not data then return end
     if data.name then
         Notify(string.format(Lang.Police.inv_fp_identified, data.name), 'success')
@@ -57,17 +57,17 @@ end)
 Investigation.CollectDNA = function(targetSrc)
     Notify(Lang.Police.inv_collect_dna, 'info')
     InvestigateAnim(5000)
-    LSLegacy.SendEventToServer('police:inv:collectDNA', { target = targetSrc })
+    LSLegacy.Events.SendToServer('police:inv:collectDNA', { target = targetSrc })
 end
 
-LSLegacy.RegisterClientEvent('police:inv:dnaResult', function(data)
+LSLegacy.Events.Register('police:inv:dnaResult', function(data)
     if not data then return end
     if data.ref then
         Notify(string.format(Lang.Police.inv_dna_collected, data.ref), 'success')
     end
 end)
 
-LSLegacy.RegisterClientEvent('police:inv:dnaMatch', function(data)
+LSLegacy.Events.Register('police:inv:dnaMatch', function(data)
     if not data then return end
     if data.name then
         Notify(string.format(Lang.Police.inv_dna_identified, data.name), 'success')
@@ -87,7 +87,7 @@ Investigation.CollectBlood = function()
     Notify(Lang.Police.inv_collect_blood, 'info')
     InvestigateAnim(3500)
 
-    LSLegacy.SendEventToServer('police:inv:collectBlood', {
+    LSLegacy.Events.SendToServer('police:inv:collectBlood', {
         x = pos.x, y = pos.y, z = pos.z,
         sceneId = GetNearestSceneId(),
     })
@@ -99,7 +99,7 @@ end, false)
 
 RegisterKeyMapping('police_inv_blood', 'Analyser une trace de sang (PTS)', 'keyboard', 'F11')
 
-LSLegacy.RegisterClientEvent('police:inv:bloodResult', function(data)
+LSLegacy.Events.Register('police:inv:bloodResult', function(data)
     if not data then return end
     Notify(string.format(Lang.Police.inv_blood_collected, data.ref), 'success')
 end)
@@ -110,7 +110,7 @@ function GetNearestSceneId()
     local pos   = GetEntityCoords(PlayerPedId())
     local range = 20.0
     for sceneId, scene in pairs(activeScenes) do
-        if #(pos - scene.coords) < range then return sceneId end
+        if LSLegacy.Validate.Distance(pos, scene.coords, range) then return sceneId end
     end
     return nil
 end
@@ -119,12 +119,12 @@ Investigation.SecureScene = function()
     if not CanInvestigate() then
         Notify(Lang.Police.inv_kit_required, 'error') return
     end
-    if not LSLegacy.MDT.HasPermission('police', Police.GetGrade(), 'manage_evidence') then
+    if not LSLegacy.MDT.LocalHasPermission('manage_evidence') then
         Notify(Lang.Police.grade_required, 'error') return
     end
 
     local pos = GetEntityCoords(PlayerPedId())
-    LSLegacy.SendEventToServer('police:inv:createScene', {
+    LSLegacy.Events.SendToServer('police:inv:createScene', {
         x = pos.x, y = pos.y, z = pos.z,
     })
 end
@@ -136,7 +136,7 @@ end, false)
 
 RegisterKeyMapping('police_inv_secure_scene', 'Sécuriser une scène de crime (PTS)', 'keyboard', 'F6')
 
-LSLegacy.RegisterClientEvent('police:inv:sceneCreated', function(data)
+LSLegacy.Events.Register('police:inv:sceneCreated', function(data)
     if not data then return end
 
     local coords = vector3(data.x, data.y, data.z)
@@ -177,7 +177,7 @@ LSLegacy.RegisterClientEvent('police:inv:sceneCreated', function(data)
     end)
 end)
 
-LSLegacy.RegisterClientEvent('police:inv:sceneRemoved', function(data)
+LSLegacy.Events.Register('police:inv:sceneRemoved', function(data)
     if not data then return end
     if activeScenes[data.sceneId] then
         if activeScenes[data.sceneId].blip then

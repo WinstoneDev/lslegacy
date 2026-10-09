@@ -14,7 +14,7 @@ end)
 local pressAmount = 0
 local keys = { 30, 31 }
 
-local function breakStrafe(key, time)
+local function BreakStrafe(key, time)
     CreateThread(function()
         local finishTime = GetGameTimer() + time
         while finishTime > GetGameTimer() do
@@ -29,7 +29,7 @@ CreateThread(function()
         Wait(1000)
         if pressAmount > 4 then
             local key = IsControlJustPressed(0, 30) and 30 or 31
-            breakStrafe(key, 250)
+            BreakStrafe(key, 250)
         end
         pressAmount = 0
     end

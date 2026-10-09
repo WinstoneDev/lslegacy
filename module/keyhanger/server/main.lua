@@ -6,30 +6,26 @@ KeyHanger.Boards = {}     -- [id] = board (métadonnées ; le contenu est dans l
 KeyHanger.Loaded = false
 
 -- Rate limiting (events sécurisés)
-LSLegacy.RateLimit['keyhanger:requestBoards'] = 10
-LSLegacy.RateLimit['keyhanger:create']        = 10
-LSLegacy.RateLimit['keyhanger:remove']        = 10
-LSLegacy.RateLimit['keyhanger:open']          = 30
-LSLegacy.RateLimit['keyhanger:rename']        = 10
-LSLegacy.RateLimit['keyhanger:share']         = 15
-LSLegacy.RateLimit['keyhanger:unshare']       = 15
-LSLegacy.RateLimit['keyhanger:createKey']     = 15
-
-local function dbg(...) if C.Debug then print("[keyhanger]", ...) end end
-
-local function dsName(id) return "keyhanger_" .. id end
-
-local function groupLevel(player)
-    if not player or not player.group then return 0 end
-    for level, name in pairs(Config.StaffGroups) do
-        if name == player.group then return level end
-    end
-    return 0
+local rateLimits = {
+    ['keyhanger:requestBoards'] = 10, ['keyhanger:create'] = 10, ['keyhanger:remove'] = 10,
+    ['keyhanger:open'] = 30, ['keyhanger:rename'] = 10, ['keyhanger:share'] = 15,
+    ['keyhanger:unshare'] = 15, ['keyhanger:createKey'] = 15, ['keyhanger:syncVehicleLock'] = 30,
+}
+for eventName, limit in pairs(rateLimits) do
+    LSLegacy.Security.RegisterRateLimit(eventName, limit)
 end
 
-local function isStaff(player) return groupLevel(player) >= (C.Placement.group or 3) end
+local function Dbg(...) if C.Debug then print("[keyhanger]", ...) end end
 
-local function playerName(player)
+local function DsName(id) return "keyhanger_" .. id end
+
+local function GroupLevel(player)
+    return LSLegacy.Permissions.GetLevel(player)
+end
+
+local function IsStaff(player) return GroupLevel(player) >= (C.Placement.group or 3) end
+
+local function PlayerName(player)
     if player and player.characterInfos then
         return (player.characterInfos.Prenom or "?") .. " " .. (player.characterInfos.NDF or "?")
     end
@@ -37,11 +33,11 @@ local function playerName(player)
 end
 
 --- Accès = peut ouvrir et déposer/récupérer des clés.
-local function canAccess(player, board)
+local function CanAccess(player, board)
     if not player or not board then return false end
     local t = board.ownerType
     if t == "public" then return true end
-    if t == "job" then return player.job == board.ownerId end
+    if t == "job" then return LSLegacy.Jobs.Is(player, board.ownerId) end
     if t == "faction" then return player.faction == board.ownerId end
     if board.ownerId == player.identifier then return true end
     if board.access and board.access[player.identifier] then return true end
@@ -49,20 +45,20 @@ local function canAccess(player, board)
 end
 
 --- Gestion = peut renommer / partager / retirer le support.
-local function canManage(player, board)
+local function CanManage(player, board)
     if not player or not board then return false end
-    if isStaff(player) then return true end
+    if IsStaff(player) then return true end
     local t = board.ownerType
     if t == "job" then
-        return player.job == board.ownerId and (player.job_grade or 0) >= (C.ManageGrade or 0)
+        return LSLegacy.Jobs.Is(player, board.ownerId, C.ManageGrade or 0)
     elseif t == "faction" then
         return player.faction == board.ownerId and (player.faction_grade or 0) >= (C.ManageGrade or 0)
     end
     return board.ownerId == player.identifier
 end
 
-local function ensureDatastore(board)
-    local name = dsName(board.id)
+local function EnsureDatastore(board)
+    local name = DsName(board.id)
     local ds = LSLegacy.DataStores[name]
     if not ds then
         LSLegacy.DataStore.RegisterDataStore(name, {
@@ -81,8 +77,8 @@ local function ensureDatastore(board)
 end
 
 --- Liste des clés (pour le rendu des props) à partir du contenu du DataStore.
-local function boardKeys(board)
-    local ds = LSLegacy.DataStores[dsName(board.id)]
+local function BoardKeys(board)
+    local ds = LSLegacy.DataStores[DsName(board.id)]
     local out = {}
     if ds and type(ds.inventory) == 'table' then
         for _, it in pairs(ds.inventory) do
@@ -103,8 +99,8 @@ local function boardKeys(board)
     return out
 end
 
-local function keysSig(board)
-    local ds = LSLegacy.DataStores[dsName(board.id)]
+local function KeysSig(board)
+    local ds = LSLegacy.DataStores[DsName(board.id)]
     if not ds or type(ds.inventory) ~= 'table' then return "∅" end
     local parts = {}
     for _, it in pairs(ds.inventory) do
@@ -115,17 +111,17 @@ local function keysSig(board)
 end
 
 --- Représentation envoyée au client (métadonnées + clés calculées).
-local function serializeBoard(board)
+local function SerializeBoard(board)
     return {
         id = board.id, label = board.label, board = board.board,
         ownerType = board.ownerType, ownerId = board.ownerId, ownerName = board.ownerName,
         coords = board.coords, heading = board.heading,
         access = board.access or {},
-        keys = boardKeys(board),
+        keys = BoardKeys(board),
     }
 end
 
-local function saveBoardDB(board)
+local function SaveBoardDB(board)
     MySQL.update.await([[
         UPDATE keyhanger_boards
         SET label=?, board=?, owner_type=?, owner_id=?, owner_name=?, coords=?, heading=?, access=?
@@ -136,18 +132,18 @@ local function saveBoardDB(board)
     })
 end
 
-local function syncBoardToAll(board)
-    LSLegacy.SendEventToClient('keyhanger:sync:board', -1, serializeBoard(board))
+local function SyncBoardToAll(board)
+    LSLegacy.Events.SendToClient('keyhanger:syncBoard', -1, SerializeBoard(board))
 end
 
-local function syncRemoveToAll(id)
-    LSLegacy.SendEventToClient('keyhanger:sync:remove', -1, id)
+local function SyncRemoveToAll(id)
+    LSLegacy.Events.SendToClient('keyhanger:syncRemove', -1, id)
 end
 
-local function syncAllTo(src)
+local function SyncAllTo(src)
     local list = {}
-    for id, board in pairs(KeyHanger.Boards) do list[id] = serializeBoard(board) end
-    LSLegacy.SendEventToClient('keyhanger:sync:all', src, list)
+    for id, board in pairs(KeyHanger.Boards) do list[id] = SerializeBoard(board) end
+    LSLegacy.Events.SendToClient('keyhanger:syncAll', src, list)
 end
 
 local prevGuard = LSLegacy.DataStoreGuard
@@ -155,9 +151,9 @@ LSLegacy.DataStoreGuard = function(src, name, action, item)
     if name and name:sub(1, 10) == "keyhanger_" then
         local id = tonumber(name:sub(11))
         local board = KeyHanger.Boards[id]
-        local player = LSLegacy.GetPlayerFromId(src)
+        local player = LSLegacy.Players.Get(src)
         if not board or not player then return false end
-        if not canAccess(player, board) then return false end
+        if not CanAccess(player, board) then return false end
         if C.Storage.onlyKeys and item ~= C.Item then return false end
         return true
     end
@@ -171,10 +167,10 @@ AddEventHandler('lslegacy:containerUpdated', function(name)
     local id = tonumber(name:sub(11))
     local board = KeyHanger.Boards[id]
     if board then
-        board._sig = keysSig(board)
-        local keys = boardKeys(board)
-        dbg(("containerUpdated %s -> %d clé(s)"):format(name, #keys))
-        syncBoardToAll(board)
+        board._sig = KeysSig(board)
+        local keys = BoardKeys(board)
+        Dbg(("containerUpdated %s -> %d clé(s)"):format(name, #keys))
+        SyncBoardToAll(board)
     end
 end)
 
@@ -210,13 +206,13 @@ MySQL.ready(function()
         }
     end
     KeyHanger.Loaded = true
-    dbg(("chargement de %d porte-clés"):format(#rows))
-    for src in pairs(LSLegacy.ServerPlayers) do syncAllTo(src) end
+    Dbg(("chargement de %d porte-clés"):format(#rows))
+    for src in pairs(LSLegacy.Players.GetAll()) do SyncAllTo(src) end
 end)
 
 -- Synchronise à la connexion
-LSLegacy.AddEventHandler('ap:clientsetonSpawn', function(src)
-    if KeyHanger.Loaded then syncAllTo(src) end
+LSLegacy.Events.AddHandler('ap:clientsetonSpawn', function(src)
+    if KeyHanger.Loaded then SyncAllTo(src) end
 end)
 
 -- Filet de sécurité : resynchronise les props si un contenu a changé sans event
@@ -225,48 +221,48 @@ CreateThread(function()
         Wait(C.Storage.syncInterval or 1500)
         if KeyHanger.Loaded then
             for _, board in pairs(KeyHanger.Boards) do
-                local sig = keysSig(board)
+                local sig = KeysSig(board)
                 if board._sig ~= sig then
                     board._sig = sig
-                    syncBoardToAll(board)
+                    SyncBoardToAll(board)
                 end
             end
         end
     end
 end)
 
-LSLegacy.RegisterServerEvent('keyhanger:requestBoards', function()
+LSLegacy.Events.Register('keyhanger:requestBoards', function()
     local src = source
     if not KeyHanger.Loaded then
         Citizen.CreateThread(function()
             while not KeyHanger.Loaded do Wait(100) end
-            syncAllTo(src)
+            SyncAllTo(src)
         end)
         return
     end
-    syncAllTo(src)
+    SyncAllTo(src)
 end)
 
 -- Ouverture du support comme un coffre (DataStore)
-LSLegacy.RegisterServerEvent('keyhanger:open', function(boardId)
+LSLegacy.Events.Register('keyhanger:open', function(boardId)
     local src = source
-    local player = LSLegacy.GetPlayerFromId(src)
+    local player = LSLegacy.Players.Get(src)
     local board = KeyHanger.Boards[boardId]
     if not player or not board then return end
-    if not canAccess(player, board) then
-        return LSLegacy.SendEventToClient('notify', src, KeyHanger.L('title'), KeyHanger.L('access_denied'), 'error')
+    if not CanAccess(player, board) then
+        return LSLegacy.Events.SendToClient('notify', src, KeyHanger.L('title'), KeyHanger.L('access_denied'), 'error')
     end
-    ensureDatastore(board)
-    LSLegacy.SendEventToClient('UpdateDatastore', src, LSLegacy.DataStores)
-    LSLegacy.SendEventToClient('keyhanger:openContainer', src, dsName(boardId), board.label, C.Storage.maxWeight)
+    EnsureDatastore(board)
+    LSLegacy.Events.SendToClient('lslegacy:updateDatastore', src, LSLegacy.DataStores)
+    LSLegacy.Events.SendToClient('keyhanger:openContainer', src, DsName(boardId), board.label, C.Storage.maxWeight)
 end)
 
-LSLegacy.RegisterServerEvent('keyhanger:create', function(data)
+LSLegacy.Events.Register('keyhanger:create', function(data)
     local src = source
-    local player = LSLegacy.GetPlayerFromId(src)
+    local player = LSLegacy.Players.Get(src)
     if not player or not data then return end
-    if not isStaff(player) then
-        return LSLegacy.SendEventToClient('notify', src, KeyHanger.L('title'), KeyHanger.L('manage_no_perm'), 'error')
+    if not IsStaff(player) then
+        return LSLegacy.Events.SendToClient('notify', src, KeyHanger.L('title'), KeyHanger.L('manage_no_perm'), 'error')
     end
     if not C.Boards[data.board] then data.board = C.DefaultBoard end
     if not data.coords or not data.coords.x then return end
@@ -280,7 +276,7 @@ LSLegacy.RegisterServerEvent('keyhanger:create', function(data)
     if ownerType == "job" or ownerType == "faction" then
         ownerId, ownerName = data.ownerId or "", data.ownerId or ""
     else
-        ownerId, ownerName = player.identifier, playerName(player)
+        ownerId, ownerName = player.identifier, PlayerName(player)
     end
 
     local label = (data.label and data.label ~= "" and data.label) or KeyHanger.GetBoardDef(data.board).label
@@ -300,124 +296,164 @@ LSLegacy.RegisterServerEvent('keyhanger:create', function(data)
         coords = data.coords, heading = data.heading + 0.0, access = {},
     }
     KeyHanger.Boards[insertId] = board
-    ensureDatastore(board)
-    syncBoardToAll(board)
-    LSLegacy.SendEventToClient('notify', src, KeyHanger.L('title'), KeyHanger.L('placement_created'), 'success')
-    dbg(("create board #%d par %s"):format(insertId, player.identifier))
+    EnsureDatastore(board)
+    SyncBoardToAll(board)
+    LSLegacy.Events.SendToClient('notify', src, KeyHanger.L('title'), KeyHanger.L('placement_created'), 'success')
+    Dbg(("create board #%d par %s"):format(insertId, player.identifier))
 end)
 
 -- Retrait d'un support (le contenu/DataStore est supprimé aussi)
-LSLegacy.RegisterServerEvent('keyhanger:remove', function(boardId)
+LSLegacy.Events.Register('keyhanger:remove', function(boardId)
     local src = source
-    local player = LSLegacy.GetPlayerFromId(src)
+    local player = LSLegacy.Players.Get(src)
     local board = KeyHanger.Boards[boardId]
     if not player or not board then return end
-    if not canManage(player, board) then
-        return LSLegacy.SendEventToClient('notify', src, KeyHanger.L('title'), KeyHanger.L('manage_no_perm'), 'error')
+    if not CanManage(player, board) then
+        return LSLegacy.Events.SendToClient('notify', src, KeyHanger.L('title'), KeyHanger.L('manage_no_perm'), 'error')
     end
-    local name = dsName(boardId)
+    local name = DsName(boardId)
     local ds = LSLegacy.DataStores[name]
     if ds and ds.inventory and #ds.inventory > 0 then
-        return LSLegacy.SendEventToClient('notify', src, KeyHanger.L('title'), KeyHanger.L('manage_remove_notEmpty'), 'error')
+        return LSLegacy.Events.SendToClient('notify', src, KeyHanger.L('title'), KeyHanger.L('manage_remove_notEmpty'), 'error')
     end
     LSLegacy.DataStores[name] = nil
     MySQL.query.await('DELETE FROM datastore WHERE name = ?', { name })
     KeyHanger.Boards[boardId] = nil
     MySQL.query.await('DELETE FROM keyhanger_boards WHERE id = ?', { boardId })
-    syncRemoveToAll(boardId)
-    LSLegacy.SendEventToClient('notify', src, KeyHanger.L('title'), KeyHanger.L('manage_remove') .. " ✓", 'success')
+    SyncRemoveToAll(boardId)
+    LSLegacy.Events.SendToClient('notify', src, KeyHanger.L('title'), KeyHanger.L('manage_remove') .. " ✓", 'success')
 end)
 
-LSLegacy.RegisterServerEvent('keyhanger:rename', function(boardId, newLabel)
+LSLegacy.Events.Register('keyhanger:rename', function(boardId, newLabel)
     local src = source
-    local player = LSLegacy.GetPlayerFromId(src)
+    local player = LSLegacy.Players.Get(src)
     local board = KeyHanger.Boards[boardId]
     if not player or not board or not newLabel then return end
-    if not canManage(player, board) then
-        return LSLegacy.SendEventToClient('notify', src, KeyHanger.L('title'), KeyHanger.L('manage_no_perm'), 'error')
+    if not CanManage(player, board) then
+        return LSLegacy.Events.SendToClient('notify', src, KeyHanger.L('title'), KeyHanger.L('manage_no_perm'), 'error')
     end
     newLabel = tostring(newLabel):sub(1, 48)
     if newLabel == "" then return end
     board.label = newLabel
-    saveBoardDB(board)
-    syncBoardToAll(board)
+    SaveBoardDB(board)
+    SyncBoardToAll(board)
 end)
 
-LSLegacy.RegisterServerEvent('keyhanger:share', function(boardId, targetSrc)
+LSLegacy.Events.Register('keyhanger:share', function(boardId, targetSrc)
     local src = source
-    local player = LSLegacy.GetPlayerFromId(src)
+    local player = LSLegacy.Players.Get(src)
     local board = KeyHanger.Boards[boardId]
-    local target = LSLegacy.GetPlayerFromId(tonumber(targetSrc))
+    local target = LSLegacy.Players.Get(tonumber(targetSrc))
     if not player or not board then return end
-    if not canManage(player, board) then
-        return LSLegacy.SendEventToClient('notify', src, KeyHanger.L('title'), KeyHanger.L('manage_no_perm'), 'error')
+    if not CanManage(player, board) then
+        return LSLegacy.Events.SendToClient('notify', src, KeyHanger.L('title'), KeyHanger.L('manage_no_perm'), 'error')
     end
     if not target then
-        return LSLegacy.SendEventToClient('notify', src, KeyHanger.L('title'), KeyHanger.L('share_none_nearby'), 'error')
+        return LSLegacy.Events.SendToClient('notify', src, KeyHanger.L('title'), KeyHanger.L('share_none_nearby'), 'error')
     end
     if target.identifier == player.identifier then
-        return LSLegacy.SendEventToClient('notify', src, KeyHanger.L('title'), KeyHanger.L('share_self'), 'error')
+        return LSLegacy.Events.SendToClient('notify', src, KeyHanger.L('title'), KeyHanger.L('share_self'), 'error')
     end
     local sp = GetEntityCoords(GetPlayerPed(src))
     local tp = GetEntityCoords(GetPlayerPed(target.source))
-    if #(sp - tp) > 8.0 then
-        return LSLegacy.SendEventToClient('notify', src, KeyHanger.L('title'), KeyHanger.L('share_none_nearby'), 'error')
+    if not LSLegacy.Validate.Distance(sp, tp, 8.0) then
+        return LSLegacy.Events.SendToClient('notify', src, KeyHanger.L('title'), KeyHanger.L('share_none_nearby'), 'error')
     end
     board.access = board.access or {}
     if board.access[target.identifier] then
-        return LSLegacy.SendEventToClient('notify', src, KeyHanger.L('title'), KeyHanger.L('share_already'), 'error')
+        return LSLegacy.Events.SendToClient('notify', src, KeyHanger.L('title'), KeyHanger.L('share_already'), 'error')
     end
-    local tName = playerName(target)
+    local tName = PlayerName(target)
     board.access[target.identifier] = tName
-    saveBoardDB(board)
-    syncBoardToAll(board)
-    LSLegacy.SendEventToClient('notify', src, KeyHanger.L('title'), KeyHanger.L('share_added', tName), 'success')
-    LSLegacy.SendEventToClient('notify', target.source, KeyHanger.L('title'), KeyHanger.L('share_added', board.label), 'info')
+    SaveBoardDB(board)
+    SyncBoardToAll(board)
+    LSLegacy.Events.SendToClient('notify', src, KeyHanger.L('title'), KeyHanger.L('share_added', tName), 'success')
+    LSLegacy.Events.SendToClient('notify', target.source, KeyHanger.L('title'), KeyHanger.L('share_added', board.label), 'info')
 end)
 
-LSLegacy.RegisterServerEvent('keyhanger:unshare', function(boardId, identifier)
+LSLegacy.Events.Register('keyhanger:unshare', function(boardId, identifier)
     local src = source
-    local player = LSLegacy.GetPlayerFromId(src)
+    local player = LSLegacy.Players.Get(src)
     local board = KeyHanger.Boards[boardId]
     if not player or not board or not identifier then return end
-    if not canManage(player, board) then
-        return LSLegacy.SendEventToClient('notify', src, KeyHanger.L('title'), KeyHanger.L('manage_no_perm'), 'error')
+    if not CanManage(player, board) then
+        return LSLegacy.Events.SendToClient('notify', src, KeyHanger.L('title'), KeyHanger.L('manage_no_perm'), 'error')
     end
     if board.access and board.access[identifier] then
         local name = board.access[identifier]
         board.access[identifier] = nil
-        saveBoardDB(board)
-        syncBoardToAll(board)
-        LSLegacy.SendEventToClient('notify', src, KeyHanger.L('title'), KeyHanger.L('share_removed', name), 'success')
+        SaveBoardDB(board)
+        SyncBoardToAll(board)
+        LSLegacy.Events.SendToClient('notify', src, KeyHanger.L('title'), KeyHanger.L('share_removed', name), 'success')
     end
 end)
 
 LSLegacy.RegisterUsableItem(C.Item, function(data)
     local src = source
     if not data or not data.plate then return end
-    LSLegacy.SendEventToClient('keyhanger:useKey', src, data)
+    LSLegacy.Events.SendToClient('keyhanger:useKey', src, data)
 end)
 
+--- rediffusé à tous les clients pour que le (dé)verrouillage soit visible par tout le monde, pas seulement l'utilisateur de la clé
+LSLegacy.Events.Register('keyhanger:syncVehicleLock', function(netId, state)
+    netId = LSLegacy.Validate.PositiveInteger(netId)
+    if not netId or (state ~= 1 and state ~= 2) then return end
+    TriggerClientEvent('keyhanger:syncVehicleLock', -1, netId, state)
+end)
+
+--- Vrai si le joueur porte déjà une clé pour cette plaque. Réutilisable partout
+--- où une clé pourrait être redonnée en double (voiturier, concession...).
+local function HasVehicleKey(src, plate)
+    local player = LSLegacy.Players.Get(src)
+    if not player or not plate then return false end
+    plate = tostring(plate):gsub("%s+$", "")
+    for _, it in pairs(player.inventory or {}) do
+        if it.name == C.Item and it.data and tostring(it.data.plate or ''):gsub("%s+$", "") == plate then
+            return true
+        end
+    end
+    return false
+end
+exports('hasVehicleKey', HasVehicleKey)
+
 --- Donne une clé de véhicule à un joueur. Réutilisable (concession, garage...).
-local function giveVehicleKey(src, plate, vehModel, display, label)
-    local player = LSLegacy.GetPlayerFromId(src)
+local function GiveVehicleKey(src, plate, vehModel, display, label)
+    local player = LSLegacy.Players.Get(src)
     if not player or not plate then return false end
     plate = tostring(plate):gsub("%s+$", "")
     if not LSLegacy.Inventory.CanCarryItem(player, C.Item, 1) then
-        LSLegacy.SendEventToClient('notify', src, KeyHanger.L('title'), 'Inventaire plein.', 'error')
+        LSLegacy.Events.SendToClient('notify', src, KeyHanger.L('title'), 'Inventaire plein.', 'error')
         return false
     end
     local data = { plate = plate, vehModel = vehModel, display = display or plate }
     LSLegacy.Inventory.AddItemInInventory(player, C.Item, 1, label or KeyHanger.L('key_label', plate), nil, data)
-    LSLegacy.SendEventToClient('notify', src, KeyHanger.L('title'), KeyHanger.L('key_created', display or plate, plate), 'success')
+    LSLegacy.Events.SendToClient('notify', src, KeyHanger.L('title'), KeyHanger.L('key_created', display or plate, plate), 'success')
     return true
 end
-exports('giveVehicleKey', giveVehicleKey)
+exports('giveVehicleKey', GiveVehicleKey)
 
-LSLegacy.RegisterServerEvent('keyhanger:createKey', function(plate, vehModel, display)
+--- Retire toutes les clés d'un joueur pour une plaque donnée. Réutilisable (location, fourrière...).
+local function RemoveVehicleKey(src, plate)
+    local player = LSLegacy.Players.Get(src)
+    if not player or not plate then return false end
+    plate = tostring(plate):gsub("%s+$", "")
+    local toRemove = {}
+    for _, it in pairs(player.inventory or {}) do
+        if it.name == C.Item and it.data and tostring(it.data.plate or ''):gsub("%s+$", "") == plate then
+            toRemove[#toRemove + 1] = { count = it.count, label = it.label, uid = it.uniqueId }
+        end
+    end
+    for _, r in ipairs(toRemove) do
+        LSLegacy.Inventory.RemoveItemInInventory(player, C.Item, r.count, r.label, r.uid)
+    end
+    return #toRemove > 0
+end
+exports('removeVehicleKey', RemoveVehicleKey)
+
+LSLegacy.Events.Register('keyhanger:createKey', function(plate, vehModel, display)
     local src = source
     if not plate then return end
-    giveVehicleKey(src, plate, vehModel, display)
+    GiveVehicleKey(src, plate, vehModel, display)
 end)
 
 -- Installer un support par script (autres modules)
@@ -440,17 +476,17 @@ exports('createBoard', function(data)
         coords = data.coords, heading = (data.heading or 0.0) + 0.0, access = {},
     }
     KeyHanger.Boards[insertId] = b
-    ensureDatastore(b)
-    syncBoardToAll(b)
+    EnsureDatastore(b)
+    SyncBoardToAll(b)
     return insertId
 end)
 
 LSLegacy.RegisterCommand(C.Placement.command, C.Placement.group, function(player)
-    LSLegacy.SendEventToClient('keyhanger:placement:start', player.source)
+    LSLegacy.Events.SendToClient('keyhanger:placementStart', player.source)
 end, { help = "Installer un porte-clés mural" })
 
 if C.Key.createCommand.enabled then
     LSLegacy.RegisterCommand(C.Key.createCommand.name, C.Key.createCommand.group, function(player)
-        LSLegacy.SendEventToClient('keyhanger:createKeyForNearest', player.source)
+        LSLegacy.Events.SendToClient('keyhanger:createKeyForNearest', player.source)
     end, { help = "Créer une clé pour le véhicule le plus proche" })
 end

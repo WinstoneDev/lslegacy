@@ -1,5 +1,5 @@
 -- tpm : reçoit l'ordre du serveur (RegisterCommand client supprimé pour sécurité)
-LSLegacy.RegisterClientEvent('admin:doTpm', function()
+LSLegacy.Events.Register('admin:doTpm', function()
     if LSLegacy.Anticheat then LSLegacy.Anticheat.AllowTeleport() end
     local entity = PlayerPedId()
     local blipFound = false
@@ -50,11 +50,37 @@ LSLegacy.RegisterClientEvent('admin:doTpm', function()
 end)
 
 -- pos : affiche les coordonnées reçues du serveur
-LSLegacy.RegisterClientEvent('admin:showPos', function(x, y, z, h)
+LSLegacy.Events.Register('admin:showPos', function(x, y, z, h)
     Config.Development.Print(vector3(x, y, z))
     Config.Development.Print(h)
 end)
 
-RegisterCommand('test', function()
-    print(GetVehicleFuelLevel(GetVehiclePedIsIn(PlayerPedId())))
+-- /me : bulle de texte au-dessus de la tête, uniquement reçue des joueurs à moins de 10m (filtré serveur)
+local meBubbles = {}
+
+LSLegacy.Events.Register('me:show', function(serverId, text)
+    meBubbles[serverId] = {text = text, expires = GetGameTimer() + 15000}
+end)
+
+CreateThread(function()
+    while true do
+        local hasBubble = false
+        local now = GetGameTimer()
+        for serverId, bubble in pairs(meBubbles) do
+            if now >= bubble.expires then
+                meBubbles[serverId] = nil
+            else
+                local targetPlayer = GetPlayerFromServerId(serverId)
+                if targetPlayer ~= -1 then
+                    local ped = GetPlayerPed(targetPlayer)
+                    if DoesEntityExist(ped) then
+                        local coords = GetEntityCoords(ped)
+                        LSLegacy.DrawText3D(coords.x, coords.y, coords.z + 0.8, bubble.text, 10.0)
+                        hasBubble = true
+                    end
+                end
+            end
+        end
+        Wait(hasBubble and 0 or 500)
+    end
 end)

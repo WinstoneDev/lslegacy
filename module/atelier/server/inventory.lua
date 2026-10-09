@@ -1,12 +1,23 @@
--- Un DataStore LSLegacy par entreprise. Réservation à la prise, restitution si annulée,
--- consommation définitive uniquement à la validation d'une intervention.
-
--- [src] = { item, companyId, expiresAt }
-LSLegacy.Atelier.Reservations = LSLegacy.Atelier.Reservations or {}
+-- Un DataStore LSLegacy par entreprise, exposé comme un vrai second inventaire
+-- (coffre du module inventory/, drag&drop) plutôt qu'un menu ox_lib : le stock
+-- réel des pièces vit dans ce DataStore, et les pièces prises atterrissent
+-- normalement dans l'inventaire du mécano (comme n'importe quel autre item).
+--
+-- Les pièces "carried" (carrosserie) se tiennent en main via un item usable
+-- classique (LSLegacy.RegisterUsableItem, cf. plus bas) : purement cosmétique,
+-- la pièce reste un item normal tant qu'elle n'est pas posée. La consommation
+-- réelle a lieu à la pose (server/repairs.lua), qui pioche directement dans
+-- l'inventaire du mécano — il n'y a donc plus de "réservation" à gérer ici.
 
 local function StashName(companyId)
     local company = Config.Atelier.Companies[companyId]
     return company and company.stashName or nil
+end
+
+-- companyId indexé par nom de DataStore, pour la garde d'accès ci-dessous.
+local CompanyByStash = {}
+for companyId, company in pairs(Config.Atelier.Companies) do
+    if company.stashName then CompanyByStash[company.stashName] = companyId end
 end
 
 -- Chargement paresseux à dessein : LSLegacy.DataStores se charge en async au démarrage,
@@ -29,137 +40,71 @@ local function EnsureStash(companyId)
     return ds
 end
 
--- Les stashes atelier ne passent JAMAIS par les events génériques PutIntoTrunk/TakeFromTrunk, uniquement par ceux de ce fichier.
+-- Exposée pour server/tuning.lua : le solde `money` de ce même stash sert de
+-- caisse "société" pour le panier de tuning (option de paiement entreprise).
+-- Exposée aussi pour module/mdt/server/parts.lua (livraison des commandes).
+LSLegacy.Atelier.GetStash = EnsureStash
+
+-- Garde d'accès générique : les stashes atelier_* deviennent un coffre normal
+-- (module inventory/), ouvert uniquement au mécano de LA MÊME entreprise ET
+-- physiquement près du dépôt — même logique que le coffre de voiture
+-- (inventory/server/main.lua -> trunk_<plaque>, proximité au véhicule plutôt
+-- qu'un statut "en service" qui peut avoir expiré/changé entre l'ouverture du
+-- coffre et un put/take individuel).
+local function IsNearDepot(src, companyId)
+    local company = Config.Atelier.Companies[companyId]
+    if not company or not company.partsDepotCoords then return false end
+    local ped = GetPlayerPed(src)
+    if not DoesEntityExist(ped) then return false end
+    return LSLegacy.Validate.Distance(company.partsDepotCoords, GetEntityCoords(ped), 5.0)
+end
+
 local prevGuard = LSLegacy.DataStoreGuard
 LSLegacy.DataStoreGuard = function(src, name, action, item)
-    if name and name:sub(1, 8) == 'atelier_' then return false end
+    local companyId = CompanyByStash[name]
+    if companyId then
+        if item ~= nil and not Config.Atelier.Parts[item] then return false end
+        if LSLegacy.Atelier.GetCompany(src) ~= companyId then return false end
+        return IsNearDepot(src, companyId)
+    end
     if prevGuard then return prevGuard(src, name, action, item) end
     return true
 end
 
--- Consultation du stock
-
-LSLegacy.RegisterServerEvent('atelier:requestStock', function()
-    local src = source
-    local companyId = LSLegacy.Atelier.GetCompany(src)
-    if not companyId then return end
-
-    local ds = EnsureStash(companyId)
-    local stock = {}
-    for item in pairs(Config.Atelier.Parts) do
-        local entry = LSLegacy.DataStore.GetInventoryItem(ds, item)
-        stock[item] = entry and entry.count or 0
-    end
-    LSLegacy.SendEventToClient('atelier:stockResult', src, stock)
-end)
-
--- Prise d'une pièce au dépôt (réservation)
-
-LSLegacy.RegisterServerEvent('atelier:takePart', function(data)
+-- Ouverture du dépôt (coffre) — le client ne connaît pas le nom du DataStore,
+-- il demande juste l'ouverture, le serveur résout l'entreprise du mécano.
+LSLegacy.Events.Register('atelier:openDepot', function()
     local src = source
     local ok, companyId = LSLegacy.Atelier.CanAct(src)
-    if not ok then return end
-    if not data or not data.item or not Config.Atelier.Parts[data.item] then return end
-
-    if LSLegacy.Atelier.Reservations[src] then
-        LSLegacy.Atelier.Notify(src, "Vous portez déjà une pièce, déposez-la avant.", 'error')
+    if not ok then
+        LSLegacy.Atelier.Notify(src, Lang.Atelier.not_on_duty, 'error')
         return
     end
-
-    local ds    = EnsureStash(companyId)
-    local entry = LSLegacy.DataStore.GetInventoryItem(ds, data.item)
-    if not entry or entry.count <= 0 then
-        LSLegacy.Atelier.Notify(src, Lang.Atelier.depot_out_of_stock, 'error')
-        return
-    end
-
-    local mecano = LSLegacy.Atelier.GetPlayer(src)
-    if not LSLegacy.Inventory.CanCarryItem(mecano, data.item, 1) then
-        LSLegacy.Atelier.Notify(src, 'Vous ne pouvez pas porter cette pièce (poids).', 'error')
-        return
-    end
-
-    LSLegacy.DataStore.RemoveItemInInventory(ds, data.item, 1)
-    LSLegacy.Inventory.AddItemInInventory(mecano, data.item, 1)
-
-    LSLegacy.Atelier.Reservations[src] = {
-        item      = data.item,
-        companyId = companyId,
-        expiresAt = os.time() + math.floor(Config.Atelier.PartReservationTimeoutMs / 1000),
-    }
-
-    local part = Config.Atelier.Parts[data.item]
-    LSLegacy.SendEventToClient('atelier:partTaken', src, { item = data.item, carried = part.carried })
-end)
-
--- Restitue au stock la pièce réservée par src (annulation/expiration/drop).
--- N'est jamais appelée après consommation définitive (voir ConsumeReservation).
-function LSLegacy.Atelier.ReturnReservation(src)
-    local res = LSLegacy.Atelier.Reservations[src]
-    if not res then return end
-    LSLegacy.Atelier.Reservations[src] = nil
-
-    local mecano = LSLegacy.Atelier.GetPlayer(src)
-    if mecano then
-        local owned = LSLegacy.Inventory.GetInventoryItem(mecano, res.item)
-        if owned and owned.count > 0 then
-            LSLegacy.Inventory.RemoveItemInInventory(mecano, res.item, 1)
-        end
-    end
-
-    local ds = EnsureStash(res.companyId)
-    if ds then LSLegacy.DataStore.AddItemInInventory(ds, res.item, 1) end
-end
-
--- Consomme définitivement la réservation en cours de src (intervention
--- validée) : la pièce reste retirée du stock, plus de retour possible.
--- @return string|nil item réservé (nil si aucune réservation)
-function LSLegacy.Atelier.ConsumeReservation(src)
-    local res = LSLegacy.Atelier.Reservations[src]
-    if not res then return nil end
-    LSLegacy.Atelier.Reservations[src] = nil
-    return res.item
-end
-
-function LSLegacy.Atelier.GetReservation(src)
-    return LSLegacy.Atelier.Reservations[src]
-end
-
-LSLegacy.RegisterServerEvent('atelier:dropPart', function()
-    local src = source
-    LSLegacy.Atelier.ReturnReservation(src)
-end)
-
--- Remplissage du stock (permission manage_stock)
-
-LSLegacy.RegisterServerEvent('atelier:restockStock', function(data)
-    local src = source
-    local ok, companyId = LSLegacy.Atelier.CanAct(src, 'manage_stock')
-    if not ok then return end
-    if not data or not data.item or not Config.Atelier.Parts[data.item] then return end
-
-    local amount = math.floor(tonumber(data.amount) or 0)
-    if amount <= 0 then return end
 
     local ds = EnsureStash(companyId)
-    LSLegacy.DataStore.AddItemInInventory(ds, data.item, amount)
-    LSLegacy.SendEventToClient('atelier:restockResult', src, { success = true, item = data.item, amount = amount })
+    if not ds then return end
+
+    -- Le client ne reçoit LSLegacy.DataStores qu'au fil des mutations ; on le
+    -- resynchronise explicitement avant d'ouvrir le coffre (même pattern que
+    -- module/foodapi/server/main.lua -> exports('syncDataStores', ...)).
+    LSLegacy.Events.SendToClient('lslegacy:updateDatastore', src, LSLegacy.DataStores)
+    LSLegacy.Events.SendToClient('atelier:openContainer', src, ds.name, Lang.Atelier.depot_title, ds.maxWeight)
 end)
 
--- Nettoyage : expiration + déconnexion
-
-CreateThread(function()
-    while true do
-        Wait(15000)
-        local now = os.time()
-        for src, res in pairs(LSLegacy.Atelier.Reservations) do
-            if res.expiresAt and res.expiresAt <= now then
-                LSLegacy.Atelier.ReturnReservation(src)
+-- Pièces "carried" (carrosserie) : tenues en main via un item usable classique.
+-- Purement visuel — la pièce reste dans l'inventaire tant qu'elle n'est pas
+-- posée (server/repairs.lua la consomme réellement à la pose).
+for itemName, part in pairs(Config.Atelier.Parts) do
+    if part.carried then
+        LSLegacy.RegisterUsableItem(itemName, function()
+            local src = source
+            local ok = LSLegacy.Atelier.CanAct(src)
+            if not ok then
+                LSLegacy.Atelier.Notify(src, Lang.Atelier.not_on_duty, 'error')
+                return
             end
-        end
+            LSLegacy.Events.SendToClient('atelier:partTaken', src, { item = itemName, carried = true })
+        end)
     end
-end)
+end
 
-AddEventHandler('playerDropped', function()
-    LSLegacy.Atelier.ReturnReservation(source)
-end)

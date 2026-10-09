@@ -2,7 +2,6 @@
 
 Config = Config or {}
 Config.Pompe = {
-    NotifyEvent = 'brutal_notify:SendAlert',
 
     PricePerLiter = 1.8, -- $ / L, identique dans toutes les stations
 

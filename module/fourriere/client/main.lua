@@ -2,10 +2,10 @@ local CFG = Config.Fourriere
 local spawnedPed = nil
 
 local function Notify(msg, t)
-    TriggerEvent(CFG.NotifyEvent, 'Fourrière', msg, 5000, t or 'info')
+    TriggerEvent('notify', 'Fourrière', msg, t or 'info', 5000)
 end
 
-local function modelLabel(hash)
+local function ModelLabel(hash)
     local name = GetDisplayNameFromVehicleModel(hash + 0)
     if name and name ~= '' and name ~= 'CARNOTFOUND' then
         local lbl = GetLabelText(name)
@@ -35,7 +35,7 @@ local function SpawnPed()
             icon = 'fa-solid fa-car-burst',
             label = 'Récupérer un véhicule',
             distance = 2.5,
-            onSelect = function() LSLegacy.SendEventToServer('fourriere:requestList') end,
+            onSelect = function() LSLegacy.Events.SendToServer('fourriere:requestList') end,
         },
     })
 end
@@ -53,7 +53,7 @@ local function CreateBlip()
     EndTextCommandSetBlipName(b)
 end
 
-LSLegacy.RegisterClientEvent('fourriere:list', function(rows)
+LSLegacy.Events.Register('fourriere:list', function(rows)
     rows = rows or {}
     if #rows == 0 then
         Notify("Vous n'avez aucun véhicule en fourrière.", 'info')
@@ -61,7 +61,7 @@ LSLegacy.RegisterClientEvent('fourriere:list', function(rows)
     end
     local options = {}
     for _, v in ipairs(rows) do
-        local name = modelLabel(math.floor(tonumber(v.model) or 0))
+        local name = ModelLabel(math.floor(tonumber(v.model) or 0))
         local fee = math.floor(tonumber(v.fee) or 0)
         local remaining = math.floor(tonumber(v.remaining_sec) or 0)
         local locked = remaining > 0
@@ -73,7 +73,7 @@ LSLegacy.RegisterClientEvent('fourriere:list', function(rows)
             icon = locked and 'lock' or 'car',
             disabled = locked,
             onSelect = function()
-                LSLegacy.SendEventToServer('fourriere:retrieve', { plate = v.plate })
+                LSLegacy.Events.SendToServer('fourriere:retrieve', { plate = v.plate })
             end,
         }
     end
@@ -81,7 +81,7 @@ LSLegacy.RegisterClientEvent('fourriere:list', function(rows)
     lib.showContext('fourriere_list')
 end)
 
-LSLegacy.RegisterClientEvent('fourriere:removeVehicle', function(data)
+LSLegacy.Events.Register('fourriere:removeVehicle', function(data)
     local plate = data and data.plate
     if not plate then return end
     local function norm(p) return (tostring(p or ''):gsub('%s+', '')):upper() end

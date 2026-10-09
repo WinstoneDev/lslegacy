@@ -23,49 +23,46 @@ LSLegacy.AvailableJobs = {
             [8] = { label = "Commissaire" },
         }
     },
-    ['gendarmerie'] = {
-        label = "Gendarmerie Nationale",
+    ['sheriff'] = {
+        label = "Blaine County Sheriff's Office",
         grades = {
-            [0] = { label = "Gendarme Adjoint Volontaire" },
-            [1] = { label = "Élève Gendarme" },
-            [2] = { label = "Gendarme" },
-            [3] = { label = "Maréchal des Logis-Chef" },
-            [4] = { label = "Adjudant" },
-            [5] = { label = "Adjudant-Chef" },
-            [6] = { label = "Lieutenant" },
-            [7] = { label = "Capitaine" },
-            [8] = { label = "Commandant" },
+            [0] = { label = "Explorer" },
+            [1] = { label = "Deputy Trainee" },
+            [2] = { label = "Deputy Sheriff I" },
+            [3] = { label = "Deputy Sheriff II" },
+            [4] = { label = "Corporal" },
+            [5] = { label = "Sergeant" },
+            [6] = { label = "Staff Sergeant" },
+            [7] = { label = "Lieutenant" },
+            [8] = { label = "Captain" },
+            [9] = { label = "Commander" },
+            [10] = { label = "Undersheriff" },
+            [11] = { label = "Sheriff" },
         }
     },
-    ['samu'] = {
-        label = "SAMU",
+    ['ems'] = {
+        label = "Emergency Medical Services",
         grades = {
-            [0] = { label = "Stagiaire SAMU" },
+            [0] = { label = "Stagiaire EMS" },
             [1] = { label = "Auxiliaire Ambulancier" },
             [2] = { label = "Ambulancier" },
-            [3] = { label = "Infirmier" },
-            [4] = { label = "Médecin Chef de Service" },
+            [3] = { label = "Ambulancier Confirmé" },
+            [4] = { label = "Infirmier" },
+            [5] = { label = "Infirmier Anesthésiste" },
+            [6] = { label = "Interne en Médecine" },
+            [7] = { label = "Médecin" },
+            [8] = { label = "Médecin Chef de Service" },
+            [9] = { label = "Médecin Coordinateur EMS" },
         }
     },
-    ['pompiers'] = {
-        label = "Sapeurs-Pompiers",
+    ['lsfd'] = {
+        label = "LSFD - Los Santos Fire Department",
         grades = {
             [0] = { label = "Sapeur Stagiaire" },
             [1] = { label = "Sapeur" },
             [2] = { label = "Caporal" },
             [3] = { label = "Sergent" },
             [4] = { label = "Capitaine — Chef de Centre" },
-        }
-    },
-    -- Déprécié : remplacé par mechanic_reds / mechanic_bennys (module atelier).
-    -- Conservé le temps de migrer les employés existants (voir module/atelier).
-    ['mecanicien'] = {
-        label = "Mécanicien (déprécié)",
-        grades = {
-            [0] = { label = "Apprenti Mécanicien" },
-            [1] = { label = "Mécanicien" },
-            [2] = { label = "Mécanicien Confirmé" },
-            [3] = { label = "Chef d'Atelier" },
         }
     },
     ['mechanic_reds'] = {
@@ -101,6 +98,15 @@ LSLegacy.AvailableJobs = {
             [1] = { label = "Employé LTD" },
             [2] = { label = "Employé Confirmé" },
             [3] = { label = "Responsable de Magasin" },
+        }
+    },
+    ['atc'] = {
+        label = "Contrôleur aérien",
+        grades = {
+            [0] = { label = "Stagiaire" },
+            [1] = { label = "Normal" },
+            [2] = { label = "Divisionnaire" },
+            [3] = { label = "En chef" },
         }
     }
 }
@@ -252,8 +258,10 @@ end
 ---@param player LSLegacy.Player
 ---@param job string
 LSLegacy.Jobs.SetJob = function(player, job)
-    player.job = job
-    LSLegacy.SendEventToClient('UpdatePlayer', player.source, LSLegacy.ServerPlayers[player.source])
+    player.job       = job
+    player.job_label = LSLegacy.Jobs.GetJobLabel(job)
+    player:MarkDirty('job')
+    LSLegacy.Events.SendToClient('lslegacy:updatePlayer', player.source, LSLegacy.ServerPlayers[player.source])
 end
 
 ---SetJobGrade
@@ -261,8 +269,15 @@ end
 ---@param player LSLegacy.Player
 ---@param grade number
 LSLegacy.Jobs.SetJobGrade = function(player, grade)
-    player.job_grade = grade
-    LSLegacy.SendEventToClient('UpdatePlayer', player.source, LSLegacy.ServerPlayers[player.source])
+    local oldGrade = player.job_grade
+    player.job_grade       = grade
+    player.job_grade_label = LSLegacy.Jobs.GetJobGradeLabel(player.job, grade)
+    player:MarkDirty('job_grade')
+    LSLegacy.Events.SendToClient('lslegacy:updatePlayer', player.source, LSLegacy.ServerPlayers[player.source])
+    -- Notifie les modules métier (ex. réaffectation d'unité MDT) sans les connaître.
+    if oldGrade ~= grade then
+        TriggerEvent('lslegacy:jobGradeChanged', player.source, player.job, oldGrade, grade)
+    end
 end
 
 ---SetFaction
@@ -271,7 +286,8 @@ end
 ---@param faction string
 LSLegacy.Jobs.SetFaction = function(player, faction)
     player.faction = faction
-    LSLegacy.SendEventToClient('UpdatePlayer', player.source, LSLegacy.ServerPlayers[player.source])
+    player:MarkDirty('faction')
+    LSLegacy.Events.SendToClient('lslegacy:updatePlayer', player.source, LSLegacy.ServerPlayers[player.source])
 end
 
 ---SetFactionGrade
@@ -280,33 +296,64 @@ end
 ---@param grade number
 LSLegacy.Jobs.SetFactionGrade = function(player, grade)
     player.faction_grade = grade
-    LSLegacy.SendEventToClient('UpdatePlayer', player.source, LSLegacy.ServerPlayers[player.source])
+    player:MarkDirty('faction_grade')
+    LSLegacy.Events.SendToClient('lslegacy:updatePlayer', player.source, LSLegacy.ServerPlayers[player.source])
 end
 
-LSLegacy.RegisterServerEvent('SetJob', function(job, grade)
+---Get / GetGrade — alias de confort de GetJob/GetJobGrade.
+---@type function
+LSLegacy.Jobs.Get = LSLegacy.Jobs.GetJob
+LSLegacy.Jobs.GetGrade = LSLegacy.Jobs.GetJobGrade
+
+---LSLegacy.Factions — même mécanique que les jobs (grade hiérarchique), API dédiée pour l'appelant.
+LSLegacy.Factions = {
+    GetAvailable = LSLegacy.Jobs.GetAvailableFactions,
+    GetLabel = LSLegacy.Jobs.GetFactionLabel,
+    GetGradeLabel = LSLegacy.Jobs.GetFactionGradeLabel,
+    Exists = LSLegacy.Jobs.DoesFactionExist,
+    GradeExists = LSLegacy.Jobs.DoesFactionGradeExist,
+    Get = LSLegacy.Jobs.GetFaction,
+    GetGrade = LSLegacy.Jobs.GetFactionGrade,
+    Set = LSLegacy.Jobs.SetFaction,
+    SetGrade = LSLegacy.Jobs.SetFactionGrade,
+}
+
+---Is / Require — vrai si le joueur a un des jobs attendus (et un grade
+---suffisant). À utiliser à la place de `player.job == ...` /
+---`player.job_grade >= ...` dispersés dans les modules.
+---@type function
+---@param player table
+---@param jobs string|table
+---@param minGrade number|nil
+---@return boolean
+---@public
+LSLegacy.Jobs.Is = LSLegacy.Validate.Job
+LSLegacy.Jobs.Require = LSLegacy.Validate.Job
+
+LSLegacy.Events.Register('lslegacy:setJob', function(job, grade)
     local _src = source
     local player = LSLegacy.GetPlayerFromId(_src)
 
     if LSLegacy.Jobs.DoesJobExist(job) and LSLegacy.Jobs.DoesJobGradeExist(job, grade) then
         LSLegacy.Jobs.SetJob(player, job)
         LSLegacy.Jobs.SetJobGrade(player, grade)
-        LSLegacy.SendEventToClient('UpdatePlayer', _src, player)
-        LSLegacy.SendEventToClient('notify', _src, nil, 'Votre métier a été mis à jour en '..LSLegacy.Jobs.GetJobLabel(job)..' - '..LSLegacy.Jobs.GetJobGradeLabel(job, grade)..'.', 'success')
+        LSLegacy.Events.SendToClient('lslegacy:updatePlayer', _src, player)
+        LSLegacy.Events.SendToClient('notify', _src, nil, 'Votre métier a été mis à jour en '..LSLegacy.Jobs.GetJobLabel(job)..' - '..LSLegacy.Jobs.GetJobGradeLabel(job, grade)..'.', 'success')
     else
-        LSLegacy.SendEventToClient('notify', _src, nil, 'Le métier ou le grade spécifié n\'existe pas.', 'error')
+        LSLegacy.Events.SendToClient('notify', _src, nil, 'Le métier ou le grade spécifié n\'existe pas.', 'error')
     end
 end)
 
-LSLegacy.RegisterServerEvent('SetFaction', function(faction, grade)
+LSLegacy.Events.Register('lslegacy:setFaction', function(faction, grade)
     local _src = source
     local player = LSLegacy.GetPlayerFromId(_src)
 
     if LSLegacy.Jobs.DoesFactionExist(faction) and LSLegacy.Jobs.DoesFactionGradeExist(faction, grade) then
         LSLegacy.Jobs.SetFaction(player, faction)
         LSLegacy.Jobs.SetFactionGrade(player, grade)
-        LSLegacy.SendEventToClient('UpdatePlayer', _src, player)
-        LSLegacy.SendEventToClient('notify', _src, nil, 'Votre faction a été mise à jour en '..LSLegacy.Jobs.GetFactionLabel(faction)..' - '..LSLegacy.Jobs.GetFactionGradeLabel(faction, grade)..'.', 'success')
+        LSLegacy.Events.SendToClient('lslegacy:updatePlayer', _src, player)
+        LSLegacy.Events.SendToClient('notify', _src, nil, 'Votre faction a été mise à jour en '..LSLegacy.Jobs.GetFactionLabel(faction)..' - '..LSLegacy.Jobs.GetFactionGradeLabel(faction, grade)..'.', 'success')
     else
-        LSLegacy.SendEventToClient('notify', _src, nil, 'La faction ou le grade spécifié n\'existe pas.', 'error')
+        LSLegacy.Events.SendToClient('notify', _src, nil, 'La faction ou le grade spécifié n\'existe pas.', 'error')
     end
 end)

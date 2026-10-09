@@ -6,12 +6,6 @@ LSLegacy.Token = {}
 LSLegacy.addTokenClient = {}
 LSLegacy.PlayersLimit = {}
 LSLegacy.RateLimit = {
-    ['AdminServerPlayers'] = 25,
-    ['MessageAdmin'] = 15,
-    ['TeleportPlayers'] = 25,
-    ['SetBucket'] = 20,
-    ['saveskin'] = 20,
-    ['SetIdentity'] = 20,
     ['zones:haveInteract'] = 40,
     ['renameItem'] = 15,
     ['useItem'] = 30,
@@ -19,322 +13,32 @@ LSLegacy.RateLimit = {
     ['addItemPickup'] = 20,
     ['removeItemPickup'] = 30,
     ['haveExitedZone'] = 30,
-    ['GetBankAccounts'] = 30,
-    ['BankCreateAccount'] = 15,
-    ['AddClothesInInventory'] = 20,
-    ['BankChangeAccountStatus'] = 20,
-    ['BankDeleteAccount'] = 20,
-    ['BankCreateCard'] = 20,
-    ['BankwithdrawMoney'] = 20,
-    ['BankAddMoney'] = 20,
-    ['lslegacy:requestBankBalance'] = 20,
-    ['attemptToPayMenu'] = 20,
-    ['pay'] = 20,
-    ['ReceiveUpdateServerPlayer'] = 20,
-    ['RegisterDataStore'] = 20,
-    ['PutIntoTrunk'] = 20,
-    ['TakeFromTrunk'] = 20,
+    ['lslegacy:receiveUpdateServerPlayer'] = 20,
+    ['lslegacy:registerDataStore'] = 20,
+    ['lslegacy:putIntoTrunk'] = 20,
+    ['lslegacy:takeFromTrunk'] = 20,
     ['giveItem'] = 20,
     ['removeItem'] = 20,
     ['removeAmmo'] = 20,
     ['updateNumberPlayer'] = 20,
-    ['applyNeedEffect'] = 20,
-    ['ap:updateVehicle'] = 20,
-    ['ap:updateVehicleStatus'] = 20,
-    ['ap:requestVehicleDeletion'] = 20,
     ['clientCallback'] = 20,
     ['triggerServerCallback'] = 20,
-    ['clothshop:createOutfit'] = 20,
-    ['clothshop:splitOutfit'] = 20,
-    ['clothshop:modifyOutfit'] = 20,
-    ['inventory:updateOutfitFromInventory'] = 20,
-    -- Admin
-    ['admin:tpm'] = 30,
-    ['admin:pos'] = 30,
-    ['admin:freeze'] = 10,
-    ['admin:heal'] = 10,
-    ['admin:revive'] = 10,
-    ['admin:resetNeeds'] = 10,
-    ['admin:resetSkin'] = 5,
-    ['admin:kick'] = 5,
-    ['admin:tempban'] = 5,
-    ['admin:permaban'] = 3,
-    ['admin:warn'] = 10,
-    ['admin:getWarns'] = 15,
-    ['admin:screenshot'] = 5,
-    ['admin:repairVehicle'] = 10,
-    ['admin:deletePlayerVehicle'] = 10,
-    ['admin:spawnVehicleForPlayer'] = 8,
-    ['admin:spawnVehicle'] = 8,
-    ['admin:deleteVehiclesInZone'] = 8,
-    ['admin:giveMoney'] = 10,
-    ['admin:removeMoney'] = 10,
-    ['admin:giveItem'] = 10,
-    ['admin:removeItem'] = 10,
-    ['admin:giveWeapon'] = 10,
-    ['admin:getPlayerInventory'] = 15,
-    ['admin:getTickets'] = 15,
-    ['admin:takeTicket'] = 10,
-    ['admin:closeTicket'] = 10,
-    ['admin:createTicket'] = 8,
-    ['admin:tpToTicket'] = 10,
-    ['admin:bringTicketPlayer'] = 10,
-    ['admin:setGodmode'] = 10,
-    ['admin:cleanVehicleDB'] = 10,
-    ['admin:deleteWarn'] = 10,
-    ['admin:multichar:returnToSelection'] = 5,
-    ['admin:logIdentifiers'] = 5,
-    ['admin:getTicketStats'] = 20,
-    ['admin:setWorldTime'] = 15,
-    -- Handbrake
-    ['handbrake:broadcastSound'] = 30,
     -- Skills
-    ['LSLegacy:skills:requestAll'] = 5,
-    ['LSLegacy:skills:addXP']      = 30,
+    ['lslegacy:skillsRequestAll'] = 5,
+    ['lslegacy:skillsAddXP']      = 30,
     -- Injury
-    ['LSLegacy:injury:enterComa']  = 5,
-    ['LSLegacy:injury:exitComa']   = 5,
-    ['LSLegacy:injury:respawn']    = 5,
-    ['LSLegacy:injury:callEMS']    = 5,
-    ['LSLegacy:injury:enterKO']    = 5,
-    ['LSLegacy:injury:exitKO']     = 5,
-    -- MDT (lectures : dispatcher unique)
-    ['mdt:query']                  = 80,
-    -- MDT (écritures)
-    ['mdt:createFine']             = 20,
-    ['mdt:toggleFinePaid']         = 25,
-    ['mdt:deleteFine']             = 15,
-    ['mdt:addCriminalRecord']      = 20,
-    ['mdt:deleteCriminalRecord']   = 15,
-    ['mdt:createReport']           = 20,
-    ['mdt:updateReport']           = 25,
-    ['mdt:deleteReport']           = 15,
-    ['mdt:createInterventionReport'] = 20,
-    ['mdt:updateInterventionReport'] = 25,
-    ['mdt:deleteInterventionReport'] = 15,
-    ['mdt:linkCaseItem']           = 25,
-    ['mdt:unlinkCaseItem']         = 25,
-    ['mdt:linkReportItem']         = 25,
-    ['mdt:unlinkReportItem']       = 25,
-    ['mdt:setVehicleWanted']       = 20,
-    ['mdt:setVehicleLocation']     = 20,
-    ['mdt:createWarrant']          = 20,
-    ['mdt:updateWarrant']          = 20,
-    ['mdt:deleteWarrant']          = 15,
-    ['mdt:createCustody']          = 20,
-    ['mdt:addEvidence']            = 20,
-    ['mdt:registerWeapon']         = 20,
-    ['mdt:updateWeapon']           = 20,
-    ['mdt:deleteWeapon']           = 15,
-    ['mdt:seizeWeapon']            = 20,
-    ['mdt:linkWeaponPerson']       = 25,
-    ['mdt:unlinkWeaponPerson']     = 25,
-    ['mdt:linkWeaponReport']       = 25,
-    ['mdt:unlinkWeaponReport']     = 25,
-    ['mdt:createLaw']              = 20,
-    ['mdt:updateLaw']              = 20,
-    ['mdt:deleteLaw']              = 15,
-    ['mdt:createTraining']         = 20,
-    ['mdt:updateTraining']         = 20,
-    ['mdt:deleteTraining']         = 15,
-    ['mdt:signupTraining']         = 25,
-    ['mdt:unsignupTraining']       = 25,
-    ['mdt:removeSignup']           = 25,
-    ['mdt:deleteCustody']          = 15,
-    ['mdt:linkPersonWeapon']       = 25,
-    ['mdt:validateSignup']         = 25,
-    ['mdt:updateEvidence']         = 25,
-    ['mdt:linkReportEvidence']     = 25,
-    ['mdt:unlinkReportEvidence']   = 25,
-    ['mdt:saveAgentMeta']          = 20,
-    ['mdt:saveCareer']             = 20,
-    ['mdt:addAssignment']          = 25,
-    ['mdt:updateAssignment']       = 25,
-    ['mdt:deleteAssignment']       = 20,
-    ['mdt:addCommendation']        = 20,
-    ['mdt:deleteCommendation']     = 20,
-    ['mdt:addSkill']               = 20,
-    ['mdt:deleteSkill']            = 20,
-    ['mdt:updateSkillDate']        = 20,
-    -- Police Nationale — service
-    ['police:onDuty']              = 10,
-    ['police:offDuty']             = 10,
-    ['gendarmerie:onDuty']         = 10,
-    ['gendarmerie:offDuty']        = 10,
-    ['police:spawnVehicle']        = 15,
-    -- Police Nationale — actions
-    ['police:cuff']                = 20,
-    ['police:search']              = 15,
-    ['police:palpation']           = 20,
-    ['police:idCheck']             = 20,
-    ['police:licenseCheck']        = 20,
-    ['police:escort']              = 20,
-    ['police:putInVehicle']        = 20,
-    ['police:getOutVehicle']       = 20,
-    ['police:seizeItem']           = 15,
-    -- Police Nationale — judiciaire
-    ['police:custody']             = 10,
-    ['police:prison']              = 10,
-    -- Police Nationale — investigation
-    ['police:inv:collectFingerprints'] = 15,
-    ['police:inv:collectDNA']      = 15,
-    ['police:inv:collectBlood']    = 15,
-    ['police:inv:createScene']     = 10,
-    ['police:inv:compareFingerprints'] = 20,
-    ['police:inv:compareDNA']      = 20,
-    -- Police Nationale — radio (voix via pma-voice ; seul le tracking canal passe par le serveur)
-    ['police:radio:join']          = 20,
-    ['police:radio:leave']         = 20,
-    -- Police Nationale — missions
-    ['police:mission:accept']      = 10,
-    ['police:mission:resolve']     = 10,
-    -- Fourrière
-    ['fourriere:impound']            = 15,
-    ['fourriere:requestList']        = 15,
-    ['fourriere:retrieve']           = 10,
-    ['fourriere:persistDelivered']   = 15,
-    -- Concessionnaire
-    ['concessionnaire:buy']          = 10,
-    ['concessionnaire:sell']         = 10,
-    ['concessionnaire:getOccasions'] = 15,
-    ['concessionnaire:buyOccasion']  = 10,
-    ['concessionnaire:persistDelivered'] = 10,
-    -- Injury (complement)
-    ['LSLegacy:injury:syncWound']  = 10,
+    ['lslegacy:injuryEnterComa']  = 5,
+    ['lslegacy:injuryExitComa']   = 5,
+    ['lslegacy:injuryRespawn']    = 5,
+    ['lslegacy:injuryCallEMS']    = 5,
+    ['lslegacy:injuryEnterKO']    = 5,
+    ['lslegacy:injuryExitKO']     = 5,
+    ['lslegacy:injurySyncWound']  = 10,
     -- Jobs / Factions
-    ['SetJob']                     = 10,
-    ['SetFaction']                 = 10,
+    ['lslegacy:setJob']                     = 10,
+    ['lslegacy:setFaction']                 = 10,
     -- Inventaire (complement)
-    ['updateWeaponAmmo']           = 25,
-    -- Farm
-    ['farm:animalSpawned']         = 20,
-    ['farm:requestGather']         = 20,
-    ['farm:completeGather']        = 20,
-    ['farm:requestPoach']          = 20,
-    ['farm:requestProcess']        = 20,
-    ['farm:completeProcess']       = 20,
-    ['farm:sellProcessed']         = 15,
-    ['farm:sellPoaching']          = 15,
-    ['farm:compactStones']         = 15,
-    ['farm:requestShopStock']      = 20,
-    ['farm:buyShopItem']           = 15,
-    -- Interim
-    ['interim:startDuty']          = 10,
-    ['interim:endDuty']            = 10,
-    ['interim:rigSpawned']         = 15,
-    ['interim:trailerAttached']    = 15,
-    ['interim:trailerDetached']    = 15,
-    ['interim:requestFillTank']    = 20,
-    ['interim:stationFillComplete'] = 15,
-    -- LTD (superette)
-    ['ltd:onDuty']                 = 10,
-    ['ltd:offDuty']                = 10,
-    ['ltd:requestShelfStock']      = 20,
-    ['ltd:requestReserveStock']    = 20,
-    ['ltd:sellItem']               = 20,
-    ['ltd:restockShelf']           = 15,
-    ['ltd:fillReserve']            = 15,
-    ['ltd:triggerAlarm']           = 10,
-    ['ltd:stealItem']              = 15,
-    -- Atelier (remplace mecanicien:*, module multi-entreprises)
-    ['atelier:onDuty']          = 10,
-    ['atelier:offDuty']         = 10,
-    ['atelier:spawnVehicle']    = 15,
-    ['atelier:requestDiagnostic'] = 20,
-    ['atelier:requestStock']    = 20,
-    ['atelier:takePart']        = 15,
-    ['atelier:dropPart']        = 20,
-    ['atelier:restockStock']    = 15,
-    ['atelier:repairComponent'] = 15,
-    ['atelier:requestInvoice']  = 15,
-    ['atelier:finalizeInvoice'] = 10,
-    -- Pompe a essence
-    ['pompe:requestFill']          = 20,
-    ['pompe:payFuel']              = 15,
-    -- Pompiers (SDIS)
-    ['pompiers:onDuty']            = 10,
-    ['pompiers:offDuty']           = 10,
-    ['pompiers:spawnVehicle']      = 15,
-    ['pompiers:rescue']            = 15,
-    -- SAMU
-    ['samu:onDuty']                = 10,
-    ['samu:offDuty']               = 10,
-    ['samu:spawnVehicle']          = 15,
-    ['samu:restock']               = 15,
-    ['samu:revive']                = 15,
-    -- SAMU — Health Inspection
-    ['samu:hi:open']               = 15,
-    ['samu:hi:useItem']            = 20,
-    ['samu:hi:poll']               = 40,
-    ['samu:hi:damage']             = 40,
-    -- MDT medical (SAMU)
-    ['mdtmed:query']               = 40,
-    ['mdtmed:saveRecord']          = 20,
-    ['mdtmed:addEntry']            = 20,
-    ['mdtmed:deleteEntry']         = 15,
-    ['mdtmed:addTreatment']        = 20,
-    ['mdtmed:setTreatmentStatus']  = 25,
-    ['mdtmed:assignCall']          = 20,
-    ['mdtmed:closeCall']           = 20,
-    ['mdtmed:saveDoc']             = 15,
-    ['mdtmed:deleteDoc']           = 15,
-    ['mdtmed:postBoard']           = 15,
-    ['mdtmed:removeBoard']         = 15,
-    -- MDT co-pilote (dispatcher callouts)
-    ['mdtco:query']                = 40,
-    -- Police Nationale (complement)
-    ['police:cuffStart']           = 20,
-    -- Police Nationale — callouts
-    ['police:callouts:askCrews']         = 15,
-    ['police:callouts:register']         = 10,
-    ['police:callouts:accept']           = 10,
-    ['police:callouts:reposition']       = 40,
-    ['police:callouts:corpseVisible']    = 20,
-    ['police:callouts:reportStreet']     = 15,
-    ['police:callouts:refuse']           = 10,
-    ['police:callouts:leave']            = 15,
-    ['police:callouts:requestBackup']    = 10,
-    ['police:callouts:acceptBackup']     = 15,
-    ['police:callouts:setStatus']        = 30,
-    ['police:callouts:suspectStunned']   = 20,
-    ['police:callouts:suspectCuffed']    = 20,
-    ['police:callouts:suspectIdentify']  = 20,
-    ['police:callouts:moveAlong']        = 20,
-    ['police:callouts:victimStatement']  = 15,
-    ['police:callouts:interrogate']      = 15,
-    ['police:callouts:suspectSearched']  = 20,
-    ['police:callouts:suspectDropWeapon'] = 20,
-    ['police:callouts:pickupWeapon']     = 20,
-    ['police:callouts:suspectDead']      = 15,
-    ['police:callouts:suspectCombat']    = 30,
-    ['police:callouts:suspectSurrender'] = 20,
-    ['police:callouts:suspectEscaped']   = 15,
-    ['police:callouts:suspectDelivered'] = 15,
-    ['police:callouts:ambulanceLoaded']  = 15,
-    ['police:callouts:objectiveDone']    = 20,
-    ['police:callouts:firstAid']         = 15,
-    ['police:callouts:askRadioOff']      = 15,
-    ['police:callouts:radioOff']         = 15,
-    ['police:callouts:dismissBystander'] = 15,
-    ['police:callouts:reportHour']       = 10,
-    ['police:callouts:askAdmin']         = 10,
-    ['police:callouts:command']          = 15,
-    ['police:callouts:spawnFail']        = 10,
-    ['police:callouts:reportSpawn']      = 15,
-    ['police:callouts:reportLocation']   = 30,
-    ['police:callouts:reportMismatch']   = 15,
-    ['police:callouts:anchorSurvey']     = 10,
-    ['police:callouts:anchorHere']       = 10,
-    ['police:callouts:anchorUndo']       = 10,
-    ['police:callouts:adminAction']      = 10,
-
-    ['lslegacy_emotes:requestShared'] = 20,
-    ['lslegacy_emotes:confirmShared'] = 20,
-    ['lslegacy_emotes:cancelShared']  = 30,
-    ['lslegacy_emotes:getFavorites']  = 10,
-    ['lslegacy_emotes:toggleFavorite'] = 30,
-
-    ['weather:requestClockSync'] = 50
+    ['updateWeaponAmmo']           = 500,
 }
 
 Citizen.CreateThread(function()
@@ -366,8 +70,7 @@ end
 LSLegacy.GetPlayerFromIdentifier = function(identifier)
     if not identifier then return end
     for key, value in pairs(LSLegacy.ServerPlayers) do
-        if v.identifier == identifier then
-            break
+        if value.identifier == identifier then
             return value
         end
     end
@@ -470,6 +173,7 @@ LSLegacy.GeneratorTokenConnecting = function(_source)
             LSLegacy.SendEventToClient("addTokenEvent", _source, chunk, not first)
         end
     else
+        LSLegacy.Security.Log(_source, 'connecting', 'duplicate token init (injector)')
         DropPlayer(_source, 'Injector detected ╭∩╮（︶_︶）╭∩╮')
     end
 end
@@ -515,7 +219,7 @@ end
 ---@public
 LSLegacy.UseServerEvent = function(eventName, src, ...)
     if LSLegacy.Event[eventName] then
-        if eventName ~= "DropInjectorDetected" then
+        if eventName ~= "lslegacy:dropInjectorDetected" then
             if not LSLegacy.PlayersLimit[eventName] then
                 LSLegacy.PlayersLimit[eventName] = {}
             end
@@ -524,6 +228,7 @@ LSLegacy.UseServerEvent = function(eventName, src, ...)
             end
             LSLegacy.PlayersLimit[eventName][src] = LSLegacy.PlayersLimit[eventName][src] + 1
             if LSLegacy.RateLimit[eventName] and LSLegacy.PlayersLimit[eventName][src] >= LSLegacy.RateLimit[eventName] then
+                LSLegacy.Security.Log(src, eventName, 'rate limit exceeded')
                 DropPlayer(src, 'Spam trigger detected ╭∩╮（︶_︶）╭∩╮ ('..eventName..')')
             else
                 LSLegacy.Event[eventName](...)
@@ -533,6 +238,52 @@ LSLegacy.UseServerEvent = function(eventName, src, ...)
         end
     end
 end
+
+---LSLegacy.Security — point d'entrée unique pour les mécanismes de sécurité
+---du Core (rate limit, tokens anti-injecteur, contrôle des events, logs).
+---LSLegacy.Validate (server/validate.lua) s'y ajoute en alias une fois chargé.
+---
+---Un token valide ou un event non spammé ne prouvent qu'une chose : que
+---l'appel vient bien du client attendu, pas qu'il est autorisé. Toute
+---action métier doit revalider dans cet ordre, en s'arrêtant au premier
+---échec, avant de s'exécuter :
+---  Token -> RateLimit -> Player -> Target -> Distance -> Ownership -> Job -> Permission -> Arguments -> Action
+LSLegacy.Security = LSLegacy.Security or {}
+
+---RegisterRateLimit — permet à un module de déclarer sa propre limite (par fenêtre de 15s) sans que le Core connaisse ses events.
+---@type function
+---@param eventName string
+---@param limit number
+---@return nil
+---@public
+LSLegacy.Security.RegisterRateLimit = function(eventName, limit)
+    if type(eventName) ~= "string" then return end
+    limit = LSLegacy.Validate.PositiveInteger(limit)
+    if not limit then return end
+    LSLegacy.RateLimit[eventName] = limit
+end
+
+---Log — point unique pour les évènements de sécurité (injecteur, spam, jeton invalide).
+---@type function
+---@param src number
+---@param eventName string
+---@param reason string
+---@return nil
+---@public
+LSLegacy.Security.Log = function(src, eventName, reason)
+    Config.Development.Print(('[security] %s by %s (%s)'):format(reason, tostring(src), tostring(eventName)))
+end
+
+-- Contrôle des events : mêmes fonctions que celles utilisées ailleurs dans le Core, exposées sous Security pour un point d'entrée unique.
+LSLegacy.Security.RegisterEvent = LSLegacy.RegisterServerEvent
+LSLegacy.Security.UseEvent = LSLegacy.UseServerEvent
+
+-- Tokens anti-injecteur, mêmes fonctions internes exposées sous Security.
+LSLegacy.Security.Token = {
+    New = LSLegacy.GeneratorToken,
+    NewForConnecting = LSLegacy.GeneratorTokenConnecting,
+    Renew = LSLegacy.GeneratorNewToken,
+}
 
 RegisterNetEvent("useEvent")
 AddEventHandler("useEvent", function(eventName, token, ...)
@@ -563,7 +314,7 @@ AddEventHandler("useEvent", function(eventName, token, ...)
         LSLegacy.UseServerEvent(eventName, _src, ...)
         Config.Development.Print("Successfully triggered server event " .. eventName)
     else
-        Config.Development.Print("Injector detected ╭∩╮（︶_︶）╭∩╮ " .. eventName.." by ".._src)
+        LSLegacy.Security.Log(_src, eventName, 'invalid token (injector)')
     end
 end)
 
@@ -629,7 +380,7 @@ LSLegacy.RegisterServerEvent('updateNumberPlayer', function()
     LSLegacy.SendEventToClient('receiveNumberPlayers', _source, number)
 end)
 
-LSLegacy.RegisterServerEvent('DropInjectorDetected', function()
+LSLegacy.RegisterServerEvent('lslegacy:dropInjectorDetected', function()
     local _src = source
     DropPlayer(_src, 'Injector detected ╭∩╮（︶_︶）╭∩╮')
 end)
@@ -684,7 +435,7 @@ end
 ---@return any
 ---@public
 LSLegacy.SpawnPedZone = function(hash, coords, zone, source)
-    LSLegacy.SendEventToClient("SpawnPedZone", source, hash, coords, zone)
+    LSLegacy.SendEventToClient("lslegacy:spawnPedZone", source, hash, coords, zone)
 end
 
 ---StringSplit
@@ -713,7 +464,7 @@ end
 LSLegacy.CreateDuplicationOfATableWithoutFunctions = function(table)
     local newTable = {}
     for k, v in pairs(table) do
-        if not type(v) == "function" then
+        if type(v) ~= "function" then
             newTable[k] = v
         end
     end
@@ -754,3 +505,60 @@ end)
 exports('getSharedObject', function()
     return LSLegacy
 end)
+
+-- Les exports FiveM sérialisent (deep-copy) les tables entre resources :
+-- getPlayerFromId ne renvoie jamais LSLegacy.ServerPlayers[source] par
+-- référence à un appelant externe (ex: lb-phone). Toute mutation doit donc
+-- passer par un export qui écrit directement dans la table vive ici
+-- (des fonctions callback ne suffiraient pas non plus : si elles s'exécutent
+-- côté appelant, leurs mutations sur les arguments reçus ne reviennent pas
+-- non plus dans cette table).
+exports('setPhoneNumberOnItem', function(source, itemName, phoneNumber, formattedNumber)
+    local player = LSLegacy.ServerPlayers[source]
+    if not player then return false end
+
+    for k, item in pairs(player.inventory) do
+        if item.name == itemName and (item.data == nil or item.data.lbPhoneNumber == nil) then
+            player.inventory[k].data = {
+                lbPhoneNumber     = phoneNumber,
+                lbFormattedNumber = formattedNumber,
+            }
+            player:MarkDirty('inventory')
+            LSLegacy.Events.SendToClient('lslegacy:updatePlayer', source, player)
+            return true
+        end
+    end
+
+    return false
+end)
+
+exports('setPhoneItemName', function(source, itemName, phoneNumber, name, formattedNumber)
+    local player = LSLegacy.ServerPlayers[source]
+    if not player then return false end
+
+    for k, item in pairs(player.inventory) do
+        if item.name == itemName and item.data and tostring(item.data.lbPhoneNumber) == tostring(phoneNumber) then
+            player.inventory[k].data.lbPhoneName      = name
+            player.inventory[k].data.lbFormattedNumber = formattedNumber
+            player:MarkDirty('inventory')
+            LSLegacy.Events.SendToClient('lslegacy:updatePlayer', source, player)
+            return true
+        end
+    end
+
+    return false
+end)
+
+---LSLegacy.Events — API réseau côté serveur, regroupe les fonctions déjà en place sur LSLegacy.*.
+LSLegacy.Events = {
+    Register = LSLegacy.RegisterServerEvent,
+    Use = LSLegacy.UseServerEvent,
+    TriggerLocal = LSLegacy.TriggerLocalEvent,
+    SendToClient = LSLegacy.SendEventToClient,
+    AddHandler = LSLegacy.AddEventHandler,
+}
+
+---LSLegacy.Utils — utilitaires génériques (regroupe LSLegacy.Math pour l'instant).
+LSLegacy.Utils = {
+    Math = LSLegacy.Math,
+}

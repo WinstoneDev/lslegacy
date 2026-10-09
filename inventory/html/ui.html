@@ -171,6 +171,10 @@
         <li class="context-menu-option" data-action="give"></li>
         <li class="context-menu-option" data-action="drop"></li>
         <li class="context-menu-option" data-action="unload" id="contextMenuUnload"></li>
+        <li class="context-menu-option" data-action="accessories" id="contextMenuAccessories"></li>
+        <li class="context-menu-option" data-action="cougarAmmo" id="contextMenuCougarAmmo"></li>
+        <li class="context-menu-option" data-action="trainingAmmo" id="contextMenuTrainingAmmo"></li>
+        <li class="context-menu-option" data-action="delete" id="contextMenuDelete"></li>
     </ul>
 
 <script>
@@ -185,6 +189,10 @@ $(document).ready(function() {
     $("#itemContextMenu [data-action='give']").text(invLocale.giveItem);
     $("#itemContextMenu [data-action='drop']").text(invLocale.dropItem);
     $("#itemContextMenu [data-action='unload']").text(invLocale.unloadItem);
+    $("#itemContextMenu [data-action='accessories']").text(invLocale.accessoriesItem);
+    $("#itemContextMenu [data-action='cougarAmmo']").text(invLocale.cougarAmmoItem);
+    $("#itemContextMenu [data-action='trainingAmmo']").text(invLocale.trainingAmmoItem);
+    $("#itemContextMenu [data-action='delete']").text(invLocale.deleteItem);
 
     if ($.fn.dialog) {
         $("#dialog").dialog({ autoOpen: false, modal: true, width: 300, resizable: false, draggable: false });

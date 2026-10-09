@@ -24,7 +24,7 @@ Pour modifier ou étendre le framework, voir [DEVELOPMENT.md](DEVELOPMENT.md) (a
   - [`oxmysql`](https://github.com/overextended/oxmysql)
   - `xsound`
   - `ox_target`
-  - `screenshot-basic` (captures d'écran utilisées par l'anticheat et le menu admin)
+  - `screencapture` (fourni dans `resources/screencapture`, captures d'écran/vidéo utilisées par l'anticheat et le menu admin, remplace screenshot-basic)
   - `codem-dynamicweather` (piloté automatiquement par `module/weather`)
 
 ### Étapes
@@ -37,7 +37,7 @@ Pour modifier ou étendre le framework, voir [DEVELOPMENT.md](DEVELOPMENT.md) (a
    ensure oxmysql
    ensure xsound
    ensure ox_target
-   ensure screenshot-basic
+   ensure screencapture
    ensure codem-dynamicweather
    ensure lslegacy
    ```
@@ -73,7 +73,7 @@ Le framework est organisé en un socle central (`client/`, `server/`, `shared/`,
 | `bank` | Banque (comptes, livrets, cartes, distributeurs) |
 | `clothshop` | Boutique de vêtements avec aperçu 3D |
 | `concessionnaire` | Concession automobile |
-| `creatorPerso` | Création de personnage (identité, apparence, hérédité) |
+| `creatorperso` | Création de personnage (identité, apparence, hérédité) |
 | `emotes` | Menu d'émotes (gestes, danses, objets, animaux) |
 | `farm` | Activités de récolte libres (bûcheron, mineur, pêcheur, agriculteur, chasseur) |
 | `fourriere` | Fourrière de véhicules |
@@ -87,8 +87,8 @@ Le framework est organisé en un socle central (`client/`, `server/`, `shared/`,
 | `metro` | Métro et rames ambiantes |
 | `multichar` | Sélection de personnages et appartements |
 | `needs` | Faim et soif |
-| `pedOffline` | PNJ représentant un joueur déconnecté |
-| `persistent_vehicles` | Persistance des véhicules (état, dégâts, stabilité) |
+| `pedoffline` | PNJ représentant un joueur déconnecté |
+| `persistentvehicles` | Persistance des véhicules (état, dégâts, stabilité) |
 | `police` | Job Police Nationale (actions, radio, enquêtes, prison, callouts) |
 | `pompe` | Pompes à essence publiques |
 | `pompiers` | Job Sapeurs-Pompiers |
@@ -101,7 +101,7 @@ Le framework est organisé en un socle central (`client/`, `server/`, `shared/`,
 
 ## Dépendances externes
 
-Non fournies dans ce dépôt, à installer séparément (voir [Installation](#installation)) : `ox_lib`, `oxmysql`, `xsound`, `ox_target`, `screenshot-basic`, `codem-dynamicweather`.
+Non fournies dans ce dépôt, à installer séparément (voir [Installation](#installation)) : `ox_lib`, `oxmysql`, `xsound`, `ox_target`, `codem-dynamicweather`. `screencapture` est fourni directement dans `resources/screencapture`.
 
 ## Crédits
 
@@ -109,7 +109,7 @@ LS Legacy intègre du code adapté et des assets créés par d'autres membres de
 
 - **RageUI** — bibliothèque de menu, par Dylan Malandain (Manason)
 - **[rpemotes-reborn](https://github.com/alberttheprince/rpemotes-reborn)** — base du module `emotes` (animations, traduit en français)
-- **[CutScene](https://github.com/Doublox/CutScene)** par Doublox — base de la cinématique d'introduction (`module/creatorPerso`)
+- **[CutScene](https://github.com/Doublox/CutScene)** par Doublox — base de la cinématique d'introduction (`module/creatorperso`)
 - **[disablecombatroll](https://github.com/JellyJamm/disablecombatroll)** par JellyJamm
 - **[tgiann-anti-strafe](https://github.com/TGIANN/tgiann-anti-strafe)** par TGIANN
 - **[mnr_sitanywhere](https://github.com/Monarch-Devs/mnr_sitanywhere)** (MIT) par Monarch-Devs — base du module `sit`

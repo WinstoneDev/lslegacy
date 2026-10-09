@@ -2,12 +2,10 @@
 
 Config = Config or {}
 Config.Interim = {
-    -- Event de notification (framework)
-    NotifyEvent = 'brutal_notify:SendAlert',
 
     -- PNJ chantier (prise/fin de service) — pos 2
     Ped = {
-        model   = 's_m_y_construct_01',
+        model   = 's_m_m_dockwork_01',
         coords  = vector3(136.720886, -2472.751709, 5.993408),
         heading = 238.11,
     },
@@ -98,15 +96,19 @@ Config.Interim = {
     },
 
     -- Économie — cible ~400 $/h (voir plan, à recalibrer après test en jeu
-    -- réel des nouvelles durées de remplissage). Litres réels : la citerne
-    -- transfère exactement ce qu'il faut à la station pour atteindre son
-    -- plafond (stationCapacity - niveau actuel), plafonné par ce qu'il reste
-    -- dans la citerne.
+    -- réel des nouvelles durées de remplissage). Chaque station est
+    -- considérée VIDE à l'arrivée du camion (pas de niveau réel suivi) :
+    -- un plein consomme toujours stationCapacity litres dans la citerne
+    -- (15000 / 5000 = 3 stations par pleine citerne) et paye pricePerStation
+    -- à prix fixe, quel que soit le manque réel — évite un paiement
+    -- dégressif trop punitif. La station reste ensuite "pleine" (non
+    -- ravitaillable) pendant stationCooldownSec, pour forcer la rotation
+    -- entre stations plutôt que de toujours refaire les mêmes.
     Economy = {
         trailerCapacity    = 15000, -- litres, capacité max de la citerne du camion
-        stationCapacity    = 5000, -- litres, capacité max d'une station
-        pricePerStation    = 90,  -- paiement par station amenée à sa capacité max
-        stationCooldownSec = 120,  
+        stationCapacity    = 5000, -- litres, capacité max d'une station (= consommation fixe par plein)
+        pricePerStation    = 65,   -- paiement fixe par plein, quel que soit le manque réel
+        stationCooldownSec = 3600, -- 1h avant qu'une station redevienne ravitaillable
     },
 
     Actions = {
