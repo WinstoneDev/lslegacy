@@ -343,6 +343,7 @@ SCREENS.playerVehicle = function () {
     return list([
         item({ label: 'Réparer le véhicule', enabled: state.lvl >= 3 && sel, onClick: () => act('repairVehicle', {}) }),
         item({ label: 'Supprimer le véhicule', enabled: state.lvl >= 3 && sel, danger: true, onClick: () => act('deletePlayerVehicle', {}) }),
+        item({ label: 'Retirer le véhicule (garde la persistance)', enabled: state.lvl >= 3 && sel, onClick: () => act('despawnPlayerVehicle', {}) }),
         item({
             label: 'Spawn un véhicule (AP)', enabled: state.lvl >= 3 && sel, onClick: async () => {
                 const model = await promptText('Spawn véhicule', 'Nom du modèle (ex: adder)', { maxlength: 50 });
@@ -390,6 +391,7 @@ SCREENS.playerSanction = function () {
             }
         }),
         item({ label: 'Screenshot joueur', enabled: state.lvl >= 2 && sel, onClick: () => act('screenshotPlayer', {}) }),
+        item({ label: 'Enregistrer 10s de vidéo', enabled: state.lvl >= 2 && sel, onClick: () => act('recordPlayer', {}) }),
     ]);
     return html;
 };

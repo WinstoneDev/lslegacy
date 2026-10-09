@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS `mdt_fines` (
 --  mdt_intervention_reports — Rapports d'intervention
 --  Le compte rendu rédigé par un agent après une intervention.
 --  type  : intervention | maincourante | accident | judiciaire
---  joint : intervention menée conjointement police / gendarmerie
+--  joint : intervention menée conjointement police / shérif
 -- -------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `mdt_intervention_reports` (
     `id`                INT(11)      NOT NULL AUTO_INCREMENT,
@@ -406,6 +406,7 @@ CREATE TABLE IF NOT EXISTS `mdt_agent_career` (
     `grade_index`  INT(11)      NOT NULL,
     `start_date`   VARCHAR(20)  NOT NULL DEFAULT '',
     `end_date`     VARCHAR(20)  NOT NULL DEFAULT '',
+    `changed_by`   VARCHAR(100) NOT NULL DEFAULT '',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uq_career` (`character_id`, `grade_index`),
     KEY `idx_career_identifier` (`identifier`)

@@ -433,11 +433,11 @@ CREATE TABLE IF NOT EXISTS `farm_shop_stock` (
 
 
 -- -------------------------------------------------------------
---  TABLE : gendarmerie_officers
---  Registre des agents du métier Gendarmerie (prise/fin de service).
---  Créée/chargée dans : module/gendarmerie/server/main.lua
+--  TABLE : sheriff_deputies
+--  Registre des agents du métier Sheriff (prise/fin de service).
+--  Créée/chargée dans : module/sheriff/server/main.lua
 -- -------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `gendarmerie_officers` (
+CREATE TABLE IF NOT EXISTS `sheriff_deputies` (
     `id`         INT(11)      NOT NULL AUTO_INCREMENT,
     `identifier` VARCHAR(60)  NOT NULL,
     `name`       VARCHAR(100) NOT NULL DEFAULT '',
@@ -514,11 +514,11 @@ CREATE TABLE IF NOT EXISTS `mecanicien_stock` (
 
 
 -- -------------------------------------------------------------
---  TABLE : pompiers_agents
---  Registre des agents du métier Pompiers (prise/fin de service).
---  Créée/chargée dans : module/pompiers/server/main.lua
+--  TABLE : lsfd_agents
+--  Registre des agents du métier LSFD (prise/fin de service).
+--  Créée/chargée dans : module/lsfd/server/main.lua
 -- -------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `pompiers_agents` (
+CREATE TABLE IF NOT EXISTS `lsfd_agents` (
     `id`         INT(11)      NOT NULL AUTO_INCREMENT,
     `identifier` VARCHAR(60)  NOT NULL,
     `name`       VARCHAR(100) NOT NULL DEFAULT '',
@@ -526,18 +526,18 @@ CREATE TABLE IF NOT EXISTS `pompiers_agents` (
     `duty_since` DATETIME              DEFAULT NULL,
     `last_seen`  DATETIME              DEFAULT NULL,
     PRIMARY KEY (`id`),
-    KEY `idx_pa_identifier` (`identifier`)
+    KEY `idx_la_identifier` (`identifier`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
 -- -------------------------------------------------------------
---  TABLE : samu_agents
---  Registre des agents du métier SAMU (prise/fin de service).
+--  TABLE : ems_agents
+--  Registre des agents du métier EMS (prise/fin de service).
 --  Le dossier médical (mdt_med_*) est documenté séparément dans
---  module/samu/sql/medical.sql.
---  Créée/chargée dans : module/samu/server/main.lua
+--  module/ems/sql/medical.sql.
+--  Créée/chargée dans : module/ems/server/main.lua
 -- -------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `samu_agents` (
+CREATE TABLE IF NOT EXISTS `ems_agents` (
     `id`         INT(11)      NOT NULL AUTO_INCREMENT,
     `identifier` VARCHAR(60)  NOT NULL,
     `name`       VARCHAR(100) NOT NULL DEFAULT '',
@@ -627,7 +627,7 @@ CREATE TABLE IF NOT EXISTS `police_custody` (
     `officer_id`   VARCHAR(60)  NOT NULL DEFAULT '',
     `officer_name` VARCHAR(100) NOT NULL DEFAULT '',
 
-    -- Département ayant procédé au placement (police, gendarmerie, ...)
+    -- Département ayant procédé au placement (police, shérif, ...)
     `department`   VARCHAR(50)  NOT NULL DEFAULT 'police',
 
     PRIMARY KEY (`id`),
@@ -885,7 +885,7 @@ CREATE TABLE IF NOT EXISTS `exit_sleeping` (
 -- =============================================================
 --  - keyhanger_boards          → module/keyhanger/keyhanger.sql
 --  - mdt_* (22 tables police)  → module/mdt/sql/mdt.sql
---  - mdt_med_* (SAMU)          → module/samu/sql/medical.sql
+--  - mdt_med_* (EMS)          → module/ems/sql/medical.sql
 --  - atelier_* (4 tables)      → module/atelier/sql/atelier.sql
 --  - emotes_favorites          → module/emotes/sql/emotes.sql
 --  - phone_* (lb-phone)        → [Autres]/lb-phone/phone.sql (ressource tierce)
@@ -904,8 +904,8 @@ CREATE TABLE IF NOT EXISTS `exit_sleeping` (
 --    6. admin_warns, support_tickets
 --    7. owned_vehicles, concessionnaire_occasions
 --    8. fourriere, interim_stations, farm_shop_stock
---    9. gendarmerie_officers, ltd_agents, ltd_stock,
---       mecanicien_agents, mecanicien_stock, pompiers_agents, samu_agents
+--    9. sheriff_deputies, ltd_agents, ltd_stock,
+--       mecanicien_agents, mecanicien_stock, lsfd_agents, ems_agents
 --   10. police_officers, police_cuffed, police_radio_channels,
 --       police_custody, police_prison
 --   11. police_callouts, police_callout_agents

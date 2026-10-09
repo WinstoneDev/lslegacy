@@ -73,7 +73,7 @@ UPDATE `mdt_warrants` t JOIN `players` p ON p.identifier = t.author_identifier A
     SET t.author_character_id = p.`boutique-id`;
 
 -- -------------------------------------------------------------------
--- mdt_med_records — rôle unique (patient), module/samu/server/mdt_medical.lua
+-- mdt_med_records — rôle unique (patient), module/ems/server/mdt_medical.lua
 -- -------------------------------------------------------------------
 
 ALTER TABLE `mdt_med_records` ADD COLUMN `character_id` INT NULL AFTER `identifier`;

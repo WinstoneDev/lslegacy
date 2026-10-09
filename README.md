@@ -24,7 +24,7 @@ Pour modifier ou étendre le framework, voir [DEVELOPMENT.md](DEVELOPMENT.md) (a
   - [`oxmysql`](https://github.com/overextended/oxmysql)
   - `xsound`
   - `ox_target`
-  - `screenshot-basic` (captures d'écran utilisées par l'anticheat et le menu admin)
+  - `screencapture` (fourni dans `resources/screencapture`, captures d'écran/vidéo utilisées par l'anticheat et le menu admin, remplace screenshot-basic)
   - `codem-dynamicweather` (piloté automatiquement par `module/weather`)
 
 ### Étapes
@@ -37,7 +37,7 @@ Pour modifier ou étendre le framework, voir [DEVELOPMENT.md](DEVELOPMENT.md) (a
    ensure oxmysql
    ensure xsound
    ensure ox_target
-   ensure screenshot-basic
+   ensure screencapture
    ensure codem-dynamicweather
    ensure lslegacy
    ```
@@ -101,7 +101,7 @@ Le framework est organisé en un socle central (`client/`, `server/`, `shared/`,
 
 ## Dépendances externes
 
-Non fournies dans ce dépôt, à installer séparément (voir [Installation](#installation)) : `ox_lib`, `oxmysql`, `xsound`, `ox_target`, `screenshot-basic`, `codem-dynamicweather`.
+Non fournies dans ce dépôt, à installer séparément (voir [Installation](#installation)) : `ox_lib`, `oxmysql`, `xsound`, `ox_target`, `codem-dynamicweather`. `screencapture` est fourni directement dans `resources/screencapture`.
 
 ## Crédits
 

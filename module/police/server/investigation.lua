@@ -5,8 +5,7 @@ local sceneCounter = 0
 
 local function HasInvPermission(src)
     if not IsLawEnforcementOnDuty(src) then return false end
-    local grade = tonumber(GetPlayer(src).job_grade) or 0
-    return LSLegacy.MDT.HasPermission('police', grade, 'view_evidence')
+    return HasPermission(src, 'view_evidence')
 end
 
 local function Notify(src, msg, t)
@@ -140,6 +139,7 @@ LSLegacy.Events.Register('police:inv:collectFingerprints', function(data)
             ['@ident'] = tIdent,
         }
     )
+    IncrementPoliceStat(oIdent, oCharId, oName, 'evidence_count', 1)
 end)
 
 -- Comparaison empreintes
@@ -199,6 +199,7 @@ LSLegacy.Events.Register('police:inv:collectDNA', function(data)
           ['@ref'] = ref, ['@desc'] = 'Prélèvement ADN sur ' .. tName,
           ['@oid'] = oIdent, ['@oname'] = oName, ['@ident'] = tIdent }
     )
+    IncrementPoliceStat(oIdent, oCharId, oName, 'evidence_count', 1)
 end)
 
 LSLegacy.Events.Register('police:inv:compareDNA', function(data)
@@ -250,6 +251,7 @@ LSLegacy.Events.Register('police:inv:collectBlood', function(data)
           ['@ref'] = ref, ['@desc'] = string.format('Trace de sang — %.1f / %.1f / %.1f', data.x or 0, data.y or 0, data.z or 0),
           ['@oid'] = oIdent, ['@oname'] = oName }
     )
+    IncrementPoliceStat(oIdent, GetCharacterId(src), oName, 'evidence_count', 1)
 end)
 
 --  SCÈNE DE CRIME
@@ -257,7 +259,7 @@ end)
 LSLegacy.Events.Register('police:inv:createScene', function(data)
     local src = source
     if not HasInvPermission(src) then return end
-    if not LSLegacy.MDT.HasPermission('police', tonumber(GetPlayer(src).job_grade) or 0, 'manage_evidence') then
+    if not HasPermission(src, 'manage_evidence') then
         LSLegacy.Events.SendToClient('notify', src, 'PTS', Lang.Police.grade_required, 'error', 4000)
         return
     end
@@ -274,13 +276,23 @@ LSLegacy.Events.Register('police:inv:createScene', function(data)
         { ['@sid'] = sceneId, ['@oid'] = oIdent, ['@charId'] = GetCharacterId(src), ['@oname'] = oName,
           ['@x'] = data.x or 0, ['@y'] = data.y or 0, ['@z'] = data.z or 0 }
     )
+    IncrementPoliceStat(oIdent, GetCharacterId(src), oName, 'evidence_count', 1)
 
-    -- Diffuser la scène à tous les policiers en service
+    -- Diffuser la scène à tous les policiers en service, et aux adjoints du shérif
+    -- si le module est actif (une scène est ouverte à toutes les forces de l'ordre)
     for officer_src in pairs(GetPoliceOfficers()) do
         TriggerClientEvent('police:inv:sceneCreated', officer_src, {
             sceneId = sceneId,
             x = data.x, y = data.y, z = data.z,
         })
+    end
+    if type(GetDeputies) == 'function' then
+        for officer_src in pairs(GetDeputies()) do
+            TriggerClientEvent('police:inv:sceneCreated', officer_src, {
+                sceneId = sceneId,
+                x = data.x, y = data.y, z = data.z,
+            })
+        end
     end
 end)
 

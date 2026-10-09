@@ -4,8 +4,10 @@ LSLegacy.Events.Register("lslegacy:injuryEnterComa", function()
     if not player then return end
     player.isComa            = true
     player.isKO              = false
+    player.wasTreated        = false
     player.status.comaUntil  = os.time() + Config.Injury.ComaDuration
     Config.Development.Print(("[Injury] %s est en coma jusqu'à %d"):format(GetPlayerName(src), player.status.comaUntil))
+    if FarmMetier then FarmMetier.OnDeath(src) end
 end)
 
 LSLegacy.Events.Register("lslegacy:injuryExitComa", function()
@@ -28,14 +30,14 @@ LSLegacy.Events.Register("lslegacy:injuryRespawn", function()
     LSLegacy.Events.SendToClient("lslegacy:clientRespawn", src)
 end)
 
--- Relayé au module SAMU via "samu:patientCall" pour notifier ses agents en service
+-- Relayé au module EMS via "ems:patientCall" pour notifier ses agents en service
 LSLegacy.Events.Register("lslegacy:injuryCallEMS", function()
     local src = source
     local player = LSLegacy.ServerPlayers[src]
     if not player or not player.isComa then return end
     local ped    = GetPlayerPed(src)
     local coords = GetEntityCoords(ped)
-    TriggerEvent("samu:patientCall", { source = src, coords = coords, name = GetPlayerName(src) })
+    TriggerEvent("ems:patientCall", { source = src, coords = coords, name = GetPlayerName(src) })
     Config.Development.Print(("[Injury] %s appelle les EMS depuis le coma"):format(GetPlayerName(src)))
 end)
 
@@ -43,8 +45,9 @@ LSLegacy.Events.Register("lslegacy:injuryEnterKO", function()
     local src = source
     local player = LSLegacy.ServerPlayers[src]
     if not player then return end
-    player.isKO   = true
-    player.isComa = false
+    player.isKO      = true
+    player.isComa    = false
+    player.wasTreated = false
 end)
 
 LSLegacy.Events.Register("lslegacy:injuryExitKO", function()
@@ -54,7 +57,7 @@ LSLegacy.Events.Register("lslegacy:injuryExitKO", function()
     player.isKO = false
 end)
 
--- Utilisé par la trousse de soins SAMU/Pompiers
+-- Utilisé par la trousse de soins EMS/LSFD
 LSLegacy.Events.Register("lslegacy:injurySyncWound", function(data)
     local src = source
     local player = LSLegacy.ServerPlayers[src]
@@ -62,7 +65,7 @@ LSLegacy.Events.Register("lslegacy:injurySyncWound", function(data)
     player.lastWound = { category = data.category, zone = data.zone, time = os.time() }
 end)
 
--- Health Inspection — état des blessures par membre (SAMU). En mémoire
+-- Health Inspection — état des blessures par membre (EMS). En mémoire
 -- uniquement, remis à zéro à la reconnexion et à chaque sortie de KO/coma/respawn.
 LSLegacy.Injury = {}
 
@@ -151,18 +154,53 @@ LSLegacy.Injury.ApplyTreatment = function(src, part, itemDef)
     if not player.wounds then LSLegacy.Injury.InitWounds(src) end
     local w = player.wounds[part]
     if not w then return false end
-    w.hp = math.min(100, w.hp + itemDef.heal)
+
+    if w.hp >= 100 then return false end
+
+    -- Un item ne soigne QUE s'il traite au moins une blessure réellement
+    -- présente sur ce membre (ex. poche de glace {bruising,blunt} sur une
+    -- blessure par balle ne fait RIEN). Le bon soin traite intégralement
+    -- CE type de blessure (compteur remis à 0 d'un coup, pas décrémenté au
+    -- montant fixe de l'item) : plus de reliquat de PV à combler une fois
+    -- le mauvais soin exclu.
+    local treatedAny = false
     for _, t in ipairs(itemDef.treats) do
         if (w.injuries[t] or 0) > 0 then
-            w.injuries[t] = w.injuries[t] - 1
+            w.injuries[t] = 0
+            treatedAny = true
         end
     end
+    if not treatedAny then return false end
+
+    -- S'il ne reste plus AUCUNE blessure active sur le membre (cas courant :
+    -- un seul type de blessure à la fois), il repasse directement à 100%.
+    -- S'il reste un AUTRE type non traité par cet item (plusieurs blessures
+    -- différentes sur le même membre), seul le montant de soin de l'item
+    -- s'applique — un autre soin adapté reste nécessaire pour le reste.
+    local stillInjured = false
+    for _, t in ipairs(LSLegacy.Injury.InjuryTypes) do
+        if (w.injuries[t] or 0) > 0 then stillInjured = true break end
+    end
+    w.hp = stillInjured and math.min(100, w.hp + itemDef.heal) or 100
+
+    -- Marque le patient comme pris en charge : condition à la réanimation
+    -- (cf. ems:revive), remis à false à chaque nouvelle entrée en KO/coma.
+    player.wasTreated = true
     return true
+end
+
+---WasTreated : le patient a-t-il reçu au moins un soin depuis son dernier
+---passage en KO/coma ? Condition préalable à la réanimation (ems:revive).
+---@param src number
+---@return boolean
+LSLegacy.Injury.WasTreated = function(src)
+    local player = LSLegacy.ServerPlayers[src]
+    return player ~= nil and player.wasTreated == true
 end
 
 -- Le SERVEUR fait la conversion catégorie→type de blessure (jamais confiance
 -- au client) ; aucun SetEntityHealth ici, cf. ApplyDamage.
-LSLegacy.Events.Register('samu:hiDamage', function(data)
+LSLegacy.Events.Register('ems:hiDamage', function(data)
     local src = source
     if type(data) ~= 'table' then return end
 
@@ -178,7 +216,7 @@ LSLegacy.Events.Register('samu:hiDamage', function(data)
         processed = processed + 1
         if processed > maxEntries then break end
         if type(entry) == 'table' and LSLegacy.Injury.IsValidPart(entry.part) then
-            local injuryType = Config.SAMU.HealthInspection.CategoryToInjury[entry.category] or 'broken'
+            local injuryType = Config.EMS.HealthInspection.CategoryToInjury[entry.category] or 'broken'
             local amount = math.min(100, math.max(0, tonumber(entry.amount) or 0))
             if amount > 0 then
                 LSLegacy.Injury.ApplyDamage(src, entry.part, injuryType, amount)

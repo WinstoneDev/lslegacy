@@ -7,7 +7,8 @@ end
 LSLegacy.Events.Register('concessionnaire:buyResult', function(data)
     if not data then return end
     if data.success then
-        Notify(string.format(Lang.Concessionnaire.bought, data.label or '?'), 'success')
+        local key = data.forJob and 'bought_job' or 'bought'
+        Notify(string.format(Lang.Concessionnaire[key], data.label or '?'), 'success')
     else
         local msg = Lang.Concessionnaire[data.reason] or Lang.Concessionnaire.purchase_failed
         Notify(msg, 'error')

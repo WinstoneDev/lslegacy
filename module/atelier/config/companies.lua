@@ -19,45 +19,19 @@ local DefaultGrades = {
     [7] = { label = "Patron",                grants = { 'manage_company' } },
 }
 
--- Tenues de vestiaire par défaut (grade 0 = accessible à tous les employés)
-local function DefaultOutfits()
-    return {
-        {
-            label = 'Bleu de travail',
-            grade = 0,
-            male   = {
-                tshirt_1 = 13, tshirt_2 = 0, torso_1 = 12, torso_2 = 0,
-                pants_1  = 4,  pants_2  = 0, shoes_1 = 6,  shoes_2 = 0,
-                helmet_1 = -1, helmet_2 = -1, chain_1 = -1, chain_2 = -1, ears_1 = -1, ears_2 = -1,
-            },
-            female = {
-                tshirt_1 = 13, tshirt_2 = 0, torso_1 = 11, torso_2 = 0,
-                pants_1  = 8,  pants_2  = 0, shoes_1 = 4,  shoes_2 = 0,
-                helmet_1 = -1, helmet_2 = -1, chain_1 = -1, chain_2 = -1, ears_1 = -1, ears_2 = -1,
-            },
-        },
-    }
-end
-
 Config.Atelier.Companies.reds = {
     label     = "Red's Tunershop",
     job       = 'mechanic_reds',
     stashName = 'atelier_reds',     -- DataStore du stock de pièces
-    color     = '#c0392b',
+    color     = '#8b1a1a',          -- rouge sombre/brique, style brut orienté tuning pur
 
-    -- TODO : coordonnées non fournies dans le cahier des charges, à
-    -- ajuster à l'emplacement réel de Red's Tunershop sur votre map.
-    headquarters        = vector3(732.36, -1088.16, 22.17),
-    headquartersHeading = 0.0,
-    clothingCoords       = vector3(736.0, -1092.0, 22.17),
-    garageCoords          = vector3(725.0, -1085.0, 22.17),
-    partsDepotCoords       = vector3(730.0, -1080.0, 22.17),
+    headquarters        = vector3(-686.663757, -2454.026367, 17.249023),
+    headquartersHeading = 280.62991333008,
+    partsDepotCoords       = vector3(-663.718689, -2427.626465, 14.350952),
 
     blips = {
-        { sprite = 446, color = 4, scale = 0.9, label = "Red's Tunershop" },
+        { sprite = 446, color = 1, scale = 0.9, label = "Red's Tunershop" },
     },
-
-    outfits = DefaultOutfits(),
 
     vehicles = {
         tow = {
@@ -74,20 +48,16 @@ Config.Atelier.Companies.bennys = {
     label     = "Benny's Original Motor Works",
     job       = 'mechanic_bennys',
     stashName = 'atelier_bennys',
-    color     = '#2980b9',
+    color     = '#b8860b',          -- or/moutarde street, assez sombre pour rester lisible en blanc sur l'en-tête MDT
 
     -- Reprend les coordonnées réelles de l'ancien module mecanicien.
     headquarters        = vector3(-202.95, -1307.71, 31.29),
     headquartersHeading = 30.0,
-    clothingCoords       = vector3(-207.5, -1311.0, 31.29),
-    garageCoords          = vector3(-195.0, -1303.0, 31.29),
     partsDepotCoords       = vector3(-199.0, -1315.0, 31.29),
 
     blips = {
-        { sprite = 446, color = 5, scale = 0.9, label = "Benny's Original Motor Works" },
+        { sprite = 446, color = 4, scale = 0.9, label = "Benny's Original Motor Works" },
     },
-
-    outfits = DefaultOutfits(),
 
     vehicles = {
         tow = {

@@ -11,7 +11,7 @@ local function Notify(src, msg, t)
     LSLegacy.Events.SendToClient('notify', src, 'Station essence', msg, t or 'info', 5000)
 end
 
--- Vérifie l'argent du joueur ET le stock de la station avant d'autoriser le client à délivrer de l'essence.
+-- Vérifie le stock de la station avant d'autoriser le client à délivrer de l'essence (l'argent est vérifié au paiement, espèces ou carte).
 LSLegacy.Events.Register('pompe:requestFill', function(data)
     local src = source
     local player = GetPlayer(src)
@@ -37,15 +37,12 @@ LSLegacy.Events.Register('pompe:requestFill', function(data)
             return Notify(src, 'Cette station est actuellement à sec.', 'error')
         end
 
-        -- Vérification de l'argent AVANT toute délivrance : le joueur ne
-        -- peut jamais recevoir plus d'essence que ce qu'il peut payer.
-        local money = LSLegacy.Money.GetPlayerMoney(player) or 0
-        local affordableLiters = math.floor(money / CFG.PricePerLiter)
-        if affordableLiters <= 0 then
-            return Notify(src, 'Fonds insuffisants.', 'error')
-        end
-
-        local maxDeliverable = math.min(needed, stock, affordableLiters)
+        -- Pas de pré-check d'argent ici : le paiement peut se faire en
+        -- espèces OU en carte bleue (payment menu), et seul ce dernier
+        -- connaît le solde bancaire. La solvabilité réelle est vérifiée
+        -- au moment du paiement ('pay' event) ; en cas d'échec, le plein
+        -- visuel est annulé côté client (voir pompe:fuelPaymentFailed).
+        local maxDeliverable = math.min(needed, stock)
         if maxDeliverable <= 0 then
             return Notify(src, 'Rien à ravitailler.', 'error')
         end
@@ -66,6 +63,11 @@ LSLegacy.Bank.RegisterPaymentResultHandler('pompe', function(token, success)
     PendingFuel[token] = nil
     if not success then
         Notify(pending.src, 'Paiement annulé, plein non facturé.', 'error')
+        LSLegacy.Events.SendToClient('pompe:fuelPaymentFailed', pending.src, {
+            netId = pending.netId,
+            currentLiters = pending.currentLiters,
+            capacity = pending.capacity,
+        })
         return
     end
 
@@ -93,7 +95,10 @@ LSLegacy.Events.Register('pompe:payFuel', function(data)
 
     local stationId = data.stationId
     local liters = math.floor(tonumber(data.liters) or 0)
-    if type(stationId) ~= 'string' or liters <= 0 then return end
+    local netId = tonumber(data.netId)
+    local currentLiters = math.floor(tonumber(data.currentLiters) or 0)
+    local capacity = math.floor(tonumber(data.capacity) or 0)
+    if type(stationId) ~= 'string' or liters <= 0 or capacity <= 0 then return end
 
     MySQL.Async.fetchAll('SELECT fuel_liters FROM interim_stations WHERE id=@id LIMIT 1', { ['@id'] = stationId }, function(rows)
         if not rows or not rows[1] then return end
@@ -107,8 +112,18 @@ LSLegacy.Events.Register('pompe:payFuel', function(data)
         local price = math.floor((actualLiters * CFG.PricePerLiter) * 100 + 0.5) / 100
 
         local token = ('pompe_%d_%d'):format(src, math.random(100000, 999999))
-        PendingFuel[token] = { src = src, stationId = stationId, liters = actualLiters, price = price }
-        Citizen.SetTimeout(120000, function() PendingFuel[token] = nil end)
+        PendingFuel[token] = {
+            src = src,
+            stationId = stationId,
+            liters = actualLiters,
+            price = price,
+            netId = netId,
+            currentLiters = currentLiters,
+            capacity = capacity,
+        }
+        Citizen.SetTimeout(120000, function()
+            PendingFuel[token] = nil
+        end)
         LSLegacy.Bank.OpenPaymentMenu(src, ('Essence - %dL'):format(actualLiters), price, { meta = { type = 'pompe', refId = token } })
     end)
 end)

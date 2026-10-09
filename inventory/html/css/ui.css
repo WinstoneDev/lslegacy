@@ -777,3 +777,31 @@ input[type=number] { -moz-appearance: textfield; }
     .cloth-slot { width: 56px; height: 56px; }
     .cloth-slot-label { font-size: 8px; }
 }
+
+/* ── Infobulle d'item (survol) ───────────────────────────────────────────
+   Ajoutée pour la péremption des aliments (module/foodapi) : le temps
+   restant n'est lisible nulle part ailleurs dans l'inventaire. */
+#itemTooltip {
+    position: fixed;
+    z-index: 99999;
+    pointer-events: none;
+    display: none;
+    min-width: 140px;
+    max-width: 260px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: rgba(14, 14, 16, 0.96);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+    color: #e8e8ea;
+    font-family: inherit;
+    font-size: 12px;
+    line-height: 1.45;
+}
+#itemTooltip .tt-title  { font-weight: 700; margin-bottom: 3px; }
+#itemTooltip .tt-line   { opacity: 0.78; }
+#itemTooltip .tt-fresh  { margin-top: 5px; font-weight: 600; }
+#itemTooltip .tt-ok     { color: #6fcf6f; }
+#itemTooltip .tt-warn   { color: #f0b23c; }
+#itemTooltip .tt-bad    { color: #e5544b; }
+#itemTooltip .tt-cold   { color: #62b6ff; }

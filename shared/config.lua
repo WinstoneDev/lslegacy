@@ -21,13 +21,15 @@ Config.DiscordStatus = {
 Config.UseStamina = false
 
 Config.Population = {
-    PedDensity = 0.5,
-    VehicleDensity = 0.5,
-    ParkedVehicleDensity = 0.5,
+    PedDensity = 0.8,
+    VehicleDensity = 0.8,
+    ParkedVehicleDensity = 0.8,
     LockAmbientVehicles = true,
 }
 
 Config.AP = {}
+-- Trace serveur des couleurs appliquées à chaque spawn (diagnostic)
+Config.AP.DebugColours = false
 Config.AP.Enable = true
 Config.AP.UpdateIntervalMs = 10000
 Config.AP.Cleanup = false
@@ -35,7 +37,7 @@ Config.AP.CleanupDays = 31
 Config.AP.SendCleanupToGarage = true
 Config.AP.OnlyOwnedVehicles = false
 Config.AP.Blacklist = {
-    Models = { `cargoplane` },
+    Models = {  },
     Plates = { "ADMIN", "TEST" }
 }
 
@@ -233,7 +235,6 @@ Config.Items = {
     ['food_burger'] = {label = "Hamburger",             weight = 0.250, props = "prop_sandwich_01"},
     ['food_water']  = {label = "Bouteille d'eau",       weight = 0.3, props = "prop_ld_flow_bottle"},
     ['food_sprunk'] = {label = "Sprunk",                weight = 0.3, props = "prop_ld_can_01"},
-    ['radio']       = {label = "Radio",                 weight = 0.5, props = "prop_cs_hand_radio"},
     ['phone']       = {label = "Téléphone",             weight = 0.250, props = "prop_phone_ing"},
     ['ticket']      = {label = "Ticket de métro",       weight = 0.01, props = "prop_cs_documents_01"},
 
@@ -252,12 +253,12 @@ Config.Items = {
     ['weapon_machete']     = {label = "Machette",                 weight = 1.5, props = "w_me_machette"},
     ['weapon_flashlight']  = {label = "Lampe torche",             weight = 1.5, props = "w_me_flashlight"},
     ['weapon_hammer']      = {label = "Marteau",                  weight = 1.5, props = "w_me_hammer"},
-    ['weapon_nightstick']  = {label = "Matraque",                 weight = 1.5, props = "w_me_nightstick"},
+    ['weapon_nightstick']  = {label = "Tonfa",                    weight = 1.5, props = "w_me_nightstick"},
     ['weapon_knuckle']     = {label = "Poing américain",          weight = 1.5, props = "w_me_knuckle"},
 
     -- Armes de jet / usage unique — pas de munition séparée
     ['weapon_molotov']      = {label = "Cocktail Molotov",  weight = 0.5, props = "w_ex_molotov"},
-    ['weapon_bzgas']        = {label = "Gaz BZ",            weight = 0.5, props = "w_ex_bzgas"},
+    ['weapon_bzgas']        = {label = "Grenade Lacrymogene", weight = 0.5, props = "w_ex_bzgas"},
     ['weapon_smokegrenade'] = {label = "Grenade fumigène",  weight = 0.5, props = "w_ex_grenadesmoke"},
     ['weapon_grenade']      = {label = "Grenade",           weight = 0.5, props = "w_ex_grenade"},
     ['weapon_flare']        = {label = "Fusée de détresse", weight = 0.5, props = "w_am_flare"},
@@ -270,6 +271,11 @@ Config.Items = {
     ['weapon_pistol50']      = {label = "Desert Eagle",         weight = 1, props = "w_pi_pistol50"},
     ['weapon_heavypistol']   = {label = "Staccato 2011",        weight = 1, props = "w_pi_heavypistol"},
     ['weapon_stungun']       = {label = "PIE",                  weight = 1, props = "w_am_stungun"},
+
+    -- Armes non-létales (mod Commods)
+    ['weapon_lbd']      = {label = "LBD 40",           weight = 2.5, props = "w_lr_lbd"},
+    ['weapon_gazeuse']  = {label = "Gazeuse lacrymogène", weight = 1, props = "w_pi_gazeuse"},
+    ['weapon_lgcougar'] = {label = "Lanceur Cougar",   weight = 3,   props = "w_lr_lgcougar"},
     ['weapon_vintagepistol'] = {label = "Colt M1903",           weight = 1, props = "w_pi_vintagepistol"},
     ['weapon_snspistol']     = {label = "Kel-Tec P11",          weight = 1, props = "w_pi_snspistol"},
     ['weapon_snspistol_mk2'] = {label = "Kel-Tec P11 Mk II",    weight = 1, props = "w_pi_snspistol_mk2"},
@@ -278,7 +284,7 @@ Config.Items = {
 
     -- Pistolets-mitrailleurs
     ['weapon_assaultsmg'] = {label = "FN P90",      weight = 1.8, props = "w_sb_assaultsmg"},
-    ['weapon_smg']        = {label = "MP5A3",       weight = 1.8, props = "w_sb_smg"},
+    ['weapon_smg']        = {label = "HK UMP9",     weight = 1.8, props = "w_sb_smg"},
     ['weapon_microsmg']   = {label = "Mini Uzi",    weight = 1.8, props = "w_sb_microsmg"},
     ['weapon_minismg']    = {label = "Škorpion",    weight = 1.8, props = "w_sb_minismg"},
     ['weapon_gusenberg']  = {label = "Thompson",    weight = 1.8, props = "w_sb_gusenberg"},
@@ -304,11 +310,20 @@ Config.Items = {
     ['weapon_dbshotgun']        = {label = "Double canon",          weight = 2.8, props = "w_sg_dbshotgun"},
     ['weapon_pumpshotgun']      = {label = "Remington 870",         weight = 2.8, props = "w_sg_pumpshotgun"},
     ['weapon_pumpshotgun_mk2']  = {label = "Remington 870 Mk II",   weight = 2.8, props = "w_sg_pumpshotgun_mk2"},
-    ['weapon_combatshotgun']    = {label = "Spas-12",               weight = 2.8, props = "w_sg_bullpupshotgun"},
+    ['weapon_combatshotgun']    = {label = "Benelli M4",            weight = 2.8, props = "w_sg_bullpupshotgun"},
 
     -- Fusils de précision
     ['weapon_sniperrifle'] = {label = "Remington 700",      weight = 3.5, props = "w_sr_sniperrifle"},
-    ['weapon_heavysniper']  = {label = "AW50",              weight = 3.5, props = "w_sr_heavysniper"},
+    ['weapon_heavysniper']  = {label = "Sako TRG 42",       weight = 3.5, props = "w_sr_heavysniper"},
+
+    -- Accessoires d'armes (COMPONENT_* — nom d'item = native en minuscules)
+    ['component_at_pi_flsh']          = {label = "Lampe tactique Sig",         weight = 0.1},
+    ['component_at_scope_macro_02']   = {label = "Viseur Reflex",              weight = 0.1},
+    ['component_at_ar_flsh']          = {label = "Lampe tactique Fusil",       weight = 0.1},
+    ['component_at_scope_medium']     = {label = "Viseur",                     weight = 0.1},
+    ['component_at_ar_afgrip']        = {label = "Poignée Inclinée",           weight = 0.1},
+    ['component_at_ar_afgrip_02']     = {label = "Poignée Inclinée Mk II",     weight = 0.1},
+    ['component_at_scope_medium_mk2'] = {label = "Viseur Mk II",               weight = 0.1},
 
     -- Munitions
     ['ammo_50ae']      = {label = ".50 AE",                 weight = 0.001, props = "prop_ld_ammo_pack_01"},
@@ -324,9 +339,14 @@ Config.Items = {
     ['ammo_338']       = {label = ".338 Lapua",             weight = 0.001, props = "prop_ld_ammo_pack_01"},
     ['ammo_50bmg']     = {label = ".50 BMG",                weight = 0.001, props = "prop_ld_ammo_pack_01"},
     ['ammo_9mm']       = {label = "9mm",                    weight = 0.001, props = "prop_ld_ammo_pack_01"},
+    ['ammo_lbd']       = {label = "Munitions LBD 40",       weight = 0.001, props = "prop_ld_ammo_pack_01"},
+    ['ammo_gazeuse']   = {label = "Cartouches lacrymogènes", weight = 0.001, props = "prop_ld_ammo_pack_01"},
+    ['ammo_lgcougar']  = {label = "Munitions Cougar",       weight = 0.001, props = "prop_ld_ammo_pack_01"},
+    ['ammo_training']  = {label = "Munition d'entrainement", weight = 0.001, props = "prop_ld_ammo_pack_01"},
 
     ['idcard'] = {label = "Carte d'identité", weight = 0.005, props = "ch_prop_swipe_card_01c"},
     ['carte'] = {label = "Carte banquaire", weight = 0.005, props = "ch_prop_swipe_card_01c"},
+    ['carte_gym'] = {label = "Carte de membre - Salle de sport", weight = 0.005, props = "ch_prop_swipe_card_01c"},
 
     -- ── Crochetage (ox_doorlock) ─────────────────────────────────────
     ['lockpick_porte'] = {label = "Kit de serrurerie", weight = 0.3, props = "prop_tool_pliers"},
@@ -375,7 +395,6 @@ Config.Items = {
     ['carcasse_porc']       = {label = "Carcasse de porc",     weight = 4.5, props = "prop_ld_steak"},
     ['carcasse_sanglier']   = {label = "Carcasse de sanglier", weight = 4.5, props = "prop_ld_steak"},
     ['carcasse_lapin']      = {label = "Carcasse de lapin",    weight = 0.8, props = "prop_ld_steak"},
-    ['carcasse_oiseau']     = {label = "Carcasse d'oiseau",    weight = 0.3, props = "prop_ld_steak"},
     -- Ni coyote ni cougar n'ont d'entrée ici : chassés pour leur peau seule
     -- (pas de `rawItem` sur ces espèces, voir module/farm/config.lua) — leur
     -- carcasse n'est jamais récupérable.
@@ -383,14 +402,16 @@ Config.Items = {
     ['abats']               = {label = "Abats",                weight = 0.4, props = "prop_ld_steak"},
     ['sang']                = {label = "Sang",                 weight = 0.3, props = "prop_ld_steak"},
     ['graisse_animale']     = {label = "Graisse animale",      weight = 0.4, props = "prop_ld_steak"},
-    ['steak_gibier']        = {label = "Steak de gibier",      weight = 1.0, props = "prop_food_bs_ribs"},
+    ['viande']               = {label = "Viande",               weight = 1.0, props = "prop_food_bs_ribs"},
+    -- Sous-produit du boucher (transformation du stock), sans usage restaurant : nourriture pour animaux.
+    ['croquette_animale']    = {label = "Croquettes animales",  weight = 0.5, props = "prop_ld_steak"},
 
     -- ── Module Farm — Braconnage (peau, illégal) — coyote et cougar uniquement ──
     -- Outil : `weapon_knife` (déjà existant, pas d'item dédié).
     ['peau_coyote']       = {label = "Peau de coyote",       weight = 1.0, props = "prop_ld_steak"},
     ['peau_cougar']       = {label = "Peau de cougar",       weight = 2.5, props = "prop_ld_steak"},
 
-    -- ── Trousse de soins SAMU — Health Inspection ────────────────────
+    -- ── Trousse de soins EMS — Health Inspection ────────────────────
     ['bandage']    = {label = "Bandage",                    weight = 0.25, props = "prop_med_bandage_01"},
     ['med_kit']    = {label = "Kit de Premiers Secours",    weight = 1.75, props = "prop_ld_health_pack"},
     ['forceps']    = {label = "Forceps",                    weight = 0.70, props = "prop_tool_pliers"},
@@ -403,23 +424,23 @@ Config.Items = {
     ['medbag']     = {label = "Sac Médical",                weight = 0.05, props = "prop_cs_box_clothes"},
 
     -- ── Pièces détachées Atelier (prop placeholder, voir TODO module/atelier/config/parts.lua) ──
-    ['piece_capot']             = {label = "Capot",                weight = 8.0, props = "prop_tool_boxv1"},
-    ['piece_pare_choc_avant']   = {label = "Pare-choc avant",      weight = 6.0, props = "prop_tool_boxv1"},
-    ['piece_pare_choc_arriere'] = {label = "Pare-choc arrière",    weight = 6.0, props = "prop_tool_boxv1"},
-    ['piece_portiere']          = {label = "Portière",             weight = 10.0, props = "prop_tool_boxv1"},
-    ['piece_aile']              = {label = "Aile",                 weight = 7.0, props = "prop_tool_boxv1"},
-    ['piece_bas_caisse']        = {label = "Bas de caisse",        weight = 9.0, props = "prop_tool_boxv1"},
-    ['piece_coffre']            = {label = "Coffre / hayon",       weight = 9.0, props = "prop_tool_boxv1"},
-    ['piece_vitre']             = {label = "Vitre",                weight = 4.0, props = "prop_tool_boxv1"},
-    ['piece_phare']             = {label = "Phare",                weight = 2.0, props = "prop_tool_boxv1"},
-    ['piece_pneu']               = {label = "Pneu",                weight = 5.0, props = "prop_wheel_01a"},
-    -- Pièces mécaniques : posées sous le capot, jamais portées en main.
-    ['piece_moteur']             = {label = "Pièce moteur",             weight = 6.0},
-    ['piece_freins']             = {label = "Pièce de freinage",        weight = 3.0},
-    ['piece_transmission']       = {label = "Pièce de transmission",    weight = 5.0},
-    ['piece_suspension']         = {label = "Pièce de suspension",      weight = 5.0},
-    ['piece_embrayage']          = {label = "Pièce d'embrayage",        weight = 3.0},
-    ['piece_radiateur']          = {label = "Radiateur",                weight = 4.0},
+    ['piece_capot']             = {label = "Capot",                weight = 8.0, props = "tr_int1_mod_hood001"},
+    ['piece_pare_choc_avant']   = {label = "Pare-choc avant",      weight = 6.0, props = "imp_prop_impexp_front_bumper_02a"},
+    ['piece_pare_choc_arriere'] = {label = "Pare-choc arrière",    weight = 6.0, props = "imp_prop_impexp_rear_bumper_03a"},
+    ['piece_portiere']          = {label = "Portière",             weight = 10.0, props = "prop_rub_carpart_02"},
+    ['piece_aile']              = {label = "Aile",                 weight = 7.0, props = "prop_tool_box_01"},
+    ['piece_bas_caisse']        = {label = "Bas de caisse",        weight = 9.0, props = "prop_tool_box_01"},
+    ['piece_coffre']            = {label = "Coffre / hayon",       weight = 9.0, props = "imp_prop_impexp_trunk_03a"},
+    ['piece_vitre']             = {label = "Vitre",                weight = 4.0, props = "prop_rub_carpart_02"},
+    ['piece_phare']             = {label = "Phare",                weight = 2.0, props = "prop_tool_box_01"},
+    ['piece_pneu']               = {label = "Pneu",                weight = 5.0, props = "prop_wheel_01"},
+    -- Pièces mécaniques : portées en main (prop placeholder) avant la pose.
+    ['piece_moteur']             = {label = "Pièce moteur",             weight = 6.0, props = "prop_car_engine_01"},
+    ['piece_freins']             = {label = "Pièce de freinage",        weight = 3.0, props = "imp_prop_impexp_brake_caliper_01a"},
+    ['piece_transmission']       = {label = "Pièce de transmission",    weight = 5.0, props = "prop_tool_box_01"},
+    ['piece_suspension']         = {label = "Pièce de suspension",      weight = 5.0, props = "prop_tool_box_01"},
+    ['piece_embrayage']          = {label = "Pièce d'embrayage",        weight = 3.0, props = "prop_tool_box_01"},
+    ['piece_radiateur']          = {label = "Radiateur",                weight = 4.0, props = "imp_prop_impexp_radiator_01"},
 
     -- ── Articles LTD ───────────────────────────────────────────────
     ['cigarettes'] = {label = "Cigarettes",                 weight = 0.1, props = "prop_cs_cigar_packet"},
@@ -438,9 +459,12 @@ Config.Items = {
     ['bracelet']        = {label = "Bracelet",              weight = 0.1, props = "p_watch_04"},
     ['mask']            = {label = "Masque",                weight = 0.1, props = "p_mask_01"},
     ['decals']          = {label = "Badge",                 weight = 0.1, props = "prop_cs_box_clothes"},
+    ['bproof']          = {label = "Gilet pare-balles",     weight = 0.5, props = "prop_bulletproof_vest"},
     ['outfit']          = {label = "Tenue",                 weight = 0.5, props = "prop_cs_box_clothes"},
     ['vehicle_key']     = {label = "Clé de véhicule",       weight = 0.05, props = "prop_cs_keys_01"},
-    ['tablette_mdt']    = {label = "Tablette MDT",          weight = 0.5, props = "prop_cs_tablet"}
+    ['garage_key']      = {label = "Clé de garage",         weight = 0.05, props = "prop_cs_keys_01"},
+    ['tablette_mdt']    = {label = "Tablette MDT",          weight = 0.5, props = "prop_cs_tablet"},
+    ['radio_portable']  = {label = "Radio portable",        weight = 0.3, props = "prop_cs_walkie_talkie"}
 }
 
 Config.AmmoForWeapon = {
@@ -459,6 +483,10 @@ Config.AmmoForWeapon = {
     ['weapon_vintagepistol']      = 'ammo_45acp',
     ['weapon_gusenberg']          = 'ammo_45acp',
     ['weapon_stungun']            = 'ammo_ax',
+    ['weapon_lbd']                = 'ammo_lbd',
+    ['weapon_lgcougar']           = 'ammo_lgcougar',
+    -- weapon_gazeuse : PAS de mapping ici — 100 charges non rechargeables
+    -- gravées sur l'item (data.charges), cf. module/nonlethal.
     ['weapon_snspistol']          = 'ammo_40sw',
     ['weapon_revolver']           = 'ammo_44magnum',
     ['weapon_revolver_mk2']       = 'ammo_44magnum',
@@ -494,6 +522,7 @@ Config.InsertItems = {
     -- Armes ajoutées (2026-07-19)
     ['idcard'] = true,
     ['carte'] = true,
+    ['carte_gym'] = true,
     ['phone'] = true,
     -- Chaque ticket porte son heure d'émission dans son label → instance unique
     ['ticket'] = true,
@@ -506,14 +535,16 @@ Config.InsertItems = {
     ['weapon_dagger'] = true,
     ['weapon_battleaxe'] = true,
     ['weapon_hatchet'] = true,
+    ['pioche'] = true,
     ['weapon_machete'] = true,
     ['weapon_flashlight'] = true,
     ['weapon_hammer'] = true,
     ['weapon_nightstick'] = true,
     ['weapon_knuckle'] = true,
     ['weapon_molotov'] = true,
-    ['weapon_bzgas'] = true,
-    ['weapon_smokegrenade'] = true,
+    -- weapon_bzgas / weapon_smokegrenade : PAS des InsertItems — ce sont des
+    -- munitions consommables (Cougar, jet à la main) qui doivent s'additionner
+    -- normalement (count++), pas créer une instance unique à chaque give.
     ['weapon_grenade'] = true,
     ['weapon_flare'] = true,
     ['weapon_pistol_mk2'] = true,
@@ -521,6 +552,9 @@ Config.InsertItems = {
     ['weapon_pistol50'] = true,
     ['weapon_heavypistol'] = true,
     ['weapon_stungun'] = true,
+    ['weapon_lbd'] = true,
+    ['weapon_gazeuse'] = true,
+    ['weapon_lgcougar'] = true,
     ['weapon_vintagepistol'] = true,
     ['weapon_snspistol'] = true,
     ['weapon_snspistol_mk2'] = true,
@@ -570,9 +604,42 @@ Config.InsertItems = {
     ['bracelet'] = true,
     ['mask'] = true,
     ['decals'] = true,
+    ['bproof'] = true,
     ['outfit'] = true,
     ['vehicle_key'] = true,
-    ['tablette_mdt'] = true
+    ['garage_key'] = true,
+    ['tablette_mdt'] = true,
+    ['radio_portable'] = true
+}
+
+-- Accessoires compatibles par arme. `item` = item d'inventaire (Config.Items),
+-- son native COMPONENT_* s'obtient en le passant en majuscules.
+-- `slot` : une seule attache par slot sur une même arme (poser un accessoire
+-- du même slot retire et rend automatiquement l'ancien).
+Config.WeaponComponents = {
+    ['weapon_combatpistol'] = {
+        { item = 'component_at_pi_flsh', slot = 'flashlight' },
+    },
+    ['weapon_smg'] = {
+        { item = 'component_at_ar_flsh',        slot = 'flashlight' },
+        { item = 'component_at_scope_macro_02', slot = 'scope' },
+    },
+    ['weapon_specialcarbine'] = {
+        { item = 'component_at_ar_flsh',      slot = 'flashlight' },
+        { item = 'component_at_scope_medium', slot = 'scope' },
+        { item = 'component_at_ar_afgrip',    slot = 'grip' },
+    },
+    ['weapon_specialcarbine_mk2'] = {
+        { item = 'component_at_ar_flsh',          slot = 'flashlight' },
+        { item = 'component_at_ar_afgrip_02',     slot = 'grip' },
+        { item = 'component_at_scope_medium_mk2', slot = 'scope' },
+    },
+    ['weapon_pumpshotgun'] = {
+        { item = 'component_at_ar_flsh', slot = 'flashlight' },
+    },
+    ['weapon_combatshotgun'] = {
+        { item = 'component_at_ar_flsh', slot = 'flashlight' },
+    },
 }
 
 Config.ResourcesClientEvent = {
@@ -586,7 +653,7 @@ Config.ResourcesClientEvent = {
     ['webpack'] = true,
     ['yarn'] = true,
     ['brutal_notify'] = true,
-    ['screenshot-basic'] = true,
+    ['screencapture'] = true,
     ['bob74_ipl'] = true,
     ['lb-phone'] = true,
     ['tuff'] = true,
@@ -834,4 +901,10 @@ Config.HostageWeapons = {
     'weapon_snspistol_mk2',
     'weapon_revolver',
     'weapon_revolver_mk2',
+}
+
+-- Items liés à une personne (armes et munitions prêtées) : impossibles à donner, déposer, transférer ou mettre en coffre.
+Config.NonTransferableItems = {
+    ['weapon_sniperrifle'] = true,
+    ['ammo_338'] = true,
 }

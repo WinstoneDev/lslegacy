@@ -12,6 +12,14 @@ local lastPainNotif = 0
 local UNARMED_HASH  = GetHashKey("weapon_unarmed")
 local TASER_HASH     = GetHashKey("weapon_stungun")
 
+-- Exposé aux autres modules client (inventaire, émotes, menus...) pour
+-- bloquer toute interaction pendant le KO/coma, sans dupliquer isKO/isComa
+-- (locaux à ce fichier) ailleurs.
+LSLegacy.Injury = LSLegacy.Injury or {}
+function LSLegacy.Injury.IsIncapacitated()
+    return isKO or isComa
+end
+
 -- Catégories d'armes pour les messages contextuels
 local MELEE_HASHES = {}
 for _, n in ipairs({"weapon_knife","weapon_dagger","weapon_machete","weapon_switchblade",
@@ -32,19 +40,22 @@ for _, n in ipairs({"weapon_rammed_by_car","weapon_run_over_by_car","weapon_fall
 end
 
 -- Os GTA V → zone du corps
-local BONE_HEAD = { [31086]=true, [39317]=true, [36864]=true }
+-- 36864 (SKEL_R_Calf) était classé ici par erreur (confondu avec un os de
+-- tête) : symétrie rompue avec BONE_LEG_L ci-dessous (qui a bien son trio
+-- Thigh/Calf/Foot) et absent de BONE_LEG général, donc un tir au mollet
+-- droit ne pouvait jamais ressortir "leg" — toujours classé "head" à la
+-- place. Déplacé vers BONE_LEG / BONE_LEG_R. À confirmer en jeu (coup
+-- contrôlé au mollet droit + /emsdebug ou log du bone reçu) si un doute
+-- subsiste, mais la table est maintenant symétrique entre les deux jambes.
+local BONE_HEAD = { [31086]=true, [39317]=true }
 local BONE_ARM  = { [53675]=true, [54187]=true, [61163]=true, [61685]=true, [26610]=true, [57005]=true }
-local BONE_LEG  = { [58271]=true, [51826]=true, [16335]=true, [16337]=true, [63931]=true, [35502]=true, [14201]=true, [52301]=true }
+local BONE_LEG  = { [58271]=true, [51826]=true, [16335]=true, [16337]=true, [63931]=true, [35502]=true, [14201]=true, [52301]=true, [36864]=true }
 
--- Os GTA V → membre gauche/droite pour la Health Inspection (SAMU).
--- ATTENTION : valeurs à VÉRIFIER EN JEU (coup contrôlé par membre + log du
--- bone reçu) avant de leur faire confiance — un conflit a été repéré entre
--- deux sources : 36864 est classé "tête" ci-dessus mais "mollet droit" dans
--- une table externe, donc R_Calf a été volontairement omis de BONE_LEG_R.
+-- Os GTA V → membre gauche/droite pour la Health Inspection (EMS).
 local BONE_ARM_L = { [45509]=true, [61163]=true } -- SKEL_L_UpperArm, SKEL_L_Forearm
 local BONE_ARM_R = { [40269]=true, [28252]=true } -- SKEL_R_UpperArm, SKEL_R_Forearm
 local BONE_LEG_L = { [58271]=true, [63931]=true, [14201]=true } -- SKEL_L_Thigh/Calf/Foot
-local BONE_LEG_R = { [51826]=true, [52301]=true } -- SKEL_R_Thigh/Foot
+local BONE_LEG_R = { [51826]=true, [36864]=true, [52301]=true } -- SKEL_R_Thigh/Calf/Foot
 
 local PAIN_MSGS = {
     unarmed = {
@@ -159,6 +170,36 @@ local function StopLimp(ped)
     ResetPedMovementClipset(ped, 0.3)
 end
 
+-- KO/coma : le joueur reste au sol via une anim figée + position gelée,
+-- PLUS de ragdoll physique. La ragdoll entrait en conflit avec les autres
+-- animations forcées (RCP, etc.) et cassait tout dès qu'un autre système
+-- essayait de jouer quelque chose sur le ped pendant l'état "à terre".
+local DOWN_DICT, DOWN_CLIP = 'dead', 'dead_a'
+
+local function LieDown(ped)
+    RequestAnimDict(DOWN_DICT)
+    local t = 0
+    while not HasAnimDictLoaded(DOWN_DICT) and t < 50 do Wait(100); t = t + 1 end
+    if HasAnimDictLoaded(DOWN_DICT) then
+        TaskPlayAnim(ped, DOWN_DICT, DOWN_CLIP, 8.0, -8.0, -1, 1, 0, false, false, false)
+    end
+    FreezeEntityPosition(ped, true)
+end
+
+-- Réapplique la pose si une autre tâche l'a coupée (appelé en boucle par
+-- EnterKO/RunComaScreen) — l'équivalent du "maintien de la ragdoll" d'avant,
+-- mais sans jamais toucher à la physique.
+local function MaintainLieDown(ped)
+    if not IsEntityPlayingAnim(ped, DOWN_DICT, DOWN_CLIP, 3) then
+        TaskPlayAnim(ped, DOWN_DICT, DOWN_CLIP, 8.0, -8.0, -1, 1, 0, false, false, false)
+    end
+end
+
+local function StandUp(ped)
+    FreezeEntityPosition(ped, false)
+    ClearPedTasksImmediately(ped)
+end
+
 local function UpdateSpeedModifier(health)
     if isKO or isComa then return end
     local ped            = PlayerPedId()
@@ -225,7 +266,7 @@ local function CheckPainNotif(health)
     end
 end
 
--- Catégorie + zone de la blessure, utilisée par le SAMU/Pompiers pour proposer la trousse de soins adaptée.
+-- Catégorie + zone de la blessure, utilisée par l'EMS/LSFD pour proposer la trousse de soins adaptée.
 local function GetWoundCategory()
     local w = lastDmgWeapon
     local b = lastDamageBone
@@ -244,7 +285,7 @@ local function GetWoundCategory()
     return 'generic', 'none'
 end
 
--- Membre du mannequin Health Inspection (SAMU) touché par le dernier coup —
+-- Membre du mannequin Health Inspection (EMS) touché par le dernier coup —
 -- indépendant de GetWoundCategory()/SyncWound() ci-dessus, qui gardent leur
 -- rôle existant (messages de douleur, ancien système de trousse).
 local function GetWoundPart(bone)
@@ -273,7 +314,7 @@ local function EnterKO(ped)
     LSLegacy.Events.SendToServer("lslegacy:injuryEnterKO")
     StopLimp(ped)
     SetPedMoveRateOverride(ped, 1.0)
-    SetPedToRagdoll(ped, Config.Injury.KODuration * 1000, Config.Injury.KODuration * 1000, 0, false, false, false)
+    LieDown(ped)
 
     CreateThread(function()
         while isKO do
@@ -281,10 +322,7 @@ local function EnterKO(ped)
             local p = PlayerPedId()
             if GetEntityHealth(p) <= 100 then SetEntityHealth(p, 105) end
 
-            -- Maintenir la ragdoll : si GTA relève le ped, on le remet au sol
-            if not IsPedRagdoll(p) then
-                SetPedToRagdoll(p, 2000, 2000, 0, false, false, false)
-            end
+            MaintainLieDown(p)
 
             DisableControlAction(0, 30, true)
             DisableControlAction(0, 31, true)
@@ -312,17 +350,31 @@ local function EnterKO(ped)
         local p = PlayerPedId()
         -- 25 % de HP (100 = mort, 200 = plein → 125 = 25%)
         SetEntityHealth(p, 125)
-        SetPedCanRagdoll(p, false)
-        ClearPedTasksImmediately(p)
-        SetPedCanRagdoll(p, true)
+        StandUp(p)
         SetPedMoveRateOverride(p, 1.0)
         LSLegacy.Events.SendToServer("lslegacy:injuryExitKO")
     end)
 end
 
+-- Coupe/rétablit le son des autres joueurs pour le patient en coma
+-- (MumbleSetVolumeOverrideByServerId, même native que pma-voice utilise en
+-- interne pour son propre mute manuel — cf. [Autres]/pma-voice). Le patient
+-- garde sa propre voix (gémissements involontaires), seule sa capacité à
+-- ENTENDRE est coupée.
+local function SetVoiceMuted(muted)
+    local myServerId = GetPlayerServerId(PlayerId())
+    for _, p in ipairs(GetActivePlayers()) do
+        local sid = GetPlayerServerId(p)
+        if sid ~= myServerId then
+            MumbleSetVolumeOverrideByServerId(sid, muted and 0.0 or -1.0)
+        end
+    end
+end
+
 -- Boucle d'affichage coma, partagée entre EnterComa et resumeComa.
 local function RunComaScreen(totalSeconds)
     local endTime = GetGameTimer() + totalSeconds * 1000
+    local lastVoiceMute = 0
 
     CreateThread(function()
         while isComa do
@@ -330,13 +382,17 @@ local function RunComaScreen(totalSeconds)
             local p = PlayerPedId()
             if GetEntityHealth(p) <= 100 then SetEntityHealth(p, 101) end
 
-            -- Maintenir le patient au sol pendant toute la durée du coma :
-            -- une ragdoll expire au bout de sa durée et le ped se relève,
-            -- ce que les autres joueurs voyaient (patient "debout en coma").
-            -- Même entretien que la boucle KO.
-            if not IsPedRagdoll(p) then
-                SetPedToRagdoll(p, 10000, 10000, 0, false, false, false)
+            -- Réappliqué périodiquement (pas juste à l'entrée en coma) pour
+            -- couvrir les joueurs qui se connectent/se rapprochent pendant
+            -- que le patient est déjà inconscient.
+            if (GetGameTimer() - lastVoiceMute) > 2000 then
+                lastVoiceMute = GetGameTimer()
+                SetVoiceMuted(true)
             end
+
+            -- Maintenir le patient au sol pendant toute la durée du coma
+            -- (même entretien que la boucle KO, sans ragdoll physique).
+            MaintainLieDown(p)
 
             local remaining = math.max(0, (endTime - GetGameTimer()) / 1000)
             local minutes   = math.floor(remaining / 60)
@@ -373,6 +429,10 @@ local function RunComaScreen(totalSeconds)
         -- téléportation et SetEntityHealth effectués. Sinon le joueur reste
         -- debout à 101 HP, vulnérable, pendant cette fenêtre — la moindre
         -- chute/ragdoll le refait retomber sous le seuil et relance le coma.
+        -- Le son, lui, est restauré tout de suite : cette boucle ne se
+        -- termine que quand isComa passe à false, quelle qu'en soit la
+        -- cause (timeout, réanimation EMS, admin revive).
+        SetVoiceMuted(false)
         LSLegacy.Events.SendToServer("lslegacy:injuryExitComa")
     end)
 end
@@ -388,13 +448,9 @@ local function EnterComa()
     StopLimp(ped)
     SyncWound(true)
     LSLegacy.Events.SendToServer("lslegacy:injuryEnterComa")
-    -- Mettre explicitement au sol : on ne peut pas compter sur la ragdoll
-    -- laissée par les dégâts (elle a pu se terminer, ou n'avoir jamais eu
-    -- lieu sur un dégât non projetant). L'ancien code figeait la position
-    -- 1,5 s plus tard sans vérifier la posture — un ped déjà relevé se
-    -- retrouvait donc figé DEBOUT pendant tout le coma. La boucle
-    -- RunComaScreen entretient ensuite cette ragdoll.
-    SetPedToRagdoll(ped, 10000, 10000, 0, false, false, false)
+    -- Mettre explicitement au sol (anim figée + position gelée) : la boucle
+    -- RunComaScreen entretient ensuite cette pose.
+    LieDown(ped)
     RunComaScreen(Config.Injury.ComaDuration)
 end
 
@@ -409,9 +465,53 @@ LSLegacy.Events.Register("lslegacy:injuryResumeComa", function(remaining)
     SetPedMoveRateOverride(ped, 1.0)
     StopLimp(ped)
     -- Au sol plutôt que figé debout, cf. EnterComa
-    SetPedToRagdoll(ped, 10000, 10000, 0, false, false, false)
+    LieDown(ped)
     -- EnterComa déjà enregistré côté serveur avant la déco, on ne le renvoie pas
     RunComaScreen(remaining)
+end)
+
+-- Pose RCP forcée côté patient pendant qu'un EMS le réanime (cprs4 côté
+-- soignant = cprs3, cf. module/ems/client/actions.lua). Remplace simplement
+-- la pose "au sol" (LieDown) le temps de l'anim, puis la restaure.
+LSLegacy.Events.Register("ems:revivePose", function(duration)
+    if not isKO and not isComa then return end
+    duration = tonumber(duration) or 6000
+    local ped = PlayerPedId()
+
+    local dict, clip = 'missheistfbi3b_ig8_2', 'cpr_loop_victim'
+    RequestAnimDict(dict)
+    local t = 0
+    while not HasAnimDictLoaded(dict) and t < 50 do
+        Wait(100); t = t + 1
+    end
+    if not HasAnimDictLoaded(dict) then
+        -- Repli "cprs2" (contrepartie receveuse de mini@cpr@char_a, utilisé
+        -- côté soignant quand cprs3 ne charge pas non plus).
+        dict, clip = 'mini@cpr@char_b@cpr_str', 'cpr_pumpchest'
+        RequestAnimDict(dict)
+        t = 0
+        while not HasAnimDictLoaded(dict) and t < 50 do
+            Wait(100); t = t + 1
+        end
+        if not HasAnimDictLoaded(dict) then return end
+    end
+    if not (isKO or isComa) then return end -- réanimé/déco pendant le chargement
+
+    -- Plus de ragdoll à mettre en pause : la pose "au sol" (LieDown) est déjà
+    -- une anim figée + position gelée, donc TaskPlayAnim la remplace
+    -- proprement sans rien avoir à désactiver.
+    -- Flag 1 (LOOP) et non 49, cf. module/ems/client/actions.lua (Revive) :
+    -- même anim jouée par le menu émotes avec flag 1, empêchait sinon la
+    -- transition de pose côté patient.
+    TaskPlayAnim(ped, dict, clip, 8.0, -8.0, duration, 1, 0, false, false, false)
+
+    Citizen.SetTimeout(duration, function()
+        local p = PlayerPedId()
+        if not DoesEntityExist(p) then return end
+        -- Toujours en KO/coma (réanimation refusée/annulée) : on revient à
+        -- la pose au sol normale, la boucle KO/coma prendra le relais.
+        if isKO or isComa then LieDown(p) end
+    end)
 end)
 
 LSLegacy.Events.Register("lslegacy:injuryAdminRevive", function(health)
@@ -423,15 +523,10 @@ LSLegacy.Events.Register("lslegacy:injuryAdminRevive", function(health)
     -- Reste au sol, figé quelques secondes (massage cardiaque encore visible/
     -- crédible), avant de se relever — au lieu de se remettre debout d'un coup.
     FreezeEntityPosition(ped, true)
-    Citizen.SetTimeout(Config.SAMU.Actions.reviveGroundDuration or 2500, function()
+    local groundDuration = (Config.EMS and Config.EMS.Actions and Config.EMS.Actions.reviveGroundDuration) or 2500
+    Citizen.SetTimeout(groundDuration, function()
         local p = PlayerPedId()
-        FreezeEntityPosition(p, false)
-        -- Couper la ragdoll du coma, sinon elle continue de courir et le
-        -- patient reste au sol malgré TaskGetUp (même motif que la sortie de KO).
-        SetPedCanRagdoll(p, false)
-        ClearPedTasksImmediately(p)
-        SetPedCanRagdoll(p, true)
-        TaskGetUp(p) -- se relève avec une animation naturelle, pas un snap instantané
+        StandUp(p)
         SetPedMoveRateOverride(p, 1.0)
         StopLimp(p)
     end)
@@ -453,14 +548,12 @@ LSLegacy.Events.Register("lslegacy:clientRespawn", function()
     if coords.w then SetEntityHeading(ped, coords.w) end
     SetEntityHealth(ped, 125)
     SetPedArmour(ped, 0)
-    -- Couper la ragdoll du coma : sans ça le joueur arrive à l'hôpital
-    -- toujours au sol, immobilisé jusqu'à expiration de la ragdoll.
-    SetPedCanRagdoll(ped, false)
-    ClearPedTasksImmediately(ped)
-    SetPedCanRagdoll(ped, true)
+    ReapplyEquippedArmour()
+    -- Sortir de la pose au sol : sans ça le joueur arrive à l'hôpital
+    -- toujours figé/allongé.
+    StandUp(ped)
     SetPedMoveRateOverride(ped, 1.0)
     StopLimp(ped)
-    FreezeEntityPosition(ped, false)
     SetEntityInvincible(ped, false)
     DoScreenFadeIn(1200)
 end)
@@ -493,7 +586,10 @@ LSLegacy.Events.AddHandler("gameEventTriggered", function(name, args)
     end
 
     local _, bone = GetPedLastDamageBone(victim)
-    if bone and bone ~= 0 then lastDamageBone = bone end
+    if bone and bone ~= 0 then
+        lastDamageBone = bone
+        Config.Development.Print(("[injury] bone touché = %d"):format(bone))
+    end
 
     -- Anti-mort-native (bis) : on ne peut pas attendre le prochain tick de la
     -- boucle Wait(0) plus bas, ce délai d'une frame suffit à laisser GTA
@@ -520,7 +616,7 @@ LSLegacy.Events.AddHandler("gameEventTriggered", function(name, args)
 end)
 
 -- isKO/isComa n'existent que sur la machine de la victime ; on publie donc l'état
--- dans un statebag répliqué pour que le SAMU sache si son patient est inconscient.
+-- dans un statebag répliqué pour que l'EMS sache si son patient est inconscient.
 -- Recopié en boucle plutôt qu'à chaque point d'entrée/sortie : il y a six endroits
 -- qui remettent isKO/isComa à false, en oublier un laisserait un patient marqué
 -- inconscient à vie.
@@ -533,11 +629,21 @@ CreateThread(function()
             last = state
             LocalPlayer.state:set('injury', state, true)
         end
+
+        -- Même recopie vers LSLegacy.PlayerData : lb-phone (client/custom/
+        -- frameworks/standalone/standalone.lua, AddCheck("openPhone", ...))
+        -- lit playerData.isKO/isComa via exports['lslegacy']:getPlayerData()
+        -- pour bloquer l'ouverture du téléphone — ces champs n'existaient
+        -- jamais sur PlayerData, donc ce check ne bloquait jamais rien.
+        if LSLegacy.PlayerData then
+            LSLegacy.PlayerData.isKO   = isKO
+            LSLegacy.PlayerData.isComa = isComa
+        end
     end
 end)
 
--- Health Inspection (SAMU) : un envoi par frame faisait sauter la limite anti-spam
--- du serveur (samu:hiDamage = 40 events / 15 s, cf. server/function.lua) dès qu'une
+-- Health Inspection (EMS) : un envoi par frame faisait sauter la limite anti-spam
+-- du serveur (ems:hiDamage = 40 events / 15 s, cf. server/function.lua) dès qu'une
 -- source de dégâts continue entrait en jeu. On accumule donc les dégâts par
 -- (membre, catégorie) et on les envoie groupés une fois par seconde.
 local woundDamageBuffer = {}
@@ -563,14 +669,14 @@ CreateThread(function()
             woundDamageBuffer[key] = nil
         end
         if count > 0 then
-            LSLegacy.Events.SendToServer('samu:hiDamage', { batch = batch })
+            LSLegacy.Events.SendToServer('ems:hiDamage', { batch = batch })
         end
     end
 end)
 
 -- Filet de sécurité : sur un burst de dégâts, le moteur peut tuer le ped avant que
 -- le moindre code Lua n'ait la main, ce qui laisse un cadavre orphelin non networké
--- (invisible pour ox_target, donc inaccessible au SAMU) pendant que le joueur
+-- (invisible pour ox_target, donc inaccessible à l'EMS) pendant que le joueur
 -- réapparaît ailleurs sans son skin. On ne cherche donc plus à empêcher la mort,
 -- on la rattrape : dès la frame où le ped est mort, NetworkResurrectLocalPlayer le
 -- ressuscite sur place avant que le moteur ne déroule sa séquence "wasted".
@@ -605,13 +711,27 @@ CreateThread(function()
                 NetworkResurrectLocalPlayer(c.x, c.y, c.z, heading, true, true, false)
 
                 local p = PlayerPedId()
+                -- NetworkResurrectLocalPlayer peut faire repartir le joueur sur
+                -- un NOUVEAU ped plutôt que de réanimer l'ancien : sans ce
+                -- nettoyage, l'ancien ped (le "cadavre") reste debout/au sol sur
+                -- place, jamais supprimé — d'où l'accumulation de peds dupliqués
+                -- observée à chaque mort native rattrapée.
+                if ped ~= p and DoesEntityExist(ped) then
+                    SetEntityAsMissionEntity(ped, true, true)
+                    DeleteEntity(ped)
+                end
                 SetEntityHealth(p, 101)
                 lastHealth = 101
+                -- NetworkResurrectLocalPlayer réinitialise l'apparence du ped
+                -- (composants de tenue perdus, patient rendu nu) : c'est le
+                -- "rechargement du modèle" observé après ce rattrapage.
+                -- On réapplique donc le skin connu juste après.
+                if LSLegacy.PlayerData and LSLegacy.PlayerData.skin then
+                    TriggerEvent('skinchanger:loadSkin', LSLegacy.PlayerData.skin)
+                end
                 -- Garder le joueur au sol : la résurrection remet le ped
-                -- debout, ce qui trahirait le rattrapage. EnterComa() gèle
-                -- ensuite la position une fois la ragdoll posée.
-                SetPedToRagdoll(p, 5000, 5000, 0, false, false, false)
-
+                -- debout, ce qui trahirait le rattrapage. EnterKO/EnterComa
+                -- ci-dessous posent la pose au sol (LieDown) tout de suite.
                 if not isKO and not isComa then
                     if causeHash == UNARMED_HASH then
                         EnterKO(p)
@@ -672,7 +792,7 @@ CreateThread(function()
             end
         end
 
-        -- Health Inspection (SAMU) : attribution du dégât constaté au membre
+        -- Health Inspection (EMS) : attribution du dégât constaté au membre
         -- touché. Chaque perte de vie réelle est comptabilisée, mais mise en
         -- tampon plutôt qu'envoyée immédiatement (cf. QueueWoundDamage) —
         -- l'envoi par frame déconnectait le joueur pour spam d'events.

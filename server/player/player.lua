@@ -18,8 +18,12 @@ LSLegacy.Events.Register('lslegacy:receiveUpdateServerPlayer', function(data)
     local source = source
     if not LSLegacy.ServerPlayers[source] then return end
     for _, field in ipairs(ClientWritableFields) do
-        LSLegacy.ServerPlayers[source][field] = data[field]
-        LSLegacy.ServerPlayers[source]:MarkDirty(field)
+        -- ignore un écho client avant que PlayerData ne soit rempli (post-connexion, reselect multichar) :
+        -- sinon ça écrase un skin déjà valide en mémoire par nil, persisté ensuite par SaveDirty/sync
+        if data[field] ~= nil then
+            LSLegacy.ServerPlayers[source][field] = data[field]
+            LSLegacy.ServerPlayers[source]:MarkDirty(field)
+        end
     end
 end)
 
@@ -28,7 +32,7 @@ end)
 -- réellement modifiés depuis la dernière sauvegarde.
 local DirtyColumns = {
     coords        = {column = 'coords',        get = function(p) return json.encode(p.coords) end},
-    skin          = {column = 'skin',          get = function(p) return json.encode(p.skin) end},
+    skin          = {column = 'skin',          get = function(p) return p.skin and json.encode(p.skin) or nil end},
     inventory     = {column = 'inventory',     get = function(p) return json.encode(p.inventory) end},
     money         = {column = 'money',         get = function(p) return json.encode({cash = p.cash, dirty = p.dirty}) end},
     health        = {column = 'health',        get = function(p) return p.health end},
@@ -64,10 +68,14 @@ PlayerMethods.SaveDirty = function(self)
     local sets, params = {}, {['@id'] = self["boutique-id"]}
     for field in pairs(self._dirtyFields) do
         local def = DirtyColumns[field]
+        local value = def.get(self)
+        if value == nil then goto continue end
         local param = '@' .. field
         sets[#sets + 1] = def.column .. ' = ' .. param
-        params[param] = def.get(self)
+        params[param] = value
+        ::continue::
     end
+    if #sets == 0 then self._dirtyFields = {} return end
     MySQL.Async.execute('UPDATE players SET ' .. table.concat(sets, ', ') .. ' WHERE `boutique-id` = @id', params)
     self._dirtyFields = {}
 end
@@ -157,6 +165,8 @@ AddEventHandler("registerPlayer", function(characterId)
             isComa = false,
             job = row.job,
             job_grade = row.job_grade,
+            job_label = LSLegacy.Jobs.GetJobLabel(row.job),
+            job_grade_label = LSLegacy.Jobs.GetJobGradeLabel(row.job, row.job_grade),
             faction = row.faction,
             faction_grade = row.faction_grade
         }
@@ -178,6 +188,7 @@ AddEventHandler("registerPlayer", function(characterId)
         LSLegacy.Injury.InitWounds(source)
         Wait(250)
         Config.Development.Print("[registerPlayer] " .. source .. ": envoi InitPlayer (LoadCharacter)")
+        TriggerClientEvent('lslegacy:usableItems', source, LSLegacy.Inventory.GetUsableItemNames())
         LSLegacy.Events.SendToClient('lslegacy:initPlayer', source, LSLegacy.ServerPlayers[source])
         TriggerClientEvent('lslegacy:phone:playerReady', source)
         LSLegacy.RegisterPeds(LSLegacy.RegisteredZones, source)
@@ -250,6 +261,8 @@ AddEventHandler("registerPlayer", function(characterId)
             isComa  = false,
             job = "unemployed",
             job_grade = 0,
+            job_label = LSLegacy.Jobs.GetJobLabel("unemployed"),
+            job_grade_label = LSLegacy.Jobs.GetJobGradeLabel("unemployed", 0),
             faction = "unemployed",
             faction_grade = 0
         }
@@ -271,6 +284,7 @@ AddEventHandler("registerPlayer", function(characterId)
         LSLegacy.ServerPlayers[source]["boutique-id"] = insertId
         LSLegacy.Injury.InitWounds(source)
         Config.Development.Print("[registerPlayer] " .. source .. ": envoi InitPlayer (CreateCharacter), id=" .. tostring(LSLegacy.ServerPlayers[source]["boutique-id"]))
+        TriggerClientEvent('lslegacy:usableItems', source, LSLegacy.Inventory.GetUsableItemNames())
         LSLegacy.Events.SendToClient('lslegacy:initPlayer', source, LSLegacy.ServerPlayers[source])
         TriggerClientEvent('lslegacy:phone:playerReady', source)
         LSLegacy.RegisterPeds(LSLegacy.RegisteredZones, source)

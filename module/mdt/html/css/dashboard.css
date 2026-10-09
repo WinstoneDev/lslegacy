@@ -3,7 +3,7 @@
    Additif à mdt.css : aucune règle existante n'est surchargée, tous
    les sélecteurs sont préfixés `dash-`. Les couleurs viennent des
    variables du thème, la teinte du département étant injectée dans
-   --mdt-blue-dk à l'ouverture (police bleu, gendarmerie vert).
+   --mdt-blue-dk à l'ouverture (police bleu, shérif marron).
    ════════════════════════════════════════════════════════════════ */
 
 /* ── Bandeau de compteurs ────────────────────────────────────── */

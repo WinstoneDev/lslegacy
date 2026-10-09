@@ -7,6 +7,9 @@ local rateLimits = {
     ['bank:adminSetRate'] = 50, ['bank:closeLivret'] = 50, ['bank:depositLivret'] = 50,
     ['bank:getLivrets'] = 50, ['bank:openLivret'] = 50, ['bank:setCardTier'] = 50,
     ['bank:transferByIban'] = 50, ['bank:withdrawLivret'] = 50,
+    ['bank:blockCard'] = 20, ['bank:replaceCard'] = 10, ['bank:getBeneficiaries'] = 30,
+    ['bank:addBeneficiary'] = 20, ['bank:removeBeneficiary'] = 20,
+    ['bank:societyCreateAccount'] = 10, ['bank:societyCreateCard'] = 10,
 }
 for eventName, limit in pairs(rateLimits) do
     LSLegacy.Security.RegisterRateLimit(eventName, limit)
@@ -84,6 +87,21 @@ MySQL.Async.execute([[
         ('platinum', 80, 'monthly', 15000, 5000, 25000, 5000, 2.0)
 ]], {})
 
+-- Migrations idempotentes : comptes entreprise (society = job), carte bloquée à distance
+MySQL.Async.execute("ALTER TABLE bankaccounts ADD COLUMN IF NOT EXISTS society VARCHAR(40) NULL DEFAULT NULL", {})
+MySQL.Async.execute("ALTER TABLE bankaccounts ADD COLUMN IF NOT EXISTS card_blocked TINYINT(1) NOT NULL DEFAULT 0", {})
+MySQL.Async.execute([[
+    CREATE TABLE IF NOT EXISTS bank_beneficiaries (
+        id           INT(11)      NOT NULL AUTO_INCREMENT,
+        character_id INT(11)      NOT NULL,
+        name         VARCHAR(60)  NOT NULL,
+        iban         VARCHAR(40)  NOT NULL,
+        created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        KEY idx_bank_beneficiaries_char (character_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+]], {})
+
 MySQL.ready(function()
     LSLegacy.Bank.GetAllAccounts()
     LSLegacy.Bank.GetAllLivrets()
@@ -95,6 +113,12 @@ end)
 
 local function ParseSqlDatetime(s)
     if not s or s == '' then return nil end
+    -- oxmysql renvoie les DATETIME en timestamp ms (sauf dateStrings=true) :
+    -- sans ce cas, les cotisations carte et les plafonds n'étaient jamais évalués.
+    if type(s) == 'number' then
+        if s > 1e11 then return math.floor(s / 1000) end
+        return math.floor(s)
+    end
     local y, mo, d, h, mi, se = string.match(tostring(s), '(%d+)-(%d+)-(%d+)[ T](%d+):(%d+):(%d+)')
     if not y then return nil end
     return os.time({ year = tonumber(y), month = tonumber(mo), day = tonumber(d), hour = tonumber(h), min = tonumber(mi), sec = tonumber(se) })
@@ -120,11 +144,13 @@ LSLegacy.Bank.GetAllAccounts = function(cb)
                 courant = result[i].courant,
                 card_infos = json.decode(result[i].card_infos),
                 card_tier = result[i].card_tier or 'standard',
+                card_blocked = (result[i].card_blocked == 1 or result[i].card_blocked == true),
+                society = result[i].society,
                 next_billing_at = result[i].next_billing_at,
                 payment_spent = result[i].payment_spent or 0,
                 withdrawal_spent = result[i].withdrawal_spent or 0,
                 transfer_spent = result[i].transfer_spent or 0,
-                ceiling_period_reset_at = result[i].ceiling_period_reset_at
+                ceiling_period_reset_at = result[i].ceiling_period_reset_at and FormatSqlDatetime(ParseSqlDatetime(result[i].ceiling_period_reset_at) or 0) or nil
             }
         end
         if cb then cb() end
@@ -139,6 +165,73 @@ LSLegacy.Bank.GetPersonnalAccounts = function(characterId)
         end
     end
     return accounts
+end
+
+-- Compte entreprise d'un job (une seule ligne bankaccounts avec society = job)
+LSLegacy.Bank.GetSocietyAccount = function(job)
+    if not job then return nil end
+    for _, v in pairs(LSLegacy.Bank.BankAccounts) do
+        if v.society == job then return v end
+    end
+    return nil
+end
+
+local function IsBoss(player)
+    return LSLegacy.Society and LSLegacy.Society.IsBoss and LSLegacy.Society.IsBoss(player) or false
+end
+
+-- Droit de gestion d'un compte : son titulaire, ou le chef du job pour un compte entreprise
+local function CanManageAccount(player, account)
+    if not player or not account then return false end
+    if account.society then
+        return player.job == account.society and IsBoss(player)
+    end
+    return account.character_id == player["boutique-id"]
+end
+
+-- Un membre du job peut-il utiliser (payer/déposer) le compte entreprise ?
+local function CanUseAccount(player, account)
+    if not player or not account then return false end
+    if account.society then return player.job == account.society end
+    return true
+end
+
+-- Validation d'une carte présentée (item) contre le compte : numéro à jour (carte non remplacée) et non bloquée
+LSLegacy.Bank.ValidateCard = function(account, cardData)
+    if not account or not account.card_infos then return false, 'Cette carte est invalide.' end
+    if account.card_blocked then return false, 'Cette carte est bloquée.' end
+    if not cardData or tostring(cardData.card_number) ~= tostring(account.card_infos.card_number) then
+        return false, 'Cette carte a été remplacée et n\'est plus valide.'
+    end
+    return true
+end
+
+local function CardLabel(account)
+    if account.society then
+        return 'Carte entreprise ' .. (LSLegacy.Jobs.GetJobLabel(account.society) or account.society)
+    end
+    return 'Compte n°' .. account.id
+end
+
+local function GiveCardItem(player, account)
+    if not account.card_infos then return false end
+    if not LSLegacy.Inventory.CanCarryItem(player, 'carte', 1) then return false end
+    LSLegacy.Inventory.AddItemInInventory(player, 'carte', 1, CardLabel(account), nil, account.card_infos)
+    return true
+end
+
+local function NewCardInfos(account, ownerName, tier)
+    return {
+        owner_name = ownerName,
+        card_number = LSLegacy.Bank.GenerateCardNumber(),
+        card_pin = LSLegacy.Bank.GenerateCardPin(),
+        card_cvv = LSLegacy.Bank.GenerateCardCVV(),
+        card_expiration_date = LSLegacy.Bank.GenerateCardExpirationDate(),
+        card_type = account.society and 'Business' or 'Mastercarte',
+        card_account = account.id,
+        card_tier = tier,
+        society = account.society,
+    }
 end
 
 LSLegacy.RegisterZone('Guichet de banque', vector3(243.2082, 224.7312, 106.2869), function(source)
@@ -246,16 +339,7 @@ LSLegacy.Events.Register('bank:createCard', function(id, tier)
     tier = LSLegacy.Bank.CardTiers[tier] and tier or 'standard'
     local tierCfg = LSLegacy.Bank.GetCardTierConfig(tier)
 
-    local card = {
-        owner_name = player.characterInfos.Prenom .. " " .. player.characterInfos.NDF,
-        card_number = LSLegacy.Bank.GenerateCardNumber(),
-        card_pin = LSLegacy.Bank.GenerateCardPin(),
-        card_cvv = LSLegacy.Bank.GenerateCardCVV(),
-        card_expiration_date = LSLegacy.Bank.GenerateCardExpirationDate(),
-        card_type = 'Mastercarte',
-        card_account = id,
-        card_tier = tier
-    }
+    local card = NewCardInfos(account, player.characterInfos.Prenom .. " " .. player.characterInfos.NDF, tier)
 
     local nextBillingAt = nil
     if tierCfg.cost_amount and tierCfg.cost_amount > 0 then
@@ -263,15 +347,14 @@ LSLegacy.Events.Register('bank:createCard', function(id, tier)
         nextBillingAt = FormatSqlDatetime(os.time() + days * 86400)
     end
 
-    MySQL.Async.execute('UPDATE bankaccounts SET card_infos = @card_infos, card_tier = @card_tier, next_billing_at = @next_billing_at WHERE id = @id', {
+    MySQL.Async.execute('UPDATE bankaccounts SET card_infos = @card_infos, card_tier = @card_tier, next_billing_at = @next_billing_at, card_blocked = 0 WHERE id = @id', {
         ['@id'] = id,
         ['@card_infos'] = json.encode(card),
         ['@card_tier'] = tier,
         ['@next_billing_at'] = nextBillingAt
     })
-    if LSLegacy.Inventory.CanCarryItem(player, 'carte', 1) then
-        LSLegacy.Inventory.AddItemInInventory(player, 'carte', 1, 'Compte n°' ..id, nil, card)
-    end
+    account.card_infos = card
+    GiveCardItem(player, account)
     Wait(150)
     LSLegacy.Bank.GetAllAccounts()
     Wait(150)
@@ -279,10 +362,156 @@ LSLegacy.Events.Register('bank:createCard', function(id, tier)
     LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Votre carte a été créée avec succès.', 'success')
 end)
 
+-- Blocage / déblocage à distance (carte volée) : toutes les copies de la carte sont refusées
+LSLegacy.Events.Register('bank:blockCard', function(id, blocked)
+    local player = LSLegacy.Players.Get(source)
+    local account = LSLegacy.Bank.GetAccount(id)
+    if not player or not CanManageAccount(player, account) or not account.card_infos then return end
+    blocked = blocked and true or false
+    account.card_blocked = blocked
+    MySQL.Async.execute('UPDATE bankaccounts SET card_blocked = @b WHERE id = @id', { ['@id'] = id, ['@b'] = blocked and 1 or 0 }, function()
+        LSLegacy.Bank.GetAllAccounts(function()
+            LSLegacy.Events.SendToClient('receiveBankAccounts', player.source, LSLegacy.Bank.BankAccounts)
+        end)
+    end)
+    LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', blocked and 'Votre carte est bloquée : aucun paiement ni retrait ne sera accepté.' or 'Votre carte est de nouveau active.', blocked and 'error' or 'success')
+end)
+
+-- Remplacement : nouveau numéro / PIN, l'ancienne carte (et ses copies) devient invalide, une carte neuve est remise
+LSLegacy.Events.Register('bank:replaceCard', function(id)
+    local player = LSLegacy.Players.Get(source)
+    local account = LSLegacy.Bank.GetAccount(id)
+    if not player or not CanManageAccount(player, account) or not account.card_infos then return end
+    local ownerName = account.society and (LSLegacy.Jobs.GetJobLabel(account.society) or account.society)
+        or (player.characterInfos.Prenom .. " " .. player.characterInfos.NDF)
+    local card = NewCardInfos(account, ownerName, account.card_tier or 'standard')
+    account.card_infos = card
+    account.card_blocked = false
+    MySQL.Async.execute('UPDATE bankaccounts SET card_infos = @c, card_blocked = 0 WHERE id = @id', { ['@id'] = id, ['@c'] = json.encode(card) }, function()
+        LSLegacy.Bank.GetAllAccounts(function()
+            LSLegacy.Events.SendToClient('receiveBankAccounts', player.source, LSLegacy.Bank.BankAccounts)
+        end)
+    end)
+    if GiveCardItem(player, account) then
+        LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Nouvelle carte remise. L\'ancienne est désormais invalide.', 'success')
+    else
+        LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Carte remplacée, mais votre inventaire est plein : repassez la commander.', 'error')
+    end
+end)
+
+-- Vérification d'une carte présentée au distributeur (item) : numéro courant + non bloquée + compte utilisable
+LSLegacy.Callbacks.RegisterServer('bank:validateCard', function(src, cb, cardData)
+    local player = LSLegacy.Players.Get(src)
+    local account = cardData and LSLegacy.Bank.GetAccount(tonumber(cardData.card_account) or -1)
+    if not player or not account then return cb(false, 'Carte inconnue.') end
+    local ok, reason = LSLegacy.Bank.ValidateCard(account, cardData)
+    if not ok then return cb(false, reason) end
+    if not CanUseAccount(player, account) then return cb(false, 'Cette carte entreprise ne vous appartient pas.') end
+    if tostring(cardData.card_pin) ~= tostring(account.card_infos.card_pin) then return cb(false, 'Le code PIN est incorrect.') end
+    cb(true)
+end)
+
+-- Bénéficiaires enregistrés (virements rapides)
+local function SendBeneficiaries(src, charId)
+    MySQL.Async.fetchAll('SELECT id, name, iban FROM bank_beneficiaries WHERE character_id = @c ORDER BY name', { ['@c'] = charId }, function(rows)
+        LSLegacy.Events.SendToClient('receiveBankBeneficiaries', src, rows or {})
+    end)
+end
+
+LSLegacy.Events.Register('bank:getBeneficiaries', function()
+    local player = LSLegacy.Players.Get(source)
+    if player then SendBeneficiaries(player.source, player["boutique-id"]) end
+end)
+
+LSLegacy.Events.Register('bank:addBeneficiary', function(name, iban)
+    local player = LSLegacy.Players.Get(source)
+    if not player then return end
+    name = tostring(name or ''):gsub('^%s+', ''):gsub('%s+$', ''):sub(1, 60)
+    iban = tostring(iban or ''):gsub('%s+', ''):upper():sub(1, 40)
+    if name == '' or iban == '' then return end
+    local exists = false
+    for _, v in pairs(LSLegacy.Bank.BankAccounts) do if v.iban == iban then exists = true break end end
+    if not exists then
+        LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'IBAN introuvable.', 'error')
+        return
+    end
+    MySQL.Async.execute('INSERT INTO bank_beneficiaries (character_id, name, iban) VALUES (@c, @n, @i)', {
+        ['@c'] = player["boutique-id"], ['@n'] = name, ['@i'] = iban,
+    }, function() SendBeneficiaries(player.source, player["boutique-id"]) end)
+    LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Bénéficiaire ajouté.', 'success')
+end)
+
+LSLegacy.Events.Register('bank:removeBeneficiary', function(id)
+    local player = LSLegacy.Players.Get(source)
+    if not player then return end
+    MySQL.Async.execute('DELETE FROM bank_beneficiaries WHERE id = @id AND character_id = @c', {
+        ['@id'] = tonumber(id) or -1, ['@c'] = player["boutique-id"],
+    }, function() SendBeneficiaries(player.source, player["boutique-id"]) end)
+end)
+
+-- Contexte du menu banque : job, chef ou non, compte entreprise existant
+LSLegacy.Callbacks.RegisterServer('bank:getContext', function(src, cb)
+    local player = LSLegacy.Players.Get(src)
+    if not player then return cb({}) end
+    local job = player.job
+    local soc = LSLegacy.Bank.GetSocietyAccount(job)
+    cb({
+        job = job,
+        jobLabel = job and LSLegacy.Jobs.GetJobLabel(job) or nil,
+        isBoss = IsBoss(player),
+        hasSociety = soc ~= nil,
+        societyAccountId = soc and soc.id or nil,
+    })
+end)
+
+-- Compte entreprise : créé une seule fois par job, par le chef
+LSLegacy.Events.Register('bank:societyCreateAccount', function()
+    local player = LSLegacy.Players.Get(source)
+    if not player or not IsBoss(player) then return end
+    local job = player.job
+    if not job or job == 'unemployed' then return end
+    if LSLegacy.Bank.GetSocietyAccount(job) then
+        LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Votre entreprise possède déjà un compte.', 'error')
+        return
+    end
+    local label = LSLegacy.Jobs.GetJobLabel(job) or job
+    MySQL.Async.execute('INSERT INTO bankaccounts (owner, character_id, owner_name, iban, amountMoney, transactions, courant, society) VALUES (@owner, NULL, @owner_name, @iban, 0, @tx, 0, @society)', {
+        ['@owner'] = 'society:' .. job, ['@owner_name'] = label, ['@iban'] = LSLegacy.Bank.GenerateIBAN(25),
+        ['@tx'] = json.encode({}), ['@society'] = job,
+    }, function()
+        LSLegacy.Bank.GetAllAccounts(function()
+            LSLegacy.Events.SendToClient('receiveBankAccounts', player.source, LSLegacy.Bank.BankAccounts)
+        end)
+    end)
+    LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Compte entreprise ' .. label .. ' ouvert.', 'success')
+end)
+
+-- Carte entreprise : le chef crée la carte (si absente) et en remet une copie ; à donner aux agents habilités
+LSLegacy.Events.Register('bank:societyCreateCard', function()
+    local player = LSLegacy.Players.Get(source)
+    if not player or not IsBoss(player) then return end
+    local account = LSLegacy.Bank.GetSocietyAccount(player.job)
+    if not account then return end
+    if not account.card_infos then
+        local card = NewCardInfos(account, LSLegacy.Jobs.GetJobLabel(player.job) or player.job, account.card_tier or 'standard')
+        account.card_infos = card
+        MySQL.Async.execute('UPDATE bankaccounts SET card_infos = @c, card_blocked = 0 WHERE id = @id', { ['@id'] = account.id, ['@c'] = json.encode(card) }, function()
+            LSLegacy.Bank.GetAllAccounts(function()
+                LSLegacy.Events.SendToClient('receiveBankAccounts', player.source, LSLegacy.Bank.BankAccounts)
+            end)
+        end)
+    end
+    if GiveCardItem(player, account) then
+        LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Carte entreprise remise.', 'success')
+    else
+        LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Inventaire plein.', 'error')
+    end
+end)
+
 LSLegacy.Events.Register('bank:setCardTier', function(id, tier)
     local player = LSLegacy.Players.Get(source)
     local account = LSLegacy.Bank.GetAccount(id)
-    if not account or account.character_id ~= player["boutique-id"] then return end
+    if not player or not CanManageAccount(player, account) then return end
     if not LSLegacy.Bank.CardTiers[tier] then
         LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Palier de carte invalide.', 'error')
         return
@@ -361,6 +590,7 @@ LSLegacy.Events.Register('bank:addMoney', function(amount, id)
     local player = LSLegacy.Validate.Player(source)
     local account = LSLegacy.Bank.GetAccount(id)
     if not player or not account then return end
+    if not CanUseAccount(player, account) then return end
     amount = LSLegacy.Validate.PositiveInteger(amount)
     if not amount then
         LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Montant invalide.', 'error')
@@ -379,14 +609,28 @@ end)
 LSLegacy.Events.Register('bank:withdrawMoney', function(amount, id)
     local player = LSLegacy.Players.Get(source)
     local account = LSLegacy.Bank.GetAccount(id)
-    if not account then return end
+    if not player or not account then return end
+    if account.card_blocked then
+        LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Cette carte est bloquée.', 'error')
+        return
+    end
+    -- retrait d'espèces sur le compte entreprise : chef uniquement
+    if account.society and not CanManageAccount(player, account) then
+        LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Seul le chef peut retirer des espèces du compte entreprise.', 'error')
+        return
+    end
     amount = LSLegacy.Validate.Number(amount)
     if not amount or amount <= 0 then return end
     local tierCfg = LSLegacy.Bank.GetCardTierConfig(account.card_tier)
 
-    if (account.amountMoney + tierCfg.overdraft_limit) >= amount then
+    -- compte entreprise : pas de découvert ni de plafond de retrait
+    local overdraft = account.society and 0 or tierCfg.overdraft_limit
+    if (account.amountMoney + overdraft) >= amount then
         -- ne consommer le plafond que si le retrait va effectivement avoir lieu
-        local ok, remaining = LSLegacy.Bank.CheckAndConsumeCeiling(account, 'withdrawal', amount, tierCfg.withdrawal_ceiling, tierCfg.cost_period)
+        local ok, remaining = true, 0
+        if not account.society then
+            ok, remaining = LSLegacy.Bank.CheckAndConsumeCeiling(account, 'withdrawal', amount, tierCfg.withdrawal_ceiling, tierCfg.cost_period)
+        end
         if not ok then
             LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Plafond de retrait atteint : il vous reste '..math.max(0, math.floor(remaining))..'$ sur '..tierCfg.withdrawal_ceiling..'$ sur la période en cours.', 'error')
             return
@@ -864,7 +1108,7 @@ end)
 LSLegacy.Events.Register('bank:transferByIban', function(fromAccountId, toIban, amount, message)
     local player = LSLegacy.Players.Get(source)
     local fromAccount = LSLegacy.Bank.GetAccount(fromAccountId)
-    if not fromAccount or fromAccount.character_id ~= player["boutique-id"] then return end
+    if not player or not CanManageAccount(player, fromAccount) then return end
 
     amount = LSLegacy.Validate.Number(amount) or 0
     if amount <= 0 then
@@ -891,14 +1135,18 @@ LSLegacy.Events.Register('bank:transferByIban', function(fromAccountId, toIban, 
 
     local tierCfg = LSLegacy.Bank.GetCardTierConfig(fromAccount.card_tier)
 
-    local available = fromAccount.amountMoney + tierCfg.overdraft_limit
+    -- compte entreprise : pas de découvert ni de plafond carte
+    local available = fromAccount.amountMoney + (fromAccount.society and 0 or tierCfg.overdraft_limit)
     if amount > available then
         LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Solde insuffisant.', 'error')
         return
     end
 
     -- ne consommer le plafond que si le virement va effectivement avoir lieu
-    local ok, remaining = LSLegacy.Bank.CheckAndConsumeCeiling(fromAccount, 'transfer', amount, tierCfg.transfer_ceiling, tierCfg.cost_period)
+    local ok, remaining = true, 0
+    if not fromAccount.society then
+        ok, remaining = LSLegacy.Bank.CheckAndConsumeCeiling(fromAccount, 'transfer', amount, tierCfg.transfer_ceiling, tierCfg.cost_period)
+    end
     if not ok then
         LSLegacy.Events.SendToClient('notify', player.source, 'Maze Bank', 'Plafond de virement atteint : il vous reste '..math.max(0, math.floor(remaining))..'$ sur '..tierCfg.transfer_ceiling..'$ sur la période en cours.', 'error')
         return
@@ -920,6 +1168,30 @@ LSLegacy.Events.Register('bank:transferByIban', function(fromAccountId, toIban, 
         LSLegacy.Events.SendToClient('notify', toSrc, 'Maze Bank', 'Vous avez reçu un virement de '..amount..'$.', 'success')
     end
 end)
+
+-- ─── Crédit / débit du compte entreprise d'un job (factures, achats, salaires) ─────
+LSLegacy.Bank.AddSocietyMoney = function(job, amount, message, txType)
+    local account = LSLegacy.Bank.GetSocietyAccount(job)
+    if not account or not amount or amount <= 0 then return false end
+    account.amountMoney = account.amountMoney + amount
+    table.insert(account.transactions, { amount = amount, type = txType or 'Dépôt', message = message or 'Crédit entreprise', date = os.date('%d/%m/%Y %H:%M:%S') })
+    MySQL.Async.execute('UPDATE bankaccounts SET amountMoney = @a, transactions = @t WHERE id = @id', {
+        ['@a'] = account.amountMoney, ['@t'] = json.encode(account.transactions), ['@id'] = account.id,
+    })
+    return true
+end
+
+LSLegacy.Bank.RemoveSocietyMoney = function(job, amount, message, txType)
+    local account = LSLegacy.Bank.GetSocietyAccount(job)
+    if not account or not amount or amount <= 0 then return false end
+    if account.amountMoney < amount then return false end
+    account.amountMoney = account.amountMoney - amount
+    table.insert(account.transactions, { amount = amount, type = txType or 'Retrait', message = message or 'Débit entreprise', date = os.date('%d/%m/%Y %H:%M:%S') })
+    MySQL.Async.execute('UPDATE bankaccounts SET amountMoney = @a, transactions = @t WHERE id = @id', {
+        ['@a'] = account.amountMoney, ['@t'] = json.encode(account.transactions), ['@id'] = account.id,
+    })
+    return true
+end
 
 -- cycles serveur : intérêts des livrets + cotisation carte/agios, versement journalier composé sur le solde courant
 

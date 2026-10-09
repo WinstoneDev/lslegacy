@@ -2,7 +2,7 @@
 -- L'horloge in-game est calculée et diffusée par le serveur (Config.HandleTime = false côté codem-dynamicweather) ; les clients l'appliquent avec NetworkOverrideClockTime/SetClockDate (natives client only). La date diffusée est toujours la vraie date de la machine, pour garder la saison cohérente.
 -- Météo (/weathercycle on|off) et horloge (freeze admin) sont deux flags indépendants.
 
-LSLegacy.Security.RegisterRateLimit('weather:requestClockSync', 50)
+LSLegacy.Security.RegisterRateLimit('weather:requestClockSync', 100)
 
 local CFG = Config.Weather
 local WEATHER_RESOURCE = 'codem-dynamicweather'
@@ -11,6 +11,7 @@ local MINUTES_PER_DAY = 1440
 local weatherEnabled = CFG.Enabled
 local timeFrozen = false
 local lastWeather = {} -- [areaId] = weather
+local lastTemp = {} -- [areaId] = température (°C) appliquée
 local totalMinutes -- horloge : minutes depuis minuit (0-1439)
 
 local function RandomFloat(min, max)
@@ -27,6 +28,36 @@ end
 local function SeasonFactor()
     local dayOfYear = tonumber(os.date('*t').yday) or 172
     return math.cos((2 * math.pi * (dayOfYear - 172)) / 365)
+end
+
+-- Multiplicateur saisonnier d'un poids de météo : interpolation linéaire entre les ancres de saison voisines (CFG.SeasonAnchors/SeasonWeights).
+local SEASON_ORDER = { 'winter', 'spring', 'summer', 'autumn' }
+
+local function SeasonWeightResolver()
+    local day = tonumber(os.date('*t').yday) or 172
+    local anchors = CFG.SeasonAnchors
+    local points = {}
+    for _, name in ipairs(SEASON_ORDER) do
+        points[#points + 1] = { name = name, day = anchors[name] }
+    end
+    points[#points + 1] = { name = 'winter', day = anchors.winter + 365 }
+    if day < anchors.winter then day = day + 365 end
+
+    local from, to = points[#points - 1], points[#points]
+    for i = 1, #points - 1 do
+        if day >= points[i].day and day <= points[i + 1].day then
+            from, to = points[i], points[i + 1]
+            break
+        end
+    end
+
+    local t = (day - from.day) / (to.day - from.day)
+    local fromWeights = CFG.SeasonWeights[from.name] or {}
+    local toWeights = CFG.SeasonWeights[to.name] or {}
+    return function(weather)
+        local a, b = fromWeights[weather] or 1.0, toWeights[weather] or 1.0
+        return a + (b - a) * t
+    end
 end
 
 -- Cycle jour/nuit sur l'heure in-game. Pic de chaleur ~15h, creux ~3h (cosinus) → 1.0 = 15h, -1.0 = 3h.
@@ -49,14 +80,16 @@ end
 
 -- Tirage pondéré parmi les entrées éligibles (bornes minAmbient/maxAmbient respectées), en évitant si possible la dernière météo de la zone.
 local function PickWeather(areaId, zone, ambient)
+    local seasonWeight = SeasonWeightResolver()
     local eligible = {}
     local totalWeight = 0
     for _, entry in ipairs(zone.pool) do
         local aboveMin = not entry.minAmbient or ambient >= entry.minAmbient
         local belowMax = not entry.maxAmbient or ambient <= entry.maxAmbient
-        if aboveMin and belowMax then
-            eligible[#eligible + 1] = entry
-            totalWeight = totalWeight + entry.weight
+        local weight = entry.weight * seasonWeight(entry.weather)
+        if aboveMin and belowMax and weight > 0 then
+            eligible[#eligible + 1] = { entry = entry, weight = weight }
+            totalWeight = totalWeight + weight
         end
     end
 
@@ -69,10 +102,10 @@ local function PickWeather(areaId, zone, ambient)
     local pickPool = eligible
     if CFG.AvoidRepeat and previous and #eligible > 1 then
         local withoutPrevious, weightWithoutPrevious = {}, 0
-        for _, entry in ipairs(eligible) do
-            if entry.weather ~= previous then
-                withoutPrevious[#withoutPrevious + 1] = entry
-                weightWithoutPrevious = weightWithoutPrevious + entry.weight
+        for _, candidate in ipairs(eligible) do
+            if candidate.entry.weather ~= previous then
+                withoutPrevious[#withoutPrevious + 1] = candidate
+                weightWithoutPrevious = weightWithoutPrevious + candidate.weight
             end
         end
         if #withoutPrevious > 0 then
@@ -83,13 +116,13 @@ local function PickWeather(areaId, zone, ambient)
 
     local roll = math.random() * totalWeight
     local cumulative = 0
-    for _, entry in ipairs(pickPool) do
-        cumulative = cumulative + entry.weight
+    for _, candidate in ipairs(pickPool) do
+        cumulative = cumulative + candidate.weight
         if roll <= cumulative then
-            return entry
+            return candidate.entry
         end
     end
-    return pickPool[#pickPool]
+    return pickPool[#pickPool].entry
 end
 
 local function ApplyAreaWeather(areaId, zone)
@@ -103,6 +136,7 @@ local function ApplyAreaWeather(areaId, zone)
     local ok = exports[WEATHER_RESOURCE]:setAreaWeather(areaId, entry.weather, temperature)
     if ok then
         lastWeather[areaId] = entry.weather
+        lastTemp[areaId] = temperature
         Config.Development.Print(('[weather] %s -> %s (%d°C, ambiant %.1f°C)'):format(zone.name, entry.weather, temperature, ambient))
     else
         Config.Development.Print(('[weather] échec setAreaWeather pour %s (id=%s)'):format(zone.name, areaId))
@@ -189,6 +223,16 @@ function LSLegacy.Weather.SetTime(hour, minute)
     totalMinutes = hour * 60 + minute
     BroadcastClock(-1)
     return true
+end
+
+-- Dernière température (°C) appliquée à une zone (nil si jamais appliquée). Utilisé par le METAR ATC.
+function LSLegacy.Weather.GetTemperature(areaId)
+    return lastTemp[areaId]
+end
+
+-- Dernier type de météo GTA (CLEAR, RAIN, THUNDER...) appliqué à une zone. Utilisé par le METAR ATC.
+function LSLegacy.Weather.GetWeatherType(areaId)
+    return lastWeather[areaId]
 end
 
 function LSLegacy.Weather.GetTime()

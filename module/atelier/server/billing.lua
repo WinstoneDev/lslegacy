@@ -29,35 +29,25 @@ MySQL.Async.execute([[
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 ]], {})
 
--- [plate] = { companyId, customerSrc, customerCharId, customerName, lines = { {label, amount, partItem} }, total }
+-- [plate] = { companyId, lines = { {label, amount, partItem} }, total, updatedAt }
+-- Le ticket est lié au VÉHICULE (plaque), jamais au client : le mécano peut
+-- intervenir en son absence (chaque intervention/tuning s'y ajoute), le client
+-- le plus proche n'étant résolu qu'au moment de la facturation (ci-dessous).
 LSLegacy.Atelier.Tickets = LSLegacy.Atelier.Tickets or {}
 
-local function GetOrCreateTicket(plate, companyId, customerSrc)
+local function GetOrCreateTicket(plate, companyId)
     local ticket = LSLegacy.Atelier.Tickets[plate]
-    if ticket then return ticket end
-
-    local customer = LSLegacy.Atelier.GetPlayer(customerSrc)
-    if not customer then return nil end
-
-    ticket = {
-        companyId      = companyId,
-        customerSrc    = customerSrc,
-        customerCharId = customer["boutique-id"],
-        customerName   = GetPlayerName(customerSrc) or 'Client',
-        lines          = {},
-        total          = 0,
-    }
-    LSLegacy.Atelier.Tickets[plate] = ticket
+    if not ticket then
+        ticket = { companyId = companyId, lines = {}, total = 0 }
+        LSLegacy.Atelier.Tickets[plate] = ticket
+    end
+    ticket.updatedAt = os.time()
     return ticket
 end
 
--- Ajoute une ligne de prestation au ticket ouvert d'une plaque (créé si
--- nécessaire). Revient false si le client n'est plus valide.
--- @return boolean ok
-function LSLegacy.Atelier.AddInvoiceLine(plate, companyId, customerSrc, label, amount, partItem)
-    local ticket = GetOrCreateTicket(plate, companyId, customerSrc)
-    if not ticket then return false end
-
+-- Ajoute une ligne de prestation au ticket ouvert d'une plaque (créé si nécessaire).
+function LSLegacy.Atelier.AddInvoiceLine(plate, companyId, label, amount, partItem)
+    local ticket = GetOrCreateTicket(plate, companyId)
     ticket.lines[#ticket.lines + 1] = { label = label, amount = amount, partItem = partItem }
     ticket.total = ticket.total + amount
     return true
@@ -85,8 +75,17 @@ LSLegacy.Events.Register('atelier:requestInvoice', function(data)
         return
     end
 
+    -- Le client facturé est celui présent MAINTENANT, pas celui qui a déposé le
+    -- véhicule : le mécano peut avoir travaillé dessus en son absence.
+    local customerSrc = LSLegacy.Atelier.GetNearestCustomer(entity, src)
+    if not customerSrc then
+        LSLegacy.Atelier.Notify(src, Lang.Atelier.no_client_vehicle, 'error')
+        return
+    end
+
     LSLegacy.Events.SendToClient('atelier:invoicePreview', src, {
-        plate = plate, lines = ticket.lines, total = ticket.total, customerName = ticket.customerName,
+        plate = plate, vehNet = data.vehNet, lines = ticket.lines, total = ticket.total,
+        customerName = GetPlayerName(customerSrc) or 'Client',
     })
 end)
 
@@ -94,22 +93,38 @@ LSLegacy.Events.Register('atelier:finalizeInvoice', function(data)
     local src = source
     local ok = LSLegacy.Atelier.CanAct(src, 'billing')
     if not ok then return end
-    if not data or not data.plate then return end
+    if not data or not data.plate or not data.vehNet then return end
 
     local plate  = data.plate:upper()
     local ticket = LSLegacy.Atelier.Tickets[plate]
     if not ticket or #ticket.lines == 0 then return end
 
-    local mecano = LSLegacy.Atelier.GetPlayer(src)
-    ticket.mecanoCharId = mecano and mecano["boutique-id"] or nil
-    ticket.mecanoName   = GetPlayerName(src) or 'Mécanicien'
+    local entity = NetworkGetEntityFromNetworkId(data.vehNet)
+    if not DoesEntityExist(entity) then return end
 
-    LSLegacy.Bank.OpenPaymentMenu(ticket.customerSrc, 'Facture atelier — ' .. plate, ticket.total, {
+    -- Re-résolu ici (jamais fait confiance à la preview, qui a pu dater d'un
+    -- peu plus tôt) : le client peut être revenu ou reparti entre-temps.
+    local customerSrc = LSLegacy.Atelier.GetNearestCustomer(entity, src)
+    if not customerSrc then
+        LSLegacy.Atelier.Notify(src, Lang.Atelier.no_client_vehicle, 'error')
+        return
+    end
+    local customer = LSLegacy.Atelier.GetPlayer(customerSrc)
+
+    local mecano = LSLegacy.Atelier.GetPlayer(src)
+    ticket.customerSrc    = customerSrc
+    ticket.customerCharId = customer and customer["boutique-id"] or nil
+    ticket.customerName   = GetPlayerName(customerSrc) or 'Client'
+    ticket.mecanoSrc      = src
+    ticket.mecanoCharId   = mecano and mecano["boutique-id"] or nil
+    ticket.mecanoName     = GetPlayerName(src) or 'Mécanicien'
+
+    LSLegacy.Bank.OpenPaymentMenu(customerSrc, 'Facture atelier — ' .. plate, ticket.total, {
         meta = { type = 'atelier', refId = plate },
     })
 end)
 
-LSLegacy.Bank.RegisterPaymentResultHandler('atelier', function(plate, success)
+LSLegacy.Bank.RegisterPaymentResultHandler('atelier', function(plate, success, payType)
     local ticket = LSLegacy.Atelier.Tickets[plate]
     if not ticket then return end
 
@@ -121,6 +136,25 @@ LSLegacy.Bank.RegisterPaymentResultHandler('atelier', function(plate, success)
     end
 
     LSLegacy.Atelier.Tickets[plate] = nil
+
+    -- Espèces : remises en main propre au mécano. Carte : compte entreprise de
+    -- l'atelier si actif, sinon compte courant du mécano (PaySalary retombe
+    -- en cash si celui-ci n'en a pas non plus).
+    local mecano = ticket.mecanoSrc and LSLegacy.Atelier.GetPlayer(ticket.mecanoSrc)
+    if mecano then
+        if payType == 'money' then
+            LSLegacy.Money.AddPlayerMoney(mecano, ticket.total)
+        else
+            local company = Config.Atelier.Companies[ticket.companyId]
+            local societyAccount = company and LSLegacy.Bank.GetSocietyAccount(company.job)
+            local label = ('Facture atelier — %s — %s'):format(plate, ticket.customerName)
+            if societyAccount then
+                LSLegacy.Bank.AddSocietyMoney(company.job, ticket.total, label, 'Facture')
+            else
+                LSLegacy.Bank.PaySalary(mecano, ticket.total, label)
+            end
+        end
+    end
 
     MySQL.Async.insert(
         'INSERT INTO atelier_invoices (company, plate, customer_character_id, customer_name, mecano_character_id, mecano_name, total, status, paid_at) ' ..
@@ -151,13 +185,15 @@ LSLegacy.Bank.RegisterPaymentResultHandler('atelier', function(plate, success)
     end
 end)
 
--- Un ticket abandonné reste en mémoire tant que le serveur tourne ; purge après 6h.
+-- Un ticket abandonné reste en mémoire tant que le serveur tourne ; purge après
+-- 6h sans la moindre ligne ajoutée (le ticket suit le véhicule, plus le client :
+-- on ne peut plus se fier à sa présence en ligne pour savoir s'il est abandonné).
 CreateThread(function()
     while true do
         Wait(3600000)
-        -- Pas d'horodatage individuel : on ne purge que si le client associé est hors ligne.
+        local cutoff = os.time() - 21600
         for plate, ticket in pairs(LSLegacy.Atelier.Tickets) do
-            if not LSLegacy.Atelier.GetPlayer(ticket.customerSrc) then
+            if (ticket.updatedAt or 0) < cutoff then
                 LSLegacy.Atelier.Tickets[plate] = nil
             end
         end

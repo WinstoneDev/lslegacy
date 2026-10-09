@@ -9,7 +9,7 @@ KeyHanger.Loaded = false
 local rateLimits = {
     ['keyhanger:requestBoards'] = 10, ['keyhanger:create'] = 10, ['keyhanger:remove'] = 10,
     ['keyhanger:open'] = 30, ['keyhanger:rename'] = 10, ['keyhanger:share'] = 15,
-    ['keyhanger:unshare'] = 15, ['keyhanger:createKey'] = 15,
+    ['keyhanger:unshare'] = 15, ['keyhanger:createKey'] = 15, ['keyhanger:syncVehicleLock'] = 30,
 }
 for eventName, limit in pairs(rateLimits) do
     LSLegacy.Security.RegisterRateLimit(eventName, limit)
@@ -394,6 +394,28 @@ LSLegacy.RegisterUsableItem(C.Item, function(data)
     LSLegacy.Events.SendToClient('keyhanger:useKey', src, data)
 end)
 
+--- rediffusé à tous les clients pour que le (dé)verrouillage soit visible par tout le monde, pas seulement l'utilisateur de la clé
+LSLegacy.Events.Register('keyhanger:syncVehicleLock', function(netId, state)
+    netId = LSLegacy.Validate.PositiveInteger(netId)
+    if not netId or (state ~= 1 and state ~= 2) then return end
+    TriggerClientEvent('keyhanger:syncVehicleLock', -1, netId, state)
+end)
+
+--- Vrai si le joueur porte déjà une clé pour cette plaque. Réutilisable partout
+--- où une clé pourrait être redonnée en double (voiturier, concession...).
+local function HasVehicleKey(src, plate)
+    local player = LSLegacy.Players.Get(src)
+    if not player or not plate then return false end
+    plate = tostring(plate):gsub("%s+$", "")
+    for _, it in pairs(player.inventory or {}) do
+        if it.name == C.Item and it.data and tostring(it.data.plate or ''):gsub("%s+$", "") == plate then
+            return true
+        end
+    end
+    return false
+end
+exports('hasVehicleKey', HasVehicleKey)
+
 --- Donne une clé de véhicule à un joueur. Réutilisable (concession, garage...).
 local function GiveVehicleKey(src, plate, vehModel, display, label)
     local player = LSLegacy.Players.Get(src)
@@ -409,6 +431,24 @@ local function GiveVehicleKey(src, plate, vehModel, display, label)
     return true
 end
 exports('giveVehicleKey', GiveVehicleKey)
+
+--- Retire toutes les clés d'un joueur pour une plaque donnée. Réutilisable (location, fourrière...).
+local function RemoveVehicleKey(src, plate)
+    local player = LSLegacy.Players.Get(src)
+    if not player or not plate then return false end
+    plate = tostring(plate):gsub("%s+$", "")
+    local toRemove = {}
+    for _, it in pairs(player.inventory or {}) do
+        if it.name == C.Item and it.data and tostring(it.data.plate or ''):gsub("%s+$", "") == plate then
+            toRemove[#toRemove + 1] = { count = it.count, label = it.label, uid = it.uniqueId }
+        end
+    end
+    for _, r in ipairs(toRemove) do
+        LSLegacy.Inventory.RemoveItemInInventory(player, C.Item, r.count, r.label, r.uid)
+    end
+    return #toRemove > 0
+end
+exports('removeVehicleKey', RemoveVehicleKey)
 
 LSLegacy.Events.Register('keyhanger:createKey', function(plate, vehModel, display)
     local src = source

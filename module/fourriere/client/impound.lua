@@ -6,6 +6,15 @@ local function CanImpound()
     return true
 end
 
+-- La dépanneuse doit pouvoir accrocher un véhicule à l'arrêt et vide —
+-- pré-filtrage client, revérifié côté serveur avant tout dispatch.
+local function CanTow(entity)
+    if GetEntitySpeed(entity) > 0.5 then return false end
+    if GetPedInVehicleSeat(entity, -1) ~= 0 then return false end
+    if GetVehicleNumberOfPassengers(entity) > 0 then return false end
+    return true
+end
+
 local function OpenImpound(entity)
     if not entity or entity == 0 or not DoesEntityExist(entity) then return end
     local plate = (GetVehicleNumberPlateText(entity) or ''):gsub('^%s+', ''):gsub('%s+$', '')
@@ -20,7 +29,8 @@ local function OpenImpound(entity)
             description = ('Taxe : %d $  ·  Immobilisation : %d min'):format(fee, dur),
             icon = 'gavel',
             onSelect = function()
-                LSLegacy.Events.SendToServer('fourriere:impound', { netId = netId, plate = plate, reason = r.label })
+                print(('^3[towtruck]^7 Demande envoyée — netId=%s plate=%s'):format(tostring(netId), tostring(plate)))
+                LSLegacy.Events.SendToServer('fourriere:towtruck:call', { netId = netId, plate = plate, reason = r.label })
             end,
         }
     end
@@ -36,7 +46,8 @@ local function OpenImpound(entity)
                     { type = 'number', label = "Durée d'immobilisation (min)", required = true, min = 0, default = CFG.BaseDuration },
                 })
                 if not input then return end
-                LSLegacy.Events.SendToServer('fourriere:impound', {
+                print(('^3[towtruck]^7 Demande envoyée (motif perso) — netId=%s plate=%s'):format(tostring(netId), tostring(plate)))
+                LSLegacy.Events.SendToServer('fourriere:towtruck:call', {
                     netId = netId, plate = plate, custom = true,
                     reason = input[1], fee = input[2], duration = input[3],
                 })
@@ -54,7 +65,7 @@ exports.ox_target:addGlobalVehicle({
         label = 'Mettre en fourrière',
         distance = 3.0,
         canInteract = function(entity)
-            return CanImpound() and entity and entity ~= 0
+            return CanImpound() and entity and entity ~= 0 and CanTow(entity)
         end,
         onSelect = function(data)
             OpenImpound(data.entity)

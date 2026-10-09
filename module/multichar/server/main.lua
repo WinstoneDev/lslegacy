@@ -141,7 +141,9 @@ RegisterNetEvent('multichar:setApartmentBucket')
 AddEventHandler('multichar:setApartmentBucket', function(enter)
     local source = source
     if LSLegacy.Players.Get(source) then return end
-    SetPlayerRoutingBucket(source, enter and (Config.Multichar.Apartment.BucketOffset + source) or 0)
+    local bucket = enter and (Config.Multichar.Apartment.BucketOffset + source) or 0
+    SetPlayerRoutingBucket(source, bucket)
+    LSLegacy.Pickup.SyncBucket(source, bucket)
 end)
 
 -- ─── Suppression d'un personnage ───────────────────────────────────────────
@@ -166,8 +168,8 @@ AddEventHandler('multichar:deleteCharacter', function(characterId)
     -- restent en base (preuves/scènes), voir module/pedoffline pour le
     -- même principe déjà appliqué aux peds endormis.
     local CASCADE_TABLES = {
-        'police_officers', 'pompiers_agents', 'mecanicien_agents', 'atelier_agents',
-        'ltd_agents', 'samu_agents', 'gendarmerie_officers',
+        'police_officers', 'lsfd_agents', 'atelier_agents',
+        'ltd_agents', 'ems_agents', 'sheriff_deputies',
         'police_radio_channels', 'emotes_favorites',
         -- Lot 2 : tables où ce personnage est le SUJET (citoyen/patient).
         -- La suppression cible toujours `character_id` (le sujet), jamais

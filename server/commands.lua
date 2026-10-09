@@ -161,20 +161,29 @@ end, {help = "Permet de déconnecter un joueur", validate = false, arguments = {
 
 LSLegacy.RegisterCommand('sync', 0, function(player, args, showError, rawCommand)
 	local source = player.source
-	MySQL.Async.execute('UPDATE players SET coords = @coords, inventory = @inventory, money = @money, health = @health, skin = @skin, status = @status, skills = @skills, job = @job, job_grade = @job_grade, faction = @faction, faction_grade = @faction_grade WHERE `boutique-id` = @id', {
+	-- skin exclu de la liste fixe : un écho client nil ne doit jamais écraser un skin déjà valide en base
+	local sets, params = {
+		'coords = @coords', 'inventory = @inventory', 'money = @money', 'health = @health',
+		'status = @status', 'skills = @skills', 'job = @job', 'job_grade = @job_grade',
+		'faction = @faction', 'faction_grade = @faction_grade',
+	}, {
         ['@coords'] = json.encode(LSLegacy.GetEntityCoords(source)),
         ['@inventory'] = json.encode(LSLegacy.ServerPlayers[source].inventory),
         ['@money'] = json.encode({cash = LSLegacy.ServerPlayers[source].cash, dirty = LSLegacy.ServerPlayers[source].dirty}),
         ['@id'] = LSLegacy.ServerPlayers[source]["boutique-id"],
         ['@health'] = GetEntityHealth(GetPlayerPed(source)),
-		['@skin'] = json.encode(LSLegacy.ServerPlayers[source].skin),
 		['@status'] = json.encode(LSLegacy.ServerPlayers[source].status),
 		['@skills'] = json.encode(LSLegacy.ServerPlayers[source].skills),
 		['@job'] = LSLegacy.ServerPlayers[source].job,
 		['@job_grade'] = LSLegacy.ServerPlayers[source].job_grade,
 		['@faction'] = LSLegacy.ServerPlayers[source].faction,
 		['@faction_grade'] = LSLegacy.ServerPlayers[source].faction_grade
-    })
+    }
+	if LSLegacy.ServerPlayers[source].skin ~= nil then
+		sets[#sets + 1] = 'skin = @skin'
+		params['@skin'] = json.encode(LSLegacy.ServerPlayers[source].skin)
+	end
+	MySQL.Async.execute('UPDATE players SET ' .. table.concat(sets, ', ') .. ' WHERE `boutique-id` = @id', params)
 	LSLegacy.Events.SendToClient('lslegacy:updateServerPlayer', source)
 	LSLegacy.Events.SendToClient('lslegacy:updateDatastore', source, LSLegacy.DataStore)
 	Wait(500)
@@ -256,6 +265,32 @@ LSLegacy.RegisterCommand('giveitem', 3, function(player, args, showError, rawCom
 		showError('Veuillez spécifier un item et un joueur cible.')
 	end
 end, {help = "Permet de donner un item à un joueur", validate = true, arguments = {{name = 'playerId', help = 'ID du joueur cible', type = 'player'}, {name = 'item', help = 'Nom de l\'item', type = 'string'}, {name = 'quantity', help = 'Quantité de l\'item', type = 'number'}}}, true)
+
+-- Retire toutes les copies d'un item de l'inventaire d'un joueur, même celles
+-- qu'il ne peut pas jeter lui-même (ex : anciennes armes après un renommage).
+LSLegacy.RegisterCommand('removeitem', 3, function(player, args, showError, rawCommand)
+	local item = args.item
+	local targetPlayer = args.playerId
+
+	if not item or not targetPlayer then
+		showError('Veuillez spécifier un item et un joueur cible.')
+		return
+	end
+
+	local removed = 0
+	local infos = LSLegacy.Inventory.GetInventoryItem(targetPlayer, item)
+	while infos and removed < 50 do
+		LSLegacy.Inventory.RemoveItemInInventory(targetPlayer, item, 1, nil, infos.uniqueId)
+		removed = removed + 1
+		infos = LSLegacy.Inventory.GetInventoryItem(targetPlayer, item)
+	end
+
+	if removed > 0 then
+		LSLegacy.Events.SendToClient('notify', targetPlayer.source, 'Inventaire', removed .. 'x ' .. (Config.Items[item] and Config.Items[item].label or item) .. ' retiré(s).', 'info')
+	else
+		showError('Le joueur ne possède pas cet item.')
+	end
+end, {help = "Retire toutes les copies d'un item de l'inventaire d'un joueur", validate = true, arguments = {{name = 'playerId', help = 'ID du joueur cible', type = 'player'}, {name = 'item', help = 'Nom de l\'item', type = 'string'}}}, true)
 
 LSLegacy.RegisterCommand('car', 3, function(player, args, showError, rawCommand)
     local modelName = args.model
@@ -417,3 +452,27 @@ end, {
 		{name = 'grade', help = 'Grade de la faction', type = 'number'}
 	}
 }, true)
+
+LSLegacy.RegisterCommand('me', 0, function(player, args, showError, rawCommand)
+	local sm = LSLegacy.StringSplit(rawCommand, " ")
+	local action = ""
+	for i = 2, #sm do
+		action = action .. sm[i] .. " "
+	end
+	action = action:gsub("%s+$", "")
+
+	if action == '' then
+		showError('Veuillez spécifier une action.')
+		return
+	end
+
+	local text = '*La personne "' .. action .. '"*'
+	local coords = LSLegacy.GetEntityCoords(player.source)
+
+	for src in pairs(LSLegacy.ServerPlayers) do
+		local targetCoords = LSLegacy.GetEntityCoords(src)
+		if targetCoords and #(coords - targetCoords) <= 10.0 then
+			LSLegacy.Events.SendToClient('me:show', src, player.source, text)
+		end
+	end
+end, {help = "Décrit une action de votre personnage (visible à 10m)", validate = false, arguments = {{name = 'action', help = "Action à décrire", type = 'fullstring'}}}, false)

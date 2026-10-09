@@ -26,7 +26,47 @@ Config.MDT.Departments.police = {
     jobs = { 'police' },
 
     -- Onglets activés pour ce département (ids depuis Config.MDT.Tabs)
-    tabs = { 'dashboard', 'citizens', 'vehicles', 'weapons', 'int_reports', 'dossiers', 'warrants', 'custody', 'investigation', 'laws', 'interventions', 'effectifs', 'trainings', 'organisation' },
+    tabs = { 'dashboard', 'citizens', 'vehicles', 'weapons', 'int_reports', 'dossiers', 'warrants', 'custody', 'investigation', 'laws', 'interventions', 'effectifs', 'trainings', 'organisation', 'garage', 'entreprise', 'boutique_tenue' },
+
+    -- La police garde son vocabulaire historique pour l'onglet générique
+    -- boutique_tenue (Config.MDT.Tabs) : affiché "UNIPOL" plutôt que
+    -- "Boutique tenues" pour ce département uniquement.
+    tabLabels = { boutique_tenue = 'UNIPOL' },
+
+    -- BOUTIQUE TENUES — commande de tenues livrées au casier ci-dessous,
+    -- débitées sur le compte entreprise police. Catalogue provisoire (mêmes
+    -- emplacements que ClothShop, sans aperçu) en attendant un vrai jeu de
+    -- tenues police (cf. discussion du 2026-09-09).
+    boutique = {
+        DeliveryCoords  = vector3(-401.459351, -376.509888, 25.084229),
+        DeliveryHeading = 85.039367675781,
+        DeliveryProp    = 'xm3_prop_xm3_product_box_01',
+        -- Scène cosmétique jouée pour tous les joueurs à proximité quand une
+        -- commande passe en statut "prête" (boxville4 qui vient déposer le
+        -- colis) — sans lien avec la remise en inventaire (toujours faite à
+        -- l'interaction ox_target ci-dessus).
+        DeliveryVanCoords  = vector3(-346.140656, -346.918671, 30.189697),
+        DeliveryVanHeading = 235.27558898926,
+        -- Point d'arrivée du livreur à pied (distinct de DeliveryCoords
+        -- ci-dessus, qui reste la zone de retrait ox_target) : arrêt juste
+        -- avant le mur pour éviter qu'il ne s'y encastre en marchant.
+        DeliveryPedCoords  = vector3(-376.338470, -351.283508, 31.638794),
+        DeliveryPedHeading = 79.370079040527,
+        -- Passage obligé (porte d'entrée du commissariat) entre le van et le
+        -- point de dépose : évite que le PNJ ne traverse les murs en ligne
+        -- droite. Emprunté à l'aller comme au retour.
+        DeliveryDoorCoords  = vector3(-365.432953, -355.529663, 31.571411),
+        DeliveryDoorHeading = 76.535438537598,
+        ItemPrice      = 30,
+        DeliveryDelay  = 3 * 60, -- secondes avant que le colis soit disponible
+        -- Temps estimé pour que le livreur arrive physiquement à la boîte aux
+        -- lettres (trajet camion + marche) : la scène se déclenche cette durée
+        -- AVANT la fin de DeliveryDelay, pour que le PNJ ait fini sa livraison
+        -- exactement quand le colis devient disponible au retrait.
+        SceneArrivalDelay = 25, -- secondes
+        MaxPendingPerAgent = 3, -- commandes non retirées (en_attente/pret) max par agent
+        MaxItemsPerOrder = 15, -- articles max dans le panier d'une même commande
+    },
 
     -- SERVICES DE POLICE (4 pôles)
     -- Données structurées : affichage dans l'onglet Organisation + base
@@ -117,7 +157,7 @@ Config.MDT.Departments.police = {
         },
         [5] = {
             label = 'Lieutenant',
-            grants = { 'manage_laws' }, -- manage_evidence débloqué par la compétence CS037
+            grants = { 'manage_laws', 'recruit_personnel' }, -- manage_evidence débloqué par la compétence CS037
             vehicles = { 'Véhicules banalisés', 'Véhicules rapides', 'Véhicules spécialisés' },
             units = { 'csi', 'bravm', 'crs', 'aero', 'sdlp', 'renseignement', 'stups', 'pts' },
             responsibilities = "Officier — direction d'opérations, gestion des preuves.",

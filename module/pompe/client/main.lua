@@ -129,13 +129,30 @@ local function RunFillSequence(vehicle, currentLiters, capacity, station, maxDel
     local finalLiters = math.floor(litersAdded)
     if finalLiters <= 0 then return end
 
-    SetVehicleFuelLevel(vehicle, ((currentLiters + finalLiters) / capacity) * 100.0)
+    local finalPercent = ((currentLiters + finalLiters) / capacity) * 100.0
+    SetSyncedFuelLevel(vehicle, finalPercent)
 
     LSLegacy.Events.SendToServer('pompe:payFuel', {
         stationId = station.id,
         liters = finalLiters,
+        netId = NetworkGetNetworkIdFromEntity(vehicle),
+        currentLiters = currentLiters,
+        capacity = capacity,
     })
 end
+
+-- Paiement refusé (fonds insuffisants en carte ET en espèces, plafond
+-- atteint, etc.) : le plein était appliqué de façon optimiste pendant
+-- l'animation, on le retire puisqu'il n'a pas été facturé.
+LSLegacy.Events.Register('pompe:fuelPaymentFailed', function(data)
+    if not data or not data.netId then return end
+    local vehicle = NetworkGetEntityFromNetworkId(data.netId)
+    if not DoesEntityExist(vehicle) then return end
+    local capacity = tonumber(data.capacity) or 0
+    if capacity <= 0 then return end
+    local percent = (tonumber(data.currentLiters) or 0) / capacity * 100.0
+    SetSyncedFuelLevel(vehicle, percent)
+end)
 
 -- Demande de plein en cours (une seule à la fois)
 local pendingFill = nil

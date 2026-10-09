@@ -6,7 +6,9 @@ local bankState = {
     atmAccountId = nil,
     -- mis en cache car ces réponses arrivent souvent avant bankState.opened
     adminRates = nil,
-    adminCardTiers = nil
+    adminCardTiers = nil,
+    beneficiaries = {},
+    context = {}     -- { job, jobLabel, isBoss, hasSociety, societyAccountId }
 }
 
 local ATMProps = {{prop = 'prop_atm_02'}, {prop = 'prop_atm_03'}, {prop = 'prop_fleeca_atm'}, {prop = 'prop_atm_01'}}
@@ -69,6 +71,15 @@ local function GetMyLevel()
     return 0
 end
 
+local function GetSocietyAccount()
+    local job = bankState.context and bankState.context.job
+    if not job then return nil end
+    for _, value in pairs(bankState.accounts) do
+        if value.society == job then return value end
+    end
+    return nil
+end
+
 local function OpenBankNUI(mode, theme, displayName)
     if bankState.opened then return end
     bankState.opened = true
@@ -93,7 +104,10 @@ local function OpenBankNUI(mode, theme, displayName)
         isAdmin = (GetMyLevel() >= ((Config.Bank and Config.Bank.AdminMinLevel) or 3)),
         atmAccountId = bankState.atmAccountId,
         adminRates = bankState.adminRates,
-        adminCardTiers = bankState.adminCardTiers
+        adminCardTiers = bankState.adminCardTiers,
+        beneficiaries = bankState.beneficiaries,
+        context = bankState.context,
+        societyAccount = GetSocietyAccount()
     })
 end
 
@@ -111,6 +125,11 @@ LSLegacy.Events.Register('openBankMenu', function(theme, displayName)
     LSLegacy.Events.SendToServer('bank:getLivrets')
     LSLegacy.Events.SendToServer('bank:adminGetRates')
     LSLegacy.Events.SendToServer('bank:adminGetCardTiers')
+    LSLegacy.Events.SendToServer('bank:getBeneficiaries')
+    local done = false
+    LSLegacy.Callbacks.TriggerServer('bank:getContext', function(ctx) bankState.context = ctx or {}; done = true end)
+    local t = GetGameTimer() + 1500
+    while not done and GetGameTimer() < t do Wait(10) end
     Wait(150)
     OpenBankNUI('branch', theme or 'mazebank', displayName or 'Maze Bank')
 end)
@@ -119,24 +138,37 @@ LSLegacy.Events.Register('useCarteBank', function(data)
     if NearAtms() then
         local input = LSLegacy.KeyboardInput('Code PIN', 4)
         if tonumber(input) then
-            if tonumber(input) == tonumber(data.card_pin) then
+            local card = {}
+            for k, v in pairs(data) do card[k] = v end
+            card.card_pin = input
+            LSLegacy.Callbacks.TriggerServer('bank:validateCard', function(ok, reason)
+                if not ok then
+                    LSLegacy.ShowNotification('Maze Bank', reason or 'Carte refusée.', 'error')
+                    return
+                end
                 bankState.atmAccountId = data.card_account
                 LSLegacy.Events.SendToServer('bank:getBankAccounts')
                 LSLegacy.Events.SendToServer('bank:adminGetCardTiers')
                 Wait(150)
                 OpenBankNUI('atm', 'mazebank', 'Distributeur')
-            else
-                LSLegacy.ShowNotification('Maze Bank', 'Le code PIN est incorrect.', 'error')
-            end
+            end, card)
         else
             LSLegacy.ShowNotification('Maze Bank', 'Vous avez entré un code invalide.', 'error')
         end
     end
 end)
 
+LSLegacy.Events.Register('receiveBankBeneficiaries', function(rows)
+    bankState.beneficiaries = rows or {}
+    if bankState.opened then
+        SendNUIMessage({ action = 'bank:beneficiaries', beneficiaries = bankState.beneficiaries })
+    end
+end)
+
 LSLegacy.Events.Register('receiveBankAccounts', function(accounts)
     bankState.accounts = accounts
     if bankState.opened then
+        SendNUIMessage({ action = 'bank:societyAccount', account = GetSocietyAccount() })
         local refreshed
         if bankState.mode == 'atm' then
             local atmAccount = GetAccountById(bankState.atmAccountId)
@@ -233,6 +265,36 @@ end)
 
 RegisterNUICallback('bank:closeLivret', function(data, cb)
     LSLegacy.Events.SendToServer('bank:closeLivret', data.livretId)
+    cb('ok')
+end)
+
+RegisterNUICallback('bank:blockCard', function(data, cb)
+    LSLegacy.Events.SendToServer('bank:blockCard', data.id, data.blocked == true)
+    cb('ok')
+end)
+
+RegisterNUICallback('bank:replaceCard', function(data, cb)
+    LSLegacy.Events.SendToServer('bank:replaceCard', data.id)
+    cb('ok')
+end)
+
+RegisterNUICallback('bank:addBeneficiary', function(data, cb)
+    LSLegacy.Events.SendToServer('bank:addBeneficiary', data.name, data.iban)
+    cb('ok')
+end)
+
+RegisterNUICallback('bank:removeBeneficiary', function(data, cb)
+    LSLegacy.Events.SendToServer('bank:removeBeneficiary', data.id)
+    cb('ok')
+end)
+
+RegisterNUICallback('bank:societyCreateAccount', function(data, cb)
+    LSLegacy.Events.SendToServer('bank:societyCreateAccount')
+    cb('ok')
+end)
+
+RegisterNUICallback('bank:societyCreateCard', function(data, cb)
+    LSLegacy.Events.SendToServer('bank:societyCreateCard')
     cb('ok')
 end)
 

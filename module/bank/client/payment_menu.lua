@@ -7,11 +7,15 @@ paymentMenu = {
     actions = {}
 }
 
-local function GetCardsFromInventory(inventory)
+-- society (job) : ne propose que la carte entreprise de ce job
+local function GetCardsFromInventory(inventory, society)
     local cards = {}
     for key, value in pairs(inventory) do
         if value.name == "carte" then
-            table.insert(cards, value)
+            local d = value.data or {}
+            if not society or d.society == society then
+                table.insert(cards, value)
+            end
         end
     end
     return cards
@@ -31,7 +35,8 @@ local function OpenPaymentNUI(transactionMessage, price, inventory, options)
         action = 'payment:open',
         transactionMessage = transactionMessage,
         price = price,
-        cards = GetCardsFromInventory(inventory),
+        cards = GetCardsFromInventory(inventory, options.society),
+        society = options.society,
         contactlessMax = (Config.Bank and Config.Bank.ContactlessMaxAmount) or 50,
         allowCash = paymentMenu.allowCash
     })

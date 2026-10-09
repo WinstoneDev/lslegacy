@@ -405,12 +405,19 @@ AddEventHandler('__cfx_nui:creatorAction', function(data, cb)
         -- la cutscene elle-même sert de transition (comme au premier login
         -- GTA Online), pas un fondu classique.
         DoScreenFadeIn(0)
+        -- Close() vient de repasser inCreation à false : la cutscene native
+        -- (MP_INTRO_CONCAT) déplace le ped à travers la scène par le moteur
+        -- de cutscene, pas via SetEntityCoords, donc hors de la fenêtre de
+        -- grâce AllowTeleport. Sans inCreation=true ici, l'anti-noclip
+        -- kickait le joueur juste après la cutscene (faux positif).
+        LSLegacy.PlayerData.inCreation = true
         LSLegacy.CreatorPerso.PlayIntroCutscene()
         DoScreenFadeOut(500)
         Wait(500)
         LSLegacy.SetCoords(vector3(-1149.811035, -2804.202148, 26.398560))
         SetEntityHeading(GetPlayerPed(-1), 243.77952575684)
         Wait(1000)
+        LSLegacy.PlayerData.inCreation = false
         DoScreenFadeIn(1500)
         LSLegacy.ShowNotification("Création", "Vous avez créé votre personnage.", 'success')
         DeleteBoard()

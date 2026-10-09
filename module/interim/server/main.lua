@@ -93,8 +93,12 @@ LSLegacy.Events.Register('interim:startDuty', function()
     if Interim.Sessions[src] then
         return Notify(src, 'Vous êtes déjà en service.', 'error')
     end
+    if not FarmMetier.CanStart(player, 'chauffeur_citerne') then
+        return Notify(src, FarmMetier.Refusal(player, 'chauffeur_citerne') or 'Vous êtes déjà en service.', 'error')
+    end
 
     Interim.Sessions[src] = { attached = false, trailerFuel = 0, truckNetId = nil, trailerNetId = nil }
+    FarmMetier.StartService(src)
 
     -- TODO: appliquer la tenue intérimaire une fois créée sur le serveur.
 
@@ -184,18 +188,19 @@ LSLegacy.Events.Register('interim:stationFillComplete', function(data)
     local cache = Interim.StationCache[station.id]
     if not cache then return end
 
-    local needed = CFG.Economy.stationCapacity - cache.liters
-    if needed <= 0 or session.trailerFuel <= 0 then return end
+    -- Station toujours vide à l'arrivée (pas de niveau réel suivi) : le plein consomme
+    -- systématiquement stationCapacity litres, payé à prix fixe (voir config.lua).
+    local delivered = CFG.Economy.stationCapacity
+    if session.trailerFuel < delivered then return end
+    if cache.lastFilledAt and (os.time() - cache.lastFilledAt) < CFG.Economy.stationCooldownSec then return end
 
-    local delivered = math.min(needed, session.trailerFuel)
-    local newLevel  = cache.liters + delivered
-    local pay       = math.floor((CFG.Economy.pricePerStation * delivered / needed) + 0.5)
+    local pay = CFG.Economy.pricePerStation
 
     MySQL.Async.execute(
         'UPDATE interim_stations SET fuel_liters=@liters, last_filled_at=NOW(), last_filled_by=@id, last_filled_by_character_id=@charId WHERE id=@sid',
-        { ['@id'] = player.identifier, ['@charId'] = player["boutique-id"], ['@sid'] = station.id, ['@liters'] = newLevel },
+        { ['@id'] = player.identifier, ['@charId'] = player["boutique-id"], ['@sid'] = station.id, ['@liters'] = delivered },
         function()
-            cache.liters = newLevel
+            cache.liters = delivered
             cache.lastFilledAt = os.time()
             session.trailerFuel = session.trailerFuel - delivered
             -- source doit être ré-assigné explicitement : ce callback tourne hors
@@ -204,11 +209,7 @@ LSLegacy.Events.Register('interim:stationFillComplete', function(data)
             source = src
             LSLegacy.Bank.PaySalary(player, pay, 'Salaire - Ravitaillement station-service')
             LSLegacy.Events.SendToClient('interim:syncState', src, BuildState(session))
-            if newLevel >= CFG.Economy.stationCapacity then
-                Notify(src, ('%s ravitaillée (+%d $).'):format(station.label, pay), 'success')
-            else
-                Notify(src, ('%s ravitaillée partiellement à %d/%dL (+%d $).'):format(station.label, newLevel, CFG.Economy.stationCapacity, pay), 'success')
-            end
+            Notify(src, ('%s ravitaillée (+%d $).'):format(station.label, pay), 'success')
         end
     )
 end)
@@ -225,16 +226,12 @@ for _, s in ipairs(CFG.Stations) do
             local cache = Interim.StationCache[s.id]
             if not cache then return end
 
-            local needed = CFG.Economy.stationCapacity - cache.liters
-            if needed <= 0 then
-                return Notify(src, ('%s est déjà pleine.'):format(s.label), 'error')
-            end
             if cache.lastFilledAt and (os.time() - cache.lastFilledAt) < CFG.Economy.stationCooldownSec then
                 local mins = math.ceil((CFG.Economy.stationCooldownSec - (os.time() - cache.lastFilledAt)) / 60)
                 return Notify(src, ('%s vient d\'être ravitaillée (%d min restantes).'):format(s.label, mins), 'error')
             end
-            if session.trailerFuel <= 0 then
-                return Notify(src, 'Citerne vide — repassez au point de remplissage.', 'error')
+            if session.trailerFuel < CFG.Economy.stationCapacity then
+                return Notify(src, 'Pas assez de carburant dans la citerne — repassez au point de remplissage.', 'error')
             end
 
             local duration = math.random(CFG.StationFillDuration.min, CFG.StationFillDuration.max)
@@ -267,18 +264,12 @@ for _, s in ipairs(CFG.Stations) do
             local cooldownLeft = cache.lastFilledAt and math.max(0, CFG.Economy.stationCooldownSec - (os.time() - cache.lastFilledAt)) or 0
             if cooldownLeft > 0 then
                 return {
-                    notificationMessage = ('%s : en recharge (%d min restantes)'):format(s.label, math.ceil(cooldownLeft / 60)),
-                    markerColor = { r = 180, g = 0, b = 0, a = 180 },
-                }
-            end
-            if cache.liters >= CFG.Economy.stationCapacity then
-                return {
-                    notificationMessage = ('%s : déjà pleine (%d/%dL)'):format(s.label, cache.liters, CFG.Economy.stationCapacity),
+                    notificationMessage = ('%s : pleine, ravitaillable dans %d min'):format(s.label, math.ceil(cooldownLeft / 60)),
                     markerColor = { r = 0, g = 180, b = 0, a = 180 },
                 }
             end
             return {
-                notificationMessage = ('Appuyez sur ~INPUT_CONTEXT~ pour remplir %s (%d/%dL)'):format(s.label, cache.liters, CFG.Economy.stationCapacity),
+                notificationMessage = ('Appuyez sur ~INPUT_CONTEXT~ pour remplir %s (+%d $)'):format(s.label, CFG.Economy.pricePerStation),
                 markerColor = { r = 255, g = 180, b = 0, a = 180 },
             }
         end

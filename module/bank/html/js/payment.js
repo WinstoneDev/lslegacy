@@ -14,6 +14,7 @@ const PayState = {
     cards: [],          // [{label, data:{card_number, card_pin, card_type, card_tier, owner_name, card_expiration_date, card_account}}]
     contactlessMax: 50,
     allowCash: true,
+    society: null,       // job : seule la carte entreprise de ce job est proposée
     view: 'choice',      // 'choice' | 'tpe' | 'pin'
     pinCard: null,
     pinBuffer: '',
@@ -102,7 +103,7 @@ function renderTpe() {
 
     if (PayState.cards.length === 0) {
         payEl('payContent').innerHTML = `
-            <div class="bank-empty">Vous n'avez aucune carte bancaire sur vous.</div>
+            <div class="bank-empty">${PayState.society ? 'Vous n\'avez pas la carte entreprise de votre service sur vous.' : 'Vous n\'avez aucune carte bancaire sur vous.'}</div>
         `;
         return;
     }
@@ -140,7 +141,7 @@ function renderCardHtml(card, index) {
         <div class="tpe-card" id="tpeCard${index}">
             <div class="tpe-card-top">
                 <span class="tpe-card-brand">${payEsc(d.card_type || 'Carte bancaire')}</span>
-                <span class="tpe-card-tier">${payEsc(d.card_tier || 'standard')}</span>
+                <span class="tpe-card-tier">${d.society ? 'Entreprise' : payEsc(d.card_tier || 'standard')}</span>
             </div>
             <div class="tpe-card-number">${masked}</div>
             <div class="tpe-card-bottom">
@@ -378,6 +379,7 @@ function applyPayOpenPayload(data) {
     PayState.cards = data.cards || [];
     PayState.contactlessMax = Number(data.contactlessMax) || 50;
     PayState.allowCash = data.allowCash !== false;
+    PayState.society = data.society || null;
     PayState.view = PayState.allowCash ? 'choice' : 'tpe';
     PayState.pinCard = null;
     PayState.pinBuffer = '';

@@ -22,14 +22,16 @@ LSLegacy.Events.Register('applyNeedEffect', function(name, data, uniqueId)
     local src = source
     local xPlayer = LSLegacy.Players.Get(src)
     local itemCfg = Config.NeedsItems[name]
-    if not (xPlayer and itemCfg and data) then return end
+    if not (xPlayer and itemCfg) then return end
 
-    local durability = data.durability or 100
+    -- Item empilable (sans data/uniqueId, ex. achat en magasin) : consommé en entier, pas de durabilité.
+    local stackable = (data == nil)
+    local durability = data and data.durability or 100
     local portion = itemCfg.portion or 25
     local itemWeightKg = itemCfg.weight or 0.1 
     local itemWeightGrams = itemWeightKg * 1000 
 
-    local ratio = portion / itemWeightGrams
+    local ratio = stackable and 1 or (portion / itemWeightGrams)
 
     if itemCfg.hunger and itemCfg.hunger > 0 then
         LSLegacy.Status.AddHunger(xPlayer, math.floor(itemCfg.hunger * ratio))
@@ -39,6 +41,11 @@ LSLegacy.Events.Register('applyNeedEffect', function(name, data, uniqueId)
     end
     if itemCfg.stamina and itemCfg.stamina > 0 then
         LSLegacy.Status.AddStamina(xPlayer, math.floor(itemCfg.stamina * ratio))
+    end
+
+    if stackable then
+        LSLegacy.Inventory.RemoveItemInInventory(xPlayer, name, 1)
+        return
     end
 
     local newDurability = durability - (ratio * 100)

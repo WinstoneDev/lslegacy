@@ -3,8 +3,16 @@ local lastVeh = nil
 LSLegacy.Events.Register("ap:vehicleSpawned", function(data)
     local netId = data.netId
     local plate = data.plate
-    local entity = NetworkGetEntityFromNetworkId(netId)
-    Wait(1000)
+    -- attendre que l'entité soit réellement streamée (jusqu'à 8 s) au lieu de
+    -- résoudre le netId une seule fois : sinon le rejeu était silencieusement sauté
+    local entity = 0
+    local deadline = GetGameTimer() + 8000
+    repeat
+        entity = NetworkGetEntityFromNetworkId(netId)
+        if entity ~= 0 and DoesEntityExist(entity) then break end
+        Wait(200)
+    until GetGameTimer() > deadline
+    Wait(300)
     if DoesEntityExist(entity) then
         local status = data.status
         if status then
@@ -104,8 +112,18 @@ LSLegacy.Events.Register("ap:vehicleSpawned", function(data)
         end
         SetVehicleEngineHealth(entity, data.engineHealth)
         SetVehiclePetrolTankHealth(entity, data.tankHealth)
-        SetVehicleFuelLevel(entity, tonumber(data.fuel))
+        if status and status.body then SetVehicleBodyHealth(entity, status.body + 0.0) end
+        if status and status.dirt then SetVehicleDirtLevel(entity, status.dirt + 0.0) end
+        -- Le fuel est appliqué via le statebag 'fuelLevel' que le serveur pose au spawn (voir AddStateBagChangeHandler ci-dessous), pas ici.
         if data.tuning then
+            -- indispensable : sans mod kit, SetVehicleMod / SetVehicleModColor_1/_2 sont ignorés
+            SetVehicleModKit(entity, 0)
+            -- Le type de roue doit être posé AVANT SetVehicleMod(23/24, ...) : l'indice
+            -- de jante est interprété dans le contexte du wheel type déjà actif, sinon
+            -- le rendu visuel de la jante peut ne pas correspondre à l'indice sauvegardé.
+            if data.tuning.wheelType then
+                SetVehicleWheelType(entity, data.tuning.wheelType)
+            end
             if data.tuning.mods then
                 for k, v in pairs(data.tuning.mods) do
                     if v ~= nil and tonumber(k) then
@@ -113,20 +131,58 @@ LSLegacy.Events.Register("ap:vehicleSpawned", function(data)
                     end
                 end
             end
-            if data.tuning.colorPrimary and data.tuning.colorSecondary then
-                SetVehicleColours(entity, data.tuning.colorPrimary, data.tuning.colorSecondary)
+            if data.tuning.livery and data.tuning.livery >= 0 then
+                SetVehicleLivery(entity, data.tuning.livery)
+            end
+            -- Couleurs : index GetVehicleColours (source de vérité, capturés côté client)
+            -- puis RGB custom par-dessus si le cercle chromatique est actif. On n'utilise
+            -- plus SetVehicleModColor_1/_2 : leur paramètre pearlescent écrasait le nacré
+            -- et leur index n'est pas garanti identique à celui de SetVehicleColours.
+            local p = data.tuning.paint
+            local prim = data.tuning.colorPrimary or (p and p.primary and p.primary.color)
+            local sec  = data.tuning.colorSecondary or (p and p.secondary and p.secondary.color)
+            if prim and sec then
+                SetVehicleColours(entity, math.floor(prim), math.floor(sec))
+            end
+            if p then
+                -- Finition (mat/chrome/métallisé/...) : rejouée par-dessus SetVehicleColours
+                -- via SetVehicleModColor_1/_2, avec le pearlColor déjà connu pour ne pas
+                -- l'écraser. Ignoré si absent (anciennes sauvegardes sans champ "type").
+                if p.primary and p.primary.type and p.primary.color then
+                    SetVehicleModColor_1(entity, p.primary.type, math.floor(p.primary.color), data.tuning.pearlColor or 0)
+                end
+                if p.secondary and p.secondary.type and p.secondary.color then
+                    SetVehicleModColor_2(entity, p.secondary.type, math.floor(p.secondary.color))
+                end
+                if p.primary and p.primary.custom and p.primary.r then
+                    SetVehicleCustomPrimaryColour(entity, p.primary.r, p.primary.g, p.primary.b)
+                end
+                if p.secondary and p.secondary.custom and p.secondary.r then
+                    SetVehicleCustomSecondaryColour(entity, p.secondary.r, p.secondary.g, p.secondary.b)
+                end
             end
             if data.tuning.pearlColor and data.tuning.wheelColor then
                 SetVehicleExtraColours(entity, data.tuning.pearlColor, data.tuning.wheelColor)
             end
-            if data.tuning.wheelType then
-                SetVehicleWheelType(entity, data.tuning.wheelType)
-            end
             if data.tuning.windowTint then
                 SetVehicleWindowTint(entity, data.tuning.windowTint)
             end
+            if data.tuning.turboOn then
+                ToggleVehicleMod(entity, 18, true)
+            end
+            if data.tuning.neon then
+                local n = data.tuning.neon
+                SetVehicleNeonLightEnabled(entity, 0, n.front == true)
+                SetVehicleNeonLightEnabled(entity, 1, n.back == true)
+                SetVehicleNeonLightEnabled(entity, 2, n.left == true)
+                SetVehicleNeonLightEnabled(entity, 3, n.right == true)
+                if n.r then
+                    SetVehicleNeonLightsColour(entity, n.r, n.g, n.b)
+                end
+            end
         end
         print("[AP] Véhicule spawné :", plate)
+        WatchFuelConvergence(entity)
     end
 end)
 
@@ -146,7 +202,7 @@ LSLegacy.Events.Register("ap:findAndDeleteVehicle", function()
     end
 
     if vehicleToDelete then
-        local netId = VehToNet(vehicleToDelete)
+        local netId = NetworkGetNetworkIdFromEntity(vehicleToDelete)
         local plate = GetVehicleNumberPlateText(vehicleToDelete)
 
         if NetworkDoesEntityExistWithNetworkId(netId) then
@@ -154,6 +210,36 @@ LSLegacy.Events.Register("ap:findAndDeleteVehicle", function()
         else
             DeleteEntity(vehicleToDelete)
             LSLegacy.Events.SendToServer("ap:requestVehicleDeletion", 0, plate)
+        end
+    else
+        LSLegacy.ShowNotification('Erreur', 'Aucun véhicule trouvé à proximité.', 'error')
+    end
+end)
+
+LSLegacy.Events.Register("ap:findAndDespawnVehicle", function()
+    local ped = PlayerPedId()
+    local vehicleToDespawn = nil
+
+    if IsPedInAnyVehicle(ped, false) then
+        vehicleToDespawn = GetVehiclePedIsIn(ped, false)
+    else
+        local coords = GetEntityCoords(ped)
+        local closestVehicle = GetClosestVehicle(coords.x, coords.y, coords.z, 3.0, 0, 70)
+
+        if closestVehicle ~= 0 and DoesEntityExist(closestVehicle) then
+            vehicleToDespawn = closestVehicle
+        end
+    end
+
+    if vehicleToDespawn then
+        local netId = NetworkGetNetworkIdFromEntity(vehicleToDespawn)
+        local plate = GetVehicleNumberPlateText(vehicleToDespawn)
+
+        if NetworkDoesEntityExistWithNetworkId(netId) then
+            LSLegacy.Events.SendToServer("ap:requestVehicleDespawn", netId, plate)
+        else
+            DeleteEntity(vehicleToDespawn)
+            LSLegacy.Events.SendToServer("ap:requestVehicleDespawn", 0, plate)
         end
     else
         LSLegacy.ShowNotification('Erreur', 'Aucun véhicule trouvé à proximité.', 'error')
@@ -168,10 +254,29 @@ CreateThread(function()
         if veh ~= 0 then
             lastVeh = veh
         elseif lastVeh ~= nil then
-            LSLegacy.Events.SendToServer("ap:updateVehicle", VehToNet(lastVeh))
+            LSLegacy.Events.SendToServer("ap:updateVehicle", NetworkGetNetworkIdFromEntity(lastVeh))
             lastVeh = nil
         end
         Wait(500)
+    end
+end)
+
+-- Signale au serveur tout véhicule AP détruit (explosion, chute...) vu par ce
+-- client, pour purge de persistent_vehicles/owned_vehicles. Dédup par netId
+-- pour ne signaler qu'une fois par véhicule.
+local ReportedDestroyed = {}
+CreateThread(function()
+    while true do
+        Wait(10000)
+        for _, veh in ipairs(GetGamePool('CVehicle')) do
+            if DoesEntityExist(veh) and IsEntityDead(veh) then
+                local netId = NetworkGetNetworkIdFromEntity(veh)
+                if netId ~= 0 and not ReportedDestroyed[netId] then
+                    ReportedDestroyed[netId] = true
+                    LSLegacy.Events.SendToServer("ap:vehicleDestroyed", netId, GetVehicleNumberPlateText(veh))
+                end
+            end
+        end
     end
 end)
 
@@ -185,8 +290,22 @@ local function UpdateVehicleStatus(veh)
         tuningV[i] = GetVehicleMod(veh, i)
     end
 
-    local colorPrimary, colorSecondary = GetVehicleColours(veh)
     local pearlColor, wheelColor = GetVehicleExtraColours(veh)
+    local neonR, neonG, neonB = GetVehicleNeonLightsColour(veh)
+    local colorPrimaryIdx, colorSecondaryIdx = GetVehicleColours(veh)
+
+    -- SetVehicleModColor_1/_2 (Los Santos Customs) plutôt que SetVehicleColours,
+    -- + couleur "cercle chromatique" (custom RGB) si active côté atelier/tuning.lua.
+    local paintType1, colorPrimary   = GetVehicleModColor_1(veh)
+    local paintType2, colorSecondary = GetVehicleModColor_2(veh)
+    local customPrimaryR, customPrimaryG, customPrimaryB       = GetVehicleCustomPrimaryColour(veh)
+    local customSecondaryR, customSecondaryG, customSecondaryB = GetVehicleCustomSecondaryColour(veh)
+    local paint = {
+        primary   = { type = paintType1, color = colorPrimary, custom = GetIsVehiclePrimaryColourCustom(veh) == true,
+                      r = customPrimaryR, g = customPrimaryG, b = customPrimaryB },
+        secondary = { type = paintType2, color = colorSecondary, custom = GetIsVehicleSecondaryColourCustom(veh) == true,
+                      r = customSecondaryR, g = customSecondaryG, b = customSecondaryB },
+    }
 
     local extras = {}
     for i = 0, 20 do
@@ -268,15 +387,24 @@ local function UpdateVehicleStatus(veh)
     end
 
     local status = {
-        fuel = GetVehicleFuelLevel(veh),
         tuning = {
             mods = tuningV,
-            colorPrimary = colorPrimary,
-            colorSecondary = colorSecondary,
+            paint = paint,
+            colorPrimary = colorPrimaryIdx,
+            colorSecondary = colorSecondaryIdx,
             pearlColor = pearlColor,
             wheelColor = wheelColor,
             wheelType = GetVehicleWheelType(veh),
-            windowTint = GetVehicleWindowTint(veh)
+            windowTint = GetVehicleWindowTint(veh),
+            turboOn = IsToggleModOn(veh, 18),
+            livery = GetVehicleLivery(veh),
+            neon = {
+                front = IsVehicleNeonLightEnabled(veh, 0),
+                back  = IsVehicleNeonLightEnabled(veh, 1),
+                left  = IsVehicleNeonLightEnabled(veh, 2),
+                right = IsVehicleNeonLightEnabled(veh, 3),
+                r = neonR, g = neonG, b = neonB
+            }
         },
         windows = windows,
         extras = extras,
@@ -290,9 +418,24 @@ local function UpdateVehicleStatus(veh)
         doors = doors,
         deformation = deformation
     }
+    -- santés mesurées côté client : GetVehicleBodyHealth n'est pas répliqué
+    -- fidèlement au serveur (carrosserie 100 % avec l'avant enfoncé)
+    status.health = {
+        engine = GetVehicleEngineHealth(veh),
+        body = GetVehicleBodyHealth(veh),
+        tank = GetVehiclePetrolTankHealth(veh),
+        dirt = GetVehicleDirtLevel(veh),
+    }
 
     LSLegacy.Events.SendToServer("ap:updateVehicleStatus", plate, status)
 end
+
+-- Exposée pour les modules qui modifient un véhicule sans être dedans (ex:
+-- module/atelier/client/tuning.lua) : le thread ci-dessous ne rapporte QUE
+-- si le joueur est assis dans le véhicule, donc un mécano qui tune un
+-- véhicule depuis l'extérieur ne déclenche jamais de rapport tout seul.
+LSLegacy.AP = LSLegacy.AP or {}
+LSLegacy.AP.ReportVehicleStatus = UpdateVehicleStatus
 
 CreateThread(function()
     while true do
@@ -305,6 +448,115 @@ CreateThread(function()
     end
 end)
 
+-- Statebag 'fuelLevel' = source de vérité unique du carburant, répliquée à
+-- tous les clients (comme 'handbrake') et persistée par SaveVehicle côté
+-- serveur : quel que soit le module qui modifie le fuel (pompe, conso,
+-- regen...), il doit passer par SetSyncedFuelLevel pour rester cohérent
+-- pour les autres joueurs et pour la sauvegarde du véhicule.
+function SetSyncedFuelLevel(vehicle, percent)
+    SetVehicleFuelLevel(vehicle, percent)
+    Entity(vehicle).state:set('fuelLevel', percent, true)
+end
+
+-- Reforce le fuel natif vers la valeur attendue (statebag) pendant quelques
+-- secondes après spawn : le native peut se réinitialiser tout seul le temps
+-- que le handling du véhicule se résolve complètement.
+function WatchFuelConvergence(entity)
+    Citizen.CreateThread(function()
+        for i = 1, 12 do
+            if not DoesEntityExist(entity) then return end
+            -- Relu à chaque itération (et non figé avant la boucle) : sinon ce
+            -- watchdog écrase toute mise à jour légitime du fuel survenue
+            -- pendant sa fenêtre de 10s (pompe, tuning...) en la retapant vers
+            -- une valeur devenue périmée.
+            local expected = Entity(entity).state.fuelLevel
+            local current  = GetVehicleFuelLevel(entity)
+            if expected and math.abs(current - expected) > 1.0 then
+                SetVehicleFuelLevel(entity, expected)
+            end
+            Wait(500)
+        end
+    end)
+end
+
+AddStateBagChangeHandler('fuelLevel', nil, function(bagName, key, value)
+    local entity = GetEntityFromStateBagName(bagName)
+    if entity == 0 or not DoesEntityExist(entity) or GetEntityType(entity) ~= 2 then return end
+    SetVehicleFuelLevel(entity, value)
+end)
+
+-- Statebag 'apSpawnGuard' posé par SpawnVehicle : SetEntityCollision est un natif
+-- CLIENT uniquement, donc le serveur ne peut pas désactiver lui-même la collision
+-- du véhicule fraîchement spawné (garde anti-collision doublon au restart).
+AddStateBagChangeHandler('apSpawnGuard', nil, function(bagName, key, value)
+    local entity = GetEntityFromStateBagName(bagName)
+    if entity == 0 or not DoesEntityExist(entity) or GetEntityType(entity) ~= 2 then return end
+    SetEntityCollision(entity, not value, not value)
+end)
+
+-- Statebag 'plate' posé par SpawnVehicle : filet de sécurité si SetVehicleNumberPlateText
+-- (mod one-shot, réplication OneSync non garantie pour un client qui stream l'entité
+-- juste après sa création) n'a pas atteint ce client avec la bonne plaque.
+AddStateBagChangeHandler('plate', nil, function(bagName, key, value)
+    local entity = GetEntityFromStateBagName(bagName)
+    if entity == 0 or not DoesEntityExist(entity) or GetEntityType(entity) ~= 2 then return end
+    if value and GetVehicleNumberPlateText(entity) ~= value then
+        SetVehicleNumberPlateText(entity, value)
+    end
+end)
+
+-- Délai de "settle" après lequel on fait confiance aux natives dépendant du
+-- handling (GetVehicleHighGear, GetVehicleCurrentGear...) pour un véhicule
+-- donné. Juste après un spawn/une entrée, ces natives peuvent renvoyer des
+-- valeurs par défaut (handling pas encore résolu), ce qui faisait passer des
+-- véhicules thermiques pour "électriques" (GetVehicleHighGear <= 1) et
+-- déclenchait à tort la conso/regen électrique (fuel à 0 + à-coup de recul
+-- via ApplyForceToEntity dans le thread de freinage régénératif).
+local VehicleEnteredAt = {}
+local function IsVehicleSettled(vehicle)
+    local since = VehicleEnteredAt[vehicle]
+    if not since then
+        VehicleEnteredAt[vehicle] = GetGameTimer()
+        return false
+    end
+    return (GetGameTimer() - since) > 3000
+end
+
+-- Correction rapprochée à l'entrée conducteur : le fuel natif peut diverger
+-- de la valeur attendue (statebag) juste après montée/démarrage moteur,
+-- le temps que le handling se stabilise. On reforce vers la valeur attendue.
+local lastDriverVeh = nil
+Citizen.CreateThread(function()
+    while true do
+        local ped = PlayerPedId()
+        local veh = GetVehiclePedIsIn(ped, false)
+        local isDriver = veh ~= 0 and GetPedInVehicleSeat(veh, -1) == ped
+
+        if isDriver and veh ~= lastDriverVeh then
+            lastDriverVeh = veh
+            VehicleEnteredAt[veh] = GetGameTimer()
+            Citizen.CreateThread(function()
+                for i = 1, 40 do
+                    if not DoesEntityExist(veh) then return end
+                    -- Idem WatchFuelConvergence : relu à chaque itération pour
+                    -- ne pas fighter une mise à jour légitime (tuning, pompe)
+                    -- survenue dans les 10s après être monté au volant.
+                    local expected = Entity(veh).state.fuelLevel
+                    local current  = GetVehicleFuelLevel(veh)
+                    if expected and math.abs(current - expected) > 1.0 then
+                        SetVehicleFuelLevel(veh, expected)
+                    end
+                    Wait(250)
+                end
+            end)
+        elseif not isDriver then
+            lastDriverVeh = nil
+        end
+
+        Wait(250)
+    end
+end)
+
 -- Consommation de carburant en conduite ET au ralenti (GetVehicleHighGear <= 1 = électrique).
 Citizen.CreateThread(function()
     while true do
@@ -312,7 +564,7 @@ Citizen.CreateThread(function()
         local playerPed = PlayerPedId()
         local vehicle   = GetVehiclePedIsIn(playerPed, false)
 
-        if vehicle ~= 0 and GetPedInVehicleSeat(vehicle, -1) == playerPed then
+        if vehicle ~= 0 and GetPedInVehicleSeat(vehicle, -1) == playerPed and IsVehicleSettled(vehicle) then
             local vehicleClass = GetVehicleClass(vehicle)
             local baseLossRate = Config.FuelConsumption.LossRateByClass[vehicleClass]
             local isElectric   = GetVehicleHighGear(vehicle) <= 1
@@ -358,7 +610,7 @@ Citizen.CreateThread(function()
                 end
 
                 if newFuel then
-                    SetVehicleFuelLevel(vehicle, newFuel)
+                    SetSyncedFuelLevel(vehicle, newFuel)
 
                     if newFuel <= 0 and GetIsVehicleEngineRunning(vehicle) then
                         SetVehicleEngineOn(vehicle, false, true, true)
@@ -384,7 +636,7 @@ CreateThread(function()
         local vehicle   = GetVehiclePedIsIn(playerPed, false)
         local wait      = 500
 
-        if vehicle ~= 0 and GetPedInVehicleSeat(vehicle, -1) == playerPed then
+        if vehicle ~= 0 and GetPedInVehicleSeat(vehicle, -1) == playerPed and IsVehicleSettled(vehicle) then
             -- GetVehicleHighGear <= 1 attrape aussi motos/vélos/bateaux/hélicos/avions/Open Wheels ; on les exclut.
             local vClass     = GetVehicleClass(vehicle)
             local isElectric = GetVehicleHighGear(vehicle) <= 1
@@ -427,7 +679,7 @@ CreateThread(function()
                     local now = GetGameTimer()
                     if now - lastRegenMs >= 1000 then
                         local regenAmount = speedKmh * Config.FuelConsumption.ElectricRegenRate
-                        SetVehicleFuelLevel(vehicle, math.min(100.0, GetVehicleFuelLevel(vehicle) + regenAmount))
+                        SetSyncedFuelLevel(vehicle, math.min(100.0, GetVehicleFuelLevel(vehicle) + regenAmount))
                         lastRegenMs = now
                     end
 

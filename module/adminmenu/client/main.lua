@@ -106,29 +106,38 @@ local TimePresets = {
     { label = "Nuit tombante (21h)", h = 21, m = 0 },
 }
 
--- Listes Give item / Give arme (construites une fois depuis Config.Items)
+-- Listes Give item / Give arme — reconstruites à chaque ouverture du menu
+-- (et non plus une seule fois au chargement) : des ressources externes comme
+-- les restaurants (ls_burgershot, ls_aldentes, ls_kebabking) enregistrent
+-- leurs items dans Config.Items via exports['lslegacy']:registerItems(...)
+-- après le démarrage de lslegacy, une fois construit un snapshot figé les
+-- aurait rendus invisibles ici pour toute la durée de la session.
 local GiveItemList = {}
 local GiveWeaponList = {}
-for name, data in pairs(Config.Items) do
-    if name:find('^weapon_') then
-        local ammoEntry = Config.AmmoForWeapon[name]
-        local ammoNames = type(ammoEntry) == 'table' and ammoEntry or (ammoEntry and { ammoEntry } or {})
-        local ammoLabels = {}
-        for _, ammoName in ipairs(ammoNames) do
-            local ammoItem = Config.Items[ammoName]
-            if ammoItem then ammoLabels[#ammoLabels + 1] = ammoItem.label end
+local function RebuildGiveLists()
+    GiveItemList, GiveWeaponList = {}, {}
+    for name, data in pairs(Config.Items) do
+        if name:find('^weapon_') then
+            local ammoEntry = Config.AmmoForWeapon[name]
+            local ammoNames = type(ammoEntry) == 'table' and ammoEntry or (ammoEntry and { ammoEntry } or {})
+            local ammoLabels = {}
+            for _, ammoName in ipairs(ammoNames) do
+                local ammoItem = Config.Items[ammoName]
+                if ammoItem then ammoLabels[#ammoLabels + 1] = ammoItem.label end
+            end
+            GiveWeaponList[#GiveWeaponList + 1] = {
+                name  = name,
+                label = data.label,
+                desc  = #ammoLabels > 0 and ("Munitions compatibles : " .. table.concat(ammoLabels, ", ")) or "Pas de munitions (arme blanche / usage unique)",
+            }
+        else
+            GiveItemList[#GiveItemList + 1] = { name = name, label = data.label }
         end
-        GiveWeaponList[#GiveWeaponList + 1] = {
-            name  = name,
-            label = data.label,
-            desc  = #ammoLabels > 0 and ("Munitions compatibles : " .. table.concat(ammoLabels, ", ")) or "Pas de munitions (arme blanche / usage unique)",
-        }
-    else
-        GiveItemList[#GiveItemList + 1] = { name = name, label = data.label }
     end
+    table.sort(GiveItemList,   function(a, b) return a.label < b.label end)
+    table.sort(GiveWeaponList, function(a, b) return a.label < b.label end)
 end
-table.sort(GiveItemList,   function(a, b) return a.label < b.label end)
-table.sort(GiveWeaponList, function(a, b) return a.label < b.label end)
+RebuildGiveLists()
 
 -- DrawText HUD
 local function DrawTextAdmin(msg, font, size, posx, posy)
@@ -180,6 +189,8 @@ function AM:OpenMenu()
     -- Nettoyer tout état résiduel avant d'ouvrir (évite double rendu après spectate/inventaire)
     AM:HideAllMenus()
     AM.opened = true
+
+    RebuildGiveLists()
 
     local openTo = nil
     if AM.PendingNavPlayerActions then
@@ -349,6 +360,12 @@ Actions.deletePlayerVehicle = function()
     return { ok = true }
 end
 
+Actions.despawnPlayerVehicle = function()
+    if GetMyLevel() < 3 or not AM.IdSelected then return { error = 'Action refusée.' } end
+    LSLegacy.Events.SendToServer('admin:despawnPlayerVehicle', AM.IdSelected)
+    return { ok = true }
+end
+
 Actions.spawnVehicleForPlayer = function(data)
     if GetMyLevel() < 3 or not AM.IdSelected then return { error = 'Action refusée.' } end
     local model = tostring(data.model or '')
@@ -410,6 +427,13 @@ Actions.screenshotPlayer = function()
     if GetMyLevel() < 2 or not AM.IdSelected then return { error = 'Action refusée.' } end
     LSLegacy.Events.SendToServer('admin:screenshot', AM.IdSelected)
     LSLegacy.ShowNotification("Administration", "Screenshot en cours...", "info")
+    return { ok = true }
+end
+
+Actions.recordPlayer = function()
+    if GetMyLevel() < 2 or not AM.IdSelected then return { error = 'Action refusée.' } end
+    LSLegacy.Events.SendToServer('admin:record', AM.IdSelected)
+    LSLegacy.ShowNotification("Administration", "Enregistrement vidéo (10s) en cours...", "info")
     return { ok = true }
 end
 
@@ -1176,14 +1200,23 @@ LSLegacy.Events.Register('admin:doRepairVehicle', function()
     local ped = PlayerPedId()
     if IsPedInAnyVehicle(ped, false) then
         local veh = GetVehiclePedIsIn(ped, false)
+        -- Sans le contrôle réseau, SetVehicleFixed ne se propage pas forcément
+        -- aux autres clients (même défaut que l'atelier, cf. tuning.lua).
+        NetworkRequestControlOfEntity(veh)
         local fuel = GetVehicleFuelLevel(veh)
-        SetVehicleFuelLevel(veh, fuel)
         SetVehicleFixed(veh)
         SetVehicleDeformationFixed(veh)
         SetVehicleUndriveable(veh, false)
         WashDecalsFromVehicle(veh, 1.0)
         SetVehicleEngineHealth(veh, 1000.0)
         SetVehicleBodyHealth(veh, 1000.0)
+        -- SetVehicleFixed remet aussi le fuel à 100 (effet de bord natif) :
+        -- restauré APRÈS, jamais avant.
+        if _G.SetSyncedFuelLevel then
+            SetSyncedFuelLevel(veh, fuel)
+        else
+            SetVehicleFuelLevel(veh, fuel)
+        end
     end
 end)
 

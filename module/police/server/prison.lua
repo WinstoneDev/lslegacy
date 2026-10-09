@@ -48,6 +48,19 @@ MySQL.Async.execute([[
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 ]], {})
 
+-- Convertit un DATETIME MySQL ('YYYY-MM-DD HH:MM:SS') en epoch, en secondes restantes depuis maintenant
+local function RemainingSecondsUntil(mysqlDatetime)
+    local endEpoch = os.time({
+        year  = tonumber(string.sub(mysqlDatetime, 1, 4)),
+        month = tonumber(string.sub(mysqlDatetime, 6, 7)),
+        day   = tonumber(string.sub(mysqlDatetime, 9, 10)),
+        hour  = tonumber(string.sub(mysqlDatetime, 12, 13)),
+        min   = tonumber(string.sub(mysqlDatetime, 15, 16)),
+        sec   = tonumber(string.sub(mysqlDatetime, 18, 19)),
+    })
+    return math.max(0, os.difftime(endEpoch, os.time()))
+end
+
 -- Restaurer les peines actives au démarrage
 
 Citizen.CreateThread(function()
@@ -58,24 +71,15 @@ Citizen.CreateThread(function()
         {},
         function(rows)
             for _, row in ipairs(rows or {}) do
-                local endEpoch = os.time() + math.max(0,
-                    os.difftime(
-                        os.time(({year=tonumber(string.sub(row.ends_at,1,4)),
-                            month=tonumber(string.sub(row.ends_at,6,7)),
-                            day=tonumber(string.sub(row.ends_at,9,10)),
-                            hour=tonumber(string.sub(row.ends_at,12,13)),
-                            min=tonumber(string.sub(row.ends_at,15,16)),
-                            sec=tonumber(string.sub(row.ends_at,18,19))})[1] or os.time()),
-                        os.time()
-                    )
-                )
-                if endEpoch > os.time() then
+                local remaining = RemainingSecondsUntil(row.ends_at)
+                if remaining > 0 then
                     ActiveSentences[row.identifier] = {
-                        endTime  = endEpoch,
+                        endTime  = os.time() + remaining,
                         reason   = row.reason,
                         duration = row.duration,
                         type     = 'prison',
                     }
+                    SchedulePrisonRelease(row.identifier, remaining * 1000)
                 end
             end
         end
@@ -86,12 +90,17 @@ Citizen.CreateThread(function()
         {},
         function(rows)
             for _, row in ipairs(rows or {}) do
-                ActiveCustody[row.identifier] = {
-                    endTime  = os.time() + 60,
-                    reason   = row.reason,
-                    duration = row.duration,
-                    type     = 'custody',
-                }
+                local remaining = RemainingSecondsUntil(row.ends_at)
+                if remaining > 0 then
+                    ActiveCustody[row.identifier] = {
+                        endTime      = os.time() + remaining,
+                        reason       = row.reason,
+                        duration     = row.duration,
+                        officerIdent = row.officer_id,
+                        targetName   = row.name,
+                    }
+                    ScheduleCustodyRelease(row.identifier, remaining * 1000)
+                end
             end
         end
     )
@@ -99,10 +108,38 @@ end)
 
 -- GARDE À VUE
 
+-- Libère une GAV active et notifie la cible + l'officier qui l'a posée
+local function ReleaseCustody(ident)
+    local custody = ActiveCustody[ident]
+    if not custody then return end
+    local savedOfficerIdent = custody.officerIdent
+    local savedTargetName   = custody.targetName
+    ActiveCustody[ident] = nil
+    MySQL.Async.execute(
+        'UPDATE police_custody SET released_at=NOW() WHERE identifier=@id AND released_at IS NULL',
+        { ['@id'] = ident }
+    )
+    for pid, pd in pairs(LSLegacy.Players.GetAll()) do
+        if pd.identifier == ident then
+            TriggerClientEvent('police:releasedFromCustody', pid)
+        end
+        if pd.identifier == savedOfficerIdent then
+            Notify(pid, string.format('La GAV de %s est terminée, allez le/la libérer.', savedTargetName), 'warning')
+        end
+    end
+end
+
+function ScheduleCustodyRelease(ident, delayMs)
+    Citizen.CreateThread(function()
+        Wait(delayMs)
+        ReleaseCustody(ident)
+    end)
+end
+
 LSLegacy.Events.Register('police:custody', function(data)
     local src = source
     if not IsLawEnforcementOnDuty(src) then return end
-    if not LSLegacy.MDT.HasPermission('police', tonumber(GetPlayer(src).job_grade) or 0, 'manage_custody') then
+    if not HasPermission(src, 'manage_custody') then
         Notify(src, Lang.Police.grade_required, 'error') return
     end
     if not data or not data.target or not data.reason or not data.duration then return end
@@ -153,39 +190,41 @@ LSLegacy.Events.Register('police:custody', function(data)
         string.format('**%s** placé(e) en GAV par **%s**\nMotif : %s\nDurée : %d min',
             tName, oName, reason, duration), 15158332)
 
-    -- Timer de libération automatique
-    Citizen.CreateThread(function()
-        Wait(duration * 60 * 1000)
-        local custody = ActiveCustody[ident]
-        if custody then
-            local savedOfficerIdent = custody.officerIdent
-            local savedTargetName   = custody.targetName
-            ActiveCustody[ident] = nil
-            MySQL.Async.execute(
-                'UPDATE police_custody SET released_at=NOW() WHERE identifier=@id AND released_at IS NULL',
-                { ['@id'] = ident }
-            )
-            for pid, pd in pairs(LSLegacy.Players.GetAll()) do
-                -- Notifier l'individu (une seule notif via l'event client)
-                if pd.identifier == ident then
-                    TriggerClientEvent('police:releasedFromCustody', pid)
-                end
-                -- Notifier l'officier qui a posé la GAV
-                if pd.identifier == savedOfficerIdent then
-                    Notify(pid, string.format('La GAV de %s est terminée, allez le/la libérer.', savedTargetName), 'warning')
-                end
-            end
-        end
-    end)
+    IncrementPoliceStat(oIdent, oCharId, oName, 'custody_count', 1)
+    ScheduleCustodyRelease(ident, duration * 60 * 1000)
 end)
 
 
 -- PRISON
 
+-- Libère une peine de prison active et notifie la cible
+local function ReleasePrison(ident)
+    if not ActiveSentences[ident] then return end
+    ActiveSentences[ident] = nil
+    MySQL.Async.execute(
+        'UPDATE police_prison SET released_at=NOW() WHERE identifier=@id AND released_at IS NULL',
+        { ['@id'] = ident }
+    )
+    for pid, pd in pairs(LSLegacy.Players.GetAll()) do
+        if pd.identifier == ident then
+            TriggerClientEvent('police:releasedFromPrison', pid)
+            Notify(pid, Lang.Police.prison_released, 'success')
+            break
+        end
+    end
+end
+
+function SchedulePrisonRelease(ident, delayMs)
+    Citizen.CreateThread(function()
+        Wait(delayMs)
+        ReleasePrison(ident)
+    end)
+end
+
 LSLegacy.Events.Register('police:prison', function(data)
     local src = source
     if not IsLawEnforcementOnDuty(src) then return end
-    if not LSLegacy.MDT.HasPermission('police', tonumber(GetPlayer(src).job_grade) or 0, 'manage_custody') then
+    if not HasPermission(src, 'manage_custody') then
         Notify(src, Lang.Police.grade_required, 'error') return
     end
     if not data or not data.target or not data.reason or not data.duration then return end
@@ -243,24 +282,8 @@ LSLegacy.Events.Register('police:prison', function(data)
         string.format('**%s** incarcéré(e) par **%s**\nChef : %s\nDurée : %d min',
             tName, oName, reason, duration), 10038562)
 
-    -- Timer libération
-    Citizen.CreateThread(function()
-        Wait(duration * 60 * 1000)
-        if ActiveSentences[ident] then
-            ActiveSentences[ident] = nil
-            MySQL.Async.execute(
-                'UPDATE police_prison SET released_at=NOW() WHERE identifier=@id AND released_at IS NULL',
-                { ['@id'] = ident }
-            )
-            for pid, pd in pairs(LSLegacy.Players.GetAll()) do
-                if pd.identifier == ident then
-                    TriggerClientEvent('police:releasedFromPrison', pid)
-                    Notify(pid, Lang.Police.prison_released, 'success')
-                    break
-                end
-            end
-        end
-    end)
+    IncrementPoliceStat(oIdent, oCharId, oName, 'prison_count', 1)
+    SchedulePrisonRelease(ident, duration * 60 * 1000)
 end)
 
 -- Vérifier la peine à la connexion

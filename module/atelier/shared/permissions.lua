@@ -19,17 +19,29 @@ function LSLegacy.Atelier.IsAtelierJob(job)
 end
 
 -- Ensemble CUMULÉ des permissions pour un grade d'une entreprise.
+-- Un override existe uniquement côté serveur (module/atelier/server/grade_permissions.lua,
+-- édité depuis l'onglet MDT « Permissions ») : côté client, LSLegacy.Atelier.GradeOverrides
+-- reste nil et on retombe sur companies.lua (usage client = affichage ox_target uniquement,
+-- toujours revérifié côté serveur, cf. RÈGLE D'OR en tête de fichier).
 -- @return table set { [permission]=true }
 function LSLegacy.Atelier.GetPermissions(companyId, grade)
     local company = Config.Atelier.Companies[companyId]
     local perms = {}
     if not company or not company.grades then return perms end
     grade = tonumber(grade) or 0
+    local overrides = LSLegacy.Atelier.GradeOverrides and LSLegacy.Atelier.GradeOverrides[companyId]
     for g = 0, grade do
-        local rank = company.grades[g]
-        if rank and rank.grants then
-            for _, p in ipairs(rank.grants) do
+        local grants = overrides and overrides[g]
+        if grants then
+            for p in pairs(grants) do
                 perms[p] = true
+            end
+        else
+            local rank = company.grades[g]
+            if rank and rank.grants then
+                for _, p in ipairs(rank.grants) do
+                    perms[p] = true
+                end
             end
         end
     end

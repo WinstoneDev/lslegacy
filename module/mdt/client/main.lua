@@ -119,11 +119,13 @@ ReadCallback('mdt:getWeapon',            'getWeapon')
 ReadCallback('mdt:getPersonWeapons',     'getPersonWeapons')
 ReadCallback('mdt:getReportWeapons',     'getReportWeapons')
 ReadCallback('mdt:getRoster',            'getRoster')
+ReadCallback('mdt:getNearbyRecruits',    'getNearbyRecruits')
 ReadCallback('mdt:getLaws',              'getLaws')
 ReadCallback('mdt:getTrainings',         'getTrainings')
 ReadCallback('mdt:getTrainingSignups',   'getTrainingSignups')
 ReadCallback('mdt:getAgentFile',         'getAgentFile')
 ReadCallback('mdt:getDashboard',         'getDashboard')
+ReadCallback('mdtresto:getDashboard',    'getRestoDashboard')
 ReadCallback('mdt:getInterventionReports','getInterventionReports')
 ReadCallback('mdt:getInterventionReport', 'getInterventionReport')
 ReadCallback('mdt:getCaseLinks',          'getCaseLinks')
@@ -132,18 +134,27 @@ ReadCallback('mdt:getReportLinks',         'getReportLinks')
 --  NUI callback — PRISE / FIN DE SERVICE depuis le tableau de bord
 --
 --  Purement local : on appelle la bascule que le module métier a publiée
---  dans LSLegacy.MDT.DutyToggles (police, gendarmerie…). C'est elle qui
+--  dans LSLegacy.MDT.DutyToggles (police, shérif…). C'est elle qui
 --  porte la vérification du job, les notifications et l'event serveur —
 --  la borne de la caserne et le MDT empruntent donc le même chemin.
 
 RegisterNUICallback('mdt:toggleDuty', function(_, cb)
     local job = LSLegacy.PlayerData and LSLegacy.PlayerData.job
-    local entry = job and (LSLegacy.MDT.DutyToggles or {})[job]
-    if not entry or type(entry.toggle) ~= 'function' then
-        return cb({ ok = false })
+    if not job then return cb({ ok = false }) end
+
+    local entry = (LSLegacy.MDT.DutyToggles or {})[job]
+    if entry and type(entry.toggle) == 'function' then
+        entry.toggle()
+        return cb({ ok = true, onDuty = type(entry.isOnDuty) == 'function' and entry.isOnDuty() or nil })
     end
-    entry.toggle()
-    cb({ ok = true, onDuty = type(entry.isOnDuty) == 'function' and entry.isOnDuty() or nil })
+
+    -- Job d'une ressource externe (ex. ls_kebabking) — voir
+    -- module/foodapi/client/main.lua (registerClientDuty).
+    if LSLegacy.MDT.ExternalToggleDuty and LSLegacy.MDT.ExternalToggleDuty(job) then
+        return cb({ ok = true, onDuty = LSLegacy.MDT.ExternalIsOnDuty and LSLegacy.MDT.ExternalIsOnDuty(job) or nil })
+    end
+
+    cb({ ok = false })
 end)
 
 --  NUI callbacks — ÉCRITURES (event tokenisé ; le serveur répond via
@@ -203,6 +214,8 @@ WriteCallback('mdt:linkReportEvidence')
 WriteCallback('mdt:unlinkReportEvidence')
 WriteCallback('mdt:saveAgentMeta')
 WriteCallback('mdt:saveCareer')
+WriteCallback('mdt:promoteAgent')
+WriteCallback('mdt:recruitAgent')
 WriteCallback('mdt:addAssignment')
 WriteCallback('mdt:updateAssignment')
 WriteCallback('mdt:deleteAssignment')

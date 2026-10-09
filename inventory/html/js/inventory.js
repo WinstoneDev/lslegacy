@@ -9,6 +9,7 @@ var equippedClothes = {}; // { slotType: itemData }
 var equippedOutfit   = null; // outfit item data or null
 var outfitEditMode   = false; // vrai quand on édite une tenue depuis l'inventaire
 var outfitEditSlots  = {}; // slot → {data:[draw,tex], fromInventory:bool, item:null|itemData}
+var isAdmin = false; // autorise le clic gauche "Supprimer" sur une arme
 
 // ── Helper drag fixe ──
 function createDragHelper(el) {
@@ -445,6 +446,7 @@ window.addEventListener("message", function(event) {
 
     } else if (event.data.action == "setItems") {
         closeItemContextMenu();
+        isAdmin = !!event.data.isAdmin;
         inventorySetup(event.data.itemList, event.data.fastItems, event.data.crMenu, event.data.equippedSlots, event.data.equippedOutfit);
         $(".info-div2").html(event.data.text);
         initMainDraggables();
@@ -579,10 +581,21 @@ function makeDraggables() {
 // ── Menu contextuel rapide (clic droit sur un item de l'inventaire) ──
 var contextMenuItem = null;
 
+// Doit rester synchronisé avec Config.NonLethal.TrainingAmmo.weapons (Lua).
+var TRAINING_AMMO_WEAPONS = [
+    'weapon_combatpistol', 'weapon_smg', 'weapon_specialcarbine',
+    'weapon_specialcarbine_mk2', 'weapon_combatshotgun',
+    'weapon_heavysniper', 'weapon_pumpshotgun'
+];
+
 function openItemContextMenu(x, y, itemData) {
     contextMenuItem = itemData;
     var isWeapon = itemData.name.indexOf('weapon_') === 0;
     $('#contextMenuUnload').toggle(isWeapon);
+    $('#contextMenuAccessories').toggle(isWeapon);
+    $('#contextMenuCougarAmmo').toggle(itemData.name === 'weapon_lgcougar');
+    $('#contextMenuTrainingAmmo').toggle(TRAINING_AMMO_WEAPONS.indexOf(itemData.name) !== -1);
+    $('#contextMenuDelete').toggle(isAdmin);
 
     var $menu = $('#itemContextMenu');
     $menu.css({ display: 'block', left: x, top: y });
@@ -630,6 +643,22 @@ $(document).on('click', '.context-menu-option', function(event) {
     } else if (action === 'unload') {
         if (itemData.name.indexOf('weapon_') === 0) {
             $.post('http://lslegacy/UnloadWeapon', JSON.stringify({ item: itemData }));
+        }
+    } else if (action === 'accessories') {
+        if (itemData.name.indexOf('weapon_') === 0) {
+            $.post('http://lslegacy/WeaponAccessories', JSON.stringify({ item: itemData }));
+        }
+    } else if (action === 'cougarAmmo') {
+        if (itemData.name === 'weapon_lgcougar') {
+            $.post('http://lslegacy/CougarAmmo', JSON.stringify({ item: itemData }));
+        }
+    } else if (action === 'trainingAmmo') {
+        if (TRAINING_AMMO_WEAPONS.indexOf(itemData.name) !== -1) {
+            $.post('http://lslegacy/TrainingAmmo', JSON.stringify({ item: itemData }));
+        }
+    } else if (action === 'delete') {
+        if (isAdmin) {
+            $.post('http://lslegacy/AdminDeleteItem', JSON.stringify({ item: itemData }));
         }
     }
 });
@@ -913,7 +942,7 @@ $(document).ready(function() {
             }
             if (type === "trunk" && itemInventory === "second") {
                 disableInventory(500);
-                $.post("http://lslegacy/TakeFromTrunk", JSON.stringify({ item: itemData, number: parseInt($("#count").val()) }));
+                $.post("http://lslegacy/lslegacy:takeFromTrunk", JSON.stringify({ item: itemData, number: parseInt($("#count").val()) }));
             } else if (type === "property" && itemInventory === "second") {
                 disableInventory(500);
                 $.post("http://lslegacy/TakeFromProperty", JSON.stringify({ item: itemData, number: parseInt($("#count").val()) }));
@@ -936,7 +965,7 @@ $(document).ready(function() {
             var itemInventory = ui.draggable.data("inventory");
             if (type === "trunk" && itemInventory === "main") {
                 disableInventory(500);
-                $.post("http://lslegacy/PutIntoTrunk", JSON.stringify({ item: itemData, number: parseInt($("#count").val()) }));
+                $.post("http://lslegacy/lslegacy:putIntoTrunk", JSON.stringify({ item: itemData, number: parseInt($("#count").val()) }));
             } else if (type === "property" && itemInventory === "main") {
                 disableInventory(500);
                 $.post("http://lslegacy/PutIntoProperty", JSON.stringify({ item: itemData, number: parseInt($("#count").val()) }));
@@ -950,3 +979,132 @@ $(document).ready(function() {
         }
     });
 });
+
+// ── Infobulle d'item + péremption (module/foodapi) ────────────────────────
+// La fraîcheur d'un aliment est stockée dans item.data.fresh :
+//   { b: budget restant (s), t: horodatage UTC du dernier changement d'état,
+//     r: vitesse de consommation du budget (0 = frigo pro, figé) }
+// Le temps réellement affiché est budget / r, recalculé à chaque survol.
+(function () {
+    var $tip = null;
+
+    var CLOTH_SLOT_LABELS = {
+        bproof: 'Gilet', helmet: 'Casque', mask: 'Masque', torso: 'Torse',
+        tshirt: 'T-Shirt', arms: 'Bras', chain: 'Collier', bracelet: 'Bracelet',
+        glasses: 'Lunettes', ears: 'Oreilles', bags: 'Sac', pants: 'Pantalon',
+        shoes: 'Chaussures', watches: 'Montre', decals: 'Decals'
+    };
+
+    function drawTexOf(vals) {
+        if (!vals) { return null; }
+        var drawable = Array.isArray(vals) ? vals[0] : vals.drawable;
+        var texture  = Array.isArray(vals) ? vals[1] : vals.texture;
+        if (drawable === undefined || texture === undefined) { return null; }
+        return { drawable: drawable, texture: texture };
+    }
+
+    function ensureTip() {
+        if (!$tip) {
+            $tip = $('<div id="itemTooltip"></div>').appendTo('body');
+        }
+        return $tip;
+    }
+
+    function humanDuration(seconds) {
+        seconds = Math.max(0, Math.floor(seconds));
+        var h = Math.floor(seconds / 3600);
+        var m = Math.floor((seconds % 3600) / 60);
+        if (h > 0) { return h + 'h ' + (m < 10 ? '0' : '') + m + 'min'; }
+        if (m > 0) { return m + ' min'; }
+        return seconds + ' s';
+    }
+
+    function freshnessHtml(item) {
+        var fresh = item && item.data && item.data.fresh;
+        if (!fresh) { return ''; }
+
+        var b = Number(fresh.b) || 0;
+        var t = Number(fresh.t) || 0;
+        var r = (fresh.r === undefined || fresh.r === null) ? 1 : Number(fresh.r);
+        var now = Math.floor(Date.now() / 1000);
+        var budget = Math.max(0, b - (now - t) * r);
+
+        if (r <= 0) {
+            return '<div class="tt-fresh tt-cold">Conservation : chambre froide (péremption figée)</div>';
+        }
+        if (budget <= 0) {
+            return '<div class="tt-fresh tt-bad">PÉRIMÉ — impossible à consommer</div>';
+        }
+
+        var remaining = budget / r;
+        var cls = remaining > 3600 ? 'tt-ok' : (remaining > 900 ? 'tt-warn' : 'tt-bad');
+        var suffix = r < 1 ? ' (au frais)' : '';
+        return '<div class="tt-fresh ' + cls + '">À consommer sous ' + humanDuration(remaining) + suffix + '</div>';
+    }
+
+    function buildTooltip(item) {
+        var html = '<div class="tt-title">' + (item.label || item.name) + '</div>';
+        if (item.count !== undefined && item.type === 'item_standard') {
+            html += '<div class="tt-line">Quantité : ' + item.count + '</div>';
+        }
+        if (item.data && item.data.durability !== undefined) {
+            html += '<div class="tt-line">Restant : ' + Math.max(0, Math.round(Number(item.data.durability))) + ' %</div>';
+        }
+        if (item.data && item.data.serialNumber) {
+            html += '<div class="tt-line">N° de série : ' + item.data.serialNumber + '</div>';
+        }
+        if (item.name === 'outfit' && item.data && typeof item.data === 'object') {
+            Object.keys(item.data).forEach(function (slotType) {
+                var dt = drawTexOf(item.data[slotType]);
+                if (!dt) { return; }
+                var label = CLOTH_SLOT_LABELS[slotType] || slotType;
+                html += '<div class="tt-line">' + label + ' : drawable ' + dt.drawable + ' · texture ' + dt.texture + '</div>';
+            });
+        } else if (CLOTH_SLOT_LABELS[item.name]) {
+            var dt = drawTexOf(item.data);
+            if (dt) {
+                html += '<div class="tt-line">Drawable ' + dt.drawable + ' · Texture ' + dt.texture + '</div>';
+            }
+        }
+        html += freshnessHtml(item);
+        return html;
+    }
+
+    function place(e) {
+        if (!$tip || $tip.css('display') === 'none') { return; }
+        var w = $tip.outerWidth(), h = $tip.outerHeight();
+        var x = e.clientX + 16, y = e.clientY + 16;
+        if (x + w > window.innerWidth - 8)  { x = e.clientX - w - 16; }
+        if (y + h > window.innerHeight - 8) { y = e.clientY - h - 16; }
+        $tip.css({ left: Math.max(4, x) + 'px', top: Math.max(4, y) + 'px' });
+    }
+
+    var TOOLTIP_SELECTOR = '.item, .outfit-card, .outfit-inv-item';
+
+    function resolveTooltipItem($el) {
+        if ($el.hasClass('outfit-card')) {
+            var outfit = $el.data('outfit');
+            if (!outfit) { return null; }
+            return { name: 'outfit', label: outfit.label, data: outfit.data };
+        }
+        return $el.data('item');
+    }
+
+    $(document).on('mouseenter', TOOLTIP_SELECTOR, function (e) {
+        var item = resolveTooltipItem($(this));
+        if (!item) { return; }
+        ensureTip().html(buildTooltip(item)).css('display', 'block');
+        place(e);
+    });
+
+    $(document).on('mousemove', TOOLTIP_SELECTOR, place);
+
+    $(document).on('mouseleave', TOOLTIP_SELECTOR, function () {
+        if ($tip) { $tip.css('display', 'none'); }
+    });
+
+    // Un re-rendu de la grille pendant un drag laisserait l'infobulle affichée.
+    $(document).on('mousedown', function () {
+        if ($tip) { $tip.css('display', 'none'); }
+    });
+})();

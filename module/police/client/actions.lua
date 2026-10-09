@@ -472,7 +472,7 @@ end
 --  ACTION : GARDE À VUE
 
 Actions.PlaceCustody = function(targetSrc)
-    if not LSLegacy.MDT.HasPermission('police', Police.GetGrade(), 'manage_custody') then
+    if not LSLegacy.MDT.LocalHasPermission('manage_custody') then
         Notify(Lang.Police.grade_required, 'error')
         return
     end
@@ -495,7 +495,7 @@ end
 --  ACTION : INCARCÉRATION
 
 Actions.SendToPrison = function(targetSrc)
-    if not LSLegacy.MDT.HasPermission('police', Police.GetGrade(), 'manage_custody') then
+    if not LSLegacy.MDT.LocalHasPermission('manage_custody') then
         Notify(Lang.Police.grade_required, 'error')
         return
     end

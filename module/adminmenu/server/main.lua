@@ -3,8 +3,8 @@ local rateLimits = {
     ['admin:tpm'] = 30, ['admin:pos'] = 30, ['admin:freeze'] = 10, ['admin:heal'] = 10,
     ['admin:revive'] = 10, ['admin:resetNeeds'] = 10, ['admin:resetSkin'] = 5,
     ['admin:kick'] = 5, ['admin:tempban'] = 5, ['admin:permaban'] = 3, ['admin:warn'] = 10,
-    ['admin:getWarns'] = 15, ['admin:screenshot'] = 5, ['admin:repairVehicle'] = 10,
-    ['admin:deletePlayerVehicle'] = 10, ['admin:spawnVehicleForPlayer'] = 8,
+    ['admin:getWarns'] = 15, ['admin:screenshot'] = 5, ['admin:record'] = 5, ['admin:repairVehicle'] = 10,
+    ['admin:deletePlayerVehicle'] = 10, ['admin:despawnPlayerVehicle'] = 10, ['admin:spawnVehicleForPlayer'] = 8,
     ['admin:spawnVehicle'] = 8, ['admin:deleteVehiclesInZone'] = 8, ['admin:giveMoney'] = 10,
     ['admin:removeMoney'] = 10, ['admin:giveItem'] = 10, ['admin:removeItem'] = 10,
     ['admin:giveWeapon'] = 10, ['admin:getPlayerInventory'] = 15, ['admin:getTickets'] = 15,
@@ -27,9 +27,6 @@ local Webhooks = {
     screenshots = GetConvar('lslegacy_webhook_admin_screenshots', ''),
     logs        = GetConvar('lslegacy_webhook_admin_logs', ''),
 }
--- Clé API imgbb (gratuite sur https://imgbb.com) — nécessaire pour l'upload de screenshots
-local ImgbbKey = GetConvar('lslegacy_imgbb_key', '')
-
 -- Init tables BDD
 MySQL.Async.execute([[
     CREATE TABLE IF NOT EXISTS admin_warns (
@@ -222,6 +219,15 @@ LSLegacy.Events.Register('admin:setDuty', function(state)
     if not Admin.CanDo(_source, 1) then return end
     Admin.OnDutyStaff[_source] = state and true or nil
     Admin.Log('staff', LSLegacy.Players.Get(_source), state and 'Prise de service' or 'Fin de service')
+end)
+
+-- Bypass ox_doorlock : réservé aux superadmins ayant pris leur service via
+-- le menu admin (Admin.OnDutyStaff), pas simplement au groupe BDD.
+exports('isSuperAdminOnDuty', function(source)
+    if Admin.OnDutyStaff[source] ~= true then return false end
+
+    local player = LSLegacy.Players.Get(source)
+    return player ~= nil and Admin.GetLevel(player) >= 4
 end)
 
 LSLegacy.Events.Register('admin:getOnlineStaff', function()
@@ -509,8 +515,9 @@ LSLegacy.Events.Register('admin:permaban', function(target, reason)
 end)
 
 -- Screenshot
--- PerformHttpRequest ne gère pas fiablement le binaire (octets nuls dans les JPEG).
--- On passe par imgbb (base64 → URL) puis on poste l'URL dans un embed Discord.
+-- PerformHttpRequest ne gère pas fiablement le binaire (octets nuls dans les JPEG) : on
+-- n'attache plus rien en direct. Le fichier part sur le panel web (lslegacy.top, base64 en JSON,
+-- insensible au bug NUL) et Discord ne reçoit qu'un lien vers la page de visionnage.
 
 LSLegacy.Events.Register('admin:screenshot', function(target)
     local _source = source
@@ -519,64 +526,81 @@ LSLegacy.Events.Register('admin:screenshot', function(target)
     local tp    = LSLegacy.Players.Get(target)
     if not tp or not staff then return end
 
-    if not exports['screenshot-basic'] then
-        LSLegacy.Events.SendToClient('notify', _source, 'Administration', 'Ressource screenshot-basic manquante.', 'error')
+    if GetResourceState('screencapture') ~= 'started' then
+        LSLegacy.Events.SendToClient('notify', _source, 'Administration', 'Ressource screencapture manquante.', 'error')
         return
     end
 
-    exports['screenshot-basic']:requestClientScreenshot(target, { encoding = 'jpg', quality = 0.85 }, function(err, encoded)
-        if err or not encoded then
+    exports.screencapture:serverCapture(target, { encoding = 'jpg' }, function(encoded)
+        if not encoded then
             LSLegacy.Events.SendToClient('notify', _source, 'Administration', 'Échec du screenshot.', 'error')
             return
         end
 
-        local b64 = encoded:match('base64,(.+)$')
-        if not b64 then
-            LSLegacy.Events.SendToClient('notify', _source, 'Administration', 'Format screenshot invalide.', 'error')
+        local savedPath = Shared.Evidence.SaveBase64Image(encoded, target, 'admin')
+        if not savedPath then
+            LSLegacy.Events.SendToClient('notify', _source, 'Administration', 'Échec de la sauvegarde screenshot.', 'error')
             return
         end
 
-        -- URL-encode les caractères spéciaux du base64 pour form-urlencoded
-        local b64Encoded = b64:gsub('+', '%%2B'):gsub('/', '%%2F'):gsub('=', '%%3D')
+        local targetName = Admin.CharName(tp)   .. ' (ID: ' .. tostring(target)  .. ')'
+        local staffName  = Admin.CharName(staff) .. ' (ID: ' .. tostring(_source) .. ')'
 
-        -- 1) Upload sur imgbb (texte pur, pas de binaire)
-        PerformHttpRequest(
-            'https://api.imgbb.com/1/upload?key=' .. ImgbbKey,
-            function(imgStatus, imgBody)
-                if imgStatus ~= 200 then
-                    LSLegacy.Events.SendToClient('notify', _source, 'Administration', 'Erreur imgbb (' .. tostring(imgStatus) .. ').', 'error')
-                    return
-                end
-                local imgData = json.decode(imgBody)
-                if not imgData or not imgData.data or not imgData.data.url then
-                    LSLegacy.Events.SendToClient('notify', _source, 'Administration', 'Réponse imgbb invalide.', 'error')
-                    return
-                end
+        Shared.Evidence.UploadFileToWeb(savedPath, nil,
+            { type = 'screenshot', target = target, tag = 'admin', reason = 'Screenshot joueur (staff #' .. _source .. ')' },
+            function(viewUrl)
+                Shared.Evidence.PostDiscordEmbed(Webhooks.screenshots, 'Screenshot joueur',
+                    'De **' .. targetName .. '** par **' .. staffName .. '**' ..
+                    (viewUrl and ('\n[Voir sur le panel](' .. viewUrl .. ')') or '\n*Panel indisponible, fichier conservé sur le VPS.*'))
+            end)
 
-                local targetName = Admin.CharName(tp)   .. ' (ID: ' .. tostring(target)  .. ')'
-                local staffName  = Admin.CharName(staff) .. ' (ID: ' .. tostring(_source) .. ')'
-
-                -- 2) Post l'URL dans un embed Discord
-                PerformHttpRequest(Webhooks.screenshots, function() end, 'POST',
-                    json.encode({
-                        embeds = {{
-                            title       = 'Screenshot joueur',
-                            description = 'De **' .. targetName .. '** par **' .. staffName .. '**',
-                            image       = { url = imgData.data.url },
-                            color       = LogColors.staff,
-                            footer      = { text = 'LSLegacy Admin • ' .. os.date('%d/%m/%Y %H:%M:%S') },
-                        }}
-                    }),
-                    { ['Content-Type'] = 'application/json' }
-                )
-                LSLegacy.Events.SendToClient('notify', _source, 'Administration', 'Screenshot envoyé.', 'success')
-            end,
-            'POST', 'image=' .. b64Encoded,
-            { ['Content-Type'] = 'application/x-www-form-urlencoded' }
-        )
+        LSLegacy.Events.SendToClient('notify', _source, 'Administration', 'Screenshot envoyé.', 'success')
     end)
 
     Admin.Log('staff', staff, 'Screenshot', tp)
+end)
+
+-- Enregistrement vidéo (10s) : sauvegardé sur le disque du VPS (anticheat_evidence/videos)
+-- puis envoyé dans le même webhook que les screenshots (Webhooks.screenshots, pas de nouveau webhook).
+LSLegacy.Events.Register('admin:record', function(target)
+    local _source = source
+    if not Admin.CanDo(_source, 2) then return end
+    local staff = LSLegacy.Players.Get(_source)
+    local tp    = LSLegacy.Players.Get(target)
+    if not tp or not staff then return end
+
+    if GetResourceState('screencapture') ~= 'started' then
+        LSLegacy.Events.SendToClient('notify', _source, 'Administration', 'Ressource screencapture manquante.', 'error')
+        return
+    end
+
+    local targetName = Admin.CharName(tp)   .. ' (ID: ' .. tostring(target)  .. ')'
+    local staffName  = Admin.CharName(staff) .. ' (ID: ' .. tostring(_source) .. ')'
+
+    exports.screencapture:startVideoCapture(target, { duration = 10 }, function(result)
+        if not result or result.status ~= 'success' or not result.filePath then
+            LSLegacy.Events.SendToClient('notify', _source, 'Administration', 'Échec de l\'enregistrement vidéo.', 'error')
+            return
+        end
+
+        local destPath, bytes = Shared.Evidence.PersistVideo(result.filePath, target, 'admin')
+        if not destPath then
+            LSLegacy.Events.SendToClient('notify', _source, 'Administration', 'Échec de la sauvegarde vidéo.', 'error')
+            return
+        end
+
+        Shared.Evidence.UploadFileToWeb(destPath, bytes,
+            { type = 'video', target = target, tag = 'admin', reason = 'Enregistrement staff #' .. _source },
+            function(viewUrl)
+                Shared.Evidence.PostDiscordEmbed(Webhooks.screenshots, 'Vidéo joueur (10s)',
+                    'De **' .. targetName .. '** par **' .. staffName .. '**' ..
+                    (viewUrl and ('\n[Voir sur le panel](' .. viewUrl .. ')') or '\n*Panel indisponible, fichier conservé sur le VPS.*'))
+            end)
+        LSLegacy.Events.SendToClient('notify', _source, 'Administration', 'Vidéo envoyée.', 'success')
+    end)
+
+    LSLegacy.Events.SendToClient('notify', _source, 'Administration', 'Enregistrement de 10s en cours pour ' .. targetName .. '...', 'info')
+    Admin.Log('staff', staff, 'Enregistrement vidéo (10s) - ' .. targetName .. ' par ' .. staffName, tp)
 end)
 
 -- Véhicules joueur
@@ -602,6 +626,20 @@ LSLegacy.Events.Register('admin:deletePlayerVehicle', function(target)
     -- Envoyer ap:findAndDeleteVehicle au client cible : il supprime son véhicule + nettoyage BDD
     LSLegacy.Events.SendToClient('ap:findAndDeleteVehicle', target)
     Admin.Log('vehicles', staff, 'Delete véhicule joueur', tp)
+end)
+
+LSLegacy.Events.Register('admin:despawnPlayerVehicle', function(target)
+    local _source = source
+    if not Admin.CanDo(_source, 3) then return end
+    local staff = LSLegacy.Players.Get(_source)
+    local tp    = LSLegacy.Players.Get(target)
+    if not tp then return end
+
+    -- Retire le véhicule du monde sans toucher à la persistance (contrairement à
+    -- deletePlayerVehicle) : utile pour un véhicule bloqué/buggé, récupérable ensuite
+    -- normalement (garage, /spawnvehicle...) car la ligne persistent_vehicles reste.
+    LSLegacy.Events.SendToClient('ap:findAndDespawnVehicle', target)
+    Admin.Log('vehicles', staff, 'Despawn véhicule joueur (persistance conservée)', tp)
 end)
 
 LSLegacy.Events.Register('admin:spawnVehicleForPlayer', function(target, model)

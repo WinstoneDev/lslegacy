@@ -44,7 +44,10 @@ LSLegacy.DataStore.GetInventoryWeight = function(inventory)
     local weight = 0
     Wait(100)
     for key, value in pairs(inventory) do
-        weight = weight + Config.Items[value.name].weight * value.count
+        local def = Config.Items[value.name]
+        if def then
+            weight = weight + def.weight * value.count
+        end
     end
     return weight
 end

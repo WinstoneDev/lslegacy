@@ -22,7 +22,7 @@ LSLegacy.Events.Register('atelier:invoicePreview', function(data)
         description = 'Confirmer et envoyer au TPE / espèces du client',
         icon = 'fa-solid fa-file-invoice-dollar',
         onSelect = function()
-            LSLegacy.Events.SendToServer('atelier:finalizeInvoice', { plate = data.plate })
+            LSLegacy.Events.SendToServer('atelier:finalizeInvoice', { plate = data.plate, vehNet = data.vehNet })
         end,
     }
 

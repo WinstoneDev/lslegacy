@@ -1,5 +1,16 @@
 local CurrentVehicle = nil
 local viewOnlyMode   = false
+local isInInventory  = false
+
+-- Admin (groupe >= 3) : autorise le clic gauche "Supprimer" sur une arme
+-- dans l'inventaire (ex : arme d'une ancienne version bloquée, injetable).
+local function IsStaffAdmin()
+    if not LSLegacy.PlayerData or not LSLegacy.PlayerData.group then return false end
+    for level, group in pairs(Config.StaffGroups) do
+        if group == LSLegacy.PlayerData.group then return level >= 3 end
+    end
+    return false
+end
 function SetFieldValueFromNameEncode(stringName, data)
 	SetResourceKvp(stringName, json.encode(data))
 end
@@ -13,6 +24,10 @@ end
 -- rechargés par personnage plus bas (GetCharacterKvpSuffix) une fois
 -- LSLegacy.PlayerData disponible — voir le handler InitPlayer.
 local FastWeapons = {}
+local lastSyncedAmmo = nil
+local equippedVestUniqueId = nil
+local lastSyncedArmour = nil
+local SaveFastWeapons -- défini plus bas (GetCharacterKvpSuffix) ; forward-déclaré pour le thread de sync ammo ci-dessous
 local currentMenu = 'items'
 local ItemVetement = {
     ['tshirt'] = {15, 0},
@@ -132,9 +147,18 @@ Citizen.CreateThread(function()
             local fastEntry = SearchInFastWeapons(currentWeapon)
             if fastEntry and FastWeapons[fastEntry.slot] and FastWeapons[fastEntry.slot].ammo ~= liveAmmo then
                 FastWeapons[fastEntry.slot].ammo = liveAmmo
+                SaveFastWeapons()
                 if isInInventory then
                     SendNUIMessage({action = "updateFastAmmo", slot = fastEntry.slot, ammo = liveAmmo})
                 end
+            end
+
+            -- Sans ça, les munitions tirées sans recharger ne sont jamais renvoyées
+            -- au serveur : à la reco/switch perso/restart, l'inventaire serveur
+            -- réaffiche le nombre de balles d'avant le dernier tir.
+            if liveAmmo ~= lastSyncedAmmo then
+                lastSyncedAmmo = liveAmmo
+                LSLegacy.Events.SendToServer('updateWeaponAmmo', currentWeapon, liveAmmo)
             end
 
             if GetAmmoInPedWeapon(playerPed, GetHashKey(currentWeapon)) == 0 then
@@ -147,13 +171,41 @@ Citizen.CreateThread(function()
                 local ammoNeeded = maxAmmo - currentAmmo
 
                 if ammoNeeded > 0 then
-                    if Config.AmmoForWeapon[currentWeapon] then
-                        LSLegacy.Events.SendToServer('removeAmmo', Config.AmmoForWeapon[currentWeapon], ammoNeeded, currentWeapon)
+                    -- Munition d'entrainement : si le mode a été choisi (clic
+                    -- droit sur l'arme) pour une des 6 armes concernées, on
+                    -- recharge avec `ammo_training` au lieu de la munition
+                    -- réelle (cf. module/nonlethal, neutralisation dégâts).
+                    local ammoItem = Config.AmmoForWeapon[currentWeapon]
+                    for _, v in pairs(LSLegacy.PlayerData.inventory) do
+                        if v.name == currentWeapon and v.data and v.data.ammoMode == 'training' then
+                            ammoItem = Config.NonLethal.TrainingAmmo.ammoItem
+                            break
+                        end
+                    end
+
+                    if ammoItem then
+                        LSLegacy.Events.SendToServer('removeAmmo', ammoItem, ammoNeeded, currentWeapon)
                     end
                 end
             end
         end
         Wait(waitTime)
+    end
+end)
+
+-- Comme l'ammo des armes : la valeur d'armure du ped ne survit pas telle
+-- quelle, il faut la reporter dans l'item gilet équipé pour qu'un gilet
+-- endommagé garde sa protection restante après un déséquipement/rééquipement.
+Citizen.CreateThread(function()
+    while true do
+        if equippedVestUniqueId then
+            local armour = GetPedArmour(PlayerPedId())
+            if armour ~= lastSyncedArmour then
+                lastSyncedArmour = armour
+                LSLegacy.Events.SendToServer('updateVestArmour', equippedVestUniqueId, armour)
+            end
+        end
+        Wait(1000)
     end
 end)
 
@@ -182,6 +234,7 @@ local lastInventoryToggle = 0
 Keys.Register('TAB', 'TAB', 'Ouverture inventaire', function()
     if GetGameTimer() - lastInventoryToggle < 600 then return end
     if LSLegacy.IsCuffed then return end
+    if LSLegacy.Injury and LSLegacy.Injury.IsIncapacitated and LSLegacy.Injury.IsIncapacitated() then return end
     lastInventoryToggle = GetGameTimer()
 
     -- Bloquer l'inventaire si le joueur pilote un véhicule armé
@@ -231,7 +284,9 @@ Keys.Register('K', 'K', 'Ouvrir le coffre du véhicule', function()
     else
         vehicle = LSLegacy.GetClosestVehicle(GetEntityCoords(ped), 3.0)
         if vehicle ~= 0 then
-            if IsPlayerFacingTrunk(ped, vehicle) then
+            if GetVehicleDoorLockStatus(vehicle) >= 2 then
+                LSLegacy.ShowNotification(nil, "Ce véhicule est verrouillé.", 'error')
+            elseif IsPlayerFacingTrunk(ped, vehicle) then
                 CurrentVehicle = vehicle
                 SetVehicleDoorOpen(vehicle, 5, false, false)
                 PlayTrunkAnim(ped, "open")
@@ -640,6 +695,43 @@ local function GetEquippedOutfit()
     return (saved and json.decode(saved)) or nil
 end
 
+-- Le gilet équipé (visuel) survit via le skin, mais SetPedArmour est un stat
+-- de ped qui ne survit pas au respawn (remis à 0 dans lslegacy:clientRespawn)
+-- ni à un reload de ce script : à appeler après chaque remise à zéro de l'armure.
+function ReapplyEquippedArmour()
+    local slot = EquippedClothSlots['bproof']
+    if slot then
+        local storedArmour = 100
+        if LSLegacy.PlayerData and LSLegacy.PlayerData.inventory then
+            for _, v in pairs(LSLegacy.PlayerData.inventory) do
+                if v.uniqueId == slot.uniqueId then
+                    storedArmour = v.armor or 100
+                    break
+                end
+            end
+        end
+        equippedVestUniqueId = slot.uniqueId
+        lastSyncedArmour = storedArmour
+        SetPedArmour(PlayerPedId(), storedArmour)
+        return
+    end
+
+    local outfit = GetEquippedOutfit()
+    local vals = outfit and outfit.data and outfit.data['bproof']
+    local drawable = type(vals) == 'table' and (vals[1] or vals.drawable) or nil
+    local hasBproof = drawable ~= nil and drawable ~= -1
+    if hasBproof then
+        local storedArmour = outfit.data.bproof_armor or 100
+        equippedVestUniqueId = outfit.uniqueId
+        lastSyncedArmour = storedArmour
+        SetPedArmour(PlayerPedId(), storedArmour)
+    else
+        equippedVestUniqueId = nil
+        lastSyncedArmour = nil
+        SetPedArmour(PlayerPedId(), 0)
+    end
+end
+
 -- Raccourcis d'inventaire (FastWeapons, déclaré en haut du fichier) : même
 -- traitement par personnage que les vêtements équipés ci-dessus.
 local function FastWeaponsKey()
@@ -647,23 +739,67 @@ local function FastWeaponsKey()
     return suffix and ('LSLegacy_FastWeapons' .. suffix) or nil
 end
 
+-- FastWeapons est indexé par numéro de slot (1-5), souvent de façon éparse
+-- (ex: seulement les slots 1 et 3 remplis). json.encode de FiveM traite alors
+-- la table comme un objet avec des clés string ("1","3") plutôt qu'un array,
+-- et json.decode les redonne en string : sans la conversion ci-dessous,
+-- FastWeapons[num] (indexé par number partout ailleurs) ne matche plus rien
+-- après un reload et les slots rapides apparaissent vides.
 local function LoadFastWeapons()
     local key = FastWeaponsKey()
-    FastWeapons = (key and GetFieldValueFromName(key)) or {}
+    local raw = (key and GetFieldValueFromName(key)) or {}
+    FastWeapons = {}
+    for slot, item in pairs(raw) do
+        FastWeapons[tonumber(slot) or slot] = item
+    end
 end
 
-local function SaveFastWeapons()
+function SaveFastWeapons()
     local key = FastWeaponsKey()
-    if key then SetFieldValueFromNameEncode(key, FastWeapons) end
+    if not key then return end
+    local toSave = {}
+    for slot, item in pairs(FastWeapons) do
+        toSave[tostring(slot)] = item
+    end
+    SetFieldValueFromNameEncode(key, toSave)
 end
 
 -- Rechargé à chaque InitPlayer : à la connexion initiale, mais aussi après
 -- un changement de personnage en cours de session (module/multichar,
 -- "Retour à la sélection"), qui redéclenche InitPlayer pour le nouveau
 -- personnage choisi.
-LSLegacy.Events.AddHandler('lslegacy:initPlayer', function()
+LSLegacy.Events.AddHandler('lslegacy:initPlayer', function(data)
+    -- Ce handler tourne en parallèle de celui de client/player/player.lua qui
+    -- fait LSLegacy.PlayerData = data pour le même event. Rien ne garantit
+    -- lequel des deux s'exécute en premier (constaté empiriquement : celui-ci
+    -- passe parfois AVANT malgré l'ordre de chargement du fxmanifest) : sans
+    -- cette affectation, GetCharacterKvpSuffix() lisait un LSLegacy.PlayerData
+    -- pas encore à jour (identifier/slot nil) et les slots rapides ne se
+    -- rechargaient jamais après restart/reco/switch de personnage.
+    if data then LSLegacy.PlayerData = data end
+    -- Sans ce reset, un changement de personnage en cours de session laisse
+    -- currentWeapon pointer sur l'arme de l'ANCIEN perso : le thread de sync
+    -- ammo (plus haut) tourne alors sur le nouveau perso avec ce nom d'arme
+    -- périmé, et peut réécrire/écraser une entrée FastWeapons du nouveau
+    -- personnage si elle porte coincidentellement le même nom d'arme.
+    currentWeapon = nil
+    lastSyncedAmmo = nil
     LoadEquippedSlots()
     LoadFastWeapons()
+    ReapplyEquippedArmour()
+end)
+
+-- Filet de sécurité si ce script redémarre alors que LSLegacy.PlayerData est
+-- déjà peuplé (ex. reload partiel). Un `restart lslegacy` complet remet tout
+-- à zéro (PlayerData compris, même resource) : dans ce cas seul un nouvel
+-- InitPlayer serveur peut recharger les données, ce que ce handler ne fait pas.
+AddEventHandler('onClientResourceStart', function(resourceName)
+    if GetCurrentResourceName() ~= resourceName then return end
+    if LSLegacy.PlayerData and LSLegacy.PlayerData.identifier then
+        LoadEquippedSlots()
+        LoadFastWeapons()
+        ReapplyEquippedArmour()
+    end
 end)
 
 function openInventory()
@@ -680,6 +816,10 @@ function openInventory()
     DisableControlInventory()
     DisplayRadar(false)
     LSLegacy.Status.Displayed = false
+    -- Coupe le raycast/curseur ox_target pendant que l'inventaire est ouvert :
+    -- sans ça, les deux curseurs (natif + celui d'ox_target) coexistent et se
+    -- marchent dessus (clics fantômes, survol qui bug).
+    exports.ox_target:disableTargeting(true)
 end
 
 function closeInventory()
@@ -691,6 +831,7 @@ function closeInventory()
     SetKeepInputMode(false)
     DisplayRadar(true)
     LSLegacy.Status.Displayed = true
+    exports.ox_target:disableTargeting(false)
 
     if CurrentVehicle ~= nil then
         if not IsPedInAnyVehicle(PlayerPedId(), false) then
@@ -750,6 +891,7 @@ function openViewInventory(inventory, characterInfos, cash, dirty)
     DisableControlInventory()
     DisplayRadar(false)
     LSLegacy.Status.Displayed = false
+    exports.ox_target:disableTargeting(true)
 end
 
 function closeViewInventory()
@@ -760,6 +902,7 @@ function closeViewInventory()
     SetKeepInputMode(false)
     DisplayRadar(true)
     LSLegacy.Status.Displayed = true
+    exports.ox_target:disableTargeting(false)
     TriggerEvent('admin:inventoryViewClosed')
 end
 
@@ -794,6 +937,7 @@ function prepareWeaponTransfer(itemName, itemData)
         if currentWeapon == itemName then
             GiveWeaponToPed(playerPed, "weapon_unarmed", 0, false, true)
             currentWeapon = nil
+            lastSyncedAmmo = nil
         end
         RemoveWeaponFromPed(playerPed, weaponHash)
     end
@@ -804,6 +948,23 @@ function prepareWeaponTransfer(itemName, itemData)
     end
 end
 
+-- Ré-attache les accessoires stockés dans l'item (weapon.data.components) : les
+-- components ne survivent pas à un RemoveWeaponFromPed, il faut les rejouer à chaque équipement.
+function ApplyWeaponComponents(weaponName)
+    local components = nil
+    for _, v in pairs(LSLegacy.PlayerData.inventory) do
+        if v.name == weaponName and v.data and v.data.components then
+            components = v.data.components
+            break
+        end
+    end
+    if not components then return end
+    local weaponHash = GetHashKey(weaponName)
+    for _, comp in pairs(components) do
+        GiveWeaponComponentToPed(PlayerPedId(), weaponHash, GetHashKey(string.upper(comp)))
+    end
+end
+
 function useWeapon(name, label, ammo)
     if currentWeapon == name then
         if SearchInFastWeapons(name) then
@@ -811,10 +972,13 @@ function useWeapon(name, label, ammo)
         end
         GiveWeaponToPed(PlayerPedId(), "weapon_unarmed", 0, false, true)
         currentWeapon = nil
+        lastSyncedAmmo = nil
     else
         currentWeapon = name
+        lastSyncedAmmo = ammo
         GiveWeaponToPed(PlayerPedId(), name, 0, false, true)
         SetPedAmmo(PlayerPedId(), name, ammo)
+        ApplyWeaponComponents(name)
         local originalLabel = Config.Items[name].label
         if originalLabel ~= nil and label == originalLabel then
             LSLegacy.ShowNotification(nil, "Vous avez équipé votre "..label..".", 'info')
@@ -926,6 +1090,7 @@ function openTrunkInventory(vehicle)
     DisableControlInventory()
     DisplayRadar(false)
     LSLegacy.Status.Displayed = false
+    exports.ox_target:disableTargeting(true)
 end
 
 function KeyboardInput(textEntry, maxLength)
@@ -949,15 +1114,73 @@ function KeyboardInput(textEntry, maxLength)
     end
 end
 
-function loadPlayerInventory(result, vehicle)
-    items = {}
-    fastItems = {}
-    weight = GramsOrKg(LSLegacy.PlayerData.weight or 0)
-    textweight = weight.. " / "..Config.Informations["MaxWeight"]..'KG'
-    inventory = LSLegacy.PlayerData.inventory
-    cash = LSLegacy.PlayerData.cash
-    dirty = LSLegacy.PlayerData.dirty
+-- Construit une liste d'items pour l'UI (argent optionnel + inventaire filtré).
+local function BuildInventoryItemList(inventoryTable, cash, dirty, usable)
+    local list = {}
+    if cash and cash > 0 then
+        table.insert(list, { label = 'Argent', name = 'money', count = cash, type = "item_cash", usable = false })
+    end
+    if dirty and dirty > 0 then
+        table.insert(list, { label = 'Argent sale', name = 'money', count = dirty, type = "item_dirty", usable = false })
+    end
+    for _, v in pairs(inventoryTable or {}) do
+        table.insert(list, {
+            label = v.label,
+            name = v.name,
+            count = v.count,
+            uniqueId = v.uniqueId,
+            data = v.data,
+            type = "item_standard",
+            ammo = v.data and v.data.ammo or nil,
+            armor = v.armor,
+            usable = usable
+        })
+    end
+    return list
+end
 
+-- Récupère (en l'enregistrant si besoin) le DataStore coffre/sac du véhicule
+-- et pousse son contenu au NUI. Coffre et sac de selle utilisent exactement
+-- la même mécanique, seuls les accesseurs et la table de poids max diffèrent.
+local function LoadVehicleContainer(vehicle, fastItemsList)
+    local kind = BagOrTrunk(CurrentVehicle)
+    local getStore, registerStore, maxWeightByClass
+    if kind == 'trunk' then
+        getStore, registerStore, maxWeightByClass = LSLegacy.DataStore.GetTrunk, LSLegacy.DataStore.RegisterTrunk, Config.VehicleTrunks
+    else
+        getStore, registerStore, maxWeightByClass = LSLegacy.DataStore.GetBAG, LSLegacy.DataStore.RegisterBAG, Config.VehicleGloveboxes
+    end
+
+    local plate = GetVehicleNumberPlateText(vehicle)
+    local ds = getStore(plate)
+    Wait(250)
+    if ds == nil then
+        registerStore(vehicle)
+    end
+    ds = getStore(plate)
+    while ds == nil do
+        ds = getStore(plate)
+        Wait(100)
+    end
+    datastore = ds
+
+    local containerItems = BuildInventoryItemList(ds.inventory, ds.money or 0, ds.dirty or 0, false)
+    local containerWeight = GramsOrKg(LSLegacy.DataStore.GetInventoryWeight(containerItems) or 0)
+    local maxWeight = maxWeightByClass[GetVehicleClass(vehicle)] or 50
+    local weightText = containerWeight .. " / " .. maxWeight .. 'KG'
+
+    SendNUIMessage({ action = "setSecondInventoryItems", itemList = containerItems, fastItems = fastItemsList })
+    SendNUIMessage({ action = "setInfoText", text = "Poids coffre : " .. weightText .. " Plaque : " .. plate })
+end
+
+function loadPlayerInventory(result, vehicle)
+    local weight = GramsOrKg(LSLegacy.PlayerData.weight or 0)
+    textweight = weight .. " / " .. Config.Informations["MaxWeight"] .. 'KG'
+    local playerInventory = LSLegacy.PlayerData.inventory
+    local cash = LSLegacy.PlayerData.cash
+    local dirty = LSLegacy.PlayerData.dirty
+
+    fastItems = {}
     if json.encode(FastWeapons) ~= "[]" then
         for k, v in pairs(FastWeapons) do
             table.insert(fastItems, {
@@ -974,779 +1197,32 @@ function loadPlayerInventory(result, vehicle)
         end
     end
     Wait(50)
-    if result == 'items' then 
-        if cash > 0 then
-            table.insert(items, {
-                label = 'Argent',
-                name = 'money',
-                count = cash,
-                type = "item_cash",
-                usable = false
-            })
+
+    local items
+    if result == 'items' then
+        items = BuildInventoryItemList(playerInventory, cash, dirty, true)
+    elseif result == 'clothes' then
+        local clothesOnly = {}
+        for k, v in pairs(playerInventory) do
+            if ItemVetement[v.name] then clothesOnly[k] = v end
         end
-        if dirty > 0 then
-            table.insert(items, {
-                label = 'Argent sale',
-                name = 'money',
-                count = dirty,
-                type = "item_dirty",
-                usable = false
-            })
-        end
-        for k, v in pairs(inventory) do
-            table.insert(items, {
-                label = v.label,
-                name = v.name,
-                count = v.count,
-                uniqueId = v.uniqueId,
-                data = v.data,
-                type = "item_standard",
-                ammo = v.data and v.data.ammo or nil,
-                usable = true
-            })
-        end
-        SendNUIMessage({ action = "setItems", itemList = items, fastItems = fastItems, text = textweight, crMenu = result, equippedSlots = EquippedClothSlots, equippedOutfit = GetEquippedOutfit()})
-        if vehicle then
-            if BagOrTrunk(CurrentVehicle) == 'trunk' then
-                datastore = LSLegacy.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
-                Wait(250)
-                if datastore == nil then
-                    LSLegacy.DataStore.RegisterTrunk(vehicle)
-                    datastore = LSLegacy.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
-                    while datastore == nil do
-                        datastore = LSLegacy.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
-                        Wait(100)
-                    end
-                    cash = datastore.money or 0
-                    dirty = datastore.dirty or 0
-                    inventory = datastore.inventory
-                    items = {}
-                    for k, v in pairs(inventory) do
-                        table.insert(items, {
-                            label = v.label,
-                            name = v.name,
-                            count = v.count,
-                            uniqueId = v.uniqueId,
-                            data = v.data,
-                            ammo = v.data and v.data.ammo or nil,
-                            type = "item_standard",
-                            usable = false
-                        })
-                    end
-                    trunkWeight = GramsOrKg(LSLegacy.DataStore.GetInventoryWeight(items) or 0)
-                    vehicleClass = GetVehicleClass(vehicle)
-                    trunkMaxWeight = Config.VehicleTrunks[vehicleClass] or 50
-                    weightText = trunkWeight.. " / "..trunkMaxWeight..'KG'
-                    if cash > 0 then
-                        table.insert(items, {
-                            label = 'Argent',
-                            name = 'money',
-                            count = cash,
-                            type = "item_cash",
-                            usable = false
-                        })
-                    end
-                    if dirty > 0 then
-                        table.insert(items, {
-                            label = 'Argent sale',
-                            name = 'money',
-                            count = dirty,
-                            type = "item_dirty",
-                            usable = false
-                        })
-                    end
-
-                    SendNUIMessage({
-                        action = "setSecondInventoryItems",
-                        itemList = items
-                    })
-
-                    local plate = GetVehicleNumberPlateText(vehicle)
-                    SendNUIMessage({
-                        action = "setInfoText",
-                        text = "Poids coffre : " .. weightText .. " Plaque : " .. plate
-                    })
-                    
-                else
-                    datastore = LSLegacy.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
-                    while datastore == nil do
-                        datastore = LSLegacy.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
-                        Wait(100)
-                    end
-                    cash = datastore.money or 0
-                    dirty = datastore.dirty or 0
-                    inventory = datastore.inventory
-                    items = {}
-                    for k, v in pairs(inventory) do
-                        table.insert(items, {
-                            label = v.label,
-                            name = v.name,
-                            count = v.count,
-                            uniqueId = v.uniqueId,
-                            data = v.data,
-                            type = "item_standard",
-                            ammo = v.data and v.data.ammo or nil,
-                            usable = false
-                        })
-                    end
-                    trunkWeight = GramsOrKg(LSLegacy.DataStore.GetInventoryWeight(items) or 0)
-                    vehicleClass = GetVehicleClass(vehicle)
-                    trunkMaxWeight = Config.VehicleTrunks[vehicleClass] or 50
-                    weightText = trunkWeight.. " / "..trunkMaxWeight..'KG'
-                    if cash > 0 then
-                        table.insert(items, {
-                            label = 'Argent',
-                            name = 'money',
-                            count = cash,
-                            type = "item_cash",
-                            usable = false
-                        })
-                    end
-                    if dirty > 0 then
-                        table.insert(items, {
-                            label = 'Argent sale',
-                            name = 'money',
-                            count = dirty,
-                            type = "item_dirty",
-                            usable = false
-                        })
-                    end
-
-                    SendNUIMessage({
-                        action = "setSecondInventoryItems",
-                        itemList = items,
-                        fastItems = fastItems
-                    })
-
-                    local plate = GetVehicleNumberPlateText(vehicle)
-                    SendNUIMessage({
-                        action = "setInfoText",
-                        text = "Poids coffre : " .. weightText .. " Plaque : " .. plate
-                    })
-                end
-            elseif BagOrTrunk(CurrentVehicle) == 'bag' then
-                datastore = LSLegacy.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
-                Wait(250)
-                if datastore == nil then
-                    LSLegacy.DataStore.RegisterBAG(vehicle)
-                    datastore = LSLegacy.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
-                    while datastore == nil do
-                        datastore = LSLegacy.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
-                        Wait(100)
-                    end
-                    cash = datastore.money or 0
-                    dirty = datastore.dirty or 0
-                    inventory = datastore.inventory
-                    items = {}
-                    for k, v in pairs(inventory) do
-                        table.insert(items, {
-                            label = v.label,
-                            name = v.name,
-                            count = v.count,
-                            uniqueId = v.uniqueId,
-                            data = v.data,
-                            type = "item_standard",
-                            ammo = v.data and v.data.ammo or nil,
-                            usable = false
-                        })
-                    end
-                    trunkWeight = GramsOrKg(LSLegacy.DataStore.GetInventoryWeight(items) or 0)
-                    vehicleClass = GetVehicleClass(vehicle)
-                    trunkMaxWeight = Config.VehicleGloveboxes[vehicleClass] or 50
-                    weightText = trunkWeight.. " / "..trunkMaxWeight..'KG'
-                    if cash > 0 then
-                        table.insert(items, {
-                            label = 'Argent',
-                            name = 'money',
-                            count = cash,
-                            type = "item_cash",
-                            usable = false
-                        })
-                    end
-                    if dirty > 0 then
-                        table.insert(items, {
-                            label = 'Argent sale',
-                            name = 'money',
-                            count = dirty,
-                            type = "item_dirty",
-                            usable = false
-                        })
-                    end
-                    SendNUIMessage({
-                        action = "setSecondInventoryItems",
-                        itemList = items,
-                        fastItems = fastItems
-                    })
-
-                    local plate = GetVehicleNumberPlateText(vehicle)
-                    SendNUIMessage({
-                        action = "setInfoText",
-                        text = "Poids coffre : " .. weightText .. " Plaque : " .. plate
-                    })
-                    
-                    
-                else
-                    datastore = LSLegacy.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
-                    while datastore == nil do
-                        datastore = LSLegacy.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
-                        Wait(100)
-                    end
-                    cash = datastore.money or 0
-                    dirty = datastore.dirty or 0
-                    inventory = datastore.inventory
-                    items = {}
-                    for k, v in pairs(inventory) do
-                        table.insert(items, {
-                            label = v.label,
-                            name = v.name,
-                            count = v.count,
-                            uniqueId = v.uniqueId,
-                            data = v.data,
-                            type = "item_standard",
-                            ammo = v.data and v.data.ammo or nil,
-                            usable = false
-                        })
-                    end
-                    trunkWeight = GramsOrKg(LSLegacy.DataStore.GetInventoryWeight(items) or 0)
-                    vehicleClass = GetVehicleClass(vehicle)
-                    trunkMaxWeight = Config.VehicleGloveboxes[vehicleClass] or 50
-                    weightText = trunkWeight.. " / "..trunkMaxWeight..'KG'
-                    if cash > 0 then
-                        table.insert(items, {
-                            label = 'Argent',
-                            name = 'money',
-                            count = cash,
-                            type = "item_cash",
-                            usable = false
-                        })
-                    end
-                    if dirty > 0 then
-                        table.insert(items, {
-                            label = 'Argent sale',
-                            name = 'money',
-                            count = dirty,
-                            type = "item_dirty",
-                            usable = false
-                        })
-                    end
-
-                    SendNUIMessage({
-                        action = "setSecondInventoryItems",
-                        itemList = items,
-                        fastItems = fastItems
-                    })
-
-                    local plate = GetVehicleNumberPlateText(vehicle)
-                    SendNUIMessage({
-                        action = "setInfoText",
-                        text = "Poids coffre : " .. weightText .. " Plaque : " .. plate
-                    })
-                    
-                    
-                end
-            end
-        end
-    elseif result == 'clothes' then 
-        for k, v in pairs(inventory) do
-            if ItemVetement[v.name] then
-                table.insert(items, {
-                    label = v.label,
-                    name = v.name,
-                    count = v.count,
-                    uniqueId = v.uniqueId,
-                    data = v.data,
-                    type = "item_standard",
-                    usable = true
-                })
-            end
-        end
-        SendNUIMessage({ action = "setItems", itemList = items, fastItems = fastItems, text = textweight, crMenu = result, equippedSlots = EquippedClothSlots, equippedOutfit = GetEquippedOutfit()})
-        if vehicle then
-            if BagOrTrunk(CurrentVehicle) == 'trunk' then
-                datastore = LSLegacy.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
-                Wait(250)
-                if datastore == nil then
-                    LSLegacy.DataStore.RegisterTrunk(vehicle)
-                    datastore = LSLegacy.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
-                    while datastore == nil do
-                        datastore = LSLegacy.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
-                        Wait(100)
-                    end
-                    cash = datastore.money or 0
-                    dirty = datastore.dirty or 0
-                    inventory = datastore.inventory
-                    items = {}
-                    for k, v in pairs(inventory) do
-                        table.insert(items, {
-                            label = v.label,
-                            name = v.name,
-                            count = v.count,
-                            uniqueId = v.uniqueId,
-                            data = v.data,
-                            type = "item_standard",
-                            ammo = v.data and v.data.ammo or nil,
-                            usable = false
-                        })
-                    end
-                    trunkWeight = GramsOrKg(LSLegacy.DataStore.GetInventoryWeight(items) or 0)
-                    vehicleClass = GetVehicleClass(vehicle)
-                    trunkMaxWeight = Config.VehicleTrunks[vehicleClass] or 50
-                    weightText = trunkWeight.. " / "..trunkMaxWeight..'KG'
-                    if cash > 0 then
-                        table.insert(items, {
-                            label = 'Argent',
-                            name = 'money',
-                            count = cash,
-                            type = "item_cash",
-                            usable = false
-                        })
-                    end
-                    if dirty > 0 then
-                        table.insert(items, {
-                            label = 'Argent sale',
-                            name = 'money',
-                            count = dirty,
-                            type = "item_dirty",
-                            usable = false
-                        })
-                    end
-
-                    SendNUIMessage({
-                        action = "setSecondInventoryItems",
-                        itemList = items
-                    })
-
-                    local plate = GetVehicleNumberPlateText(vehicle)
-                    SendNUIMessage({
-                        action = "setInfoText",
-                        text = "Poids coffre : " .. weightText .. " Plaque : " .. plate
-                    })
-                else
-                    datastore = LSLegacy.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
-                    while datastore == nil do
-                        datastore = LSLegacy.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
-                        Wait(100)
-                    end
-                    cash = datastore.money or 0
-                    dirty = datastore.dirty or 0
-                    inventory = datastore.inventory
-                    items = {}
-                    for k, v in pairs(inventory) do
-                        table.insert(items, {
-                            label = v.label,
-                            name = v.name,
-                            count = v.count,
-                            uniqueId = v.uniqueId,
-                            data = v.data,
-                            type = "item_standard",
-                            ammo = v.data and v.data.ammo or nil,
-                            usable = false
-                        })
-                    end
-                    trunkWeight = GramsOrKg(LSLegacy.DataStore.GetInventoryWeight(items) or 0)
-                    vehicleClass = GetVehicleClass(vehicle)
-                    trunkMaxWeight = Config.VehicleTrunks[vehicleClass] or 50
-                    weightText = trunkWeight.. " / "..trunkMaxWeight..'KG'
-                    if cash > 0 then
-                        table.insert(items, {
-                            label = 'Argent',
-                            name = 'money',
-                            count = cash,
-                            type = "item_cash",
-                            usable = false
-                        })
-                    end
-                    if dirty > 0 then
-                        table.insert(items, {
-                            label = 'Argent sale',
-                            name = 'money',
-                            count = dirty,
-                            type = "item_dirty",
-                            usable = false
-                        })
-                    end
-
-                    SendNUIMessage({
-                        action = "setSecondInventoryItems",
-                        itemList = items,
-                        fastItems = fastItems
-                    })
-
-                    local plate = GetVehicleNumberPlateText(vehicle)
-                    SendNUIMessage({
-                        action = "setInfoText",
-                        text = "Poids coffre : " .. weightText .. " Plaque : " .. plate
-                    })
-                end
-            elseif BagOrTrunk(CurrentVehicle) == 'bag' then
-                datastore = LSLegacy.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
-                Wait(250)
-                if datastore == nil then
-                    LSLegacy.DataStore.RegisterBAG(vehicle)
-                    datastore = LSLegacy.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
-                    while datastore == nil do
-                        datastore = LSLegacy.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
-                        Wait(100)
-                    end
-                    cash = datastore.money or 0
-                    dirty = datastore.dirty or 0
-                    inventory = datastore.inventory
-                    items = {}
-                    for k, v in pairs(inventory) do
-                        table.insert(items, {
-                            label = v.label,
-                            name = v.name,
-                            count = v.count,
-                            uniqueId = v.uniqueId,
-                            data = v.data,
-                            type = "item_standard",
-                            ammo = v.data and v.data.ammo or nil,
-                            usable = false
-                        })
-                    end
-                    trunkWeight = GramsOrKg(LSLegacy.DataStore.GetInventoryWeight(items) or 0)
-                    vehicleClass = GetVehicleClass(vehicle)
-                    trunkMaxWeight = Config.VehicleGloveboxes[vehicleClass] or 50
-                    weightText = trunkWeight.. " / "..trunkMaxWeight..'KG'
-                    if cash > 0 then
-                        table.insert(items, {
-                            label = 'Argent',
-                            name = 'money',
-                            count = cash,
-                            type = "item_cash",
-                            usable = false
-                        })
-                    end
-                    if dirty > 0 then
-                        table.insert(items, {
-                            label = 'Argent sale',
-                            name = 'money',
-                            count = dirty,
-                            type = "item_dirty",
-                            usable = false
-                        })
-                    end
-                    SendNUIMessage({
-                        action = "setSecondInventoryItems",
-                        itemList = items,
-                        fastItems = fastItems
-                    })
-
-                    local plate = GetVehicleNumberPlateText(vehicle)
-                    SendNUIMessage({
-                        action = "setInfoText",
-                        text = "Poids coffre : " .. weightText .. " Plaque : " .. plate
-                    })
-                else
-                    datastore = LSLegacy.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
-                    while datastore == nil do
-                        datastore = LSLegacy.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
-                        Wait(100)
-                    end
-                    cash = datastore.money or 0
-                    dirty = datastore.dirty or 0
-                    inventory = datastore.inventory
-                    items = {}
-                    for k, v in pairs(inventory) do
-                        table.insert(items, {
-                            label = v.label,
-                            name = v.name,
-                            count = v.count,
-                            uniqueId = v.uniqueId,
-                            data = v.data,
-                            type = "item_standard",
-                            ammo = v.data and v.data.ammo or nil,
-                            usable = false
-                        })
-                    end
-                    trunkWeight = GramsOrKg(LSLegacy.DataStore.GetInventoryWeight(items) or 0)
-                    vehicleClass = GetVehicleClass(vehicle)
-                    trunkMaxWeight = Config.VehicleGloveboxes[vehicleClass] or 50
-                    weightText = trunkWeight.. " / "..trunkMaxWeight..'KG'
-                    if cash > 0 then
-                        table.insert(items, {
-                            label = 'Argent',
-                            name = 'money',
-                            count = cash,
-                            type = "item_cash",
-                            usable = false
-                        })
-                    end
-                    if dirty > 0 then
-                        table.insert(items, {
-                            label = 'Argent sale',
-                            name = 'money',
-                            count = dirty,
-                            type = "item_dirty",
-                            usable = false
-                        })
-                    end
-
-                    SendNUIMessage({
-                        action = "setSecondInventoryItems",
-                        itemList = items,
-                        fastItems = fastItems
-                    })
-
-                    local plate = GetVehicleNumberPlateText(vehicle)
-                    SendNUIMessage({
-                        action = "setInfoText",
-                        text = "Poids coffre : " .. weightText .. " Plaque : " .. plate
-                    })
-                end
-            end
-        end
+        items = BuildInventoryItemList(clothesOnly, nil, nil, true)
     elseif result == 'weapons' then
-        for k, v in pairs(inventory) do
-            if string.match(v.name, "weapon_") then
-                table.insert(items, {
-                    label = v.label,
-                    name = v.name,
-                    count = v.count,
-                    uniqueId = v.uniqueId,
-                    data = v.data,
-                    type = "item_standard",
-                    usable = true,
-                    ammo = v.data and v.data.ammo or nil
-                })
-            end
+        local weaponsOnly = {}
+        for k, v in pairs(playerInventory) do
+            if string.match(v.name, "weapon_") then weaponsOnly[k] = v end
         end
-        SendNUIMessage({ action = "setItems", itemList = items, fastItems = fastItems, text = textweight, crMenu = result, equippedSlots = EquippedClothSlots, equippedOutfit = GetEquippedOutfit()})
-        if vehicle then
-            if BagOrTrunk(CurrentVehicle) == 'trunk' then
-                datastore = LSLegacy.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
-                Wait(250)
-                if datastore == nil then
-                    LSLegacy.DataStore.RegisterTrunk(vehicle)
-                    datastore = LSLegacy.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
-                    while datastore == nil do
-                        datastore = LSLegacy.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
-                        Wait(100)
-                    end
-                    cash = datastore.money or 0
-                    dirty = datastore.dirty or 0
-                    inventory = datastore.inventory
-                    items = {}
-                    for k, v in pairs(inventory) do
-                        table.insert(items, {
-                            label = v.label,
-                            name = v.name,
-                            count = v.count,
-                            uniqueId = v.uniqueId,
-                            data = v.data,
-                            type = "item_standard",
-                            ammo = v.data and v.data.ammo or nil,
-                            usable = false
-                        })
-                    end
-                    trunkWeight = GramsOrKg(LSLegacy.DataStore.GetInventoryWeight(items) or 0)
-                    vehicleClass = GetVehicleClass(vehicle)
-                    trunkMaxWeight = Config.VehicleTrunks[vehicleClass] or 50
-                    weightText = trunkWeight.. " / "..trunkMaxWeight..'KG'
-                    if cash > 0 then
-                        table.insert(items, {
-                            label = 'Argent',
-                            name = 'money',
-                            count = cash,
-                            type = "item_cash",
-                            usable = false
-                        })
-                    end
-                    if dirty > 0 then
-                        table.insert(items, {
-                            label = 'Argent sale',
-                            name = 'money',
-                            count = dirty,
-                            type = "item_dirty",
-                            usable = false
-                        })
-                    end
+        items = BuildInventoryItemList(weaponsOnly, nil, nil, true)
+    else
+        return
+    end
 
-                    SendNUIMessage({
-                        action = "setSecondInventoryItems",
-                        itemList = items
-                    })
+    local adminFlag = IsStaffAdmin()
+    Config.Development.Print(("[inventory] group=%s isAdmin=%s"):format(tostring(LSLegacy.PlayerData and LSLegacy.PlayerData.group), tostring(adminFlag)))
+    SendNUIMessage({ action = "setItems", itemList = items, fastItems = fastItems, text = textweight, crMenu = result, equippedSlots = EquippedClothSlots, equippedOutfit = GetEquippedOutfit(), isAdmin = adminFlag})
 
-                    local plate = GetVehicleNumberPlateText(vehicle)
-                    SendNUIMessage({
-                        action = "setInfoText",
-                        text = "Poids coffre : " .. weightText .. " Plaque : " .. plate
-                    }) 
-                else
-                    datastore = LSLegacy.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
-                    while datastore == nil do
-                        datastore = LSLegacy.DataStore.GetTrunk(GetVehicleNumberPlateText(vehicle))
-                        Wait(100)
-                    end
-                    cash = datastore.money or 0
-                    dirty = datastore.dirty or 0
-                    inventory = datastore.inventory
-                    items = {}
-                    for k, v in pairs(inventory) do
-                        table.insert(items, {
-                            label = v.label,
-                            name = v.name,
-                            count = v.count,
-                            uniqueId = v.uniqueId,
-                            data = v.data,
-                            type = "item_standard",
-                            ammo = v.data and v.data.ammo or nil,
-                            usable = false
-                        })
-                    end
-                    trunkWeight = GramsOrKg(LSLegacy.DataStore.GetInventoryWeight(items) or 0)
-                    vehicleClass = GetVehicleClass(vehicle)
-                    trunkMaxWeight = Config.VehicleTrunks[vehicleClass] or 50
-                    weightText = trunkWeight.. " / "..trunkMaxWeight..'KG'
-                    if cash > 0 then
-                        table.insert(items, {
-                            label = 'Argent',
-                            name = 'money',
-                            count = cash,
-                            type = "item_cash",
-                            usable = false
-                        })
-                    end
-                    if dirty > 0 then
-                        table.insert(items, {
-                            label = 'Argent sale',
-                            name = 'money',
-                            count = dirty,
-                            type = "item_dirty",
-                            usable = false
-                        })
-                    end
-
-                    SendNUIMessage({
-                        action = "setSecondInventoryItems",
-                        itemList = items,
-                        fastItems = fastItems
-                    })
-
-                    local plate = GetVehicleNumberPlateText(vehicle)
-                    SendNUIMessage({
-                        action = "setInfoText",
-                        text = "Poids coffre : " .. weightText .. " Plaque : " .. plate
-                    })
-                end
-            elseif BagOrTrunk(CurrentVehicle) == 'bag' then
-                datastore = LSLegacy.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
-                Wait(250)
-                if datastore == nil then
-                    LSLegacy.DataStore.RegisterBAG(vehicle)
-                    datastore = LSLegacy.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
-                    while datastore == nil do
-                        datastore = LSLegacy.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
-                        Wait(100)
-                    end
-                    cash = datastore.money or 0
-                    dirty = datastore.dirty or 0
-                    inventory = datastore.inventory
-                    items = {}
-                    for k, v in pairs(inventory) do
-                        table.insert(items, {
-                            label = v.label,
-                            name = v.name,
-                            count = v.count,
-                            uniqueId = v.uniqueId,
-                            data = v.data,
-                            type = "item_standard",
-                            ammo = v.data and v.data.ammo or nil,
-                            usable = false
-                        })
-                    end
-                    trunkWeight = GramsOrKg(LSLegacy.DataStore.GetInventoryWeight(items) or 0)
-                    vehicleClass = GetVehicleClass(vehicle)
-                    trunkMaxWeight = Config.VehicleGloveboxes[vehicleClass] or 50
-                    weightText = trunkWeight.. " / "..trunkMaxWeight..'KG'
-                    if cash > 0 then
-                        table.insert(items, {
-                            label = 'Argent',
-                            name = 'money',
-                            count = cash,
-                            type = "item_cash",
-                            usable = false
-                        })
-                    end
-                    if dirty > 0 then
-                        table.insert(items, {
-                            label = 'Argent sale',
-                            name = 'money',
-                            count = dirty,
-                            type = "item_dirty",
-                            usable = false
-                        })
-                    end
-                    SendNUIMessage({
-                        action = "setSecondInventoryItems",
-                        itemList = items,
-                        fastItems = fastItems
-                    })
-
-                    local plate = GetVehicleNumberPlateText(vehicle)
-                    SendNUIMessage({
-                        action = "setInfoText",
-                        text = "Poids coffre : " .. weightText .. " Plaque : " .. plate
-                    })
-                else
-                    datastore = LSLegacy.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
-                    while datastore == nil do
-                        datastore = LSLegacy.DataStore.GetBAG(GetVehicleNumberPlateText(vehicle))
-                        Wait(100)
-                    end
-                    cash = datastore.money or 0
-                    dirty = datastore.dirty or 0
-                    inventory = datastore.inventory
-                    items = {}
-                    for k, v in pairs(inventory) do
-                        table.insert(items, {
-                            label = v.label,
-                            name = v.name,
-                            count = v.count,
-                            uniqueId = v.uniqueId,
-                            data = v.data,
-                            type = "item_standard",
-                            ammo = v.data and v.data.ammo or nil,
-                            usable = false
-                        })
-                    end
-                    trunkWeight = GramsOrKg(LSLegacy.DataStore.GetInventoryWeight(items) or 0)
-                    vehicleClass = GetVehicleClass(vehicle)
-                    trunkMaxWeight = Config.VehicleGloveboxes[vehicleClass] or 50
-                    weightText = trunkWeight.. " / "..trunkMaxWeight..'KG'
-                    if cash > 0 then
-                        table.insert(items, {
-                            label = 'Argent',
-                            name = 'money',
-                            count = cash,
-                            type = "item_cash",
-                            usable = false
-                        })
-                    end
-                    if dirty > 0 then
-                        table.insert(items, {
-                            label = 'Argent sale',
-                            name = 'money',
-                            count = dirty,
-                            type = "item_dirty",
-                            usable = false
-                        })
-                    end
-
-                    SendNUIMessage({
-                        action = "setSecondInventoryItems",
-                        itemList = items,
-                        fastItems = fastItems
-                    })
-
-                    local plate = GetVehicleNumberPlateText(vehicle)
-                    SendNUIMessage({
-                        action = "setInfoText",
-                        text = "Poids coffre : " .. weightText .. " Plaque : " .. plate
-                    })
-                end
-            end
-        end
+    if vehicle then
+        LoadVehicleContainer(vehicle, fastItems)
     end
 end
 
@@ -1843,6 +1319,126 @@ RegisterNUICallback("UnloadWeapon", function(data, cb)
     end
 end)
 
+-- Menu d'attache/détache des accessoires d'une arme (ox_lib, cohérent avec les autres modules).
+function OpenWeaponAccessoriesMenu(item)
+    local compatible = Config.WeaponComponents[item.name]
+    if not compatible or #compatible == 0 then
+        LSLegacy.ShowNotification(nil, "Cette arme n'a pas d'accessoire compatible.", 'error')
+        return
+    end
+
+    -- État local optimiste (mis à jour immédiatement, sans attendre l'aller-retour
+    -- serveur) pour pouvoir rafraîchir et rouvrir le même menu sans qu'il se ferme.
+    local localComponents = {}
+    if item.data and item.data.components then
+        for _, comp in pairs(item.data.components) do
+            localComponents[#localComponents + 1] = comp
+        end
+    end
+    local ownedDelta = {}
+    local menuId = 'weapon_accessories_' .. tostring(item.uniqueId)
+
+    local function DefFor(compItem)
+        for _, d in ipairs(compatible) do
+            if d.item == compItem then return d end
+        end
+    end
+
+    local function IsAttachedLocal(compItem)
+        for _, c in pairs(localComponents) do
+            if c == compItem then return true end
+        end
+        return false
+    end
+
+    local function OpenMenu()
+        local options = {}
+        for _, def in ipairs(compatible) do
+            local itemDef = Config.Items[def.item]
+            local isAttached = IsAttachedLocal(def.item)
+            local owned = ownedDelta[def.item] or 0
+            for _, v in pairs(LSLegacy.PlayerData.inventory) do
+                if v.name == def.item then owned = owned + v.count end
+            end
+
+            options[#options + 1] = {
+                title = itemDef and itemDef.label or def.item,
+                description = isAttached and "Attaché — cliquer pour retirer" or ("En stock : "..owned),
+                icon = isAttached and 'circle-check' or 'plus',
+                disabled = (not isAttached) and owned <= 0,
+                onSelect = function()
+                    -- Application immédiate côté client si l'arme est en main : sans ça le
+                    -- native n'était rejoué qu'au prochain équipement (invisible sinon).
+                    local weaponHash = GetHashKey(item.name)
+                    local playerPed = PlayerPedId()
+
+                    if isAttached then
+                        if currentWeapon == item.name then
+                            RemoveWeaponComponentFromPed(playerPed, weaponHash, GetHashKey(string.upper(def.item)))
+                        end
+                        for i, c in pairs(localComponents) do
+                            if c == def.item then table.remove(localComponents, i) break end
+                        end
+                        ownedDelta[def.item] = (ownedDelta[def.item] or 0) + 1
+                        LSLegacy.Events.SendToServer('lslegacy:detachWeaponComponent', item.uniqueId, item.name, def.item)
+                    else
+                        if currentWeapon == item.name then
+                            for _, otherDef in ipairs(compatible) do
+                                if otherDef.slot == def.slot and IsAttachedLocal(otherDef.item) then
+                                    RemoveWeaponComponentFromPed(playerPed, weaponHash, GetHashKey(string.upper(otherDef.item)))
+                                end
+                            end
+                            GiveWeaponComponentToPed(playerPed, weaponHash, GetHashKey(string.upper(def.item)))
+                        end
+                        for i = #localComponents, 1, -1 do
+                            local existingDef = DefFor(localComponents[i])
+                            if existingDef and existingDef.slot == def.slot then
+                                ownedDelta[localComponents[i]] = (ownedDelta[localComponents[i]] or 0) + 1
+                                table.remove(localComponents, i)
+                            end
+                        end
+                        localComponents[#localComponents + 1] = def.item
+                        ownedDelta[def.item] = (ownedDelta[def.item] or 0) - 1
+                        LSLegacy.Events.SendToServer('lslegacy:attachWeaponComponent', item.uniqueId, item.name, def.item)
+                    end
+
+                    OpenMenu() -- reconstruit et rouvre le même menu sans qu'il disparaisse
+                end
+            }
+        end
+
+        lib.registerContext({
+            id = menuId,
+            title = (Config.Items[item.name] and Config.Items[item.name].label or item.label) .. ' — Accessoires',
+            options = options
+        })
+        lib.showContext(menuId)
+    end
+
+    OpenMenu()
+end
+
+RegisterNUICallback("WeaponAccessories", function(data, cb)
+    if viewOnlyMode then cb("ok") return end
+    closeInventory()
+    OpenWeaponAccessoriesMenu(data.item)
+    cb("ok")
+end)
+
+RegisterNUICallback("CougarAmmo", function(data, cb)
+    if viewOnlyMode then cb("ok") return end
+    closeInventory()
+    OpenCougarAmmoMenu(data.item)
+    cb("ok")
+end)
+
+RegisterNUICallback("TrainingAmmo", function(data, cb)
+    if viewOnlyMode then cb("ok") return end
+    closeInventory()
+    OpenTrainingAmmoMenu(data.item)
+    cb("ok")
+end)
+
 RegisterNUICallback("UseItem", function(data, cb)
     if viewOnlyMode then cb("ok") return end
     if data.item.type == "item_standard" then
@@ -1852,6 +1448,7 @@ RegisterNUICallback("UseItem", function(data, cb)
             if data.item.data ~= nil then
                 local clothes = ItemVetement[data.item.name]
                 if clothes then
+                    local skins
                     TriggerEvent('skinchanger:getSkin', function(skin)
                         skins = {}
                         skins['tshirt'] = {skin.tshirt_1, skin.tshirt_2}
@@ -1874,11 +1471,31 @@ RegisterNUICallback("UseItem", function(data, cb)
                     if skins[data.item.name][1] ~= data.item.data[1] or skins[data.item.name][2] ~= data.item.data[2] then
                         LSLegacy.Events.TriggerLocal('skinchanger:change', data.item.name..'_1', data.item.data[1])
                         LSLegacy.Events.TriggerLocal('skinchanger:change', data.item.name..'_2', data.item.data[2])
+                        if data.item.name == 'bproof' then
+                            if data.item.data[1] ~= -1 then
+                                local storedArmour = data.item.armor or 100
+                                equippedVestUniqueId = data.item.uniqueId
+                                lastSyncedArmour = storedArmour
+                                SetPedArmour(PlayerPedId(), storedArmour)
+                            else
+                                equippedVestUniqueId = nil
+                                lastSyncedArmour = nil
+                                SetPedArmour(PlayerPedId(), 0)
+                            end
+                        end
                         ExecuteCommand('p3')
                         loadPlayerInventory('clothes', CurrentVehicle)
                     else
+                        if data.item.name == 'bproof' and equippedVestUniqueId then
+                            LSLegacy.Events.SendToServer('updateVestArmour', equippedVestUniqueId, GetPedArmour(PlayerPedId()))
+                        end
                         LSLegacy.Events.TriggerLocal('skinchanger:change', data.item.name..'_1', clothes[1])
                         LSLegacy.Events.TriggerLocal('skinchanger:change', data.item.name..'_2', clothes[2])
+                        if data.item.name == 'bproof' then
+                            equippedVestUniqueId = nil
+                            lastSyncedArmour = nil
+                            SetPedArmour(PlayerPedId(), clothes[1] ~= -1 and 100 or 0)
+                        end
                         ExecuteCommand('p3')
                         loadPlayerInventory('clothes', CurrentVehicle)
                     end
@@ -1905,10 +1522,21 @@ RegisterNUICallback("EquipClothing", function(data, cb)
         if isValidClothingVariation(data.item.name, drawable, texture) then
             LSLegacy.Events.TriggerLocal('skinchanger:change', data.item.name..'_1', drawable)
             LSLegacy.Events.TriggerLocal('skinchanger:change', data.item.name..'_2', texture)
+            if data.item.name == 'bproof' then
+                local storedArmour = data.item.armor or 100
+                equippedVestUniqueId = data.item.uniqueId
+                lastSyncedArmour = storedArmour
+                SetPedArmour(PlayerPedId(), storedArmour)
+            end
         else
             local def = getDefaultClothes()
             LSLegacy.Events.TriggerLocal('skinchanger:change', data.item.name..'_1', def[data.item.name][1])
             LSLegacy.Events.TriggerLocal('skinchanger:change', data.item.name..'_2', def[data.item.name][2])
+            if data.item.name == 'bproof' then
+                equippedVestUniqueId = nil
+                lastSyncedArmour = nil
+                SetPedArmour(PlayerPedId(), 0)
+            end
             LSLegacy.ShowNotification(nil, "Ce vêtement n'est pas compatible avec ton modèle.", 'error')
         end
         EquippedClothSlots[data.item.name] = { name = data.item.name, uniqueId = data.item.uniqueId }
@@ -1929,6 +1557,14 @@ RegisterNUICallback("UnequipClothing", function(data, cb)
             LSLegacy.Events.TriggerLocal('skinchanger:change', 'arms_1', def['arms'][1])
             LSLegacy.Events.TriggerLocal('skinchanger:change', 'arms_2', def['arms'][2])
         end
+        if data.item.name == 'bproof' then
+            if equippedVestUniqueId then
+                LSLegacy.Events.SendToServer('updateVestArmour', equippedVestUniqueId, GetPedArmour(PlayerPedId()))
+            end
+            equippedVestUniqueId = nil
+            lastSyncedArmour = nil
+            SetPedArmour(PlayerPedId(), 0)
+        end
         EquippedClothSlots[data.item.name] = nil
         SaveEquippedSlots()
         ExecuteCommand('p3')
@@ -1943,18 +1579,35 @@ RegisterNUICallback("EquipOutfit", function(data, cb)
     if not outfit or not outfit.data then cb("ok") return end
 
     local clothingData = outfit.data
+    local hasBproof = false
 
     for slot, vals in pairs(clothingData) do
-        local drawable = 0
-        local texture  = 0
-        if type(vals) == 'table' then
-            drawable = vals[1] or vals.drawable or 0
-            texture  = vals[2] or vals.texture  or 0
+        if slot ~= 'bproof_armor' then
+            local drawable = 0
+            local texture  = 0
+            if type(vals) == 'table' then
+                drawable = vals[1] or vals.drawable or 0
+                texture  = vals[2] or vals.texture  or 0
+            end
+            if isValidClothingVariation(slot, drawable, texture) then
+                LSLegacy.Events.TriggerLocal('skinchanger:change', slot..'_1', drawable)
+                LSLegacy.Events.TriggerLocal('skinchanger:change', slot..'_2', texture)
+                if slot == 'bproof' and drawable ~= -1 then hasBproof = true end
+            end
         end
-        if isValidClothingVariation(slot, drawable, texture) then
-            LSLegacy.Events.TriggerLocal('skinchanger:change', slot..'_1', drawable)
-            LSLegacy.Events.TriggerLocal('skinchanger:change', slot..'_2', texture)
-        end
+    end
+
+    -- Le gilet fusionné dans la tenue garde sa propre armure (data.bproof_armor
+    -- de l'item 'outfit'), au lieu de revenir à 100 à chaque équipement.
+    if hasBproof then
+        local storedArmour = clothingData.bproof_armor or 100
+        equippedVestUniqueId = outfit.uniqueId
+        lastSyncedArmour = storedArmour
+        SetPedArmour(PlayerPedId(), storedArmour)
+    else
+        equippedVestUniqueId = nil
+        lastSyncedArmour = nil
+        SetPedArmour(PlayerPedId(), 0)
     end
 
     EquippedClothSlots = {}
@@ -1975,11 +1628,17 @@ end)
 
 RegisterNUICallback("UnequipOutfit", function(data, cb)
     if viewOnlyMode then cb("ok") return end
+    if equippedVestUniqueId then
+        LSLegacy.Events.SendToServer('updateVestArmour', equippedVestUniqueId, GetPedArmour(PlayerPedId()))
+    end
     local def = getDefaultClothes()
     for slot, values in pairs(def) do
         LSLegacy.Events.TriggerLocal('skinchanger:change', slot..'_1', values[1])
         LSLegacy.Events.TriggerLocal('skinchanger:change', slot..'_2', values[2])
     end
+    equippedVestUniqueId = nil
+    lastSyncedArmour = nil
+    SetPedArmour(PlayerPedId(), 0)
 
     local outfitKey = EquippedOutfitKey()
     if outfitKey then DeleteResourceKvp(outfitKey) end
@@ -1999,6 +1658,11 @@ RegisterNUICallback("SaveOutfitFromInventory", function(data, cb)
         if isValidClothingVariation(slot, drawable, texture) then
             LSLegacy.Events.TriggerLocal('skinchanger:change', slot..'_1', drawable)
             LSLegacy.Events.TriggerLocal('skinchanger:change', slot..'_2', texture)
+            if slot == 'bproof' then
+                equippedVestUniqueId = nil
+                lastSyncedArmour = nil
+                SetPedArmour(PlayerPedId(), drawable ~= -1 and 100 or 0)
+            end
         end
     end
 
@@ -2006,6 +1670,11 @@ RegisterNUICallback("SaveOutfitFromInventory", function(data, cb)
         if def[slot] then
             LSLegacy.Events.TriggerLocal('skinchanger:change', slot..'_1', def[slot][1])
             LSLegacy.Events.TriggerLocal('skinchanger:change', slot..'_2', def[slot][2])
+            if slot == 'bproof' then
+                equippedVestUniqueId = nil
+                lastSyncedArmour = nil
+                SetPedArmour(PlayerPedId(), 0)
+            end
         end
     end
 
@@ -2095,6 +1764,16 @@ RegisterNUICallback("DropItem", function(data, cb)
     cb("ok")
 end)
 
+RegisterNUICallback("AdminDeleteItem", function(data, cb)
+    if viewOnlyMode or not IsStaffAdmin() then return cb("ok") end
+    if not data.item or not data.item.name then return cb("ok") end
+
+    LSLegacy.Events.SendToServer('inventory:adminDeleteItem', data.item.name, data.item.uniqueId)
+    Wait(250)
+    loadPlayerInventory(currentMenu)
+    cb("ok")
+end)
+
 RegisterNUICallback("PutIntoFast", function(data, cb)
     if viewOnlyMode then cb("ok") return end
     if currentMenu == 'items' or currentMenu == 'weapons' then
@@ -2120,12 +1799,28 @@ end)
 RegisterNUICallback("TakeFromFast", function(data, cb)
     if viewOnlyMode then cb("ok") return end
     if currentMenu == 'items' or currentMenu == 'weapons' then
+        if string.match(data.item.name, "weapon_") and currentWeapon == data.item.name then
+            GiveWeaponToPed(PlayerPedId(), "weapon_unarmed", 0, false, true)
+            RemoveWeaponFromPed(PlayerPedId(), GetHashKey(currentWeapon))
+            currentWeapon = nil
+            lastSyncedAmmo = nil
+        end
         FastWeapons[data.item.slot] = nil
         SaveFastWeapons()
         loadPlayerInventory(currentMenu, CurrentVehicle)
     end
 	cb("ok")
 end)
+
+-- Coffre ou sac de selle du véhicule courant, quel que soit le type.
+local function GetCurrentVehicleDataStore()
+    local plate = GetVehicleNumberPlateText(CurrentVehicle)
+    if BagOrTrunk(CurrentVehicle) == 'trunk' then
+        return LSLegacy.DataStore.GetTrunk(plate)
+    else
+        return LSLegacy.DataStore.GetBAG(plate)
+    end
+end
 
 RegisterNUICallback("lslegacy:putIntoTrunk", function(data, cb)
     if viewOnlyMode then cb("ok") return end
@@ -2144,35 +1839,19 @@ RegisterNUICallback("lslegacy:putIntoTrunk", function(data, cb)
         cb("ok")
         return
     end
-    if BagOrTrunk(CurrentVehicle) == 'trunk' then
-        datastore = LSLegacy.DataStore.GetTrunk(GetVehicleNumberPlateText(CurrentVehicle))
-        Wait(250)
-        prepareWeaponTransfer(data.item.name, data.item.data)
-        LSLegacy.Events.SendToServer('lslegacy:putIntoTrunk', {
-            name = data.item.name,
-            count = data.number,
-            label = data.item.label,
-            uniqueId = data.item.uniqueId,
-            data = data.item.data,
-            type = data.item.type
-        }, datastore.name)
-        Wait(100)
-        loadPlayerInventory(currentMenu, CurrentVehicle)
-    elseif BagOrTrunk(CurrentVehicle) == 'bag' then
-        datastore = LSLegacy.DataStore.GetBAG(GetVehicleNumberPlateText(CurrentVehicle))
-        Wait(250)
-        prepareWeaponTransfer(data.item.name, data.item.data)
-        LSLegacy.Events.SendToServer('lslegacy:putIntoTrunk', {
-            name = data.item.name,
-            count = data.number,
-            label = data.item.label,
-            uniqueId = data.item.uniqueId,
-            data = data.item.data,
-            type = data.item.type
-        }, datastore.name)
-        Wait(100)
-        loadPlayerInventory(currentMenu, CurrentVehicle)
-    end
+    datastore = GetCurrentVehicleDataStore()
+    Wait(250)
+    prepareWeaponTransfer(data.item.name, data.item.data)
+    LSLegacy.Events.SendToServer('lslegacy:putIntoTrunk', {
+        name = data.item.name,
+        count = data.number,
+        label = data.item.label,
+        uniqueId = data.item.uniqueId,
+        data = data.item.data,
+        type = data.item.type
+    }, datastore.name)
+    Wait(100)
+    loadPlayerInventory(currentMenu, CurrentVehicle)
 	cb("ok")
 end)
 
@@ -2192,33 +1871,18 @@ RegisterNUICallback("lslegacy:takeFromTrunk", function(data, cb)
         cb("ok")
         return
     end
-    if BagOrTrunk(CurrentVehicle) == 'trunk' then
-        datastore = LSLegacy.DataStore.GetTrunk(GetVehicleNumberPlateText(CurrentVehicle))
-        Wait(250)
-        LSLegacy.Events.SendToServer('lslegacy:takeFromTrunk', {
-            name = data.item.name,
-            count = data.number,
-            label = data.item.label,
-            uniqueId = data.item.uniqueId,
-            data = data.item.data,
-            type = data.item.type
-        }, datastore.name)
-        Wait(100)
-        loadPlayerInventory(currentMenu, CurrentVehicle)
-    elseif BagOrTrunk(CurrentVehicle) == 'bag' then
-        datastore = LSLegacy.DataStore.GetBAG(GetVehicleNumberPlateText(CurrentVehicle))
-        Wait(250)
-        LSLegacy.Events.SendToServer('lslegacy:takeFromTrunk', {
-            name = data.item.name,
-            count = data.number,
-            label = data.item.label,
-            uniqueId = data.item.uniqueId,
-            data = data.item.data,
-            type = data.item.type
-        }, datastore.name)
-        Wait(100)
-        loadPlayerInventory(currentMenu, CurrentVehicle)
-    end
+    datastore = GetCurrentVehicleDataStore()
+    Wait(250)
+    LSLegacy.Events.SendToServer('lslegacy:takeFromTrunk', {
+        name = data.item.name,
+        count = data.number,
+        label = data.item.label,
+        uniqueId = data.item.uniqueId,
+        data = data.item.data,
+        type = data.item.type
+    }, datastore.name)
+    Wait(100)
+    loadPlayerInventory(currentMenu, CurrentVehicle)
     cb("ok")
 end)
 
@@ -2245,7 +1909,7 @@ local function BuildSelfItemsList()
     for _, v in pairs(LSLegacy.PlayerData.inventory or {}) do
         table.insert(list, {
             label = v.label, name = v.name, count = v.count, uniqueId = v.uniqueId,
-            data = v.data, type = 'item_standard', ammo = v.data and v.data.ammo or nil, usable = true,
+            data = v.data, type = 'item_standard', ammo = v.data and v.data.ammo or nil, usable = LSLegacy.UsableItems[v.name] == true,
         })
     end
     return list, fast
@@ -2308,6 +1972,7 @@ function openContainerInventory(name, label, maxWeight)
     DisableControlInventory()
     DisplayRadar(false)
     LSLegacy.Status.Displayed = false
+    exports.ox_target:disableTargeting(true)
 end
 
 AddEventHandler('inventory:openContainer', function(name, label, maxWeight)

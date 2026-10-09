@@ -303,9 +303,15 @@ LSLegacy.Events.Register('keyhanger:useKey', function(data)
     local ped = PlayerPedId()
     local coords = GetEntityCoords(ped)
 
+    -- normalisation complète (espaces des deux côtés, casse) + repli sur le
+    -- statebag 'plate' de l'AP : le texte de plaque peut ne pas être encore
+    -- appliqué côté client (motos, véhicule fraîchement streamé)
+    local function Norm(s) return (tostring(s or ''):gsub('^%s+', ''):gsub('%s+$', '')):upper() end
+    target = Norm(target)
     local veh, best = nil, C.Key.useDistance
     for _, v in ipairs(GetGamePool('CVehicle')) do
-        if Trim(GetVehicleNumberPlateText(v)) == target then
+        local bag = Entity(v).state and Entity(v).state.plate
+        if Norm(GetVehicleNumberPlateText(v)) == target or (bag and Norm(bag) == target) then
             local d = #(coords - GetEntityCoords(v))
             if d <= best then best = d ; veh = v end
         end
@@ -320,15 +326,11 @@ LSLegacy.Events.Register('keyhanger:useKey', function(data)
     end)
 
     local locked = GetVehicleDoorLockStatus(veh) == 2
-    if locked then
-        SetVehicleDoorsLocked(veh, 1)
-        SetVehicleDoorsLockedForAllPlayers(veh, false)
-        LSLegacy.ShowNotification(KeyHanger.L('title'), KeyHanger.L('key_unlocked'), 'success')
-    else
-        SetVehicleDoorsLocked(veh, 2)
-        SetVehicleDoorsLockedForAllPlayers(veh, true)
-        LSLegacy.ShowNotification(KeyHanger.L('title'), KeyHanger.L('key_locked'), 'success')
-    end
+    local newState = locked and 1 or 2
+    SetVehicleDoorsLocked(veh, newState)
+    SetVehicleDoorsLockedForAllPlayers(veh, newState == 2)
+    LSLegacy.ShowNotification(KeyHanger.L('title'), locked and KeyHanger.L('key_unlocked') or KeyHanger.L('key_locked'), 'success')
+    LSLegacy.Events.SendToServer('keyhanger:syncVehicleLock', NetworkGetNetworkIdFromEntity(veh), newState)
 
     if C.Key.honkOnLock then
         SetVehicleLights(veh, 2)
@@ -336,6 +338,14 @@ LSLegacy.Events.Register('keyhanger:useKey', function(data)
         StartVehicleHorn(veh, 80, GetHashKey("HELDDOWN"), false)
     end
     Citizen.SetTimeout(700, function() ClearPedTasks(ped) end)
+end)
+
+-- rediffusé par le serveur à tous les clients pour que chacun voit le véhicule (dé)verrouillé
+LSLegacy.Events.Register('keyhanger:syncVehicleLock', function(netId, state)
+    local veh = NetworkGetEntityFromNetworkId(netId)
+    if not DoesEntityExist(veh) then return end
+    SetVehicleDoorsLocked(veh, state)
+    SetVehicleDoorsLockedForAllPlayers(veh, state == 2)
 end)
 
 LSLegacy.Events.Register('keyhanger:createKeyForNearest', function()

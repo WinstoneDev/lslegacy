@@ -13,20 +13,20 @@ Config.MDT.Item = 'tablette_mdt'
 
 -- Départements actifs. Pour en ajouter un : créer son config_<dep>.lua,
 -- l'enregistrer dans Config.MDT.Departments, puis l'activer ici.
-Config.MDT.ActiveDepartments = { 'police', 'samu', 'pompiers', 'gendarmerie' }
+Config.MDT.ActiveDepartments = { 'police', 'ems', 'lsfd', 'sheriff', 'atelier_reds', 'atelier_bennys', 'kebabking', 'burgershot' }
 
 -- Sphères de données partagées
 -- Par défaut chaque département est étanche : toutes les lectures sont
 -- filtrées sur `department = <le sien>`. Une sphère regroupe plusieurs
--- départements qui travaillent sur la MÊME base (police et gendarmerie
+-- départements qui travaillent sur la MÊME base (police et shérif
 -- partagent le fichier judiciaire : un avis de recherche émis par l'un
 -- doit être connu de l'autre).
 --
 -- L'ÉCRITURE, elle, reste toujours estampillée au département réel de
--- l'auteur : c'est ce qui permet d'afficher « Police » ou « Gendarmerie »
+-- l'auteur : c'est ce qui permet d'afficher « Police » ou « Sheriff »
 -- sur chaque pièce du dossier.
 Config.MDT.DataGroups = {
-    { id = 'forces_ordre', label = "Forces de l'ordre", departments = { 'police', 'gendarmerie' } },
+    { id = 'forces_ordre', label = "Forces de l'ordre", departments = { 'police', 'sheriff' } },
 }
 
 -- Tables effectivement mises en commun au sein d'une sphère.
@@ -61,7 +61,7 @@ Config.MDT.Webhook = GetConvar('lslegacy_webhook_mdt', '')
 -- dès que le département a activé l'onglet).
 Config.MDT.Tabs = {
     -- `dashboard` est en tête : c'est l'onglet ouvert par défaut pour les
-    -- départements qui l'activent. Son rendu dépend du métier (vue SAMU
+    -- départements qui l'activent. Son rendu dépend du métier (vue EMS
     -- pour le service médical, vue forces de l'ordre sinon).
     { id = 'dashboard',     label = 'Tableau de bord',   icon = '🏠', permission = nil },
     { id = 'citizens',      label = 'Citoyens',          icon = '👤', permission = 'view_citizens' },
@@ -79,9 +79,49 @@ Config.MDT.Tabs = {
     { id = 'laws',          label = 'Code Juridique',    icon = '⚖️', permission = 'view_laws' },
     -- `interventions` = les appels 17 générés par les PNJ (missions).
     { id = 'interventions', label = 'Appel 17',          icon = '📞', permission = 'view_callouts' },
-    { id = 'effectifs',     label = 'Effectifs',         icon = '👮', permission = nil },
+    { id = 'effectifs',     label = 'Effectifs',         icon = '👥', permission = nil },
     { id = 'trainings',     label = 'Formations',        icon = '🎓', permission = 'view_trainings' },
     { id = 'organisation',  label = 'Organisation',      icon = '🏛️', permission = nil },
+    -- `garage` = véhicules rangés + journal d'accès des garages du service (module/garage).
+    { id = 'garage',        label = 'Garage',            icon = '🚗', permission = nil },
+    -- `entreprise` = trésorerie du job + factures (module/society).
+    { id = 'entreprise',    label = 'Entreprise',        icon = '🏢', permission = nil },
+    -- `boutique_tenue` = commande de tenues (module/mdt/server/boutique.lua),
+    -- générique à tous les métiers (chacun déclare son propre
+    -- Config.MDT.Departments.<dep>.boutique). Réservé au grade admin_mdt
+    -- (ex-Commissaire) ET seulement si le job a un compte entreprise actif
+    -- (`requiresSociety`, vérifié à l'ouverture du MDT — cf. server/main.lua).
+    { id = 'boutique_tenue', label = 'Boutique tenues', icon = '🧥', permission = 'manage_boutique', requiresSociety = true },
+    -- `commande_pieces` = commande de pièces atelier (module/mdt/server/parts.lua),
+    -- réservé aux départements ATELIER (Red's Tunershop, Benny's — chacun
+    -- déclare son propre Config.MDT.Departments.<dep>.parts). Débité du
+    -- compte entreprise, livré directement au stock du dépôt (retrait à la
+    -- touche ALT via ox_target, zone déjà existante).
+    { id = 'commande_pieces', label = 'Commande de pièces', icon = '🔩', permission = 'manage_stock', requiresSociety = true },
+    -- `grade_permissions` = édition des permissions par grade (module/atelier/server/grade_permissions.lua),
+    -- réservé aux départements ATELIER (chacun mappé à sa companyId via dep.parts).
+    { id = 'grade_permissions', label = 'Permissions', icon = '🎖️', permission = 'manage_boutique' },
+}
+
+-- Emplacements de tenue génériques, communs à tous les catalogues boutique
+-- (même liste que l'item composite `outfit` du module/clothshop : les clés
+-- de slot doivent rester identiques pour permettre la livraison groupée en
+-- un seul item "tenue").
+Config.MDT.ClothingSlots = {
+    { id = 'tshirt',   label = 'Hauts' },
+    { id = 'torso',    label = 'Torse' },
+    { id = 'bproof',   label = 'Gilets' },
+    { id = 'arms',     label = 'Bras' },
+    { id = 'pants',    label = 'Pantalons' },
+    { id = 'shoes',    label = 'Chaussure' },
+    { id = 'helmet',   label = 'Chapeau' },
+    { id = 'glasses',  label = 'Lunettes' },
+    { id = 'ears',     label = 'Oreilles' },
+    { id = 'watches',  label = 'Montres' },
+    { id = 'bracelet', label = 'Bracelets' },
+    { id = 'chain',    label = 'Chaines' },
+    { id = 'bags',     label = 'Sacs' },
+    { id = 'decals',   label = 'Badges' },
 }
 
 -- Bornes de validation serveur (anti-abus, partagées)
@@ -91,6 +131,7 @@ Config.MDT.Limits = {
     SearchMinChars   = 2,      -- longueur minimale d'une requête de recherche
     MaxTextLength    = 5000,   -- longueur max d'un champ texte libre (rapport, motif…)
     MaxTitleLength   = 150,    -- longueur max d'un titre
+    RecruitRadius    = 10.0,   -- rayon (mètres) de détection des candidats au recrutement
 }
 
 -- Niveaux de danger pour les avis de recherche
@@ -139,6 +180,7 @@ Config.MDT.Licenses = {
 Config.MDT.TrainingCodes = {
     { code = 'BZ003', name = 'Habilitation bâton' },
     { code = 'BZ006', name = 'Formation DIVA' },
+    { code = 'BZ008', name = 'Formation CIC' },
     { code = 'BZ025', name = 'Intervention Autoroute' },
     { code = 'BZ029', name = 'Sécurité Personnelle Scientifique' },
     { code = 'CA003', name = 'Tireur Opérationnel' },
@@ -205,6 +247,7 @@ Config.MDT.SkillRecycleDays = {
 Config.MDT.SkillUnlocks = {
     CS037 = { 'view_evidence', 'manage_evidence' }, -- onglet Enquête + gestion preuves
     CZ001 = { 'manage_trainings' },                 -- création de formation
+    BZ008 = { 'view_cic' },                         -- onglet TN 97 (Appel 17)
 }
 
 -- Table remplie par les config_<dep>.lua de chaque métier

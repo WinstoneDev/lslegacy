@@ -26,9 +26,27 @@ C.BoomboxSound = {
     range  = 25.0, -- distance (m) au-delà de laquelle le son n'est plus audible
 }
 
+-- Découverte de corps : cause de décès tirée à l'analyse (70 % simple,
+-- 30 % suspecte — cette dernière catégorie prépare un futur branchement
+-- sur le module investigation, non exploité pour l'instant).
+C.DeathCauseSuspectChance = 30
+C.DeathCauses = {
+    simple = {
+        'Arrêt cardiaque', 'Overdose accidentelle', 'Chute accidentelle',
+        'AVC (accident vasculaire cérébral)', 'Étouffement (fausse route alimentaire)',
+        'Crise d\'épilepsie non secourue',
+    },
+    suspect = {
+        'Arme blanche — plaie perforante', 'Arme à feu — blessure par balle',
+        'Strangulation', 'Traumatisme crânien d\'origine indéterminée',
+        'Intoxication d\'origine inconnue',
+    },
+}
+
 -- Rythme des appels
 C.Interval        = 180      -- secondes entre deux tirages (3 min)
 C.AcceptTimeout   = 60       -- délai de prise en charge avant classement sans suite
+C.CicAssignTimeout = 300     -- délai laissé au CIC pour affecter un équipage (5 min)
 C.MissionTimeout  = 1200     -- durée max d'une intervention (20 min)
 C.MaxActive       = 1        -- appels actifs simultanés
 
@@ -41,13 +59,37 @@ C.LocationCooldown   = 1800   -- cooldown par emplacement (30 min)
 -- Renforts
 C.BackupCooldown = 60        -- délai entre deux demandes de renfort
 C.BackupTimeout  = 120       -- expiration d'une demande sans réponse
+C.MaxCalloutAgents = 8       -- effectif max sur une intervention (anti-abus prime)
 
--- Équipages (Police Secours)
+-- Équipages
 C.CrewMaxSize = 4
 C.Crews = {
-    { id = 'alpha',   label = 'Équipage Alpha',   color = 3  },
-    { id = 'bravo',   label = 'Équipage Bravo',   color = 5  },
-    { id = 'charlie', label = 'Équipage Charlie', color = 47 },
+    { id = 'alpha',   label = 'Équipage Alpha',   short = 'Alpha',   color = 3  },
+    { id = 'bravo',   label = 'Équipage Bravo',   short = 'Bravo',   color = 5  },
+    { id = 'charlie', label = 'Équipage Charlie', short = 'Charlie', color = 47 },
+    { id = 'delta',   label = 'Équipage Delta',   short = 'Delta',   color = 27 },
+}
+
+-- Unités affichables dans Appel 17 (MDT). `indicatif` = préfixe du
+-- callsign (nom de l'unité par défaut, sauf Motocycliste → « TM »).
+-- `visible` = disponibilité par défaut ; le Commissaire peut activer /
+-- désactiver chaque unité (hors Police Secours, toujours visible) via le MDT.
+C.Units = {
+    { id = 'police_secours', label = 'Police Secours', indicatif = 'Police Secours', visible = true,  locked = true },
+    { id = 'bac',            label = 'BAC',             indicatif = 'BAC',            visible = false },
+    { id = 'bac_97n',        label = 'BAC 97 N',        indicatif = 'BAC 97 N',       visible = false },
+    { id = 'moto',           label = 'Motocycliste',    indicatif = 'TM',             visible = false },
+    { id = 'csi',            label = 'CSI',             indicatif = 'CSI',            visible = false },
+    { id = 'bravm',          label = 'Brav',            indicatif = 'Brav',           visible = false },
+    { id = 'crs',            label = 'CRS',             indicatif = 'CRS',            visible = false },
+    { id = 'k9',             label = 'K9',              indicatif = 'K9',             visible = false },
+    { id = 'aero',           label = 'Aero',            indicatif = 'Aero',           visible = false },
+    { id = 'equestre',       label = 'Equestre',        indicatif = 'Equestre',       visible = false },
+    { id = 'fluviale',       label = 'Fluviale',        indicatif = 'Fluviale',       visible = false },
+    { id = 'sdlp',           label = 'SDLP',            indicatif = 'SDLP',           visible = false },
+    { id = 'raid',           label = 'RAID',            indicatif = 'RAID',           visible = false },
+    { id = 'bri',            label = 'BRI',             indicatif = 'BRI',            visible = false },
+    { id = 'pj',             label = 'PJ',              indicatif = 'PJ',             visible = false },
 }
 
 -- Invite d'appel entrante (non bloquante)
@@ -57,20 +99,28 @@ C.PromptRefuseKey = 'N'      -- touche par défaut pour refuser
 C.BackupKey       = 'H'      -- touche de demande de renfort (mission en cours)
 
 -- Fuite et poursuite
-C.FleeTriggerDistance = 5.0
+C.FleeTriggerDistance = 25.0
+
+-- Cambriolage : portée de vue du chauffeur laissé dehors, indépendante de
+-- C.FleeTriggerDistance (cf. commentaire client/callouts.lua ~4123)
+C.CambriolageDriverSightDist = 35.0
 
 -- Course : le fuyard sprinte à fond pendant un temps limité, puis
-C.FleeSprintDuration  = 15    -- s de sprint à pleine vitesse
-C.FleeSlowAt          = 18    -- s à partir desquelles il ralentit encore
+C.FleeSprintDuration  = 25    -- s de sprint à pleine vitesse
+C.FleeSlowAt          = 30    -- s à partir desquelles il ralentit encore
 C.FleeRateTired       = 0.50  -- allure entre les deux (1.0 = normale)
 C.FleeRateExhausted   = 0.35  -- allure au-delà, il n'en peut plus
 
 -- Une fois essoufflé, l'individu renonce si un agent le suit d'assez
-C.FleeSurrenderDist   = 10.0
-C.FleeMaxDuration     = 300   -- garde-fou : au-delà, fuyard déclaré échappé
-C.EscapeDistance      = 300.0 -- distance d'échappement
+C.FleeSurrenderDist   = 5.0
+C.FleeMaxDuration     = 480   -- garde-fou : au-delà, fuyard déclaré échappé
+C.EscapeDistance      = 150.0 -- distance d'échappement
 C.EscapeDelay         = 30    -- durée à cette distance avant échappement
 C.DropWeaponChance    = 25    -- % qu'un fuyard armé lâche son arme
+-- Trafic de stup : le dealer peut se débarrasser de son sachet en fuyant.
+-- S'il n'est pas retrouvé là où il est tombé, tant pis pour la police.
+C.DropStashChance    = 35     -- % qu'un fuyard en possession de stup le jette
+C.StashProp          = 'ba_prop_battle_bag_02b'
 
 -- Les individus d'une même intervention partent TOUS du même côté :
 C.FleeConeDeg   = 60          -- ouverture du cône de dispersion (± 30°)
@@ -82,10 +132,10 @@ C.Brawl = {
     Debug = false,
 
     -- Distance sous laquelle ils cessent de se battre et font face aux
-    NoticeDist = 12.0,
+    NoticeDist = 20.0,
 
     -- Distance à laquelle une mise en joue est prise en compte.
-    AimDist = 18.0,
+    AimDist = 15.0,
 
     -- Chances (%) qu'un individu se rende plutôt que de se retourner
     SurrenderChance = 70,
@@ -95,6 +145,11 @@ C.Brawl = {
 
     -- Reddition d'office au bout de ce délai au contact, SANS mise en
     PatienceDelay = 0,
+
+    -- Distance max pour poursuivre un agent en combat une fois « retourné » :
+    -- au-delà, il tient sa position plutôt que de traverser la scène pour
+    -- rejoindre l'agent affecté le plus proche (qui peut être loin).
+    CombatRange = 30.0,
 }
 
 -- Annoncer chaque reddition dans une bulle d'information. Désactivé :
@@ -162,7 +217,7 @@ C.AnimalAggroDist = 10.0
 C.VictimAssaultAggroDist = 10.0
 
 -- Distance à laquelle un suspect passif « roule le dé » pour se
-C.AggroApproachDist = 4.0
+C.AggroApproachDist = 5.0
 
 -- Posture de la personne mordue une fois le chien détourné. Elle ne se
 C.WoundedScenarios = {
@@ -201,6 +256,39 @@ C.MeleeHitResetDelay   = 10    -- s sans coup → remise à zéro du compteur
 -- Interpellation et retour au poste
 C.CustodyRadius    = 10.0   -- distance de présentation à Mike
 C.FirstAidDuration = 8000   -- durée des premiers soins (ms)
+
+-- Contrôle d'identité d'un suspect PNJ : deux faits indépendants peuvent
+-- ressortir, tirés une seule fois au moment du contrôle (cf. suspectIdentify).
+-- Purement PNJ — aucun lien avec le casier des joueurs réels au MDT.
+C.Wanted = {
+    -- Récidiviste : purement informatif (badge + notification).
+    RepeatOffenderChance = 25,
+
+    -- Fiche de recherche active : ne bloque PAS le relâchement (l'agent
+    -- garde le choix), mais le release est alors marqué pour la fiche
+    -- Appel 17 — l'agent devra justifier son choix dans son rapport.
+    Chance  = 12,
+    Reasons = {
+        "Évadé — non réintégré après une sortie autorisée",
+        "Mandat d'arrêt pour vol",
+        "Mandat d'arrêt pour agression",
+        "Non-présentation au tribunal",
+        "Violation de contrôle judiciaire",
+        "Suspect recherché dans une affaire de cambriolage non résolue",
+        "Mandat de recherche pour trafic de stupéfiants",
+        "Mandat de recherche pour trafic d'armes",
+        "Faux et usage de faux — identité usurpée",
+        "Recel de véhicule volé",
+        "Recherché dans le cadre d'une enquête pour proxénétisme",
+        "Mandat de recherche pour séquestration",
+    },
+}
+
+-- Suspect touché par balle mais vivant : doit être soigné avant que
+-- l'intervention puisse se clore, quel que soit le scénario (cf.
+-- suspectWounded / CheckResolution). Seuil de vie sous lequel un PNJ
+-- suspect encore vivant est considéré blessé.
+C.WoundedHealthRatio = 0.5
 
 -- Transport des individus
 C.TransportSeats       = { 2, 1 }
@@ -317,19 +405,11 @@ C.Spawn = {
 C.BrainMaxDistance = 300.0    -- au-delà, le rôle de « cerveau » bascule
 C.FallbackPed      = 'a_m_y_genstreet_01'
 
---  LES TROIS PNJ D'INTERACTION FIXES
+--  LES DEUX PNJ D'INTERACTION FIXES
+-- (Anna a été retirée : l'inscription au groupe d'intervention se fait
+-- désormais via l'onglet « Appel 17 » du MDT.)
 
 C.Npcs = {
-
-    -- ANNA — inscription au groupe d'intervention (commissariat)
-    register = {
-        name    = 'Anna',
-        model   = 's_f_y_cop_01',
-        coords  = vec3(441.270325, -976.364807, 30.678345),
-        heading = 181.41731262207,
-        scenario = 'WORLD_HUMAN_CLIPBOARD',
-        blip    = false,   -- volontairement absente de la carte
-    },
 
     -- DAVID — remise des individus interpellés (commissariat)
     custody = {
@@ -428,6 +508,12 @@ C.PedPools = {
         'mp_m_shopkeep_01',
     },
 
+    -- Personnel d'usine/entrepôt : requérant d'une effraction constatée
+    -- sur un site industriel plutôt qu'un logement.
+    workers = {
+        's_m_y_construct_01', 's_m_y_construct_02', 's_m_m_trucker_01',
+    },
+
     -- Victime décédée (mise à 0 PV)
     deceased = {
         'a_m_m_eastsa_02', 'a_m_m_business_01', 'a_f_m_bevhills_01', 'a_m_m_farmer_01',
@@ -440,6 +526,19 @@ C.PedPools = {
 
     -- Animaux
     animals = { 'a_c_rottweiler', 'a_c_shepherd', 'a_c_husky' },
+
+    -- Rodéo urbain : jeunes motards
+    bikers = {
+        'a_m_y_stwhi_01', 'a_m_y_stbla_01', 'a_m_y_soucent_02',
+        'g_m_y_strpunk_01', 'a_m_m_soucent_02',
+    },
+}
+
+-- Race affichée au PV (chien dangereux) selon le modèle tiré ci-dessus.
+C.AnimalBreeds = {
+    a_c_rottweiler = 'Rottweiler',
+    a_c_shepherd   = 'Berger allemand',
+    a_c_husky      = 'Husky',
 }
 
 --  POPULATION PAR ZONE
@@ -625,9 +724,18 @@ C.PedPoolOrigins = {
     guards       = { anglo = 40, african_american = 30, hispanic = 25, eastern_european = 5 },
     deceased     = { anglo = 40, hispanic = 25, african_american = 20, asian = 15 },
     victims      = { anglo = 40, hispanic = 25, african_american = 20, asian = 15 },
+    bikers       = { anglo = 30, hispanic = 30, african_american = 30, eastern_european = 10 },
 }
 
 C.DefaultOrigins = { anglo = 40, hispanic = 30, african_american = 20, asian = 10 }
+
+-- Proche à prévenir (decouverte_corps / personne_errante) : partagé
+-- client/serveur, le PNJ étant désormais matérialisé côté serveur pour
+-- être visible par tous les agents engagés (cf. server/callouts.lua).
+C.FamilyContactModels = {
+    male   = { 'a_m_m_bevhills_02', 'a_m_m_business_02', 'a_m_m_soucent_01' },
+    female = { 'a_f_m_bevhills_02', 'a_f_y_business_04', 'a_f_m_soucent_02' },
+}
 
 --  VÉHICULES
 
@@ -647,21 +755,72 @@ C.Vehicles = {
     -- Véhicule accidenté du délit de fuite
     crashed_car = { 'blista', 'asea', 'washington', 'premier', 'emperor' },
 
+    -- Marque / modèle affichés au PV (cf. crashed_car ci-dessus) : pas de
+    -- native fiable côté serveur pour retrouver le nom d'un modèle, donc
+    -- table statique — à tenir à jour si la liste change.
+    crashed_car_labels = {
+        blista     = 'Dinka Blista',
+        asea       = 'Declasse Asea',
+        washington = 'Albany Washington',
+        premier    = 'Declasse Premier',
+        emperor    = 'Albany Emperor',
+    },
+
+    -- Marque / modèle affichés au PV du vol de véhicule en cours (cf.
+    -- target_car/target_bike ci-dessus) — même raison que crashed_car_labels.
+    target_vehicle_labels = {
+        blista     = 'Dinka Blista',
+        premier    = 'Declasse Premier',
+        emperor    = 'Albany Emperor',
+        ingot      = 'Vulcar Ingot',
+        asea       = 'Declasse Asea',
+        washington = 'Albany Washington',
+        faggio2    = 'Pegassi Faggio Sport',
+        faggio3    = 'Pegassi Faggio Mod',
+        sanchez    = 'Maibatsu Sanchez',
+        ruffian    = 'Pegassi Ruffian',
+        pcj        = 'Shitzu PCJ 600',
+        bagger     = 'Western Bagger',
+    },
+
     -- Véhicule-sono du tapage
     boombox_car = { 'blista', 'faction', 'buccaneer', 'manana', 'voodoo', 'peyote' },
 
     -- Véhicule du suspect sur une tuerie de masse, laissé sur place
     mass_incident_car = { 'asea', 'premier', 'washington', 'emperor', 'primo' },
+
+    -- Rodéo urbain : motos tout-terrain, une par suspect (poolName doit
+    -- contenir « bike » — cf. spawn(), server/callouts.lua, qui s'en sert
+    -- pour choisir le type de véhicule réseau à créer).
+    motocross_bike = { 'bf400', 'manchez', 'manchez2', 'sanchez', 'sanchez2', 'nemesis' },
+
+    -- Marque / modèle affichés au PV et à la fiche MDT (FOVES) — même
+    -- raison que crashed_car_labels/target_vehicle_labels ci-dessus.
+    motocross_bike_labels = {
+        bf400    = 'Nagasaki BF400',
+        manchez  = 'Vulcan Manchez',
+        manchez2 = 'Vulcan Manchez Scout',
+        sanchez  = 'Maibatsu Sanchez',
+        sanchez2 = 'Maibatsu Sanchez (Bosozoku)',
+        nemesis  = 'Principe Nemesis',
+    },
 }
 
--- Variantes d'accident pour le délit de fuite
-C.CrashTypes = {
-    { id = 'car_car',     label = 'collision entre deux véhicules', victim = true,  second = 'crashed_car' },
-    { id = 'car_bike',    label = 'collision avec un deux-roues',   victim = true,  second = 'flee_bike'   },
-    { id = 'car_ped',     label = 'piéton renversé',                victim = true,  second = nil           },
-    -- Un délit de fuite sans blessé n'offre plus rien à faire sur place :
-    { id = 'car_pole',    label = 'véhicule encastré',              victim = true,  second = nil           },
-}
+-- Rodéo urbain, fuite en moto : le style par défaut (786603) inclut
+-- StopForVehicles — les motards freinaient et s'arrêtaient net dès
+-- qu'une voiture de patrouille se mettait en travers, rendant la
+-- course-poursuite triviale. Retiré, et ajout de SwerveAroundAllVehicles
+-- + GoOffRoadWhenAvoiding + AllowGoingWrongWay pour qu'ils contournent
+-- activement un barrage au lieu de s'y arrêter.
+C.RodeoFleeDrivingStyle = 787374
+
+-- Rodéo urbain, figures en attendant la police (TaskVehicleDriveWander,
+-- remplace TaskVehicleTempAction — dérapage à l'aveugle, sans pathfinding,
+-- qui pouvait envoyer la moto percuter un mur/véhicule garé/autre moto du
+-- groupe) : SteerAroundStationaryVehicles(8) + SteerAroundPeds(16) +
+-- SteerAroundObjects(32) + GoOffRoadWhenAvoiding(256) — contourne le décor
+-- sans s'arrêter ni partir en sortie de route façon fuite.
+C.RodeoIdleDrivingStyle = 312
 
 --  AMBIANCE SONORE
 
@@ -695,14 +854,21 @@ C.Heist = {
     Debug   = true,
 
     -- Détection de la police
-    SightDist  = 35.0,   -- portée de vue, ligne de mire requise
-    SirenDist  = 60.0,   -- portée d'une sirène en fonctionnement
+    SightDist  = 30.0,   -- portée de vue, ligne de mire requise
+    SirenDist  = 100.0,  -- portée d'une sirène en fonctionnement
     DecideWait = 1200,   -- délai de réaction du chef (ms)
+
+    -- Chauffeur laissé de côté par la mise en scène du groupe (cf. fix
+    -- mains levées) : sa propre détection, indépendante de celle du
+    -- magasin — s'il repère un agent avant que le groupe n'ait décidé,
+    -- il a une chance de paniquer et de partir seul, abandonnant l'équipe.
+    DriverSightDist   = 40.0,
+    DriverPanicChance = 25,
 
     -- Scénarios
     Scenes = {
         {
-            id = 'en_cours', weight = 40,
+            id = 'en_cours', weight = 60,
             label = 'braquage en cours',
             -- Le magasin est sous contrôle : caissier mains en l'air,
             inside = true,
@@ -712,7 +878,7 @@ C.Heist = {
             loot    = 'full',
         },
         {
-            id = 'sortie', weight = 30,
+            id = 'sortie', weight = 40,
             label = 'braquage terminé',
             -- Ils sortent au moment où la police arrive : le conducteur
             inside = false,
@@ -720,29 +886,6 @@ C.Heist = {
             cashier = 'phone',
             clients = 'recover',
             loot    = 'full',
-        },
-        {
-            id = 'precipitation', weight = 20,
-            label = 'police très rapide',
-            -- Ils n'ont pas fini : une partie du butin reste sur place
-            inside = true,
-            roles  = { looter = 2 },
-            cashier = 'crouch',
-            clients = 'hide',
-            loot    = 'partial',
-            hurried = true,
-        },
-        {
-            id = 'tourne_mal', weight = 10,
-            label = 'braquage qui tourne mal',
-            -- Le chef hésite, le groupe s'attarde. Reddition et
-            inside = true,
-            roles  = { lookout = 1 },
-            cashier = 'counter',
-            clients = 'frozen',
-            loot    = 'full',
-            hesitate = true,
-            reactionShift = { surrender = 6, fight = 6, barricade = 3 },
         },
     },
 
@@ -795,7 +938,11 @@ C.Heist = {
         Headlights  = true,    -- phares allumés la nuit
         WatchAhead  = true,    -- le conducteur surveille la rue
         BoardDelay  = 800,     -- délai entre deux embarquements (ms)
-        LeaveDelay  = 4000,    -- attente avant de partir sans un braqueur
+        LeaveDelay  = 4000,    -- attente une fois tout le monde à bord
+        -- % de chance qu'un des braqueurs soit abandonné sur place : le
+        -- véhicule part sans lui dès que les autres sont montés, et il
+        -- doit fuir à pied pendant que ses complices filent en voiture.
+        StrandChance = 30,
         DriveSpeed  = 30.0,
         DriveStyle  = 786469,
     },
@@ -848,6 +995,10 @@ C.MassShooting = {
     },
 }
 
+-- Distance à laquelle le bilan victimes/tués d'une tuerie de masse est
+-- révélé à un agent qui s'approche de la scène.
+C.MassIncidentRevealDist = 30.0
+
 --  ANCRAGES DE SCÈNE — POSITIONS RELEVÉES À LA MAIN
 
 -- Scénarios qui n'ont RIEN à mettre en scène : un seul PNJ, posé par
@@ -863,6 +1014,22 @@ C.SceneAnchors = {
 
     -- Vol de véhicule (générique : vol_vehicule + tapage)
     ['parking:2'] = {     -- Parking Pillbox Hill
+        rodeo_urbain = {
+            vehicle = {
+                vector4(237.52, -803.26, 29.92, 160.8),
+                vector4(235.60, -808.62, 29.88, 187.4),
+                vector4(234.16, -806.54, 29.94, 94.0),
+                vector4(234.98, -802.60, 29.96, 17.2),
+                vector4(238.98, -806.26, 29.94, 70.2),
+            },
+            suspect = {
+                vector4(234.28, -803.22, 30.44, 141.8),
+                vector4(235.46, -806.92, 30.38, 277.8),
+                vector4(236.94, -809.98, 30.30, 260.8),
+                vector4(238.86, -807.62, 30.30, 68.0),
+                vector4(239.94, -804.62, 30.34, 87.8),
+            },
+        },
         tapage = {
         suspect = {
             vector4(243.42, -786.72, 30.52, 260.8),
@@ -884,6 +1051,22 @@ C.SceneAnchors = {
         caller = vector4(247.30, -779.56, 30.84, 161.6),
     },
     ['parking:3'] = {     -- Parking de Vespucci Beach
+        rodeo_urbain = {
+            vehicle = {
+                vector4(-1188.34, -1469.56, 3.90, 39.0),
+                vector4(-1186.28, -1472.04, 3.90, 39.0),
+                vector4(-1186.00, -1475.66, 3.90, 352.8),
+                vector4(-1193.28, -1471.98, 3.90, 69.2),
+                vector4(-1189.54, -1473.16, 3.98, 306.0),
+            },
+            suspect = {
+                vector4(-1191.68, -1470.74, 4.38, 289.2),
+                vector4(-1192.16, -1472.50, 4.38, 5.6),
+                vector4(-1188.30, -1471.36, 4.38, 294.8),
+                vector4(-1190.58, -1472.30, 4.38, 306.2),
+                vector4(-1188.54, -1474.48, 4.38, 34.0),
+            },
+        },
         tapage = {
         suspect = {
             vector4(-1198.98, -1492.94, 4.36, 306.2),
@@ -921,6 +1104,22 @@ C.SceneAnchors = {
         caller = vector4(-696.06, -853.64, 23.68, 150.2),
     },
     ['parking:7'] = {     -- Parking du Casino
+        rodeo_urbain = {
+            vehicle = {
+                vector4(865.48, -35.94, 78.28, 196.8),
+                vector4(867.06, -33.56, 78.28, 284.6),
+                vector4(874.44, -34.06, 78.28, 171.0),
+                vector4(868.80, -40.66, 78.28, 129.4),
+                vector4(870.02, -36.24, 78.38, 59.0),
+            },
+            suspect = {
+                vector4(867.62, -38.42, 78.76, 0.0),
+                vector4(868.24, -34.94, 78.76, 340.2),
+                vector4(873.70, -34.90, 78.76, 130.4),
+                vector4(869.62, -37.52, 78.76, 56.6),
+                vector4(871.14, -34.62, 78.76, 107.8),
+            },
+        },
         tapage = {
         suspect = {
             vector4(887.82, -25.98, 78.76, 300.4),
@@ -942,6 +1141,22 @@ C.SceneAnchors = {
         },
     },
     ['parking:8'] = {     -- Parking LSIA
+        rodeo_urbain = {
+            vehicle = {
+                vector4(-967.44, -2699.24, 13.34, 79.8),
+                vector4(-971.04, -2695.82, 13.36, 189.4),
+                vector4(-971.28, -2702.16, 13.38, 214.8),
+                vector4(-974.46, -2700.02, 13.38, 273.6),
+                vector4(-967.78, -2696.32, 13.44, 151.0),
+            },
+            suspect = {
+                vector4(-974.02, -2698.52, 13.84, 260.8),
+                vector4(-969.30, -2703.26, 13.84, 8.6),
+                vector4(-967.00, -2701.22, 13.82, 45.4),
+                vector4(-966.54, -2697.32, 13.82, 56.6),
+                vector4(-969.34, -2695.78, 13.82, 243.8),
+            },
+        },
         tapage = {
         suspect = {
             vector4(-978.10, -2711.40, 13.82, 354.4),
@@ -963,6 +1178,22 @@ C.SceneAnchors = {
         },
     },
     ['parking:9'] = {     -- Parking de La Puerta
+        rodeo_urbain = {
+            vehicle = {
+                vector4(-336.22, -1494.26, 30.14, 349.4),
+                vector4(-328.28, -1490.92, 30.10, 4.0),
+                vector4(-332.82, -1488.08, 30.14, 62.6),
+                vector4(-337.60, -1491.34, 30.12, 143.8),
+                vector4(-333.44, -1494.80, 30.26, 2.4),
+            },
+            suspect = {
+                vector4(-335.94, -1491.20, 30.62, 303.4),
+                vector4(-330.98, -1489.24, 30.62, 8.6),
+                vector4(-327.62, -1492.24, 30.62, 266.4),
+                vector4(-334.74, -1495.18, 30.62, 0.0),
+                vector4(-331.84, -1494.64, 30.64, 79.4),
+            },
+        },
         caller = vector4(-340.92, -1471.80, 30.74, 192.8),
         vehicle = vector4(-333.44, -1494.80, 30.26, 2.4),
         suspect = {
@@ -971,6 +1202,22 @@ C.SceneAnchors = {
         },
     },
     ['parking:10'] = {     -- Parking du stade
+        rodeo_urbain = {
+            vehicle = {
+                vector4(-643.18, -1216.38, 11.00, 3.6),
+                vector4(-644.00, -1219.18, 10.80, 338.8),
+                vector4(-639.46, -1223.48, 11.02, 266.2),
+                vector4(-637.92, -1220.14, 11.32, 356.0),
+                vector4(-641.40, -1220.76, 11.06, 303.0),
+            },
+            suspect = {
+                vector4(-642.22, -1217.90, 11.48, 272.2),
+                vector4(-640.98, -1216.48, 11.68, 249.4),
+                vector4(-639.38, -1219.96, 11.66, 306.2),
+                vector4(-642.42, -1219.88, 11.36, 303.4),
+                vector4(-640.64, -1222.16, 11.44, 357.2),
+            },
+        },
         tapage = {
         suspect = {
             vector4(-608.62, -1213.96, 14.46, 306.2),
@@ -991,7 +1238,41 @@ C.SceneAnchors = {
             vector4(-640.64, -1222.16, 11.44, 357.2),
         },
     },
+    ['parking:11'] = {     -- Parking de Alta
+        rodeo_urbain = {
+            vehicle = {
+                vector4(296.44, -333.64, 44.44, 1.6),
+                vector4(296.20, -336.20, 44.44, 43.2),
+                vector4(293.36, -330.64, 44.44, 311.6),
+                vector4(290.60, -332.52, 44.44, 267.8),
+                vector4(293.04, -337.40, 44.44, 198.8),
+            },
+            suspect = {
+                vector4(294.88, -335.10, 44.92, 0.0),
+                vector4(294.78, -333.04, 44.92, 22.6),
+                vector4(293.34, -332.24, 44.92, 133.2),
+                vector4(291.26, -334.06, 44.92, 133.2),
+                vector4(291.92, -336.18, 44.92, 170.0),
+            },
+        },
+    },
     ['parking:12'] = {     -- Parking du front de mer
+        rodeo_urbain = {
+            vehicle = {
+                vector4(-1576.06, -1048.20, 12.54, 353.2),
+                vector4(-1576.60, -1045.14, 12.54, 6.2),
+                vector4(-1574.24, -1041.76, 12.54, 307.6),
+                vector4(-1570.36, -1042.10, 12.54, 239.2),
+                vector4(-1573.26, -1044.56, 12.62, 74.2),
+            },
+            suspect = {
+                vector4(-1571.58, -1041.30, 13.00, 104.8),
+                vector4(-1575.78, -1042.26, 13.00, 184.2),
+                vector4(-1575.32, -1049.84, 13.00, 334.4),
+                vector4(-1573.30, -1045.92, 13.00, 73.8),
+                vector4(-1572.90, -1043.20, 13.00, 136.0),
+            },
+        },
         tapage = {
         vehicle = vector4(-1560.74, -1012.30, 12.62, 23.8),
         suspect = {
@@ -1013,6 +1294,22 @@ C.SceneAnchors = {
         caller = vector4(-1608.88, -1047.24, 13.08, 275.0),
     },
     ['parking:13'] = {     -- Parking de Popular Street
+        rodeo_urbain = {
+            vehicle = {
+                vector4(1118.08, -1480.68, 34.22, 48.0),
+                vector4(1114.78, -1481.18, 34.20, 113.2),
+                vector4(1109.94, -1479.56, 34.20, 59.8),
+                vector4(1107.56, -1476.00, 34.22, 33.8),
+                vector4(1113.96, -1476.68, 34.30, 180.8),
+            },
+            suspect = {
+                vector4(1108.82, -1477.38, 34.68, 258.0),
+                vector4(1112.10, -1479.16, 34.68, 246.6),
+                vector4(1115.88, -1479.70, 34.68, 266.4),
+                vector4(1115.34, -1477.10, 34.68, 90.8),
+                vector4(1112.34, -1477.08, 34.68, 275.0),
+            },
+        },
         caller = vector4(1115.64, -1509.42, 34.84, 351.4),
         vehicle = vector4(1113.96, -1476.68, 34.30, 180.8),
         suspect = {
@@ -1021,6 +1318,22 @@ C.SceneAnchors = {
         },
     },
     ['parking:14'] = {     -- Parking de Davis
+        rodeo_urbain = {
+            vehicle = {
+                vector4(500.04, -1524.14, 28.80, 316.8),
+                vector4(505.06, -1523.72, 28.80, 24.8),
+                vector4(503.50, -1520.68, 28.80, 36.2),
+                vector4(501.48, -1521.66, 28.80, 173.2),
+                vector4(502.44, -1526.56, 28.90, 139.2),
+            },
+            suspect = {
+                vector4(504.28, -1522.32, 29.28, 138.8),
+                vector4(498.98, -1522.78, 29.28, 241.0),
+                vector4(501.62, -1519.68, 29.28, 289.2),
+                vector4(503.64, -1527.16, 29.28, 138.8),
+                vector4(501.12, -1526.08, 29.28, 235.2),
+            },
+        },
         caller = vector4(502.82, -1508.36, 29.24, 173.0),
         vehicle = vector4(502.44, -1526.56, 28.90, 139.2),
         suspect = {
@@ -1029,6 +1342,22 @@ C.SceneAnchors = {
         },
     },
     ['parking:15'] = {     -- Parking de Bay City
+        rodeo_urbain = {
+            vehicle = {
+                vector4(-1139.78, -742.90, 19.42, 257.4),
+                vector4(-1136.94, -743.98, 19.40, 251.0),
+                vector4(-1134.40, -746.64, 19.28, 207.8),
+                vector4(-1135.64, -750.16, 19.06, 158.8),
+                vector4(-1137.50, -746.78, 19.32, 287.8),
+            },
+            suspect = {
+                vector4(-1134.76, -749.68, 19.60, 25.6),
+                vector4(-1134.64, -746.08, 19.80, 70.8),
+                vector4(-1138.94, -743.06, 19.92, 51.0),
+                vector4(-1138.24, -745.68, 19.76, 289.2),
+                vector4(-1137.30, -748.62, 19.60, 354.4),
+            },
+        },
         tapage = {
         vehicle = vector4(-1127.68, -758.74, 18.74, 287.4),
         suspect = {
@@ -1050,6 +1379,22 @@ C.SceneAnchors = {
         caller = vector4(-1176.68, -746.84, 19.62, 275.0),
     },
     ['parking:16'] = {     -- Parking de Chamberlain
+        rodeo_urbain = {
+            vehicle = {
+                vector4(26.90, -1587.18, 28.70, 197.2),
+                vector4(27.16, -1591.04, 28.68, 178.2),
+                vector4(24.86, -1592.70, 28.78, 110.0),
+                vector4(21.34, -1591.50, 28.80, 246.6),
+                vector4(23.78, -1589.24, 28.82, 232.4),
+            },
+            suspect = {
+                vector4(28.16, -1587.96, 29.12, 138.8),
+                vector4(26.72, -1590.62, 29.14, 124.8),
+                vector4(26.50, -1592.72, 29.22, 138.8),
+                vector4(24.62, -1588.18, 29.22, 150.2),
+                vector4(22.62, -1590.52, 29.26, 314.6),
+            },
+        },
         tapage = {
         suspect = {
             vector4(58.34, -1546.04, 29.44, 337.4),
@@ -1071,6 +1416,22 @@ C.SceneAnchors = {
         },
     },
     ['parking:17'] = {     -- Parking de Little Seoul
+        rodeo_urbain = {
+            vehicle = {
+                vector4(-359.94, -901.54, 30.60, 226.2),
+                vector4(-360.42, -907.86, 30.60, 142.4),
+                vector4(-356.96, -907.34, 30.60, 31.8),
+                vector4(-357.42, -903.08, 30.60, 17.0),
+                vector4(-361.08, -904.28, 30.68, 269.0),
+            },
+            suspect = {
+                vector4(-357.34, -904.40, 31.06, 224.0),
+                vector4(-357.92, -906.24, 31.06, 99.2),
+                vector4(-363.02, -904.40, 31.06, 258.0),
+                vector4(-361.38, -902.96, 31.06, 269.2),
+                vector4(-361.30, -905.92, 31.06, 294.8),
+            },
+        },
         tapage = {
         vehicle = vector4(-335.94, -976.44, 30.68, 160.4),
         suspect = {
@@ -1092,6 +1453,22 @@ C.SceneAnchors = {
         caller = vector4(-350.78, -871.02, 31.14, 158.8),
     },
     ['parking:18'] = {     -- Parking de Mirror Park Est
+        rodeo_urbain = {
+            vehicle = {
+                vector4(1029.88, -782.48, 57.50, 109.0),
+                vector4(1031.38, -785.98, 57.44, 193.8),
+                vector4(1031.56, -790.00, 57.38, 188.4),
+                vector4(1025.16, -782.04, 57.40, 331.0),
+                vector4(1027.58, -785.38, 57.48, 307.8),
+            },
+            suspect = {
+                vector4(1027.46, -782.34, 57.90, 224.0),
+                vector4(1029.42, -784.48, 57.92, 198.4),
+                vector4(1029.78, -788.16, 57.86, 164.4),
+                vector4(1026.48, -784.58, 57.84, 309.0),
+                vector4(1028.10, -787.18, 57.84, 8.6),
+            },
+        },
         tapage = {
         vehicle = vector4(1014.52, -762.80, 57.50, 220.6),
         suspect = {
@@ -1120,6 +1497,16 @@ C.SceneAnchors = {
             suspect = vector4(-81.68, -1450.96, 31.96, 198.4),
             animal  = vector4(-80.46, -1454.88, 32.00, 14.2),
             victim  = vector4(-79.96, -1456.66, 32.04, 17.0),
+        },
+        cambriolage = {
+            driver = vector4(-11.02, -1457.32, 30.44, 277.8),
+            vehicle = vector4(-14.24, -1457.54, 30.06, 93.6),
+            suspect = {
+                vector4(-13.12, -1442.10, 31.10, 161.6),
+                vector4(-10.58, -1438.54, 31.10, 243.8),
+                vector4(-17.92, -1432.76, 31.10, 354.4),
+            },
+            caller = vector4(-36.84, -1452.78, 31.40, 266.4),
         },
         animal  = vector4(-62.26, -1451.58, 32.12, 343.0),
         caller  = vector4(-65.56, -1454.30, 32.12, 317.4),
@@ -1863,7 +2250,7 @@ C.SceneAnchors = {
         },
         decouverte_corps = {
             caller   = vector4(84.64, -1908.72, 21.10, 141.8),
-            deceased = vector4(88.28, -1904.06, 21.14, 326.0),
+            deceased = vector4(90.08, -1909.16, 21.00, 232.4),
         },
         racolage = {
             caller = vector4(85.50, -1958.52, 21.10, 328.8),
@@ -2237,19 +2624,19 @@ C.SceneAnchors = {
             },
         },
         bagarre_rue = {
-            caller = vector4(217.54, -943.46, 30.68, 70.8),
             suspect = {
-                vector4(201.44, -939.08, 30.68, 68.0),
-                vector4(200.06, -937.88, 30.68, 65.2),
-                vector4(200.78, -936.58, 30.68, 328.8),
-                vector4(201.88, -937.64, 30.68, 232.4),
+                vector4(229.46, -921.54, 31.50, 22.6),
+                vector4(228.00, -920.38, 31.50, 53.8),
+                vector4(229.42, -919.70, 31.50, 314.6),
+                vector4(230.70, -920.46, 31.50, 204.0),
             },
             bystander = {
-                vector4(197.12, -947.72, 30.08, 0.0),
-                vector4(185.68, -940.36, 30.08, 309.0),
-                vector4(187.60, -941.64, 30.08, 275.0),
-                vector4(190.88, -943.24, 30.08, 334.4),
+                vector4(236.18, -927.50, 31.50, 48.2),
+                vector4(234.88, -928.68, 31.50, 31.2),
+                vector4(222.30, -914.98, 31.50, 238.2),
+                vector4(221.12, -915.72, 31.50, 249.4),
             },
+            caller = vector4(226.02, -941.74, 31.50, 2.8),
         },
         personne_errante = {
             caller   = vector4(197.94, -919.44, 30.68, 229.6),
@@ -2615,7 +3002,7 @@ C.SceneAnchors = {
         },
         decouverte_corps = {
             caller   = vector4(312.56, -2054.02, 20.92, 147.4),
-            deceased = vector4(308.42, -2051.72, 20.50, 147.4),
+            deceased = vector4(306.84, -2053.24, 19.94, 238.2),
         },
         racolage = {
             caller = vector4(315.54, -2039.14, 20.76, 45.4),
@@ -2737,7 +3124,7 @@ C.SceneAnchors = {
     },
     ['street:18'] = {     -- Mission Row
         bagarre_rue = {
-            caller = vector4(387.86, -993.54, 29.42, 340.2),
+            caller = vector4(408.66, -975.20, 29.42, 116.2),
             suspect = {
                 vector4(389.32, -983.68, 29.42, 8.6),
                 vector4(390.78, -983.48, 29.42, 275.0),
@@ -2784,8 +3171,8 @@ C.SceneAnchors = {
     },
     ['nightlife:2'] = {     -- Vanilla Unicorn
         ipm = {
-            caller  = vector4(135.46, -1312.04, 29.16, 286.2),
-            suspect = vector4(140.54, -1314.30, 29.14, 221.2),
+            suspect = vector4(155.94, -1304.80, 29.20, 331.6),
+            caller  = vector4(145.74, -1298.84, 29.12, 161.6),
         },
         rixe_soiree = {
             caller = vector4(139.02, -1301.02, 29.20, 235.2),
@@ -3502,6 +3889,985 @@ C.SceneAnchors = {
             },
         },
     },
+
+    --  CONSTATATION DE VOL PAR EFFRACTION — porte/fenêtre forcée à examiner
+    -- Rancho
+    ['doorstep:100'] = {
+        constatation_effraction = {
+            window = vector4(464.66, -1588.36, 32.78, 133.2),
+            door = vector4(467.00, -1590.32, 32.82, 141.8),
+        },
+    },
+    -- Davis
+    ['doorstep:101'] = {
+        constatation_effraction = {
+            window = vector4(77.24, -1949.60, 21.16, 138.8),
+            door = vector4(76.24, -1948.24, 21.16, 51.0),
+        },
+    },
+    -- Davis
+    ['doorstep:102'] = {
+        constatation_effraction = {
+            window = vector4(-53.82, -1782.18, 27.86, 328.8),
+            door = vector4(-50.50, -1783.18, 28.28, 314.6),
+        },
+    },
+    -- Davis
+    ['doorstep:103'] = {
+        constatation_effraction = {
+            window = vector4(-40.86, -1793.36, 27.70, 314.6),
+            door = vector4(-42.10, -1792.12, 27.82, 320.4),
+        },
+    },
+    -- Davis
+    ['doorstep:104'] = {
+        constatation_effraction = {
+            window = vector4(-33.36, -1848.40, 26.18, 133.2),
+            door = vector4(-34.34, -1847.28, 26.18, 45.4),
+        },
+    },
+    -- Davis
+    ['doorstep:105'] = {
+        constatation_effraction = {
+            window = vector4(-23.04, -1857.76, 25.02, 141.8),
+            door = vector4(-20.54, -1859.02, 25.40, 238.2),
+        },
+    },
+    -- Davis
+    ['doorstep:106'] = {
+        constatation_effraction = {
+            window = vector4(-6.10, -1871.72, 24.14, 136.0),
+            door = vector4(-4.78, -1872.12, 24.14, 238.2),
+        },
+    },
+    -- Davis
+    ['doorstep:107'] = {
+        constatation_effraction = {
+            window = vector4(2.80, -1883.12, 23.32, 136.0),
+            door = vector4(5.30, -1884.26, 23.68, 226.8),
+        },
+    },
+    -- Davis
+    ['doorstep:108'] = {
+        constatation_effraction = {
+            window = vector4(25.28, -1898.48, 22.96, 150.2),
+            door = vector4(23.12, -1896.72, 22.96, 127.6),
+        },
+    },
+    -- Davis
+    ['doorstep:109'] = {
+        constatation_effraction = {
+            window = vector4(47.44, -1867.96, 22.84, 320.4),
+            door = vector4(45.78, -1864.04, 23.26, 323.2),
+        },
+    },
+    -- Strawberry
+    ['doorstep:110'] = {
+        constatation_effraction = {
+            window = vector4(-62.34, -1448.26, 32.12, 8.6),
+            door = vector4(-64.42, -1449.74, 32.52, 96.4),
+        },
+    },
+    -- Strawberry
+    ['doorstep:111'] = {
+        constatation_effraction = {
+            window = vector4(-10.04, -1443.34, 30.66, 357.2),
+            door = vector4(-14.00, -1442.14, 31.10, 0.0),
+        },
+    },
+    -- Strawberry
+    ['doorstep:112'] = {
+        constatation_effraction = {
+            window = vector4(19.50, -1450.48, 30.52, 337.4),
+            door = vector4(16.64, -1443.86, 30.94, 343.0),
+        },
+    },
+    -- Chamberlain Hills
+    ['doorstep:113'] = {
+        constatation_effraction = {
+            door = vector4(-161.16, -1638.74, 34.02, 141.8),
+        },
+    },
+    -- Chamberlain Hills
+    ['doorstep:114'] = {
+        constatation_effraction = {
+            door = vector4(-161.74, -1638.26, 37.24, 141.8),
+        },
+    },
+    -- Chamberlain Hills
+    ['doorstep:115'] = {
+        constatation_effraction = {
+            door = vector4(-212.90, -1618.08, 34.86, 187.0),
+        },
+    },
+    -- Chamberlain Hills
+    ['doorstep:116'] = {
+        constatation_effraction = {
+            door = vector4(-223.06, -1585.84, 34.86, 82.2),
+        },
+    },
+    -- Chamberlain Hills
+    ['doorstep:117'] = {
+        constatation_effraction = {
+            door = vector4(-215.72, -1576.36, 38.04, 323.2),
+        },
+    },
+    -- La Mesa
+    ['doorstep:118'] = {
+        constatation_effraction = {
+            window = vector4(805.90, -1071.44, 28.44, 277.8),
+            door = vector4(807.34, -1073.50, 28.90, 317.4),
+        },
+    },
+    -- La Mesa
+    ['doorstep:119'] = {
+        constatation_effraction = {
+            door = vector4(780.68, -1298.58, 26.26, 87.8),
+        },
+    },
+    -- La Mesa
+    ['doorstep:120'] = {
+        constatation_effraction = {
+            door = vector4(766.58, -1317.58, 27.28, 85.0),
+        },
+    },
+    -- La Mesa
+    ['doorstep:121'] = {
+        constatation_effraction = {
+            door = vector4(780.68, -1278.44, 27.02, 85.0),
+        },
+    },
+    -- La Mesa
+    ['doorstep:122'] = {
+        constatation_effraction = {
+            door = vector4(803.96, -988.64, 26.12, 357.2),
+        },
+    },
+    -- La Mesa
+    ['doorstep:123'] = {
+        constatation_effraction = {
+            door = vector4(847.84, -1020.02, 27.86, 272.2),
+        },
+    },
+    -- Murrieta Heights
+    ['doorstep:124'] = {
+        constatation_effraction = {
+            window = vector4(1145.20, -1003.06, 45.12, 96.4),
+            door = vector4(1143.42, -1000.10, 45.32, 96.4),
+        },
+    },
+    -- Murrieta Heights
+    ['doorstep:125'] = {
+        constatation_effraction = {
+            window = vector4(1143.24, -990.28, 45.72, 93.6),
+            door = vector4(1142.72, -986.90, 45.90, 99.2),
+        },
+    },
+    -- Murrieta Heights
+    ['doorstep:126'] = {
+        constatation_effraction = {
+            door = vector4(1211.08, -1389.04, 35.36, 2.8),
+        },
+    },
+    -- El Burro Heights
+    ['doorstep:127'] = {
+        constatation_effraction = {
+            door = vector4(1184.88, -1394.98, 35.34, 87.8),
+        },
+    },
+    -- El Burro Heights
+    ['doorstep:128'] = {
+        constatation_effraction = {
+            window = vector4(1256.62, -1763.10, 49.66, 212.6),
+            door = vector4(1258.94, -1762.08, 49.66, 204.0),
+        },
+    },
+    -- El Burro Heights
+    ['doorstep:129'] = {
+        constatation_effraction = {
+            window = vector4(1248.92, -1735.18, 51.62, 22.6),
+            door = vector4(1250.70, -1734.30, 52.02, 22.6),
+        },
+    },
+    -- El Burro Heights
+    ['doorstep:130'] = {
+        constatation_effraction = {
+            door = vector4(1275.14, -1720.62, 54.68, 25.6),
+        },
+    },
+    -- El Burro Heights
+    ['doorstep:131'] = {
+        constatation_effraction = {
+            window = vector4(1297.96, -1739.44, 53.86, 198.4),
+            door = vector4(1295.02, -1739.86, 54.26, 113.4),
+        },
+    },
+    -- El Burro Heights
+    ['doorstep:132'] = {
+        constatation_effraction = {
+            window = vector4(1286.46, -1711.66, 55.46, 22.6),
+            door = vector4(1289.12, -1710.56, 55.46, 19.8),
+        },
+    },
+    -- El Burro Heights
+    ['doorstep:133'] = {
+        constatation_effraction = {
+            window = vector4(1354.62, -1692.56, 60.48, 82.2),
+            door = vector4(1354.84, -1691.04, 60.48, 82.2),
+        },
+    },
+    -- El Burro Heights
+    ['doorstep:134'] = {
+        constatation_effraction = {
+            window = {
+                vector4(1191.88, -1657.68, 43.02, 212.6),
+                vector4(1196.58, -1654.50, 43.02, 215.4),
+            },
+            door = vector4(1193.54, -1656.56, 43.02, 215.4),
+        },
+    },
+    -- El Burro Heights
+    ['doorstep:135'] = {
+        constatation_effraction = {
+            window = vector4(1192.00, -1622.62, 45.22, 34.0),
+            door = vector4(1193.36, -1622.22, 45.22, 303.4),
+        },
+    },
+    -- El Burro Heights
+    ['doorstep:136'] = {
+        constatation_effraction = {
+            window = {
+                vector4(1243.34, -1628.14, 53.28, 218.2),
+                vector4(1247.36, -1625.66, 53.28, 207.0),
+            },
+            door = vector4(1245.32, -1626.92, 53.28, 212.6),
+        },
+    },
+    -- Mirror Park
+    ['doorstep:49'] = {
+        constatation_effraction = {
+            window = vector4(1298.66, -572.88, 71.86, 187.0),
+            door = vector4(1300.94, -574.20, 71.72, 161.6),
+        },
+    },
+    -- Mirror Park
+    ['doorstep:50'] = {
+        constatation_effraction = {
+            door = vector4(1303.42, -527.52, 71.46, 340.2),
+        },
+    },
+    -- Mirror Park
+    ['doorstep:51'] = {
+        constatation_effraction = {
+            window = vector4(1370.14, -554.18, 74.68, 345.8),
+            door = vector4(1373.28, -555.76, 74.68, 241.0),
+        },
+    },
+    -- Mirror Park
+    ['doorstep:52'] = {
+        constatation_effraction = {
+            window = vector4(1387.60, -590.62, 74.48, 238.2),
+            door = vector4(1386.28, -593.56, 74.48, 238.2),
+        },
+    },
+    -- Mirror Park
+    ['doorstep:53'] = {
+        constatation_effraction = {
+            window = vector4(1229.14, -727.38, 60.64, 266.4),
+            door = vector4(1229.56, -725.20, 60.94, 280.6),
+        },
+    },
+    -- Mirror Park
+    ['doorstep:54'] = {
+        constatation_effraction = {
+            window = vector4(1220.02, -696.66, 60.80, 34.0),
+            door = vector4(1223.04, -697.16, 60.78, 283.4),
+        },
+    },
+    -- Mirror Park
+    ['doorstep:55'] = {
+        constatation_effraction = {
+            window = vector4(1207.36, -622.90, 66.14, 275.0),
+            door = vector4(1207.38, -620.26, 66.44, 269.2),
+        },
+    },
+    -- Mirror Park
+    ['doorstep:56'] = {
+        constatation_effraction = {
+            door = vector4(1264.70, -702.88, 64.90, 59.6),
+        },
+    },
+    -- Vinewood East
+    ['doorstep:83'] = {
+        constatation_effraction = {
+            door = vector4(773.90, -149.82, 75.62, 334.4),
+        },
+    },
+    -- Vinewood East
+    ['doorstep:84'] = {
+        constatation_effraction = {
+            window = vector4(797.08, -161.36, 74.90, 53.8),
+            door = vector4(798.44, -158.72, 74.90, 59.6),
+        },
+    },
+    -- Vinewood East
+    ['doorstep:85'] = {
+        constatation_effraction = {
+            window = vector4(806.70, -162.66, 75.86, 331.6),
+            door = vector4(808.78, -163.62, 75.86, 326.0),
+        },
+    },
+    -- Vinewood East
+    ['doorstep:86'] = {
+        constatation_effraction = {
+            door = vector4(820.70, -156.26, 80.74, 56.6),
+        },
+    },
+    -- Vinewood East
+    ['doorstep:87'] = {
+        constatation_effraction = {
+            door = vector4(840.68, -182.40, 74.58, 238.2),
+        },
+    },
+    -- Vinewood East
+    ['doorstep:88'] = {
+        constatation_effraction = {
+            window = vector4(876.88, -203.32, 71.96, 331.6),
+            door = vector4(880.12, -205.00, 71.96, 331.6),
+        },
+    },
+    -- Vinewood East
+    ['doorstep:89'] = {
+        constatation_effraction = {
+            window = vector4(916.00, -235.22, 70.44, 323.2),
+            door = vector4(920.88, -238.20, 70.38, 326.0),
+        },
+    },
+    -- Vinewood East
+    ['doorstep:90'] = {
+        constatation_effraction = {
+            window = vector4(933.60, -246.56, 69.02, 326.0),
+            door = vector4(930.62, -245.20, 69.00, 51.0),
+        },
+    },
+    -- Vinewood East
+    ['doorstep:91'] = {
+        constatation_effraction = {
+            window = vector4(952.40, -250.78, 67.74, 326.0),
+            door = vector4(952.76, -252.56, 67.96, 235.2),
+        },
+    },
+    -- Rancho
+    ['doorstep:96'] = {
+        constatation_effraction = {
+            window = vector4(289.64, -1790.26, 27.70, 51.0),
+            door = vector4(288.80, -1792.68, 28.08, 136.0),
+        },
+    },
+    -- Rancho
+    ['doorstep:97'] = {
+        constatation_effraction = {
+            window = vector4(477.20, -1770.22, 28.66, 87.8),
+            door = vector4(472.14, -1775.26, 29.06, 85.0),
+        },
+    },
+    -- Rancho
+    ['doorstep:98'] = {
+        constatation_effraction = {
+            window = vector4(477.26, -1770.32, 28.66, 90.8),
+            door = vector4(472.14, -1775.42, 29.06, 85.0),
+        },
+    },
+    -- Rancho
+    ['doorstep:99'] = {
+        constatation_effraction = {
+            window = vector4(452.66, -1578.30, 32.78, 138.8),
+            door = vector4(454.82, -1580.10, 32.82, 138.8),
+        },
+    },
+
+    -- Vinewood West
+    ['doorstep:1'] = {
+        constatation_effraction = {
+            door = vector4(39.62, 361.30, 116.04, 34.0),
+        },
+    },
+    -- Vinewood Hills
+    ['doorstep:10'] = {
+        constatation_effraction = {
+            door = vector4(-230.22, 487.94, 128.76, 192.8),
+        },
+    },
+    -- Vinewood Hills
+    ['doorstep:11'] = {
+        constatation_effraction = {
+            door = vector4(-311.84, 474.92, 111.82, 303.4),
+        },
+    },
+    -- Vinewood Hills
+    ['doorstep:12'] = {
+        constatation_effraction = {
+            door = vector4(-66.78, 489.92, 144.86, 164.4),
+        },
+    },
+    -- Vinewood Hills
+    ['doorstep:13'] = {
+        constatation_effraction = {
+            door = vector4(-7.82, 467.82, 145.84, 156.0),
+            window = vector4(-10.70, 470.44, 145.74, 161.6),
+        },
+    },
+    -- Little Seoul
+    ['doorstep:137'] = {
+        constatation_effraction = {
+            door = vector4(-716.42, -864.92, 23.20, 99.2),
+        },
+    },
+    -- Little Seoul
+    ['doorstep:138'] = {
+        constatation_effraction = {
+            door = vector4(-719.10, -897.94, 20.42, 90.8),
+            window = {
+                vector4(-719.08, -894.30, 20.72, 96.4),
+                vector4(-719.08, -901.64, 20.20, 90.8),
+            },
+        },
+    },
+    -- Little Seoul
+    ['doorstep:139'] = {
+        constatation_effraction = {
+            door = vector4(-725.36, -904.58, 20.46, 2.8),
+        },
+    },
+    -- Vinewood Hills
+    ['doorstep:14'] = {
+        constatation_effraction = {
+            door = vector4(57.54, 449.68, 147.02, 144.6),
+        },
+    },
+    -- Little Seoul
+    ['doorstep:140'] = {
+        constatation_effraction = {
+            door = vector4(-688.98, -912.52, 23.78, 272.2),
+        },
+    },
+    -- Little Seoul
+    ['doorstep:141'] = {
+        constatation_effraction = {
+            door = vector4(-655.52, -931.90, 22.70, 87.8),
+        },
+    },
+    -- Little Seoul
+    ['doorstep:142'] = {
+        constatation_effraction = {
+            door = vector4(-690.54, -893.04, 24.70, 90.8),
+        },
+    },
+    -- Little Seoul
+    ['doorstep:143'] = {
+        constatation_effraction = {
+            door = vector4(-683.40, -876.26, 24.50, 14.2),
+        },
+    },
+    -- Little Seoul
+    ['doorstep:144'] = {
+        constatation_effraction = {
+            door = vector4(-676.00, -884.90, 24.44, 275.0),
+        },
+    },
+    -- Little Seoul
+    ['doorstep:145'] = {
+        constatation_effraction = {
+            door = vector4(-706.12, -1036.44, 16.40, 107.8),
+        },
+    },
+    -- Little Seoul
+    ['doorstep:146'] = {
+        constatation_effraction = {
+            door = vector4(-712.00, -1028.86, 16.42, 107.8),
+        },
+    },
+    -- Little Seoul
+    ['doorstep:147'] = {
+        constatation_effraction = {
+            door = vector4(-702.76, -1023.48, 16.40, 309.0),
+            window = vector4(-701.32, -1026.14, 16.10, 309.0),
+        },
+    },
+    -- Little Seoul
+    ['doorstep:148'] = {
+        constatation_effraction = {
+            door = vector4(-698.94, -1032.60, 16.40, 303.4),
+        },
+    },
+    -- Vinewood Hills
+    ['doorstep:15'] = {
+        constatation_effraction = {
+            window = vector4(47.26, 468.30, 147.46, 357.2),
+            door = vector4(42.98, 468.80, 148.08, 0.0),
+        },
+    },
+    -- Vinewood Hills
+    ['doorstep:16'] = {
+        constatation_effraction = {
+            door = vector4(169.08, 482.84, 142.36, 104.8),
+        },
+    },
+    -- Vinewood Hills
+    ['doorstep:17'] = {
+        constatation_effraction = {
+            door = vector4(224.16, 513.56, 140.90, 226.8),
+        },
+    },
+    -- Vinewood Hills
+    ['doorstep:18'] = {
+        constatation_effraction = {
+            door = vector4(318.54, 560.90, 155.00, 204.0),
+        },
+    },
+    -- Centre de Vinewood
+    ['doorstep:19'] = {
+        constatation_effraction = {
+            door = vector4(374.00, 427.92, 145.68, 252.2),
+        },
+    },
+    -- Vinewood West
+    ['doorstep:2'] = {
+        constatation_effraction = {
+            door = {
+                vector4(-511.20, 100.16, 63.78, 190.0),
+                vector4(-507.36, 100.60, 63.78, 190.0),
+            },
+        },
+    },
+    -- Pacific Bluffs
+    ['doorstep:20'] = {
+        constatation_effraction = {
+            door = vector4(-1883.20, -579.08, 11.80, 141.8),
+        },
+    },
+    -- Pacific Bluffs
+    ['doorstep:21'] = {
+        constatation_effraction = {
+            door = vector4(-1918.44, -542.74, 11.82, 141.8),
+        },
+    },
+    -- Pacific Bluffs
+    ['doorstep:22'] = {
+        constatation_effraction = {
+            door = vector4(-1967.88, -531.74, 12.16, 317.4),
+            window = vector4(-1969.56, -530.24, 12.16, 323.2),
+        },
+    },
+    -- Pacific Bluffs
+    ['doorstep:23'] = {
+        constatation_effraction = {
+            window = vector4(-1950.84, -543.84, 14.72, 320.4),
+        },
+    },
+    -- Pacific Bluffs
+    ['doorstep:24'] = {
+        constatation_effraction = {
+            window = {
+                vector4(-1937.52, -558.50, 11.94, 326.0),
+                vector4(-1940.14, -556.24, 11.94, 323.2),
+            },
+        },
+    },
+    -- Pacific Bluffs
+    ['doorstep:25'] = {
+        constatation_effraction = {
+            door = vector4(-1920.02, -569.68, 11.90, 326.0),
+        },
+    },
+    -- Pacific Bluffs
+    ['doorstep:26'] = {
+        constatation_effraction = {
+            door = vector4(-1901.40, -586.12, 11.86, 323.2),
+        },
+    },
+    -- Pacific Bluffs
+    ['doorstep:27'] = {
+        constatation_effraction = {
+            door = vector4(-1884.86, -599.98, 11.90, 331.6),
+        },
+    },
+    -- Pacific Bluffs
+    ['doorstep:28'] = {
+        constatation_effraction = {
+            door = vector4(-1597.12, -352.08, 45.96, 48.2),
+        },
+    },
+    -- Pacific Bluffs
+    ['doorstep:29'] = {
+        constatation_effraction = {
+            door = vector4(-1622.82, -379.80, 43.70, 51.0),
+        },
+    },
+    -- Vinewood West
+    ['doorstep:3'] = {
+        constatation_effraction = {
+            door = vector4(-161.46, -4.24, 62.46, 65.2),
+        },
+    },
+    -- Morningwood
+    ['doorstep:30'] = {
+        constatation_effraction = {
+            door = vector4(-1331.40, -260.14, 42.32, 306.2),
+        },
+    },
+    -- Morningwood
+    ['doorstep:31'] = {
+        constatation_effraction = {
+            door = vector4(-1302.84, -271.64, 39.98, 124.8),
+        },
+    },
+    -- Morningwood
+    ['doorstep:32'] = {
+        constatation_effraction = {
+            door = vector4(-1500.24, -201.90, 50.88, 127.6),
+        },
+    },
+    -- Rockford Hills
+    ['doorstep:33'] = {
+        constatation_effraction = {
+            door = vector4(-1356.00, -211.22, 43.66, 36.8),
+        },
+    },
+    -- Rockford Hills
+    ['doorstep:34'] = {
+        constatation_effraction = {
+            door = vector4(-1291.60, -280.40, 38.66, 209.8),
+        },
+    },
+    -- Hawick
+    ['doorstep:35'] = {
+        constatation_effraction = {
+            door = vector4(-40.96, -58.82, 63.80, 252.2),
+        },
+    },
+    -- Hawick
+    ['doorstep:36'] = {
+        constatation_effraction = {
+            door = vector4(-17.94, -68.78, 61.76, 255.2),
+            window = vector4(-18.82, -71.26, 61.36, 258.0),
+        },
+    },
+    -- Hawick
+    ['doorstep:37'] = {
+        constatation_effraction = {
+            door = vector4(-15.80, -61.26, 61.76, 263.6),
+        },
+    },
+    -- Hawick
+    ['doorstep:38'] = {
+        constatation_effraction = {
+            door = vector4(-27.98, -60.78, 63.70, 62.4),
+            window = vector4(-28.52, -62.90, 63.56, 73.8),
+        },
+    },
+    -- Hawick
+    ['doorstep:39'] = {
+        constatation_effraction = {
+            door = vector4(-27.90, -60.64, 67.58, 73.8),
+            window = vector4(-28.54, -63.08, 67.58, 73.8),
+        },
+    },
+    -- Hawick
+    ['doorstep:40'] = {
+        constatation_effraction = {
+            door = vector4(-25.52, -53.04, 67.58, 79.4),
+            window = vector4(-24.84, -50.70, 67.58, 73.8),
+        },
+    },
+    -- Burton
+    ['doorstep:41'] = {
+        constatation_effraction = {
+            door = vector4(-102.38, -31.92, 66.44, 70.8),
+        },
+    },
+    -- Burton
+    ['doorstep:43'] = {
+        constatation_effraction = {
+            door = vector4(-116.38, -37.96, 62.18, 255.2),
+        },
+    },
+    -- Alta
+    ['doorstep:44'] = {
+        constatation_effraction = {
+            door = vector4(8.72, -243.20, 47.64, 340.2),
+        },
+    },
+    -- Alta
+    ['doorstep:45'] = {
+        constatation_effraction = {
+            door = vector4(2.46, -240.98, 51.86, 345.8),
+            window = vector4(-1.12, -239.58, 51.86, 340.2),
+        },
+    },
+    -- Alta
+    ['doorstep:47'] = {
+        constatation_effraction = {
+            door = vector4(2.38, -240.88, 55.86, 340.2),
+            window = vector4(-1.06, -239.62, 55.86, 345.8),
+        },
+    },
+    -- Vinewood West
+    ['doorstep:5'] = {
+        constatation_effraction = {
+            door = vector4(-102.26, 2.18, 70.42, 249.4),
+        },
+    },
+    -- Canaux de Vespucci
+    ['doorstep:57'] = {
+        constatation_effraction = {
+            door = vector4(-1103.28, -1014.60, 2.54, 209.8),
+            window = vector4(-1100.84, -1012.48, 2.14, 209.8),
+        },
+    },
+    -- Canaux de Vespucci
+    ['doorstep:58'] = {
+        constatation_effraction = {
+            door = vector4(-1076.18, -1027.04, 4.54, 141.8),
+        },
+    },
+    -- Canaux de Vespucci
+    ['doorstep:59'] = {
+        constatation_effraction = {
+            door = vector4(-1104.10, -1060.02, 2.72, 209.8),
+        },
+    },
+    -- Canaux de Vespucci
+    ['doorstep:60'] = {
+        constatation_effraction = {
+            door = vector4(-1055.20, -998.18, 6.40, 306.2),
+        },
+    },
+    -- Canaux de Vespucci
+    ['doorstep:61'] = {
+        constatation_effraction = {
+            door = vector4(-991.56, -1103.40, 2.14, 25.6),
+            window = vector4(-989.68, -1102.34, 2.14, 28.4),
+        },
+    },
+    -- Canaux de Vespucci
+    ['doorstep:62'] = {
+        constatation_effraction = {
+            door = vector4(-892.94, -996.06, 2.24, 119.0),
+        },
+    },
+    -- Canaux de Vespucci
+    ['doorstep:63'] = {
+        constatation_effraction = {
+            door = vector4(-935.08, -939.24, 2.14, 113.4),
+            window = vector4(-936.32, -937.20, 2.14, 116.2),
+        },
+    },
+    -- Canaux de Vespucci
+    ['doorstep:64'] = {
+        constatation_effraction = {
+            door = vector4(-1027.66, -919.56, 5.04, 31.2),
+        },
+    },
+    -- Canaux de Vespucci
+    ['doorstep:65'] = {
+        constatation_effraction = {
+            door = vector4(-1061.88, -942.80, 2.20, 28.4),
+        },
+    },
+    -- Canaux de Vespucci
+    ['doorstep:66'] = {
+        constatation_effraction = {
+            door = vector4(-1090.48, -926.66, 3.10, 212.6),
+            window = vector4(-1092.94, -928.08, 3.10, 221.2),
+        },
+    },
+    -- La Puerta
+    ['doorstep:67'] = {
+        constatation_effraction = {
+            window = vector4(-1069.88, -1654.44, 4.38, 269.2),
+        },
+    },
+    -- La Puerta
+    ['doorstep:68'] = {
+        constatation_effraction = {
+            door = vector4(-1084.58, -1559.36, 4.78, 215.4),
+        },
+    },
+    -- La Puerta
+    ['doorstep:69'] = {
+        constatation_effraction = {
+            door = vector4(-1077.00, -1554.06, 4.62, 218.2),
+            window = vector4(-1075.02, -1552.68, 4.68, 218.2),
+        },
+    },
+    -- Richman
+    ['doorstep:7'] = {
+        constatation_effraction = {
+            door = vector4(-1467.60, 34.78, 54.54, 164.4),
+        },
+    },
+    -- La Puerta
+    ['doorstep:70'] = {
+        constatation_effraction = {
+            door = vector4(-1065.94, -1545.82, 4.90, 212.6),
+            window = vector4(-1067.54, -1546.98, 4.90, 215.4),
+        },
+    },
+    -- La Puerta
+    ['doorstep:71'] = {
+        constatation_effraction = {
+            window = vector4(-1057.76, -1540.72, 5.04, 218.2),
+        },
+    },
+    -- La Puerta
+    ['doorstep:72'] = {
+        constatation_effraction = {
+            door = vector4(-1027.72, -1575.30, 5.26, 124.8),
+        },
+    },
+    -- Del Perro
+    ['doorstep:73'] = {
+        constatation_effraction = {
+            door = vector4(-1756.36, -692.66, 10.14, 138.8),
+        },
+    },
+    -- Del Perro
+    ['doorstep:74'] = {
+        constatation_effraction = {
+            door = vector4(-1770.98, -677.54, 10.38, 158.8),
+        },
+    },
+    -- Del Perro
+    ['doorstep:75'] = {
+        constatation_effraction = {
+            door = vector4(-1812.10, -640.80, 10.94, 138.8),
+        },
+    },
+    -- Del Perro
+    ['doorstep:76'] = {
+        constatation_effraction = {
+            door = vector4(-1869.70, -590.54, 11.86, 138.8),
+        },
+    },
+    -- Del Perro
+    ['doorstep:77'] = {
+        constatation_effraction = {
+            door = {
+                vector4(-1848.80, -631.54, 11.36, 314.6),
+                vector4(-1845.92, -633.96, 11.36, 323.2),
+            },
+        },
+    },
+    -- Del Perro
+    ['doorstep:78'] = {
+        constatation_effraction = {
+            window = vector4(-1828.24, -652.74, 11.28, 320.4),
+        },
+    },
+    -- Del Perro
+    ['doorstep:79'] = {
+        constatation_effraction = {
+            door = {
+                vector4(-1813.80, -663.96, 10.96, 317.4),
+                vector4(-1810.88, -666.30, 10.96, 317.4),
+            },
+        },
+    },
+    -- Richman
+    ['doorstep:8'] = {
+        constatation_effraction = {
+            door = vector4(-1570.78, 22.40, 59.54, 167.2),
+        },
+    },
+    -- Del Perro
+    ['doorstep:80'] = {
+        constatation_effraction = {
+            door = vector4(-1791.24, -683.02, 10.62, 326.0),
+            window = vector4(-1789.26, -684.96, 10.62, 323.2),
+        },
+    },
+    -- Del Perro
+    ['doorstep:81'] = {
+        constatation_effraction = {
+            door = vector4(-1777.02, -701.56, 10.50, 320.4),
+        },
+    },
+    -- Del Perro
+    ['doorstep:82'] = {
+        constatation_effraction = {
+            door = vector4(-1752.96, -724.28, 10.40, 323.2),
+            window = {
+                vector4(-1751.52, -725.52, 10.40, 320.4),
+                vector4(-1754.96, -722.62, 10.40, 323.2),
+            },
+        },
+    },
+    -- Vinewood Hills
+    ['doorstep:9'] = {
+        constatation_effraction = {
+            door = vector4(-174.60, 502.50, 137.40, 280.6),
+        },
+    },
+    -- Vespucci Beach
+    ['doorstep:92'] = {
+        constatation_effraction = {
+            door = vector4(-1104.64, -1637.52, 4.62, 124.8),
+        },
+    },
+    -- Vespucci Beach
+    ['doorstep:93'] = {
+        constatation_effraction = {
+            door = vector4(-1120.60, -1624.58, 4.40, 121.8),
+        },
+    },
+    -- Vespucci Beach
+    ['doorstep:94'] = {
+        constatation_effraction = {
+            door = vector4(-1349.70, -1161.58, 4.50, 275.0),
+        },
+    },
+    -- Vespucci Beach
+    ['doorstep:95'] = {
+        constatation_effraction = {
+            door = vector4(-1335.66, -1146.94, 6.72, 184.2),
+        },
+    },
+
+    -- Vinewood West
+    ['doorstep:4'] = {
+        constatation_effraction = {
+            door = vector4(-161.44, -4.24, 66.46, 68.0),
+        },
+    },
+    -- Burton
+    ['doorstep:42'] = {
+        constatation_effraction = {
+            window = vector4(-102.50, -34.48, 70.42, 158.8),
+            door = vector4(-102.30, -31.68, 70.44, 68.0),
+        },
+    },
+    -- Alta
+    ['doorstep:46'] = {
+        constatation_effraction = {
+            window = vector4(5.24, -241.86, 51.86, 343.0),
+            door = vector4(8.62, -243.18, 51.86, 337.4),
+        },
+    },
+    -- Alta
+    ['doorstep:48'] = {
+        constatation_effraction = {
+            window = vector4(5.32, -242.02, 55.86, 337.4),
+            door = vector4(8.72, -243.20, 55.86, 343.0),
+        },
+    },
+    -- Vinewood West
+    ['doorstep:6'] = {
+        constatation_effraction = {
+            window = vector4(-102.98, 0.10, 74.42, 252.2),
+            door = vector4(-102.28, 2.08, 74.42, 252.2),
+        },
+    },
 }
 
 --  AMBIANCE DE SCÈNE — COMPORTEMENTS PENDANT L'APPROCHE
@@ -3840,8 +5206,11 @@ C.Ambience = {
             { scenario = 'WORLD_HUMAN_STAND_MOBILE',    weight = 2 },
             { scenario = 'WORLD_HUMAN_HANG_OUT_STREET', weight = 2 },
             { scenario = 'WORLD_HUMAN_LEANING',         weight = 1, needsWall = true },
-            -- Certains font le guet plutôt que d'attendre simplement.
-            { scenario = 'CODE_HUMAN_CROSS_ROAD_WAIT',  weight = 1 },
+            -- CODE_HUMAN_CROSS_ROAD_WAIT retiré : c'est un scénario interne
+            -- lié à la traversée piétonne (nav-mesh), pas une posture
+            -- d'attente générique — risque de léger déplacement du PNJ
+            -- vers le point de traversée le plus proche, contredisant le
+            -- placement validé par FindValidPedSpawnPosition.
         },
     },
 
@@ -3941,6 +5310,14 @@ C.Ambience = {
                 { scenario = 'WORLD_HUMAN_STAND_MOBILE',    weight = 3 },
                 { scenario = 'WORLD_HUMAN_STAND_IMPATIENT', weight = 3 },
             },
+            -- Fouille de la maison : pas la même posture pour tous, l'un
+            -- peut guetter pendant que les autres pillent.
+            suspect = {
+                { scenario = 'WORLD_HUMAN_WELDING',         weight = 2 },
+                { scenario = 'WORLD_HUMAN_CLIPBOARD',       weight = 2 },
+                { scenario = 'WORLD_HUMAN_STAND_IMPATIENT', weight = 1 },
+                { scenario = 'WORLD_HUMAN_GUARD_STAND',     weight = 1 },
+            },
         },
 
         braquage_superette = {
@@ -3969,6 +5346,12 @@ C.Ambience = {
         -- Tapage : ils font la fête autour de la voiture-sono. Mélange
         tapage = {
             suspect = {
+                -- Pas de scénario natif ici : WORLD_HUMAN_PARTYING est
+                -- rapporté « actif » par IsPedActiveInScenario même hors
+                -- boîte de nuit sans jamais s'animer visuellement (posture
+                -- statique) — il aurait fait échouer silencieusement tout
+                -- le mécanisme de repli en se déclarant « placé » à tort,
+                -- empêchant d'essayer les danses par dictionnaire ci-dessous.
                 { dict = 'anim@amb@nightclub@dancers@podium_dancers@', anim = 'hi_dance_facedj_17_v2_male^5', weight = 1 },
                 { dict = 'anim@amb@nightclub@mini@dance@dance_solo@male@var_b@', anim = 'high_center_down', weight = 1 },
                 { dict = 'anim@amb@nightclub@mini@dance@dance_solo@male@var_a@', anim = 'high_center', weight = 1 },
@@ -4055,7 +5438,7 @@ C.Locations = {
         { coords = vector4(1080.0,  -480.0,  64.0,  95.0),  label = 'Mirror Park', zone = 'downtown',
           exclude = { 'tuerie_masse' } },
         { coords = vector4(-1330.0, -370.0,  36.0,  250.0), label = 'Rockford Hills', zone = 'affluent',
-          exclude = { 'decouverte_corps', 'tuerie_masse' } },
+          exclude = { 'decouverte_corps', 'tuerie_masse', 'racolage', 'personne_armee' } },
         { coords = vector4(250.0,   -1150.0, 29.3,  90.0),  label = 'Textile City', zone = 'downtown',
           exclude = { 'tuerie_masse' } },
         { coords = vector4(300.0,   -1800.0, 28.0,  45.0),  label = 'Strawberry', zone = 'urban',
@@ -4063,7 +5446,7 @@ C.Locations = {
         { coords = vector4(430.0,   -800.0,  29.5,  180.0), label = 'Pillbox Hill', zone = 'downtown',
           exclude = { 'tuerie_masse' } },
         { coords = vector4(330.0,   -220.0,  54.0,  160.0), label = 'Alta Street', zone = 'affluent',
-          exclude = { 'delit_fuite', 'tuerie_masse' } },
+          exclude = { 'delit_fuite', 'tuerie_masse', 'racolage', 'personne_armee' } },
         { coords = vector4(-680.0,  -60.0,   41.0,  210.0), label = 'Eclipse Boulevard', zone = 'downtown' },
         { coords = vector4(-1180.0, -1200.0, 6.0,   300.0), label = 'Vespucci Boulevard', zone = 'urban',
           exclude = { 'tuerie_masse' } },
@@ -4124,11 +5507,18 @@ C.Locations = {
         { coords = vector4(-1886.39, -608.81, 11.82, 137.9), label = 'Pacific Bluffs', zone = 'affluent' },
         { coords = vector4(-1596.81, -353.58, 45.98, 229.1), label = 'Pacific Bluffs', zone = 'affluent' },
         { coords = vector4(-1621.53, -381.72, 43.72, 244.9), label = 'Pacific Bluffs', zone = 'affluent' },
-        { coords = vector4(-1333.60, -260.45, 42.38, 126.6), label = 'Morningwood', zone = 'affluent' },
-        { coords = vector4(-1303.08, -270.64, 40.07, 299.7), label = 'Morningwood', zone = 'affluent' },
-        { coords = vector4(-1499.15, -201.89, 50.76, 313.3), label = 'Morningwood', zone = 'affluent' },
-        { coords = vector4(-1356.72, -212.40, 43.69, 219.2), label = 'Rockford Hills', zone = 'affluent' },
-        { coords = vector4(-1290.95, -279.56, 38.68, 31.9), label = 'Rockford Hills', zone = 'affluent' },
+        -- Magasin (façade).
+        { coords = vector4(-1333.60, -260.45, 42.38, 126.6), label = 'Morningwood', zone = 'affluent',
+          place = 'magasin', callerPool = 'cashiers' },
+        -- Arrière-boutique.
+        { coords = vector4(-1303.08, -270.64, 40.07, 299.7), label = 'Morningwood', zone = 'affluent',
+          place = 'magasin_arriere', callerPool = 'cashiers' },
+        { coords = vector4(-1499.15, -201.89, 50.76, 313.3), label = 'Morningwood', zone = 'affluent',
+          place = 'magasin_arriere', callerPool = 'cashiers' },
+        { coords = vector4(-1356.72, -212.40, 43.69, 219.2), label = 'Rockford Hills', zone = 'affluent',
+          place = 'magasin_arriere', callerPool = 'cashiers' },
+        { coords = vector4(-1290.95, -279.56, 38.68, 31.9), label = 'Rockford Hills', zone = 'affluent',
+          place = 'magasin_arriere', callerPool = 'cashiers' },
 
         -- IMMEUBLES DU CENTRE (14)
         { coords = vector4(-41.43, -57.64, 63.51, 72.4), label = 'Hawick', zone = 'downtown' },
@@ -4192,7 +5582,9 @@ C.Locations = {
         { coords = vector4(949.59, -250.15, 67.63, 161.0), label = 'Vinewood East', zone = 'residential' },
 
         -- BORD DE PLAGE (4)
-        { coords = vector4(-1104.19, -1636.12, 4.62, 304.3), label = 'Vespucci Beach', zone = 'beach' },
+        -- Arrière-boutique.
+        { coords = vector4(-1104.19, -1636.12, 4.62, 304.3), label = 'Vespucci Beach', zone = 'beach',
+          place = 'magasin_arriere', callerPool = 'cashiers' },
         { coords = vector4(-1118.52, -1625.18, 4.41, 307.7), label = 'Vespucci Beach', zone = 'beach' },
         { coords = vector4(-1351.24, -1160.96, 4.50, 97.5), label = 'Vespucci Beach', zone = 'beach' },
         { coords = vector4(-1334.84, -1145.41, 6.73, 93.1), label = 'Vespucci Beach', zone = 'beach' },
@@ -4220,16 +5612,30 @@ C.Locations = {
         { coords = vector4(-213.90, -1617.70, 34.87, 8.4), label = 'Chamberlain Hills', zone = 'urban' },
         { coords = vector4(-222.59, -1586.86, 34.87, 274.3), label = 'Chamberlain Hills', zone = 'urban' },
         { coords = vector4(-216.78, -1576.48, 38.05, 185.8), label = 'Chamberlain Hills', zone = 'urban' },
-        { coords = vector4(805.92, -1073.81, 28.65, 136.0), label = 'La Mesa', zone = 'urban' },
-        { coords = vector4(781.41, -1299.96, 26.26, 264.5), label = 'La Mesa', zone = 'urban' },
-        { coords = vector4(767.76, -1317.44, 27.28, 216.7), label = 'La Mesa', zone = 'urban' },
-        { coords = vector4(782.38, -1277.62, 26.37, 262.2), label = 'La Mesa', zone = 'urban' },
-        { coords = vector4(802.60, -989.32, 26.09, 160.1), label = 'La Mesa', zone = 'urban' },
-        { coords = vector4(847.67, -1018.24, 27.83, 84.6), label = 'La Mesa', zone = 'urban' },
-        { coords = vector4(1145.75, -1000.69, 45.25, 279.7), label = 'Murrieta Heights', zone = 'urban' },
-        { coords = vector4(1143.36, -987.72, 45.85, 268.2), label = 'Murrieta Heights', zone = 'urban' },
-        { coords = vector4(1212.21, -1389.35, 35.38, 178.4), label = 'Murrieta Heights', zone = 'urban' },
-        { coords = vector4(1185.72, -1396.46, 35.14, 259.3), label = 'El Burro Heights', zone = 'urban' },
+        -- Magasin : requérant commerçant plutôt que propriétaire.
+        { coords = vector4(805.92, -1073.81, 28.65, 136.0), label = 'La Mesa', zone = 'urban',
+          place = 'magasin', callerPool = 'cashiers' },
+        -- Usine/entrepôt : requérant employé du site.
+        { coords = vector4(781.41, -1299.96, 26.26, 264.5), label = 'La Mesa', zone = 'urban',
+          place = 'industriel', callerPool = 'workers' },
+        { coords = vector4(767.76, -1317.44, 27.28, 216.7), label = 'La Mesa', zone = 'urban',
+          place = 'industriel', callerPool = 'workers' },
+        { coords = vector4(782.38, -1277.62, 26.37, 262.2), label = 'La Mesa', zone = 'urban',
+          place = 'industriel', callerPool = 'workers' },
+        { coords = vector4(802.60, -989.32, 26.09, 160.1), label = 'La Mesa', zone = 'urban',
+          place = 'industriel', callerPool = 'workers' },
+        -- Magasin.
+        { coords = vector4(847.67, -1018.24, 27.83, 84.6), label = 'La Mesa', zone = 'urban',
+          place = 'magasin', callerPool = 'cashiers' },
+        { coords = vector4(1145.75, -1000.69, 45.25, 279.7), label = 'Murrieta Heights', zone = 'urban',
+          place = 'magasin', callerPool = 'cashiers' },
+        { coords = vector4(1143.36, -987.72, 45.85, 268.2), label = 'Murrieta Heights', zone = 'urban',
+          place = 'magasin', callerPool = 'cashiers' },
+        { coords = vector4(1212.21, -1389.35, 35.38, 178.4), label = 'Murrieta Heights', zone = 'urban',
+          place = 'magasin', callerPool = 'cashiers' },
+        -- Usine/entrepôt.
+        { coords = vector4(1185.72, -1396.46, 35.14, 259.3), label = 'El Burro Heights', zone = 'urban',
+          place = 'industriel', callerPool = 'workers' },
         { coords = vector4(1258.92, -1758.86, 49.26, 38.2), label = 'El Burro Heights', zone = 'urban' },
         { coords = vector4(1249.22, -1736.83, 51.63, 257.1), label = 'El Burro Heights', zone = 'urban' },
         { coords = vector4(1276.39, -1723.63, 54.65, 196.3), label = 'El Burro Heights', zone = 'urban' },
@@ -4239,14 +5645,22 @@ C.Locations = {
         { coords = vector4(1194.06, -1655.22, 43.03, 75.4), label = 'El Burro Heights', zone = 'urban' },
         { coords = vector4(1194.16, -1624.51, 45.22, 166.7), label = 'El Burro Heights', zone = 'urban' },
         { coords = vector4(1245.41, -1625.21, 53.28, 27.3), label = 'El Burro Heights', zone = 'urban' },
-        { coords = vector4(-715.47, -865.56, 23.22, 272.0), label = 'Little Seoul', zone = 'urban' },
+        -- Arrière-boutique.
+        { coords = vector4(-715.47, -865.56, 23.22, 272.0), label = 'Little Seoul', zone = 'urban',
+          place = 'magasin_arriere', callerPool = 'cashiers' },
         { coords = vector4(-719.05, -899.23, 20.34, 342.1), label = 'Little Seoul', zone = 'urban' },
         { coords = vector4(-726.51, -904.86, 20.04, 159.0), label = 'Little Seoul', zone = 'urban' },
-        { coords = vector4(-689.27, -911.40, 23.67, 71.8), label = 'Little Seoul', zone = 'urban' },
+        -- Arrière-boutique.
+        { coords = vector4(-689.27, -911.40, 23.67, 71.8), label = 'Little Seoul', zone = 'urban',
+          place = 'magasin_arriere', callerPool = 'cashiers' },
         { coords = vector4(-654.45, -933.40, 22.54, 348.6), label = 'Little Seoul', zone = 'urban' },
-        { coords = vector4(-689.42, -893.71, 24.50, 273.2), label = 'Little Seoul', zone = 'urban' },
-        { coords = vector4(-684.46, -876.52, 24.50, 177.1), label = 'Little Seoul', zone = 'urban' },
-        { coords = vector4(-676.45, -884.11, 24.43, 87.1), label = 'Little Seoul', zone = 'urban' },
+        -- Arrière-boutique.
+        { coords = vector4(-689.42, -893.71, 24.50, 273.2), label = 'Little Seoul', zone = 'urban',
+          place = 'magasin_arriere', callerPool = 'cashiers' },
+        { coords = vector4(-684.46, -876.52, 24.50, 177.1), label = 'Little Seoul', zone = 'urban',
+          place = 'magasin_arriere', callerPool = 'cashiers' },
+        { coords = vector4(-676.45, -884.11, 24.43, 87.1), label = 'Little Seoul', zone = 'urban',
+          place = 'magasin_arriere', callerPool = 'cashiers' },
         { coords = vector4(-706.38, -1034.90, 16.11, 264.0), label = 'Little Seoul', zone = 'urban' },
         { coords = vector4(-712.02, -1027.11, 16.11, 266.1), label = 'Little Seoul', zone = 'urban' },
         { coords = vector4(-703.78, -1022.57, 16.11, 181.0), label = 'Little Seoul', zone = 'urban' },
@@ -4355,15 +5769,15 @@ C.Locations = {
     -- PARKINGS / STATIONNEMENT
     parking = {
         { coords = vector4(215.0,   -800.0,  30.8,  70.0),  label = 'Parking de Legion Square', zone = 'downtown',
-          exclude = { 'vol_vehicule', 'tapage' } },
+          exclude = { 'vol_vehicule', 'tapage', 'rodeo_urbain' } },
         { coords = vector4(234.0,   -790.0,  30.6,  160.0), label = 'Parking Pillbox Hill', zone = 'downtown' },
         { coords = vector4(-1180.0, -1500.0, 4.4,   215.0), label = 'Parking de Vespucci Beach', zone = 'beach' },
         { coords = vector4(1140.0,  -650.0,  57.0,  85.0),  label = 'Parking de Mirror Park', zone = 'downtown',
-          exclude = { 'vol_vehicule', 'tapage' } },
+          exclude = { 'vol_vehicule', 'tapage', 'rodeo_urbain' } },
         { coords = vector4(-1450.0, -800.0,  22.0,  135.0), label = 'Parking de Del Perro', zone = 'beach',
-          exclude = { 'tapage' } },
+          exclude = { 'tapage', 'rodeo_urbain' } },
         { coords = vector4(-700.0,  -900.0,  24.0,  90.0),  label = 'Rockford Plaza', zone = 'affluent',
-          exclude = { 'tapage' } },
+          exclude = { 'tapage', 'rodeo_urbain' } },
         { coords = vector4(900.0,   50.0,    79.0,  240.0), label = 'Parking du Casino', zone = 'affluent' },
         { coords = vector4(-1000.0, -2700.0, 13.9,  330.0), label = 'Parking LSIA', zone = 'industrial' },
         { coords = vector4(-340.0,  -1550.0, 26.0,  260.0), label = 'Parking de La Puerta', zone = 'industrial',

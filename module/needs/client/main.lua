@@ -8,6 +8,11 @@ local activeUniqueId = nil
 local scaleform = nil
 local foodProp = nil
 
+LSLegacy.Needs = LSLegacy.Needs or {}
+-- Exposée pour client/player/crouch.lua : X sert aussi à "Ranger" pendant la
+-- consommation (control natif 73, même touche par défaut que le crouch custom).
+function LSLegacy.Needs.IsEating() return activeFood ~= nil end
+
 local function AttachPropToHand(propName)
     local playerPed = PlayerPedId()
     local boneIndex = GetPedBoneIndex(playerPed, 18905) -- SKEL_L_Hand
@@ -97,7 +102,7 @@ LSLegacy.Events.Register('useNeed', function(name, data, uniqueId)
     activeUniqueId = uniqueId
     local itemCfg = Config.NeedsItems[name]
     local itemWeight = Config.Items[name] and Config.Items[name].weight or 0
-    scaleform = SetupFoodScaleform(data.durability or 100, itemWeight, itemCfg.anim == 'drinking')
+    scaleform = SetupFoodScaleform(data and data.durability or 100, itemWeight, itemCfg.anim == 'drinking')
     AttachPropToHand(Config.Items[name].props)
 end)
 

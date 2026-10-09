@@ -564,8 +564,8 @@
     <iframe id="apartmentFrame" src="../../multichar/html/apartment.html" allowtransparency="true"
         style="position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:9500;pointer-events:none;background:transparent;display:none;"></iframe>
 
-    <!-- Health Inspection SAMU en iframe (outil de terrain, pas un onglet MDT) -->
-    <iframe id="hiFrame" src="../../samu/html/ui.html" allowtransparency="true"
+    <!-- Health Inspection EMS en iframe (outil de terrain, pas un onglet MDT) -->
+    <iframe id="hiFrame" src="../../ems/html/ui.html" allowtransparency="true"
         style="position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:9000;pointer-events:none;background:transparent;display:none;"></iframe>
 
     <!-- Menu Admin en iframe (dashboard staff, indépendant de l'inventaire) -->
@@ -581,6 +581,22 @@
     <iframe id="paymentFrame" src="../../bank/html/payment.html" allowtransparency="true"
         style="position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:9200;pointer-events:none;background:transparent;display:none;"></iframe>
 
+    <!-- Garage : fenêtres flottantes + showroom (jamais de focus souris) -->
+    <iframe id="garageFrame" src="../../garage/html/garage.html" allowtransparency="true"
+        style="position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:8500;pointer-events:none;background:transparent;display:block;"></iframe>
+
+    <!-- Poste de tuning atelier (performance/esthétique) en iframe -->
+    <iframe id="tuningFrame" src="../../atelier/html/tuning.html" allowtransparency="true"
+        style="position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:9000;pointer-events:none;background:transparent;display:none;"></iframe>
+
+    <!-- Poste ATC (radar + strips) en iframe -->
+    <iframe id="atcFrame" src="../../atc/html/atc.html" allowtransparency="true"
+        style="position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:9000;pointer-events:none;background:transparent;display:none;"></iframe>
+
+    <!-- Radio portable en iframe -->
+    <iframe id="radioFrame" src="../../radio/html/radio.html" allowtransparency="true"
+        style="position:fixed;top:0;left:0;width:100%;height:100%;border:none;z-index:9000;pointer-events:none;background:transparent;display:none;"></iframe>
+
     <script>
         var inventoryFrame = document.getElementById('inventoryFrame');
         var mdtFrame = document.getElementById('mdtFrame');
@@ -590,6 +606,10 @@
         var adminFrame = document.getElementById('adminFrame');
         var bankFrame = document.getElementById('bankFrame');
         var paymentFrame = document.getElementById('paymentFrame');
+        var tuningFrame = document.getElementById('tuningFrame');
+        var garageFrame = document.getElementById('garageFrame');
+        var atcFrame = document.getElementById('atcFrame');
+        var radioFrame = document.getElementById('radioFrame');
 
         var ALL_ACTIONS = [
             'display', 'hide', 'setItems', 'setSecondInventoryItems',
@@ -644,7 +664,7 @@
                 return;
             }
 
-            // Messages Health Inspection SAMU → routés vers le hiFrame
+            // Messages Health Inspection EMS → routés vers le hiFrame
             if (data.action.indexOf('hi:') === 0) {
                 if (data.action === 'hi:open') {
                     hiFrame.style.display = 'block';
@@ -693,6 +713,51 @@
                     paymentFrame.style.pointerEvents = 'none';
                 }
                 paymentFrame.contentWindow.postMessage(data, '*');
+                return;
+            }
+
+            // Messages Garage → garageFrame (overlay permanent, sans focus)
+            if (data.action.indexOf('garage:') === 0) {
+                garageFrame.contentWindow.postMessage(data, '*');
+                return;
+            }
+
+            // Messages ATC (radar + strips) → routés vers l'atcFrame
+            if (data.action.indexOf('atc:') === 0) {
+                if (data.action === 'atc:open') {
+                    atcFrame.style.display = 'block';
+                    atcFrame.style.pointerEvents = 'auto';
+                } else if (data.action === 'atc:hide') {
+                    atcFrame.style.display = 'none';
+                    atcFrame.style.pointerEvents = 'none';
+                }
+                atcFrame.contentWindow.postMessage(data, '*');
+                return;
+            }
+
+            // Messages Radio portable → routés vers le radioFrame
+            if (data.action.indexOf('radio_portable:') === 0) {
+                if (data.action === 'radio_portable:open') {
+                    radioFrame.style.display = 'block';
+                    radioFrame.style.pointerEvents = 'auto';
+                } else if (data.action === 'radio_portable:hide') {
+                    radioFrame.style.display = 'none';
+                    radioFrame.style.pointerEvents = 'none';
+                }
+                radioFrame.contentWindow.postMessage(data, '*');
+                return;
+            }
+
+            // Messages Tuning atelier → routés vers le tuningFrame
+            if (data.action.indexOf('tuning:') === 0) {
+                if (data.action === 'tuning:open') {
+                    tuningFrame.style.display = 'block';
+                    tuningFrame.style.pointerEvents = 'auto';
+                } else if (data.action === 'tuning:hide') {
+                    tuningFrame.style.display = 'none';
+                    tuningFrame.style.pointerEvents = 'none';
+                }
+                tuningFrame.contentWindow.postMessage(data, '*');
                 return;
             }
 

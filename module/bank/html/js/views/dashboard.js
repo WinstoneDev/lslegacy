@@ -9,7 +9,7 @@ window.BankViews.dashboard = function (root) {
                 <div>
                     <div class="bank-hero-label">Compte courant</div>
                     <div class="bank-hero-amount" style="${negative ? 'color:var(--bank-red)' : ''}">${fmtMoney(courant.amountMoney)}</div>
-                    <div class="bank-hero-iban">IBAN ${esc(courant.iban)}</div>
+                    <div class="bank-hero-iban">IBAN ${ibanHtml(courant.iban)}</div>
                 </div>
                 <span class="bank-hero-badge">${esc(tierLabel(courant.card_tier))}</span>
             </div>
@@ -29,8 +29,12 @@ window.BankViews.dashboard = function (root) {
         { icon: '&#128179;', title: 'Comptes', desc: 'Vos comptes, création, statut courant', view: 'accounts' },
         { icon: '&#128200;', title: 'Livrets', desc: "Livret A, LDDS, Compte à terme", view: 'livrets' },
         { icon: '&#8646;', title: 'Virement', desc: 'Envoyer de l\'argent par IBAN', view: 'transfer' },
-        { icon: '&#128308;', title: 'Carte bancaire', desc: 'Créer ou changer de palier', view: 'card' },
+        { icon: '&#128308;', title: 'Carte bancaire', desc: 'Palier, blocage, remplacement', view: 'card' },
     ];
+    const ctx = BankState.context || {};
+    if (ctx.job && ctx.job !== 'unemployed' && (ctx.isBoss || ctx.hasSociety)) {
+        tiles.push({ icon: '&#127970;', title: 'Entreprise', desc: (ctx.jobLabel || ctx.job) + (ctx.isBoss ? ' — gestion' : ' — consultation'), view: 'society' });
+    }
     if (BankState.isAdmin) {
         tiles.push({ icon: '&#9881;', title: 'Administration', desc: 'Taux et plafonds (staff)', view: 'admin' });
     }

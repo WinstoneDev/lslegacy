@@ -26,8 +26,10 @@ Config.Farm.Activities = {
     bucheron = {
         label         = 'Bûcheron',
         tool          = 'weapon_hatchet',
+        metier        = 'bucheron',
         rawItem       = 'bois',
-        nodeCooldown  = 30000,
+        -- Pas de cooldown temporel : un joueur ne peut pas récolter deux fois de suite sur le même nœud (`noRepeatNode`).
+        noRepeatNode  = true,
         blipSprite    = 836, -- confirmé en jeu
         blipColor     = 2,
         -- Points fixes choisis en jeu via /farmpos. Envoie d'autres lignes
@@ -59,14 +61,15 @@ Config.Farm.Activities = {
         directSellItems = {
             { item = 'bois', price = 1, shopItem = 'bois', buyPrice = 2 },
         },
-        -- Calibré pour ~750$/h (référence salaire serveur). Ratio 1 bois → 2 planches, débit estimé ~400 planches/h → prix ≈ 1.9$. À ajuster après test réel en jeu.
+        -- Calibré pour ~750$/h (référence salaire serveur). Ratio 1 bois → 2 planches, débit estimé ~400 planches/h. Vente uniquement par lot de 2 planches = 5$ (2.5$/unité), pas de vente à l'unité.
         processedItems = {
-            { item = 'planche', weight = 1, price = 2, shopItem = 'planche', buyPrice = 3 },
+            { item = 'planche', weight = 1, lotSize = 2, lotPrice = 5, shopItem = 'planche', buyPrice = 3 },
         },
     },
     mineur = {
         label         = 'Mineur',
         tool          = 'pioche',
+        metier        = 'mineur',
         rawItem       = 'minerai', -- seul item consommé par la fonderie (traitement → tous les minerai_XXX)
         -- Tirage pondéré à chaque coup de pioche. Seuls `minerai`/`tas_pierre` viennent directement des rochers — les minerai_XXX viennent uniquement de la fonte à la fonderie (voir `processedItems`).
         gatherYields = {
@@ -75,12 +78,17 @@ Config.Farm.Activities = {
         },
         -- Items bruts revendables sans passer par la fonderie. `shopItem`/`buyPrice` alimentent aussi une boutique publique achetable par n'importe quel joueur (pattern repris de module/ltd/server/stock.lua).
         directSellItems = {
-            -- Prix ×7 (2026-07-20) : structure à 3 lieux éloignés (mine→fonderie→vente) bien plus coûteuse en temps que le bûcheron, compensée pour viser les mêmes ~750$/h.
-            { item = 'tas_pierre', price = 7, shopItem = 'pierre', buyPrice = 14 },
-            { item = 'sac_pierre', price = 420, shopItem = 'sac_pierre', buyPrice = 700 }, -- 20 × prix de la pierre (neutre, gain de poids uniquement)
+            { item = 'tas_pierre', price = 3, shopItem = 'pierre' },
         },
-        nodeCooldown  = 35000,
-        blipSprite    = 620,
+        -- Sac de pierre : achat uniquement, jamais vendu par le mineur. Consomme 20 unités du stock
+        -- `pierre` (alimenté par les ventes de tas_pierre ci-dessus) au lieu d'avoir son propre stock —
+        -- `publicShop = true` l'expose dans la boutique minéraux générique (voir shopStockResult, client).
+        craftRecipes = {
+            { publicShop = true, inputs = { { item = 'pierre', amount = 20 } }, output = { item = 'sac_pierre', amount = 1, buyPrice = 80 } },
+        },
+        -- Pas de cooldown temporel : un joueur ne peut pas miner deux fois de suite sur le même nœud (`noRepeatNode`).
+        noRepeatNode  = true,
+        blipSprite    = 566,
         blipColor     = 47,
         nodes = {
             { coords = vector3(2980.10, 2826.24, 46.13) },
@@ -154,10 +162,11 @@ Config.Farm.Activities = {
     },
     chasseur = {
         label   = 'Chasseur',
+        endPnj = 'le garde-chasse',
         tool    = nil, -- n'importe quelle arme équipée suffit pour tuer l'animal
+        metier  = 'chasseur',
         -- Carcasse différente par espèce. `rawItem` = item rendu au dépeçage manuel, `model` identifie l'espèce côté serveur.
         -- `peauItem`/`peauPrice` (braconnage, illégal) : prélevable via un bouton ox_target à part, couteau en main (voir `poaching` plus bas) — seuls coyote et cougar en ont.
-        -- Plusieurs modèles d'oiseaux partagent la même carcasse (`carcasse_oiseau`).
         species = {
             { model = 'a_c_deer',        rawItem = 'carcasse_cerf',     label = 'Cerf',
               spawnZones = {
@@ -194,17 +203,6 @@ Config.Farm.Activities = {
                   { coords = vector3(-1458.43, 4569.94, 42.21), radius = 50.0, count = 10 },
               },
             },
-            -- Oiseaux : pas de zone fixe, `ambient` fait apparaître l'espèce autour du joueur avec un filtre de biome (`requiresWater`/`ruralOnly`). Voir `Config.Farm.HuntSpawn.ambient*`.
-            { model = 'a_c_crow',        rawItem = 'carcasse_oiseau',   label = 'Oiseau',
-              ambient = { maxNearby = 3 } }, -- partout, comme en vanilla
-            { model = 'a_c_pigeon',      rawItem = 'carcasse_oiseau',   label = 'Oiseau',
-              ambient = { maxNearby = 3 } }, -- partout, comme en vanilla
-            { model = 'a_c_seagull',     rawItem = 'carcasse_oiseau',   label = 'Oiseau',
-              ambient = { maxNearby = 2, requiresWater = true } }, -- littoral uniquement
-            { model = 'a_c_chickenhawk', rawItem = 'carcasse_oiseau',   label = 'Oiseau',
-              ambient = { maxNearby = 2, ruralOnly = true } }, -- montagne/campagne, hors ville dense
-            { model = 'a_c_hen',         rawItem = 'carcasse_oiseau',   label = 'Oiseau',
-              ambient = { maxNearby = 2, ruralOnly = true } }, -- ferme, hors ville dense
         },
         instantGather = true, -- récupération instantanée, pas de minijeu ni d'animation
         -- `processing.coords` sert juste à placer le PNJ/blip ; le boucher transforme lui-même à la vente, pas de bouton "Traiter" séparé (voir `multiSellItems`).
@@ -212,52 +210,62 @@ Config.Farm.Activities = {
             coords = vector3(-42.59, -1474.73, 31.93), -- boucherie
         },
         processingNpc = {
-            model   = 'a_m_m_hillbilly_01', -- à ajuster si un autre modèle convient mieux
+            model   = 's_m_m_strvend_01', -- Michael Freeman
             heading = 0.0, -- orientation approximative, à ajuster en jeu
         },
-        -- Vente directe : chaque carcasse est découpée en quantités fixes selon l'espèce (garanti, pas aléatoire), alimente aussi la boutique publique (`shopItem`).
+        -- Vente directe : chaque carcasse est découpée en quantités fixes selon l'espèce (garanti, pas aléatoire).
+        -- `shopItem` reste nécessaire pour alimenter le stock caché du boucher (consommé par `craftRecipes`
+        -- ci-dessous), mais AUCUN `buyPrice` ici : viande/graisse_animale/tripes/abats/sang ne sont jamais
+        -- achetables directement, même par un event forgé (`farm:buyShopItem` exige un `ShopBuyPrices` non nil,
+        -- lui-même construit uniquement à partir des entrées qui portent un `buyPrice` — voir server/main.lua).
         multiSellItems = {
             {
                 rawItem = 'carcasse_cerf',
                 outputs = {
-                    { item = 'steak_gibier',    amount = 5, price = 6, shopItem = 'steak_gibier',    buyPrice = 10 },
-                    { item = 'graisse_animale', amount = 5, price = 2, shopItem = 'graisse_animale', buyPrice = 4 },
-                    { item = 'tripes',          amount = 1, price = 3, shopItem = 'tripes',          buyPrice = 5 },
+                    { item = 'viande',          amount = 5, price = 6, shopItem = 'viande' },
+                    { item = 'graisse_animale', amount = 5, price = 2, shopItem = 'graisse_animale' },
                 },
             },
             {
                 rawItem = 'carcasse_porc',
                 outputs = {
-                    { item = 'steak_gibier',    amount = 5, price = 6, shopItem = 'steak_gibier',    buyPrice = 10 },
-                    { item = 'graisse_animale', amount = 4, price = 2, shopItem = 'graisse_animale', buyPrice = 4 },
-                    { item = 'tripes',          amount = 1, price = 3, shopItem = 'tripes',          buyPrice = 5 },
-                    { item = 'sang',            amount = 1, price = 1, shopItem = 'sang',            buyPrice = 2 },
+                    { item = 'viande',          amount = 5, price = 6, shopItem = 'viande' },
+                    { item = 'graisse_animale', amount = 4, price = 2, shopItem = 'graisse_animale' },
                 },
             },
             {
                 rawItem = 'carcasse_lapin',
                 outputs = {
-                    { item = 'steak_gibier',    amount = 2, price = 6, shopItem = 'steak_gibier',    buyPrice = 10 },
-                    { item = 'graisse_animale', amount = 1, price = 2, shopItem = 'graisse_animale', buyPrice = 4 },
-                    { item = 'abats',           amount = 1, price = 3, shopItem = 'abats',           buyPrice = 5 },
+                    { item = 'viande',          amount = 2, price = 6, shopItem = 'viande' },
+                    { item = 'graisse_animale', amount = 1, price = 2, shopItem = 'graisse_animale' },
+                    { item = 'abats',           amount = 1, price = 3, shopItem = 'abats' },
                 },
             },
             {
                 rawItem = 'carcasse_sanglier',
                 outputs = {
-                    { item = 'steak_gibier',    amount = 8, price = 6, shopItem = 'steak_gibier',    buyPrice = 10 },
-                    { item = 'graisse_animale', amount = 8, price = 2, shopItem = 'graisse_animale', buyPrice = 4 },
-                    { item = 'tripes',          amount = 1, price = 3, shopItem = 'tripes',          buyPrice = 5 },
+                    { item = 'viande',          amount = 8, price = 6, shopItem = 'viande' },
+                    { item = 'graisse_animale', amount = 8, price = 2, shopItem = 'graisse_animale' },
                 },
             },
             -- Ni coyote ni cougar ici : sans `rawItem` leur carcasse n'est jamais revendable, seule leur peau se monnaie au receleur.
-            {
-                rawItem = 'carcasse_oiseau',
-                outputs = {
-                    { item = 'steak_gibier', amount = 2, price = 6, shopItem = 'steak_gibier', buyPrice = 10 },
-                },
-            },
         },
+        -- Ingrédients bruts des trois restaurants (kebabking/burgershot/aldentes), directement achetables à la boutique du boucher (pas d'action "transformer" séparée) :
+        -- l'achat consomme lui-même viande/graisse_animale/abats en stock (alimenté par `multiSellItems` ci-dessus), au prorata du lot demandé — voir `farm:buyShopItem`.
+        -- `output.amount` = taille du lot (les ingrédients de `inputs` sont pour UN lot) ; achat arrondi au lot supérieur. ×5 pour les produits "prêts à cuisiner", ×1 pour les morceaux nobles/déchets (viande de veau, croquettes).
+        craftRecipes = {
+            { inputs = { { item = 'viande', amount = 3 }, { item = 'graisse_animale', amount = 1 } }, output = { item = 'patty_raw', amount = 5, buyPrice = 15 } }, -- Steak haché cru (fusionné kebabking/burgershot)
+            { inputs = { { item = 'viande', amount = 3 }, { item = 'graisse_animale', amount = 2 } }, output = { item = 'guanciale',        amount = 5, buyPrice = 18 } }, -- Guanciale (aldentes)
+            { inputs = { { item = 'viande', amount = 4 }, { item = 'graisse_animale', amount = 1 } }, output = { item = 'kebab_meat_raw',    amount = 1, buyPrice = 35 } }, -- Viande de veau crue (kebabking)
+            { inputs = { { item = 'abats', amount = 2 }, { item = 'graisse_animale', amount = 1 } }, output = { item = 'croquette_animale', amount = 1, buyPrice = 18 } }, -- Croquettes animales
+            { inputs = { { item = 'viande', amount = 3 } },                                           output = { item = 'bacon_raw',         amount = 5, buyPrice = 15 } }, -- Bacon cru (burgershot)
+            { inputs = { { item = 'viande', amount = 3 }, { item = 'graisse_animale', amount = 1 } }, output = { item = 'ground_beef',       amount = 5, buyPrice = 15 } }, -- Viande hachée (aldentes)
+            { inputs = { { item = 'viande', amount = 4 } },                                           output = { item = 'ham',               amount = 5, buyPrice = 15 } }, -- Jambon (aldentes)
+            { inputs = { { item = 'viande', amount = 3 }, { item = 'graisse_animale', amount = 2 } }, output = { item = 'pepperoni',         amount = 5, buyPrice = 18 } }, -- Pepperoni (aldentes)
+            { inputs = { { item = 'viande', amount = 3 } },                                           output = { item = 'chicken_raw',        amount = 5, buyPrice = 15 } }, -- Filet de poulet cru (burgershot)
+            { inputs = { { item = 'viande', amount = 3 } },                                           output = { item = 'nugget_raw',         amount = 5, buyPrice = 16 } }, -- Nuggets crus (burgershot) ; coût du sel/épices intégré au buyPrice, non trackés en ShopStock
+        },
+
         -- Braconnage (illégal) : bouton à part, couteau en main, cadavre non retiré. Risque d'alerte police à chaque prélèvement. Peau vendable uniquement au receleur, jamais dans la boutique publique.
         poaching = {
             tool              = 'weapon_knife',
@@ -285,17 +293,130 @@ Config.Farm.ShopBuyPoint = vector3(2747.25, 3472.97, 55.67) -- séparé du point
 Config.Farm.ZoneSize     = vector3(1.2, 1.2, 2.0)
 Config.Farm.ZoneDistance = 2.0
 
--- Animaux ambiants du jeu trop rares pour certaines espèces (porc, oiseaux) : on peuple nous-mêmes des zones dédiées via `spawnZones` sur chaque entrée de `species`.
+-- Animaux ambiants du jeu trop rares pour certaines espèces (porc) : on peuple nous-mêmes des zones dédiées via `spawnZones` sur chaque entrée de `species`.
 -- count = nombre max entretenu dans la zone, compté sur TOUS les joueurs à proximité (pas de sur-spawn si plusieurs chasseurs se croisent).
 Config.Farm.HuntSpawn = {
     checkInterval = 15000, -- ms entre deux passes de peuplement des zones
     triggerRadius = 150.0, -- distance joueur → zone en dessous de laquelle elle est peuplée
+}
 
-    -- Oiseaux (`ambient` sur une espèce) : pas de zone fixe, peuplement autour du joueur avec filtre de biome (`requiresWater`/`ruralOnly`).
-    ambientNearbyRadius = 120.0, -- rayon dans lequel on compte les individus déjà présents (vs `ambient.maxNearby`)
-    ambientSpawnMin     = 40.0,  -- distance minimum au joueur pour l'apparition (jamais sous ses yeux)
-    ambientSpawnMax     = 90.0,  -- distance maximum au joueur pour l'apparition (reste dans le champ de vision/streaming)
+-- Mineur : pioche délivrée par un PNJ. La première est gratuite ; rendre la pioche restaure le droit gratuit,
+-- sinon chaque nouvelle pioche coûte `price`. Seule la pioche émise (numéro unique) permet de miner.
+Config.Farm.Pickaxe = {
+    item     = 'pioche',
+    price    = 100,
+    model    = 's_m_y_construct_01',
+    name     = 'John Marston',
+    coords   = vector3(2834.373535, 2790.540771, 57.789795),
+    heading  = 164.4094543457,
+}
+
+-- Garde-chasse : prêt d'un fusil de précision contre caution, munitions à l'unité par boîte.
+-- Un seul garde affiché à la fois, alterné sur l'heure en jeu (Judy le jour, Ryan la nuit,
+-- cf. LSLegacy.Weather.GetTime() côté serveur). Zone autorisée = spawnZones des espèces avec
+-- `rawItem` (coyote exclu). `blips` : sprite/couleur à confirmer en jeu.
+Config.Farm.GunLoan = {
+    weapon       = 'weapon_sniperrifle',
+    ammoItem     = 'ammo_338',
+    ammoBoxCount = 10,
+    ammoBoxPrice = 50,
+    deposit      = 500,
+    graceSec     = 300,
+    reminderSec  = 60,
+    dayStart     = 7,
+    dayEnd       = 19,
+    coords       = vector3(-1490.756104, 4980.685547, 63.350220),
+    heading      = 79.370079040527,
+    rangers = {
+        { model = 's_f_y_ranger_01', name = 'Sarah Connor' },
+        { model = 's_m_y_ranger_01', name = 'John Dunbar' },
+    },
+    blips = {
+        Cerf     = { sprite = 463, color = 25, scale = 0.7, label = 'Zone de chasse — Cerf' },
+        Porc     = { sprite = 463, color = 17, scale = 0.7, label = 'Zone de chasse — Porc' },
+        Sanglier = { sprite = 463, color = 47, scale = 0.7, label = 'Zone de chasse — Sanglier' },
+        Lapin    = { sprite = 463, color = 2,  scale = 0.7, label = 'Zone de chasse — Lapin' },
+    },
 }
 
 Config.Farm.NodeBlipScale       = 0.55
 Config.Farm.ProcessingBlipScale = 0.85
+
+-- Hache du bûcheron : même fonctionnement que la pioche (premier exemplaire gratuit, rendu = droit restauré).
+Config.Farm.Hatchet = {
+    item     = 'weapon_hatchet',
+    price    = 100,
+    model    = 's_m_m_cntrybar_01',
+    name     = 'Paul Bunyan',
+    coords   = vector3(-572.241760, 5326.153809, 70.208008),
+    heading  = 70.866142272949,
+}
+
+-- Marchands ouverts à tous, visibles par tous les joueurs.
+Config.Farm.Marchands = {
+    boucher = {
+        blipCoords = { Config.Farm.Activities.chasseur.processing.coords },
+        blip = { sprite = 52, color = 1, scale = 0.6, label = 'Boucher' },
+    },
+    poissonnier = {
+        pnj = { model = 's_m_m_linecook', name = 'Arnold Patterson', coords = vector3(1301.630737, 4320.158203, 38.227051), heading = 317.48031616211 },
+        blip = { sprite = 52, color = 3, scale = 0.6, label = 'Poissonnier' },
+    },
+}
+
+-- Agence d'intérim : le joueur choisit un métier, seuls les points de ce métier lui sont visibles et accessibles.
+Config.Farm.Agency = {
+    model   = 'a_f_y_business_02',
+    name    = 'Kelly Chambers',
+    coords  = vector3(416.571442, -1086.540649, 30.054932),
+    heading = 130.39370727539,
+    blip    = { sprite = 480, color = 5, scale = 0.7, label = 'Agence d\'intérim' },
+}
+
+-- `pnj` : PNJ de métier à faire apparaître (les autres PNJ de métier existent déjà ailleurs).
+-- `blipCoords` : PNJ de métier, visibles par tous les joueurs sans blip tant que le métier n'est pas choisi.
+-- Les points de récolte/traitement/vente et zones de chasse sont rattachés via `metier` dans Config.Farm.Activities.
+Config.Farm.Metiers = {
+    chasseur = {
+        label = 'Chasseur',
+        blipCoords = { Config.Farm.GunLoan.coords },
+        blip = { sprite = 480, color = 1, scale = 0.6, label = 'Chasseur — Garde-chasse / Boucher' },
+    },
+    mineur = {
+        label = 'Mineur',
+        endPnj = 'John Marston',
+        blipCoords = { Config.Farm.Pickaxe.coords },
+        blip = { sprite = 480, color = 47, scale = 0.6, label = 'Mineur — Pioche' },
+    },
+    bucheron = {
+        label = 'Bûcheron',
+        endPnj = 'Paul Bunyan',
+        blipCoords = { Config.Farm.Hatchet.coords },
+        blip = { sprite = 480, color = 2, scale = 0.6, label = 'Bûcheron — Paul Bunyan' },
+    },
+    ['chauffeur_citerne'] = {
+        label = 'Chauffeur-Citerne',
+        endPnj = 'Frank Martin',
+        blipCoords = { Config.Interim.Ped.coords },
+        blip = { sprite = 318, color = 5, scale = 0.8, label = 'Intérim — Essence' },
+    },
+    pecheur = {
+        label = 'Pêcheur',
+        endPnj = 'Hank Hill',
+        pnj = { model = 'a_m_m_hillbilly_01', name = 'Hank Hill', coords = vector3(3820.760498, 4454.399902, 3.297485), heading = 28.34645652771 },
+        blipCoords = { vector3(3820.760498, 4454.399902, 3.297485) },
+        blip = { sprite = 480, color = 3, scale = 0.6, label = 'Pêcheur — Hank Hill' },
+    },
+    ['transporteur_avicole'] = {
+        label = 'Transporteur Avicole',
+        endPnj = 'Earl Hickey',
+        blipCoords = { Config.Avicole.Ped.coords },
+        blip = { sprite = 480, color = 25, scale = 0.6, label = 'Transporteur Avicole — Earl Hickey' },
+    },
+    ['preparateur_avicole'] = {
+        label = 'Préparateur Avicole',
+        endPnj = 'Cluck Norris / Ginger Fields',
+        blipCoords = { Config.Avicole.Usine.coords },
+        blip = { sprite = 480, color = 2, scale = 0.6, label = 'Préparateur Avicole — Usine du Nord' },
+    },
+}

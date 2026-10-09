@@ -369,3 +369,7 @@ html, body {
 }
 .bank-toast.err { border-left-color: var(--bank-red); }
 @keyframes bank-toast-in { from { opacity: 0; transform: translateX(12px);} to { opacity: 1; transform: translateX(0);} }
+
+/* IBAN cliquable (copie presse-papiers) */
+.bank-iban { cursor: pointer; border-bottom: 1px dashed currentColor; transition: opacity .15s; }
+.bank-iban:hover { opacity: .75; }

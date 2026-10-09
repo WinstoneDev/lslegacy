@@ -38,7 +38,7 @@ LSLegacy.RateLimit = {
     ['lslegacy:setJob']                     = 10,
     ['lslegacy:setFaction']                 = 10,
     -- Inventaire (complement)
-    ['updateWeaponAmmo']           = 25,
+    ['updateWeaponAmmo']           = 500,
 }
 
 Citizen.CreateThread(function()
@@ -504,6 +504,49 @@ end)
 -- Retourne l'objet LSLegacy complet (pour ressources externes : police, mdt, …)
 exports('getSharedObject', function()
     return LSLegacy
+end)
+
+-- Les exports FiveM sérialisent (deep-copy) les tables entre resources :
+-- getPlayerFromId ne renvoie jamais LSLegacy.ServerPlayers[source] par
+-- référence à un appelant externe (ex: lb-phone). Toute mutation doit donc
+-- passer par un export qui écrit directement dans la table vive ici
+-- (des fonctions callback ne suffiraient pas non plus : si elles s'exécutent
+-- côté appelant, leurs mutations sur les arguments reçus ne reviennent pas
+-- non plus dans cette table).
+exports('setPhoneNumberOnItem', function(source, itemName, phoneNumber, formattedNumber)
+    local player = LSLegacy.ServerPlayers[source]
+    if not player then return false end
+
+    for k, item in pairs(player.inventory) do
+        if item.name == itemName and (item.data == nil or item.data.lbPhoneNumber == nil) then
+            player.inventory[k].data = {
+                lbPhoneNumber     = phoneNumber,
+                lbFormattedNumber = formattedNumber,
+            }
+            player:MarkDirty('inventory')
+            LSLegacy.Events.SendToClient('lslegacy:updatePlayer', source, player)
+            return true
+        end
+    end
+
+    return false
+end)
+
+exports('setPhoneItemName', function(source, itemName, phoneNumber, name, formattedNumber)
+    local player = LSLegacy.ServerPlayers[source]
+    if not player then return false end
+
+    for k, item in pairs(player.inventory) do
+        if item.name == itemName and item.data and tostring(item.data.lbPhoneNumber) == tostring(phoneNumber) then
+            player.inventory[k].data.lbPhoneName      = name
+            player.inventory[k].data.lbFormattedNumber = formattedNumber
+            player:MarkDirty('inventory')
+            LSLegacy.Events.SendToClient('lslegacy:updatePlayer', source, player)
+            return true
+        end
+    end
+
+    return false
 end)
 
 ---LSLegacy.Events — API réseau côté serveur, regroupe les fonctions déjà en place sur LSLegacy.*.

@@ -19,20 +19,19 @@ local function StopArms(ped)
     end
 end
 
-RegisterCommand('+lslegacy_arms', function()
+RegisterCommand('lslegacy_arms', function()
     local ped = PlayerPedId()
+    if armsUp then
+        armsUp = false
+        StopArms(ped)
+        return
+    end
     if IsPedInAnyVehicle(ped, false) or IsEntityDead(ped) or IsPedRagdoll(ped) or not IsPedOnFoot(ped) then return end
     armsUp = true
     StartArms(ped)
 end, false)
 
-RegisterCommand('-lslegacy_arms', function()
-    if not armsUp then return end
-    armsUp = false
-    StopArms(PlayerPedId())
-end, false)
-
-RegisterKeyMapping('+lslegacy_arms', 'Lever les mains', 'keyboard', 'U')
+RegisterKeyMapping('lslegacy_arms', 'Lever les mains', 'keyboard', 'U')
 
 CreateThread(function()
     while true do

@@ -131,11 +131,11 @@ function switchTab(tab) {
     $('.shop-tab[data-tab="' + tab + '"]').addClass('active');
 
     if (tab === 'browse') {
-        $('#bodyBrowse').removeClass('hidden');
-        $('#bodyOutfit').addClass('hidden');
+        $('#browsePanelLeft, #browsePanelRight').removeClass('hidden');
+        $('#outfitPanelLeft, #outfitPanelRight').addClass('hidden');
     } else {
-        $('#bodyBrowse').addClass('hidden');
-        $('#bodyOutfit').removeClass('hidden');
+        $('#browsePanelLeft, #browsePanelRight').addClass('hidden');
+        $('#outfitPanelLeft, #outfitPanelRight').removeClass('hidden');
         refreshOutfitTab();
     }
 }
@@ -340,6 +340,7 @@ function renderOutfitList() {
         $('#outfitListEmpty').hide();
         outfits.forEach(function(outfit) {
             var $card = $('<div class="outfit-card" data-uid="' + outfit.uniqueId + '">');
+            $card.data('outfit', outfit);
             $card.append($('<div class="outfit-card-name">').text(outfit.label || 'Tenue sans nom'));
 
             var $dots = $('<div class="outfit-slots-dots">');
@@ -551,7 +552,7 @@ $(document).on('keydown', function(e) {
     }
 
     // Flèches uniquement sur l'onglet boutique
-    if ($('#bodyBrowse').hasClass('hidden')) return;
+    if ($('#browsePanelLeft').hasClass('hidden')) return;
 
     var isArrow = e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown';
     if (!isArrow) return;

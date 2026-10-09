@@ -1,0 +1,481 @@
+<title>ATC LSIA</title>
+<style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Segoe UI', Arial, sans-serif; background: transparent; color: #d8e4ef; }
+
+    #atc { position: fixed; inset: 0; display: none; }
+    #atc.visible { display: flex; flex-direction: column; }
+
+    #topbar {
+        display: flex; align-items: center; gap: 18px; padding: 8px 16px;
+        background: #0b1420ee; border-bottom: 1px solid #1e3348; font-size: 13px;
+    }
+    #topbar .title { font-weight: 700; letter-spacing: 1px; color: #6fb7ff; }
+    #topbar .metar { font-family: 'Consolas', monospace; color: #9fd6a0; flex: 1; }
+    #topbar .cfg span { color: #6fb7ff; font-weight: 600; }
+    #rwyConfig { background: #142335; border: 1px solid #2d4d6b; color: #d8e4ef; border-radius: 3px; padding: 3px 6px; font-size: 12px; }
+    #viewHint { color: #5a7a9a; font-size: 11.5px; }
+    #closeBtn {
+        margin-left: auto; background: #1e3348; border: 1px solid #2d4d6b; color: #d8e4ef;
+        padding: 5px 12px; border-radius: 4px; cursor: pointer; font-size: 13px;
+    }
+    #closeBtn:hover { background: #2d4d6b; }
+
+    #body { flex: 1; display: flex; min-height: 0; }
+
+    #radarWrap { flex: 1; position: relative; background: #08101a; transition: background .15s; }
+    #radar { width: 100%; height: 100%; display: block; }
+
+    #radioLog {
+        position: absolute; left: 10px; bottom: 10px; width: 380px; max-height: 150px;
+        overflow-y: auto; background: #0b1420cc; border: 1px solid #1e3348; border-radius: 4px;
+        padding: 6px 8px; font-family: 'Consolas', monospace; font-size: 11px; color: #f0c96a;
+        pointer-events: none;
+    }
+    #radioLog div { padding: 1px 0; }
+
+    #dynSpawnWrap { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #8ea6bd; }
+
+    #strips {
+        width: 360px; flex: none; background: #0b1420ee; border-left: 1px solid #1e3348;
+        display: flex; flex-direction: column; min-height: 0;
+    }
+    #stripsList { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 8px; }
+
+    .strip {
+        background: #101d2e; border: 1px solid #223a52; border-left: 4px solid #3d6fa8;
+        border-radius: 4px; padding: 8px 10px; font-size: 12px;
+    }
+    .strip.arr { border-left-color: #c98a3a; }
+    .strip .row1 { display: flex; justify-content: space-between; align-items: baseline; }
+    .strip .callsign { font-weight: 700; font-size: 14px; color: #eaf3ff; }
+    .strip .type { color: #8ea6bd; }
+    .strip .meta { color: #8ea6bd; margin-top: 2px; }
+    .strip .state { color: #6fb7ff; font-weight: 600; }
+    .strip .actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .strip button {
+        background: #1e3348; border: 1px solid #2d4d6b; color: #d8e4ef; padding: 4px 9px;
+        border-radius: 3px; cursor: pointer; font-size: 11.5px;
+    }
+    .strip button:hover { background: #2d4d6b; }
+    .strip button.danger { border-color: #6b2d2d; color: #e0a0a0; }
+    .strip button.danger:hover { background: #3a1e1e; }
+    .strip select { background: #142335; border: 1px solid #2d4d6b; color: #d8e4ef; border-radius: 3px; font-size: 11.5px; }
+
+    #newFlight { border-top: 1px solid #1e3348; padding: 10px; font-size: 12px; display: flex; flex-direction: column; gap: 8px; }
+    #newFlight h4 { margin: 0 0 2px; color: #6fb7ff; font-size: 12px; }
+    .newRow { display: flex; gap: 6px; }
+    .newRow select { flex: 1; background: #142335; border: 1px solid #2d4d6b; color: #d8e4ef; border-radius: 3px; padding: 4px; font-size: 11.5px; }
+    .newRow button { background: #234a2f; border: 1px solid #326b41; color: #cdf0d6; padding: 4px 10px; border-radius: 3px; cursor: pointer; font-size: 11.5px; }
+    .newRow button:hover { background: #326b41; }
+    #newFlight .arrRow button { background: #4a3a23; border-color: #6b5432; color: #f0e2cd; }
+    #newFlight .arrRow button:hover { background: #6b5432; }
+</style>
+
+<div id="atc">
+    <div id="topbar">
+        <div class="title">ATC LSIA</div>
+        <div class="metar" id="metarText">—</div>
+        <div class="cfg" id="cfgText"></div>
+        <select id="rwyConfig"></select>
+        <label id="dynSpawnWrap"><input type="checkbox" id="dynSpawn">Spawn auto</label>
+        <div id="viewHint">TAB : vue radar / extérieure</div>
+        <button id="closeBtn">Fermer</button>
+    </div>
+    <div id="body">
+        <div id="radarWrap"><canvas id="radar"></canvas><div id="radioLog"></div></div>
+        <div id="strips">
+            <div id="stripsList"></div>
+            <div id="newFlight">
+                <h4>Nouveau départ</h4>
+                <div class="newRow">
+                    <select id="depStand"></select>
+                    <select id="depModel"></select>
+                    <button id="depBtn">Créer</button>
+                </div>
+                <h4>Nouvelle arrivée</h4>
+                <div class="newRow arrRow">
+                    <select id="arrModel"></select>
+                    <button id="arrBtn">Créer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    var el = document.getElementById('atc');
+    var canvas = document.getElementById('radar');
+    var ctx = canvas.getContext('2d');
+
+    var initData = null;   // { nodes, edges, stands, runways, aircraft }
+    var transform = null;  // { scale, cx, cy, w, h }
+    var flights = {};      // id -> flight (état serveur : callsign/kind/model/state/stand/runway)
+    var radar = {};        // id -> { x, y, heading, state } (position live, poussée par le client)
+
+    var center = null;     // centre monde fixe (milieu du terrain), calculé une fois depuis les nœuds
+    var zoom = 1;           // molette : 0.25 (dézoomé) .. 10 (zoom serré)
+    var maxRadius = 19000;  // demi-étendue (m) affichée à zoom = 1 : calculée dynamiquement (cf. computeCenter)
+    var APPROACH_DIST = 18520; // 10 NM : doit correspondre à APPROACH_DIST côté client/aircraft.lua
+
+    var RES = 'lslegacy';
+
+    function post(action, data) {
+        fetch('https://' + RES + '/' + action, {
+            method: 'POST', headers: { 'Content-Type': 'application/json; charset=UTF-8' }, body: JSON.stringify(data || {}),
+        }).catch(function () {});
+    }
+
+    // ── Radar ────────────────────────────────────────────────────
+    function computeCenter() {
+        var minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        for (var id in initData.nodes) {
+            var n = initData.nodes[id];
+            if (n.x < minX) minX = n.x; if (n.x > maxX) maxX = n.x;
+            if (n.y < minY) minY = n.y; if (n.y > maxY) maxY = n.y;
+        }
+        center = { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
+        // Rayon nécessaire pour voir tout le terrain ET les arrivées à 10 NM avant chaque seuil de piste
+        // (les deux sens, la config en service pouvant changer) : sinon une arrivée peut être générée
+        // hors-canvas et rester invisible sur le radar tant qu'elle n'a pas assez progressé.
+        var r = 0;
+        for (var id in initData.nodes) {
+            var n = initData.nodes[id];
+            var dx = n.x - center.x, dy = n.y - center.y;
+            var d = Math.sqrt(dx * dx + dy * dy);
+            if (d > r) r = d;
+        }
+        for (var rid in (initData.runways || {})) {
+            var rw = initData.runways[rid];
+            var rad = rw.heading * Math.PI / 180;
+            var hx = -Math.sin(rad), hy = Math.cos(rad); // cf. ATC.Geo.HeadingToDir côté Lua
+            var ax = rw.x - hx * APPROACH_DIST, ay = rw.y - hy * APPROACH_DIST;
+            var dd = Math.sqrt((ax - center.x) * (ax - center.x) + (ay - center.y) * (ay - center.y));
+            if (dd > r) r = dd;
+        }
+        maxRadius = r + 500;
+    }
+
+    function computeTransform() {
+        if (!center) computeCenter();
+        var w = canvas.width, h = canvas.height;
+        var pad = 40;
+        var scale = Math.min((w - pad * 2), (h - pad * 2)) / (maxRadius * 2) * zoom;
+        transform = { scale: scale, cx: center.x, cy: center.y, w: w, h: h };
+    }
+
+    function toScreen(x, y) {
+        var t = transform;
+        return { x: (x - t.cx) * t.scale + t.w / 2, y: t.h / 2 - (y - t.cy) * t.scale };
+    }
+
+    canvas.addEventListener('wheel', function (ev) {
+        ev.preventDefault();
+        zoom = Math.max(0.25, Math.min(10, zoom * (ev.deltaY < 0 ? 1.15 : 1 / 1.15)));
+        computeTransform();
+        drawRadar();
+    }, { passive: false });
+
+    function resizeCanvas() {
+        var wrap = document.getElementById('radarWrap');
+        canvas.width = wrap.clientWidth;
+        canvas.height = wrap.clientHeight;
+        if (initData) computeTransform();
+        drawRadar();
+    }
+
+    function drawRadar() {
+        if (!transform) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        ctx.lineWidth = 1;
+        for (var i = 0; i < initData.edges.length; i++) {
+            var e = initData.edges[i];
+            var a = initData.nodes[e[0]], b = initData.nodes[e[1]];
+            if (!a || !b) continue;
+            var pa = toScreen(a.x, a.y), pb = toScreen(b.x, b.y);
+            var isRunway = e[2] === 'runway';
+            ctx.strokeStyle = isRunway ? '#a85a4a' : '#3a5a78';
+            ctx.lineWidth = isRunway ? 4 : 1.5;
+            ctx.beginPath(); ctx.moveTo(pa.x, pa.y); ctx.lineTo(pb.x, pb.y); ctx.stroke();
+        }
+
+        ctx.font = '10px Consolas, monospace';
+        for (var j = 0; j < initData.stands.length; j++) {
+            var s = initData.stands[j];
+            var p = toScreen(s.x, s.y);
+            ctx.fillStyle = '#6fa0c8';
+            ctx.fillRect(p.x - 3, p.y - 3, 6, 6);
+            ctx.fillStyle = '#7fa8c8';
+            ctx.fillText(s.id, p.x + 5, p.y + 3);
+        }
+
+        for (var id in radar) {
+            var r = radar[id];
+            var f = flights[id];
+            var p = toScreen(r.x, r.y);
+            var ang = (r.heading || 0) * Math.PI / 180.0;
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            // Heading GTA augmente anti-horaire (nord=0, ouest=90) ; canvas.rotate() est horaire en
+            // repère écran (y vers le bas) : il faut donc l'angle opposé pour pointer la bonne direction.
+            ctx.rotate(-ang);
+            ctx.fillStyle = (f && f.kind === 'ARR') ? '#c98a3a' : '#4fa0e0';
+            ctx.beginPath();
+            ctx.moveTo(0, -6); ctx.lineTo(4, 5); ctx.lineTo(-4, 5); ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+            ctx.fillStyle = '#d8e4ef';
+            ctx.font = '10px Consolas, monospace';
+            ctx.fillText(f ? f.callsign : id, p.x + 7, p.y - 5);
+        }
+
+        if (el.classList.contains('visible')) requestAnimationFrame(drawRadar);
+    }
+
+    // ── Strips ───────────────────────────────────────────────────
+    var ALLOWED = {
+        PARKED: ['PUSHBACK', 'TAXI', 'TAKEOFF'], PUSHBACK: ['TAXI', 'HOLD'],
+        TAXI: ['HOLD'],
+        HOLD_SHORT: ['CROSS', 'LINE_UP', 'TAKEOFF'], LINED_UP: ['TAKEOFF'],
+        APPROACH: ['CONTINUE_APPROACH'], FINAL: ['LAND', 'GO_AROUND'],
+        VACATING: ['TAXI'], TAXI_IN: ['TAXI'],
+    };
+    var LABELS = {
+        PUSHBACK: 'Pushback', TAXI: 'Taxi', CROSS: 'Continuer (cross)', LINE_UP: 'Line-up',
+        TAKEOFF: 'Décollage', LAND: 'Atterrir', GO_AROUND: 'Remise de gaz',
+        CONTINUE_APPROACH: 'Poursuivre approche', HOLD: 'Hold / continuer',
+    };
+    var STATE_LABELS = {
+        PARKED: 'Parqué', PUSHBACK: 'Pushback', TAXI: 'Roulage', HOLD_SHORT: "Point d'attente",
+        LINE_UP: 'Alignement', LINED_UP: 'Aligné', TAKEOFF: 'Décollage', CLIMB: 'Montée', DEPARTED: 'Parti',
+        APPROACH: 'Approche', FINAL: 'Finale', LANDING: 'Atterrissage', ROLLOUT: 'Dégagement piste',
+        VACATING: 'Dégagement piste', TAXI_IN: 'Roulage', PARKING: 'Parking', DESPAWN: 'Terminé',
+    };
+
+    function occupiesStand(f) {
+        if (!f.stand) return false;
+        if (f.kind === 'DEP') return f.state === 'PARKED' || f.state === 'PUSHBACK';
+        return f.state !== 'DESPAWN'; // ARR : occupe dès la clairance taxi-in jusqu'au despawn
+    }
+
+    function occupiedStands() {
+        var used = {};
+        for (var id in flights) { var f = flights[id]; if (occupiesStand(f)) used[f.stand] = true; }
+        var exclusions = (initData && initData.exclusions) || [];
+        for (var i = 0; i < exclusions.length; i++) {
+            var a = exclusions[i][0], b = exclusions[i][1];
+            if (used[a]) used[b] = true;
+            if (used[b]) used[a] = true;
+        }
+        return used;
+    }
+
+    function standOptions(category) {
+        var used = occupiedStands();
+        var html = '';
+        for (var i = 0; i < initData.stands.length; i++) {
+            var s = initData.stands[i];
+            if (category && s.category !== category) continue;
+            if (used[s.id]) continue;
+            html += '<option value="' + s.id + '">' + s.id + '</option>';
+        }
+        return html;
+    }
+
+    function renderNewFlightForm() {
+        var modelHtml = '';
+        for (var i = 0; i < initData.aircraft.length; i++) {
+            var a = initData.aircraft[i];
+            modelHtml += '<option value="' + a.model + '" data-cat="' + a.category + '">' + a.label + '</option>';
+        }
+        document.getElementById('depModel').innerHTML = modelHtml;
+        document.getElementById('arrModel').innerHTML = modelHtml;
+        refreshStandOptions();
+    }
+
+    function refreshStandOptions() {
+        var sel = document.getElementById('depModel');
+        var cat = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].dataset.cat : 'commercial';
+        document.getElementById('depStand').innerHTML = standOptions(cat);
+    }
+
+    function modelCategory(model) {
+        for (var i = 0; i < initData.aircraft.length; i++) if (initData.aircraft[i].model === model) return initData.aircraft[i].category;
+        return null;
+    }
+
+    function holdingPointOptions(qfu) {
+        var list = (initData && initData.holdingPoints) || [];
+        var physical = initData.qfuRunway ? initData.qfuRunway[qfu] : null;
+        var html = '<option value="">Auto</option>';
+        for (var i = 0; i < list.length; i++) {
+            var hp = list[i];
+            if (physical && hp.protects !== physical) continue;
+            html += '<option value="' + hp.id + '">' + hp.label + '</option>';
+        }
+        return html;
+    }
+
+    function stripHtml(f) {
+        var allowed = ALLOWED[f.state] || [];
+        var actions = '';
+        for (var i = 0; i < allowed.length; i++) {
+            var c = allowed[i];
+            if (c === 'TAKEOFF' && f.state === 'PARKED' && f.category !== 'heli') continue; // décollage direct réservé aux hélicos
+            if (c === 'TAXI' && f.kind === 'ARR' && (f.state === 'VACATING' || f.state === 'TAXI_IN')) {
+                actions += '<select class="standPick" data-id="' + f.id + '">' + standOptions(modelCategory(f.model)) + '</select>' +
+                    '<button data-id="' + f.id + '" data-c="TAXI" data-arg="stand">' + LABELS.TAXI + '</button>';
+            } else if (c === 'TAXI' && f.kind === 'DEP' && (f.state === 'PARKED' || f.state === 'PUSHBACK')) {
+                actions += '<select class="hpPick" data-id="' + f.id + '">' + holdingPointOptions(f.runway) + '</select>' +
+                    '<button data-id="' + f.id + '" data-c="TAXI" data-arg="hp">' + LABELS.TAXI + '</button>';
+            } else {
+                actions += '<button data-id="' + f.id + '" data-c="' + c + '">' + (LABELS[c] || c) + '</button>';
+            }
+        }
+        actions += '<button class="danger" data-id="' + f.id + '" data-c="DELETE">Suppr.</button>';
+        return (
+            '<div class="strip ' + (f.kind === 'ARR' ? 'arr' : '') + '" data-strip="' + f.id + '">' +
+            '<div class="row1"><span class="callsign">' + f.callsign + '</span><span class="type">' + (f.type || f.model) + '</span></div>' +
+            '<div class="meta">' + (f.kind === 'ARR' ? 'Arrivée' : 'Départ') + (f.stand ? ' · stand ' + f.stand : '') + ' · piste ' + (f.runway || '?') +
+            ' · ADEP ' + (f.origin || '?') + ' · ADES ' + (f.destination || '?') + '</div>' +
+            '<div class="state">' + (STATE_LABELS[f.state] || f.state) + '</div>' +
+            '<div class="actions">' + actions + '</div>' +
+            '</div>'
+        );
+    }
+
+    function renderStrips() {
+        var ids = Object.keys(flights).sort(function (a, b) { return a - b; });
+        var html = '';
+        for (var i = 0; i < ids.length; i++) html += stripHtml(flights[ids[i]]);
+        document.getElementById('stripsList').innerHTML = html;
+    }
+
+    document.getElementById('stripsList').addEventListener('click', function (ev) {
+        var b = ev.target.closest('button');
+        if (!b) return;
+        var id = b.dataset.id, c = b.dataset.c;
+        if (c === 'DELETE') { post('atc:delete', { id: id }); return; }
+        var arg = null;
+        if (b.dataset.arg === 'stand') {
+            var sel = document.querySelector('.standPick[data-id="' + id + '"]');
+            if (!sel || !sel.value) return;
+            arg = 'STAND_' + sel.value;
+        } else if (b.dataset.arg === 'hp') {
+            var selHp = document.querySelector('.hpPick[data-id="' + id + '"]');
+            arg = (selHp && selHp.value) ? selHp.value : null;
+        }
+        post('atc:clearance', { id: id, clearance: c, arg: arg });
+    });
+
+    document.getElementById('depModel').addEventListener('change', refreshStandOptions);
+    document.getElementById('depBtn').addEventListener('click', function () {
+        var stand = document.getElementById('depStand').value;
+        var model = document.getElementById('depModel').value;
+        if (!stand || !model) return;
+        post('atc:spawnDeparture', { stand: stand, model: model });
+    });
+    document.getElementById('arrBtn').addEventListener('click', function () {
+        var model = document.getElementById('arrModel').value;
+        if (!model) return;
+        post('atc:spawnArrival', { model: model });
+    });
+    document.getElementById('closeBtn').addEventListener('click', function () { post('atc:close'); });
+
+    document.getElementById('rwyConfig').addEventListener('change', function () {
+        post('atc:setRunwayConfig', { id: this.value });
+    });
+
+    document.getElementById('dynSpawn').addEventListener('change', function () {
+        post('atc:setDynamicSpawn', { enabled: this.checked });
+    });
+
+    function pushRadio(text, speaker) {
+        var log = document.getElementById('radioLog');
+        var line = document.createElement('div');
+        line.textContent = text;
+        line.style.color = speaker === 'ATC' ? '#7fd88f' : '#f0c96a';
+        log.appendChild(line);
+        while (log.children.length > 8) log.removeChild(log.firstChild);
+        log.scrollTop = log.scrollHeight;
+    }
+
+    // ── Messages Lua ─────────────────────────────────────────────
+    window.addEventListener('message', function (event) {
+        var d = event.data;
+        if (!d || !d.action) return;
+        if (d.action === 'atc:open') {
+            initData = d.data;
+            zoom = 1; center = null;
+            el.classList.add('visible');
+            document.getElementById('radioLog').innerHTML = '';
+            resizeCanvas();
+            renderNewFlightForm();
+            renderRunwayConfigOptions();
+        } else if (d.action === 'atc:hide') {
+            el.classList.remove('visible');
+        } else if (d.action === 'atc:view') {
+            // TAB : le NUI entier se retire pour laisser voir la caméra tour (la clé reste active
+            // hors NUI, donc on ne perd pas la main ; renvoyer atc:view radar=true le fait réapparaître).
+            if (d.radar) { el.classList.add('visible'); requestAnimationFrame(drawRadar); }
+            else { el.classList.remove('visible'); }
+        } else if (d.action === 'atc:radio') {
+            pushRadio(d.text, d.speaker);
+        } else if (d.action === 'atc:state') {
+            flights = {};
+            for (var i = 0; i < d.flights.length; i++) flights[d.flights[i].id] = d.flights[i];
+            document.getElementById('metarText').textContent = d.metar || '—';
+            document.getElementById('dynSpawn').checked = !!d.dynamicSpawn;
+            renderCfg(d.config);
+            renderStrips();
+            refreshStandOptions();
+        } else if (d.action === 'atc:flight') {
+            var f = d.flight;
+            if (f.state === 'DESPAWN') { delete flights[f.id]; delete radar[f.id]; }
+            else flights[f.id] = f;
+            renderStrips();
+            refreshStandOptions();
+        } else if (d.action === 'atc:removeFlight') {
+            delete flights[d.id]; delete radar[d.id];
+            renderStrips();
+            refreshStandOptions();
+        } else if (d.action === 'atc:metar') {
+            document.getElementById('metarText').textContent = d.metar || '—';
+            renderCfg(d.config);
+        } else if (d.action === 'atc:radar') {
+            var seen = {};
+            for (var j = 0; j < d.flights.length; j++) {
+                var r = d.flights[j];
+                radar[r.id] = r;
+                seen[r.id] = true;
+            }
+            for (var k in radar) if (!seen[k]) delete radar[k];
+        }
+    });
+
+    function renderCfg(cfg) {
+        if (!cfg) return;
+        document.getElementById('cfgText').innerHTML =
+            'Atterrissage <span>' + cfg.landing + '</span> · Décollage <span>' + cfg.takeoff + '</span> · Affaires <span>' + cfg.business + '</span>';
+        var sel = document.getElementById('rwyConfig');
+        if (cfg.id && sel.value !== cfg.id) sel.value = cfg.id;
+    }
+
+    function renderRunwayConfigOptions() {
+        var sel = document.getElementById('rwyConfig');
+        var list = (initData && initData.runwayConfigs) || [];
+        var html = '';
+        for (var i = 0; i < list.length; i++) html += '<option value="' + list[i] + '">' + list[i] + '</option>';
+        sel.innerHTML = html;
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+
+    document.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Escape' && el.classList.contains('visible')) post('atc:close');
+    });
+})();
+</script>

@@ -9,6 +9,34 @@ local MetroEnabled   = true -- basculé par /metrotoggle (staff)
 
 local function Dbg(msg) Config.Development.Print('[metro] ' .. msg) end
 
+-- ── Date du jour (fuseau Europe/Paris, indépendant du fuseau du serveur) ─
+-- Règle UE : bascule heure d'été/hiver à 1h UTC le dernier dimanche de mars/octobre.
+
+local function LastSundayUtcEpoch(year, month, hourUtc)
+    local lastDayTs = os.time({ year = year, month = month + 1, day = 0, hour = 12, min = 0, sec = 0 })
+    local lastDayInfo = os.date('!*t', lastDayTs)
+    local sundayDay = lastDayInfo.day - (lastDayInfo.wday - 1)
+
+    return os.time({ year = year, month = month, day = sundayDay, hour = hourUtc, min = 0, sec = 0 })
+end
+
+local function ParisUtcOffsetHours(utcTs)
+    local year = os.date('!*t', utcTs).year
+    local dstStart = LastSundayUtcEpoch(year, 3, 1)
+    local dstEnd = LastSundayUtcEpoch(year, 10, 1)
+
+    if utcTs >= dstStart and utcTs < dstEnd then
+        return 2 -- CEST (été)
+    end
+    return 1 -- CET (hiver)
+end
+
+local function GetParisDateString()
+    local nowUtc = os.time(os.date('!*t'))
+    local parisTs = nowUtc + ParisUtcOffsetHours(nowUtc) * 3600
+    return os.date('!%d/%m/%Y', parisTs)
+end
+
 -- ── Achat du ticket ─────────────────────────────────────────────────
 
 LSLegacy.Bank.RegisterPaymentResultHandler('metro', function(token, success)
@@ -39,7 +67,7 @@ LSLegacy.Bank.RegisterPaymentResultHandler('metro', function(token, success)
         return
     end
 
-    local label = string.format(Lang.Metro.ticket_item_label, pending.hour, pending.minute)
+    local label = string.format(Lang.Metro.ticket_item_label, pending.hour, pending.minute, GetParisDateString())
     LSLegacy.Inventory.AddItemInInventory(player, 'ticket', 1, label, nil, {
         hour   = pending.hour,
         minute = pending.minute,

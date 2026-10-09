@@ -21,8 +21,13 @@ local function StopPointing(ped)
     SetPedConfigFlag(ped, 36, false)
 end
 
-RegisterCommand('+lslegacy_point', function()
+RegisterCommand('lslegacy_point', function()
     local ped = PlayerPedId()
+    if pointing then
+        pointing = false
+        StopPointing(ped)
+        return
+    end
     if IsPedInAnyVehicle(ped, false) or IsEntityDead(ped) or IsPedRagdoll(ped) or not IsPedOnFoot(ped) then
         return
     end
@@ -30,13 +35,7 @@ RegisterCommand('+lslegacy_point', function()
     StartPointing(ped)
 end, false)
 
-RegisterCommand('-lslegacy_point', function()
-    if not pointing then return end
-    pointing = false
-    StopPointing(PlayerPedId())
-end, false)
-
-RegisterKeyMapping('+lslegacy_point', 'Pointer du doigt', 'keyboard', 'B')
+RegisterKeyMapping('lslegacy_point', 'Pointer du doigt', 'keyboard', 'B')
 
 CreateThread(function()
     while true do

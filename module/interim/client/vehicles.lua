@@ -1,4 +1,4 @@
--- Camion + remorque, spawn à coordonnées fixes. Pas de persistance (véhicules d'outil de job, comme mecanicien/samu) : spawn/despawn simples.
+-- Camion + remorque, spawn à coordonnées fixes. Pas de persistance (véhicules d'outil de job, comme atelier/ems) : spawn/despawn simples.
 
 local CFG = Config.Interim
 Interim = Interim or {}

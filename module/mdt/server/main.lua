@@ -31,6 +31,7 @@ local rateLimits = {
     ['mdt:saveCareer'] = 20, ['mdt:addAssignment'] = 25, ['mdt:updateAssignment'] = 25,
     ['mdt:deleteAssignment'] = 20, ['mdt:addCommendation'] = 20, ['mdt:deleteCommendation'] = 20,
     ['mdt:addSkill'] = 20, ['mdt:deleteSkill'] = 20, ['mdt:updateSkillDate'] = 20,
+    ['mdt:promoteAgent'] = 10, ['mdt:recruitAgent'] = 10,
 }
 for eventName, limit in pairs(rateLimits) do
     LSLegacy.Security.RegisterRateLimit(eventName, limit)
@@ -409,6 +410,7 @@ MySQL.Async.execute([[
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 ]], {})
 MySQL.Async.execute("ALTER TABLE mdt_agent_career ADD COLUMN IF NOT EXISTS character_id INT DEFAULT NULL", {})
+MySQL.Async.execute("ALTER TABLE mdt_agent_career ADD COLUMN IF NOT EXISTS changed_by VARCHAR(100) NOT NULL DEFAULT ''", {})
 
 -- Affectations opérationnelles
 MySQL.Async.execute([[
@@ -495,7 +497,7 @@ end
 
 -- Clause SQL de portée pour une table de la base commune.
 ---
--- Police et gendarmerie travaillent sur le même fichier judiciaire : une
+-- Police et shérif travaillent sur le même fichier judiciaire : une
 -- lecture ne peut donc plus se limiter au département du demandeur, sinon
 -- un avis de recherche émis par un pôle serait invisible pour l'autre.
 -- L'implémentation vit dans shared/permissions.lua, partagée avec les
@@ -516,6 +518,15 @@ local function MdtHasPerm(player, depName, grade, perm)
     if LSLegacy.MDT.HasPermission(depName, grade, perm) then return true end
     local g = player and grantedPerms[player["boutique-id"]]
     return (g and (g[perm] or g.admin_mdt)) == true
+end
+
+-- Pont pour les modules métier (ex. police/server/callouts.lua, onglet
+-- TN 97) : la permission générique HasPermission(src, perm) ignore les
+-- déblocages par compétence, uniquement mis en cache ici via grantedPerms.
+function LSLegacy.MDT.HasEffectivePermission(src, perm)
+    local player, depName, grade = Ctx(src)
+    if not player then return false end
+    return MdtHasPerm(player, depName, grade, perm)
 end
 
 -- Garde de permission pour les écritures. Renvoie (player, department, grade) ou nil.
@@ -540,6 +551,39 @@ local function SafePlate(v)
     v = v:upper():gsub('[^A-Z0-9 ]', ''):gsub('%s+', ''):sub(1, 12)
     if v == '' then return nil end
     return v
+end
+
+-- Catalogue des unités déclarées pour un département, toutes services confondus.
+local function GetUnitCatalog(depName)
+    local dep = LSLegacy.MDT.GetDepartment(depName)
+    local list = {}
+    if not dep or not dep.services then return list end
+    for _, service in ipairs(dep.services) do
+        for _, u in ipairs(service.units or {}) do
+            list[#list + 1] = { id = u.id, label = u.label, service = service.label }
+        end
+    end
+    return list
+end
+
+local function GetUnitLabel(depName, code)
+    for _, u in ipairs(GetUnitCatalog(depName)) do
+        if u.id == code then return u.label end
+    end
+    return code
+end
+
+-- Unité verrouillée pour un grade (nil si libre) : un grade dont la grille
+-- ne déclare qu'une seule unité possible (ex. Policier Adjoint / Stagiaire →
+-- Police Secours) est verrouillé sur celle-ci ; tout autre grade est libre
+-- sur l'ensemble du catalogue. Sert aussi à retrouver l'unité de base d'un
+-- département (celle du grade 0).
+local function GetLockedUnit(depName, grade)
+    local rank = LSLegacy.MDT.GetRankData(depName, grade)
+    if rank and rank.units and #rank.units == 1 then
+        return rank.units[1]
+    end
+    return nil
 end
 
 -- Envoi standardisé d'un résultat d'écriture au client (notif + refresh éventuel).
@@ -615,8 +659,8 @@ local function OpenMDT(src)
     -- On charge les compétences pour accorder des permissions dynamiques
     -- (ex : CS037 → Enquête, CZ001 → création de formation).
     -- map nom→code (compétences obtenues sans code stocké)
-    -- On lit le cursus du département quand il en déclare un (gendarmerie,
-    -- SAMU…), sinon la liste globale : sans cela, une compétence saisie
+    -- On lit le cursus du département quand il en déclare un (shérif,
+    -- EMS…), sinon la liste globale : sans cela, une compétence saisie
     -- sans code ne serait jamais reconnue pour ces départements.
     local nameToCode = {}
     for _, tc in ipairs(dep.trainingCodes or Config.MDT.TrainingCodes or {}) do
@@ -636,13 +680,21 @@ local function OpenMDT(src)
         local enabled = {}
         for _, t in ipairs(dep.tabs or {}) do enabled[t] = true end
         for _, tab in ipairs(Config.MDT.Tabs or {}) do
-            if enabled[tab.id] and (not tab.permission or perms.admin_mdt or perms[tab.permission]) then
-                tabs[#tabs + 1] = { id = tab.id, label = tab.label, icon = tab.icon }
+            local allowed = enabled[tab.id] and (not tab.permission or perms.admin_mdt or perms[tab.permission])
+            if allowed and tab.requiresSociety then
+                allowed = LSLegacy.Bank.GetSocietyAccount(player.job) ~= nil
+            end
+            if allowed then
+                -- Un département peut renommer un onglet générique pour son
+                -- propre vocabulaire métier (ex: police garde "UNIPOL" pour
+                -- boutique_tenue) sans dupliquer l'entrée dans Config.MDT.Tabs.
+                local label = (dep.tabLabels and dep.tabLabels[tab.id]) or tab.label
+                tabs[#tabs + 1] = { id = tab.id, label = label, icon = tab.icon }
             end
         end
         -- Libellés des départements de la sphère : la NUI s'en sert pour
         -- estampiller chaque pièce du dossier commun (« Police » /
-        -- « Gendarmerie »). Un département seul dans sa sphère n'en reçoit
+        -- « Sheriff »). Un département seul dans sa sphère n'en reçoit
         -- qu'un seul, et la NUI n'affiche alors aucun badge.
         local group = LSLegacy.MDT.GetDataGroup(depName)
         local depLabels = {}
@@ -657,12 +709,23 @@ local function OpenMDT(src)
             department       = depName,
             departmentLabel  = dep.label,
             departmentColor  = dep.color,
+            departmentLogo   = dep.logo,
             dataGroup        = group,
             departmentLabels = depLabels,
             job              = player.job,
             grade            = grade,
             gradeLabel       = LSLegacy.MDT.GetGradeLabel(depName, grade),
             officerName      = CharName(player),
+            -- Vocabulaire du personnel (onglet Effectifs/Organisation) : un
+            -- département "entreprise" (resto, atelier…) n'a pas d'"agents"
+            -- — voir dep.staffLabel dans son config_mdt.lua. Sans override,
+            -- comportement inchangé pour police/ems/shérif/lsfd.
+            staffLabel       = dep.staffLabel,
+            staffLabelPlural = dep.staffLabelPlural,
+            staffIcon        = dep.staffIcon,
+            -- Indicatif Appel 17 (Police Secours Alpha…), affiché à la place
+            -- du nom quand l'agent est inscrit à un groupe d'intervention.
+            callsign         = (depName == 'police' and type(GetCallsign) == 'function' and GetCallsign(src)) or nil,
             myIdentifier     = player.identifier,
             permissions      = perms,
             tabs             = tabs,
@@ -672,12 +735,19 @@ local function OpenMDT(src)
             dangerLevels     = Config.MDT.DangerLevels,
             lawCategories    = Config.MDT.LawCategories,
             -- Un département peut fournir ses propres codes de formation
-            -- (ex. SAMU : PSE1/PSE2/RCP…). Sans override, on garde la liste
+            -- (ex. EMS : PSE1/PSE2/RCP…). Sans override, on garde la liste
             -- globale — le comportement police est donc inchangé.
             trainingCodes    = dep.trainingCodes or Config.MDT.TrainingCodes,
             skillRecycleDays = Config.MDT.SkillRecycleDays,
         }
-        LSLegacy.Events.SendToClient('mdt:open', src, payload)
+
+        -- Matricule de l'agent (fiche personnel, mdt_agent_meta) — utilisé
+        -- entre autres par les trames de PV pré-remplies (cf. interventions.js).
+        MySQL.Async.fetchScalar('SELECT matricule FROM mdt_agent_meta WHERE character_id=@id LIMIT 1',
+            { ['@id'] = player["boutique-id"] }, function(matricule)
+                payload.matricule = (matricule and matricule ~= '') and matricule or nil
+                LSLegacy.Events.SendToClient('mdt:open', src, payload)
+            end)
     end)
 end
 
@@ -768,12 +838,17 @@ readHandlers.getCitizen = function(player, depName, grade, data, reply)
                 if owned[lic.item] then licenses[#licenses + 1] = lic.label end
             end
         end
+        -- Métier affiché en synthèse : libellé du job et, s'il existe, du grade.
+        local jobDef = LSLegacy.AvailableJobs and LSLegacy.AvailableJobs[prows[1].job]
+        local jobLabel = jobDef and jobDef.label or prows[1].job
+        local gradeDef = jobDef and jobDef.grades and jobDef.grades[tonumber(prows[1].job_grade) or 0]
         local identity = {
             identifier = prows[1].identifier,
             name = ((info.Prenom or '') .. ' ' .. (info.NDF or '')):gsub('^%s+', ''):gsub('%s+$', ''),
             prenom = info.Prenom, nom = info.NDF, sexe = info.Sexe,
             ddn = info.DDN, ldn = info.LDN, taille = info.Taille,
             job = prows[1].job, job_grade = prows[1].job_grade,
+            jobLabel = jobLabel, jobGradeLabel = gradeDef and gradeDef.label or nil,
             licenses = licenses,
         }
         -- Fiche judiciaire commune aux forces de l'ordre : le casier, les
@@ -1039,8 +1114,12 @@ readHandlers.getCustodyHistory = function(player, depName, grade, data, reply)
         {}, function(rows) reply(rows or {}) end)
 end
 
--- Preuves (option : case_id)
-readHandlers.getEvidence = function(player, depName, grade, data, reply)
+-- Preuves liées à un dossier (option : case_id) — table mdt_evidence,
+-- alimentée par mdt:addEvidence. Nom distinct de getEvidence (ligne ~1867)
+-- qui interroge les tables forensiques (empreintes/ADN/sang) : les deux
+-- coexistaient sous le même nom et la seconde écrasait silencieusement
+-- celle-ci en Lua, la rendant inatteignable depuis l'interface.
+readHandlers.getCaseEvidence = function(player, depName, grade, data, reply)
     if not MdtHasPerm(player, depName, grade, 'view_evidence') then return reply(false) end
     local caseId = tonumber(data.case_id)
     -- Les preuves restent propres à chaque pôle (Config.MDT.SharedTables) :
@@ -1066,7 +1145,9 @@ LSLegacy.Events.Register('mdt:query', function(payload)
     if not player then return reply(false) end
     local handler = readHandlers[payload.action]
     if not handler then return reply(false) end
-    handler(player, depName, grade, type(payload.data) == 'table' and payload.data or {}, reply)
+    -- `src` en dernier argument (optionnel) : quelques lectures ont besoin de
+    -- la position du demandeur (ex. getNearbyRecruits), les autres l'ignorent.
+    handler(player, depName, grade, type(payload.data) == 'table' and payload.data or {}, reply, src)
 end)
 
 --  ÉCRITURES (events tokenisés) — chaque nom est dans LSLegacy.RateLimit
@@ -1114,6 +1195,11 @@ LSLegacy.Events.Register('mdt:createFine', function(data)
             }, function(insertId)
                 Result(src, true, 'Amende de ' .. amount .. '$ enregistrée.', { view = 'citizen', id = identifier })
                 MdtLog('Amende', ('**%s** a verbalisé **%s** : %d$\n%s'):format(CharName(player), name, amount, reason))
+
+                if depName == 'police' and type(IncrementPoliceStat) == 'function' then
+                    IncrementPoliceStat(player.identifier, player["boutique-id"], CharName(player), 'fines_count', 1)
+                    IncrementPoliceStat(player.identifier, player["boutique-id"], CharName(player), 'fines_amount', amount)
+                end
 
                 local targetSrc = GetOnlineSourceByCharacterId(charId)
                 if targetSrc then
@@ -1800,6 +1886,10 @@ end)
 
 -- Comparaison empreintes
 -- Preuves enrichies (union police_fingerprints + police_dna + police_blood_traces)
+-- Seul handler réellement appelé par l'interface (html/js/mdt.js) pour
+-- 'mdt:getEvidence'. Ces tables forensiques n'ont pas de colonne
+-- département : seule la compétence CS037 (police) débloque view_evidence
+-- aujourd'hui ; à revoir si le shérif (ST037) devient fonctionnelle.
 readHandlers.getEvidence = function(player, depName, grade, data, reply)
     if not MdtHasPerm(player, depName, grade, 'view_evidence') then return reply(false) end
     MySQL.Async.fetchAll([[
@@ -2053,21 +2143,31 @@ end)
 -- Fonctions globales de statut "en service" exposées par chaque module métier.
 -- Lookup par job → générique (aucune dépendance directe aux modules).
 local DUTY_CHECKERS = {
-    police      = 'IsOfficerOnDuty',
-    gendarmerie = 'IsGendarmeOnDuty',
-    samu        = 'IsSamuOnDuty',
-    pompiers    = 'IsPompierOnDuty',
+    police          = 'IsOfficerOnDuty',
+    sheriff         = 'IsDeputyOnDuty',
+    ems             = 'IsEmsOnDuty',
+    lsfd            = 'IsLSFDOnDuty',
+    mechanic_reds   = 'IsAtelierOnDuty',
+    mechanic_bennys = 'IsAtelierOnDuty',
 }
 
 -- Le joueur est-il en service, quel que soit son métier ?
 local function IsPlayerOnDuty(src, job)
     local checkerName = DUTY_CHECKERS[job]
     local checker = checkerName and _G[checkerName]
-    return (type(checker) == 'function' and checker(src) == true) or false
+    if type(checker) == 'function' and checker(src) == true then return true end
+
+    -- Job d'une ressource externe (ex. ls_kebabking) : pas de fonction
+    -- globale accessible ici (les globales ne traversent pas la frontière
+    -- de ressource), donc relais via foodapi/registerDutyChecker.
+    if LSLegacy.IsExternalJobOnDuty then
+        return LSLegacy.IsExternalJobOnDuty(src, job)
+    end
+    return false
 end
 
 -- Appartenance aux forces de l'ordre (exposé aux autres modules)
--- Les missions PNJ sont conjointes : un gendarme doit pouvoir s'engager
+-- Les missions PNJ sont conjointes : un adjoint du shérif doit pouvoir s'engager
 -- sur un appel 17 au même titre qu'un policier. Plutôt que de tester un
 -- job en dur, on s'appuie sur la sphère de données qui contient déjà la
 -- police — ajouter un pôle à Config.MDT.DataGroups suffit donc à l'y
@@ -2097,7 +2197,8 @@ function IsLawEnforcementOnDuty(src)
     return IsPlayerOnDuty(src, p and p.job)
 end
 
--- Liste des agents connectés du département du demandeur, triés par grade décroissant.
+-- Liste des agents du département du demandeur (connectés puis hors ligne,
+-- lus en base), triés par présence puis grade décroissant.
 readHandlers.getRoster = function(player, depName, grade, data, reply)
     local dep = LSLegacy.MDT.GetDepartment(depName)
     if not dep then return reply({}) end
@@ -2105,27 +2206,121 @@ readHandlers.getRoster = function(player, depName, grade, data, reply)
     for _, j in ipairs(dep.jobs or {}) do jobsSet[j] = true end
 
     local out = {}
+    local seen = {}
     for src, p in pairs(LSLegacy.Players.GetAll()) do
         if p.job and jobsSet[p.job] then
             local g = tonumber(p.job_grade) or 0
             local onDuty = IsPlayerOnDuty(src, p.job)
             local ci = p.characterInfos or {}
+            local characterId = p["boutique-id"]
+            seen[characterId] = true
             out[#out + 1] = {
                 identifier = p.identifier,
-                character_id = p["boutique-id"],
+                character_id = characterId,
                 name = ((ci.Prenom or '') .. ' ' .. (ci.NDF or '')):gsub('^%s+', ''):gsub('%s+$', ''),
                 grade = g,
                 gradeLabel = LSLegacy.MDT.GetGradeLabel(depName, g),
                 onDuty = onDuty,
-                -- extensible : unité, radio… (à ajouter ici plus tard)
+                online = true,
             }
         end
     end
 
-    table.sort(out, function(a, b)
-        if a.grade ~= b.grade then return a.grade > b.grade end
-        return (a.name or '') < (b.name or '')
+    -- Unité actuelle de chaque agent (affectation ouverte en base), à
+    -- défaut l'unité de base du département (grade 0). Utilisé par
+    -- l'onglet Organisation pour les effectifs par unité.
+    local function attachUnits()
+        if #out == 0 then return reply(out) end
+        local placeholders, params = {}, {}
+        for i, a in ipairs(out) do
+            local key = '@c' .. i
+            placeholders[#placeholders + 1] = key
+            params[key] = a.character_id
+        end
+        MySQL.Async.fetchAll(
+            "SELECT character_id, code FROM mdt_agent_assignments WHERE end_date='' AND character_id IN (" .. table.concat(placeholders, ',') .. ')',
+            params,
+            function(rows)
+                local unitByChar = {}
+                for _, r in ipairs(rows or {}) do unitByChar[r.character_id] = r.code end
+                local defaultUnit = GetLockedUnit(depName, 0)
+                for _, a in ipairs(out) do
+                    a.unit = unitByChar[a.character_id] or defaultUnit
+                end
+                reply(out)
+            end
+        )
+    end
+
+    local function finish()
+        table.sort(out, function(a, b)
+            if a.online ~= b.online then return a.online end
+            if a.grade ~= b.grade then return a.grade > b.grade end
+            return (a.name or '') < (b.name or '')
+        end)
+        attachUnits()
+    end
+
+    -- Personnels hors ligne : lus directement en base (dernier grade
+    -- enregistré), pour que la fiche reste consultable après déconnexion.
+    local jobs, placeholders, params = {}, {}, {}
+    for j in pairs(jobsSet) do jobs[#jobs + 1] = j end
+    if #jobs == 0 then return finish() end
+    for i, j in ipairs(jobs) do
+        local key = '@j' .. i
+        placeholders[#placeholders + 1] = key
+        params[key] = j
+    end
+
+    MySQL.Async.fetchAll('SELECT identifier, `boutique-id` AS character_id, characterInfos, job, job_grade ' ..
+        'FROM players WHERE job IN (' .. table.concat(placeholders, ',') .. ')', params, function(rows)
+        for _, row in ipairs(rows or {}) do
+            if not seen[row.character_id] then
+                seen[row.character_id] = true
+                local ok, ci = pcall(json.decode, row.characterInfos)
+                ci = (ok and ci) or {}
+                local g = tonumber(row.job_grade) or 0
+                out[#out + 1] = {
+                    identifier = row.identifier,
+                    character_id = row.character_id,
+                    name = ((ci.Prenom or '') .. ' ' .. (ci.NDF or '')):gsub('^%s+', ''):gsub('%s+$', ''),
+                    grade = g,
+                    gradeLabel = LSLegacy.MDT.GetGradeLabel(depName, g),
+                    onDuty = false,
+                    online = false,
+                }
+            end
+        end
+        finish()
     end)
+end
+
+-- Candidats au recrutement (onglet Effectifs → « Ajouter effectif ") :
+-- joueurs à proximité du demandeur qui n'ont pas déjà un job du département.
+-- Scan fait ici, côté serveur, pour ne jamais dépendre d'une liste fournie
+-- par le client (revalidé à nouveau, sur la cible précise, dans recruitAgent).
+readHandlers.getNearbyRecruits = function(player, depName, grade, data, reply, src)
+    local dep = LSLegacy.MDT.GetDepartment(depName)
+    if not dep or not src then return reply({}) end
+    local jobsSet = {}
+    for _, j in ipairs(dep.jobs or {}) do jobsSet[j] = true end
+    local myPed = GetPlayerPed(src)
+    if myPed == 0 then return reply({}) end
+    local myCoords = GetEntityCoords(myPed)
+    local radius = (Config.MDT.Limits and Config.MDT.Limits.RecruitRadius) or 10.0
+    local out = {}
+    for _, sid in ipairs(GetPlayers()) do
+        local tid = tonumber(sid)
+        if tid and tid ~= src then
+            local tp = LSLegacy.Players.Get(tid)
+            if tp and not jobsSet[tp.job] then
+                local ped = GetPlayerPed(tid)
+                if ped ~= 0 and #(myCoords - GetEntityCoords(ped)) <= radius then
+                    out[#out + 1] = { source = tid, character_id = tp["boutique-id"], name = CharName(tp) }
+                end
+            end
+        end
+    end
     reply(out)
 end
 
@@ -2220,13 +2415,80 @@ readHandlers.getDashboard = function(player, depName, grade, data, reply)
         end)
     end
 
-    -- Amendes impayées : visible de tous, c'est l'indicateur d'activité le
-    -- plus parlant sur la base commune.
+    -- Amendes impayées : concept propre aux forces de l'ordre (mdt_fines
+    -- n'est alimentée que par le module police) — masqué pour les autres
+    -- départements (ex : atelier) plutôt que d'afficher un compteur à 0
+    -- qui n'a aucun sens pour leur métier.
+    local isLeo = false
+    for _, d in ipairs(LSLegacy.MDT.GetDataGroup('police')) do
+        if d == depName then isLeo = true break end
+    end
+    if not isLeo then return loadWarrants() end
+
     MySQL.Async.fetchScalar('SELECT COUNT(*) FROM mdt_fines WHERE ' .. ScopeClause(depName, 'mdt_fines')
         .. ' AND paid=0', {}, function(n)
         out.stats.finesUnpaid = tonumber(n) or 0
         loadWarrants()
     end)
+end
+
+--  Tableau de bord d'un département "entreprise" (resto, commerce...) —
+--  aucun concept policier (avis de recherche, garde à vue...) ici, juste
+--  l'effectif en service et l'état réel des stocks/coffre, lu directement
+--  dans les DataStores de la ressource concernée (voir dataStorePrefix /
+--  stockStores, config_kebabking.lua). Générique : n'importe quel futur
+--  département "entreprise" peut s'en servir en déclarant ces deux champs.
+readHandlers.getRestoDashboard = function(player, depName, grade, data, reply)
+    local dep = LSLegacy.MDT.GetDepartment(depName)
+    if not dep then return reply(false) end
+
+    local jobsSet = {}
+    for _, j in ipairs(dep.jobs or {}) do jobsSet[j] = true end
+    local onDuty, meOnDuty = {}, false
+    for src, p in pairs(LSLegacy.Players.GetAll()) do
+        if p.job and jobsSet[p.job] and IsPlayerOnDuty(src, p.job) then
+            local g = tonumber(p.job_grade) or 0
+            local ci = p.characterInfos or {}
+            onDuty[#onDuty + 1] = {
+                identifier = p.identifier,
+                character_id = p["boutique-id"],
+                name = ((ci.Prenom or '') .. ' ' .. (ci.NDF or '')):gsub('^%s+', ''):gsub('%s+$', ''),
+                grade = g,
+                gradeLabel = LSLegacy.MDT.GetGradeLabel(depName, g),
+            }
+            if p.identifier == player.identifier then meOnDuty = true end
+        end
+    end
+    table.sort(onDuty, function(a, b)
+        if a.grade ~= b.grade then return a.grade > b.grade end
+        return (a.name or '') < (b.name or '')
+    end)
+
+    local stocks = {}
+    local safeBalance = nil
+    local prefix = dep.dataStorePrefix
+    if prefix then
+        for _, s in ipairs(dep.stockStores or {}) do
+            local ds = LSLegacy.DataStore.GetDataStore(prefix .. '_storage_' .. s.id)
+            if ds then
+                stocks[#stocks + 1] = {
+                    id        = s.id,
+                    label     = s.label,
+                    weight    = math.floor((LSLegacy.DataStore.GetInventoryWeight(ds.inventory) or 0) * 10) / 10,
+                    maxWeight = ds.maxWeight or 0,
+                }
+            end
+        end
+        local safe = LSLegacy.DataStore.GetDataStore(prefix .. '_safe')
+        if safe then safeBalance = LSLegacy.DataStore.GetMoney(safe) end
+    end
+
+    reply({
+        onDuty      = onDuty,
+        meOnDuty    = meOnDuty,
+        stocks      = stocks,
+        safeBalance = safeBalance,
+    })
 end
 
 --  CODE JURIDIQUE — lois / infractions (CRUD)
@@ -2420,7 +2682,7 @@ end)
 
 -- Supprimer une garde à vue du casier d'un citoyen
 -- Réservé aux grades supérieurs (Commandant / Commissaire côté police,
--- leurs équivalents côté gendarmerie) : la GAV reste consultable et
+-- leurs équivalents côté shérif) : la GAV reste consultable et
 -- gérable par tous les grades qui en ont déjà le droit, mais sa
 -- suppression est une décision de commandement.
 LSLegacy.Events.Register('mdt:deleteCustody', function(data)
@@ -2505,7 +2767,7 @@ end)
 -- Lier une preuve (par référence) à un dossier
 LSLegacy.Events.Register('mdt:linkReportEvidence', function(data)
     local src = source
-    local player, depName = Can(src, 'view_evidence')
+    local player, depName = Can(src, 'manage_evidence')
     if not player or type(data) ~= 'table' then return end
     local reportId = tonumber(data.reportId)
     local ref = type(data.ref) == 'string' and data.ref:upper():gsub('%s+', '') or ''
@@ -2526,7 +2788,7 @@ end)
 -- Délier une preuve d'un dossier
 LSLegacy.Events.Register('mdt:unlinkReportEvidence', function(data)
     local src = source
-    local player = Can(src, 'view_evidence')
+    local player = Can(src, 'manage_evidence')
     if not player or type(data) ~= 'table' then return end
     local id = tonumber(data.id)
     if not id then return end
@@ -2537,11 +2799,60 @@ end)
 
 --  FICHE DÉTAILLÉE AGENT (RH, carrière, affectations, sanctions, compétences)
 
-local function GenerateMatricule(cb, attempts)
+-- Préfixe de matricule par département — sans ça, GenerateMatricule
+-- attribuait "PN" (Police Nationale) à tout le monde, y compris aux
+-- agents EMS/Sheriff/LSFD, ce qui les faisait passer pour des
+-- policiers sur leur propre fiche.
+local MATRICULE_PREFIXES = {
+    police   = 'PN',
+    sheriff  = 'SO',
+    ems      = 'EM',
+    lsfd     = 'LF',
+}
+
+-- Un policier a-t-il tel code de formation/compétence (résolu comme
+-- ailleurs : code stocké directement, ou déduit du nom via TrainingCodes) ?
+-- Exposé sur LSLegacy.MDT (table partagée, shared/permissions.lua) pour être
+-- appelable depuis d'autres modules (ex: module/police/server/armory.lua).
+function LSLegacy.MDT.HasSkillCode(characterId, code)
+    local rows = MySQL.Sync.fetchAll('SELECT skill, code FROM mdt_agent_skills WHERE character_id=@id', { ['@id'] = characterId }) or {}
+    local nameToCode = {}
+    for _, tc in ipairs(Config.MDT.TrainingCodes or {}) do nameToCode[tc.name] = tc.code end
+    for _, r in ipairs(rows) do
+        local c = (r.code and r.code ~= '') and r.code or nameToCode[r.skill]
+        if c == code then return true end
+    end
+    return false
+end
+
+-- Table du stand de tir (module/police/server/shootingrange.lua) : dupliqué
+-- ici (CREATE TABLE IF NOT EXISTS est idempotent) pour que la fiche agent
+-- ne dépende jamais de l'ordre de chargement entre les deux fichiers.
+MySQL.Async.execute([[
+    CREATE TABLE IF NOT EXISTS police_range_scores (
+        id                    INT AUTO_INCREMENT PRIMARY KEY,
+        character_id          INT          NOT NULL,
+        name                  VARCHAR(100) NOT NULL DEFAULT '',
+        trainer_character_id  INT          DEFAULT NULL,
+        trainer_name          VARCHAR(100) NOT NULL DEFAULT '',
+        stand_id              VARCHAR(40)  NOT NULL DEFAULT '',
+        difficulty            VARCHAR(20)  NOT NULL DEFAULT '',
+        difficulty_label      VARCHAR(30)  NOT NULL DEFAULT '',
+        target_count          INT          NOT NULL DEFAULT 0,
+        hits                  INT          NOT NULL DEFAULT 0,
+        score                 INT          NOT NULL DEFAULT 0,
+        max_score             INT          NOT NULL DEFAULT 0,
+        created_at            DATETIME     DEFAULT CURRENT_TIMESTAMP,
+        KEY idx_range_character (character_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+]], {})
+
+local function GenerateMatricule(depName, cb, attempts)
     attempts = attempts or 0
-    local m = 'PN' .. tostring(math.random(10000, 99999))
+    local prefix = MATRICULE_PREFIXES[depName] or depName:upper():sub(1, 2)
+    local m = prefix .. tostring(math.random(10000, 99999))
     MySQL.Async.fetchScalar('SELECT identifier FROM mdt_agent_meta WHERE matricule=@m LIMIT 1', { ['@m'] = m }, function(existing)
-        if existing and attempts < 12 then GenerateMatricule(cb, attempts + 1) else cb(m) end
+        if existing and attempts < 12 then GenerateMatricule(depName, cb, attempts + 1) else cb(m) end
     end)
 end
 
@@ -2554,17 +2865,28 @@ readHandlers.getAgentFile = function(player, depName, grade, data, reply)
     if not characterId then return reply(false) end
     MySQL.Async.fetchAll('SELECT identifier, characterInfos, job, job_grade FROM players WHERE `boutique-id`=@id LIMIT 1', { ['@id'] = characterId }, function(prows)
         if not prows or not prows[1] then return reply(false) end
+        -- La fiche ne se consulte qu'entre membres du même groupe de
+        -- données (ex : police+shérif) — jamais un autre département.
+        local sameGroup = false
+        for _, d in ipairs(LSLegacy.MDT.GetDataGroup(depName)) do
+            local ddep = LSLegacy.MDT.GetDepartment(d)
+            for _, j in ipairs(ddep and ddep.jobs or {}) do
+                if j == prows[1].job then sameGroup = true break end
+            end
+            if sameGroup then break end
+        end
+        if not sameGroup then return reply(false) end
         local identifier = prows[1].identifier
         local ok, info = pcall(json.decode, prows[1].characterInfos)
         info = (ok and info) or {}
         local function loadAll(meta)
             local p = { ['@id'] = characterId }
-            MySQL.Async.fetchAll('SELECT grade_index, start_date, end_date FROM mdt_agent_career WHERE character_id=@id', p, function(career)
+            MySQL.Async.fetchAll('SELECT grade_index, start_date, end_date, changed_by FROM mdt_agent_career WHERE character_id=@id', p, function(career)
                 MySQL.Async.fetchAll('SELECT * FROM mdt_agent_assignments WHERE character_id=@id ORDER BY created_at ASC', p, function(assignments)
                     MySQL.Async.fetchAll('SELECT * FROM mdt_agent_commendations WHERE character_id=@id ORDER BY obtained_date DESC', p, function(comms)
                         MySQL.Async.fetchAll('SELECT id, skill, code, obtained_at, DATEDIFF(NOW(), obtained_at) AS days_since FROM mdt_agent_skills WHERE character_id=@id ORDER BY obtained_at DESC', p, function(skills)
                             local careerMap = {}
-                            for _, c in ipairs(career or {}) do careerMap[tostring(c.grade_index)] = { start_date = c.start_date, end_date = c.end_date } end
+                            for _, c in ipairs(career or {}) do careerMap[tostring(c.grade_index)] = { start_date = c.start_date, end_date = c.end_date, changed_by = c.changed_by } end
                             -- statut de recyclage calculé serveur (fiable, indépendant du transport)
                             local nameToCode = {}
                             for _, tc in ipairs(Config.MDT.TrainingCodes or {}) do nameToCode[tc.name] = tc.code end
@@ -2575,21 +2897,70 @@ readHandlers.getAgentFile = function(player, depName, grade, data, reply)
                                     s.recycle_status = (tonumber(s.days_since) or 0) <= days and 'valid' or 'expired'
                                 end
                             end
-                            reply({
-                                identity = {
-                                    identifier = identifier,
-                                    character_id = characterId,
-                                    prenom = info.Prenom, nom = info.NDF, ddn = info.DDN,
-                                    name = ((info.Prenom or '') .. ' ' .. (info.NDF or '')):gsub('^%s+', ''):gsub('%s+$', ''),
-                                    job = prows[1].job, job_grade = prows[1].job_grade,
-                                    gradeLabel = LSLegacy.MDT.GetGradeLabel(depName, tonumber(prows[1].job_grade) or 0),
-                                },
-                                meta = meta,
-                                career = careerMap,
-                                assignments = assignments or {},
-                                commendations = comms or {},
-                                skills = skills or {},
-                            })
+                            -- Les statistiques de terrain (police_stats) et l'arme de service ne
+                            -- concernent que les forces de l'ordre (le module MDT est partagé par
+                            -- tous les départements, y compris l'atelier des mécaniciens).
+                            local isLeo = false
+                            for _, d in ipairs(LSLegacy.MDT.GetDataGroup('police')) do
+                                if d == depName then isLeo = true break end
+                            end
+
+                            local function withStats(stats, rangeScores)
+                                reply({
+                                    identity = {
+                                        identifier = identifier,
+                                        character_id = characterId,
+                                        prenom = info.Prenom, nom = info.NDF, ddn = info.DDN,
+                                        name = ((info.Prenom or '') .. ' ' .. (info.NDF or '')):gsub('^%s+', ''):gsub('%s+$', ''),
+                                        job = prows[1].job, job_grade = prows[1].job_grade,
+                                        gradeLabel = LSLegacy.MDT.GetGradeLabel(depName, tonumber(prows[1].job_grade) or 0),
+                                    },
+                                    meta = meta,
+                                    career = careerMap,
+                                    assignments = assignments or {},
+                                    commendations = comms or {},
+                                    skills = skills or {},
+                                    stats = stats,
+                                    rangeScores = rangeScores,
+                                    unitCatalog = GetUnitCatalog(depName),
+                                    lockedUnit  = GetLockedUnit(depName, tonumber(prows[1].job_grade) or 0),
+                                    isLeo = isLeo,
+                                })
+                            end
+
+                            local canSeeStats = isLeo and grade >= 4
+                            -- Stand de tir (module/police/server/shootingrange.lua) : réservé aux
+                            -- formateurs (CZ001) et au Commissaire (grade 8), qu'ils aient ou non
+                            -- passé eux-mêmes cette formation.
+                            local canSeeRange = isLeo and (grade >= 8 or LSLegacy.MDT.HasSkillCode(player['boutique-id'], 'CZ001'))
+
+                            local function loadRangeThen(stats)
+                                if not canSeeRange then return withStats(stats, nil) end
+                                MySQL.Async.fetchAll('SELECT * FROM police_range_scores WHERE character_id=@id ORDER BY created_at DESC LIMIT 50', p, function(rrows)
+                                    withStats(stats, rrows or {})
+                                end)
+                            end
+
+                            if canSeeStats then
+                                MySQL.Async.fetchAll('SELECT * FROM police_stats WHERE character_id=@id LIMIT 1', p, function(srows)
+                                    local stats = srows and srows[1] or {}
+                                    -- Bavures / mises à mort en intervention (Appel 17) : déjà
+                                    -- calculées par server/callouts.lua (légitimité de l'usage de
+                                    -- la force), simplement pas encore exposées côté MDT.
+                                    MySQL.Async.fetchAll(
+                                        'SELECT COALESCE(SUM(killed),0) AS killed, COALESCE(SUM(misconduct),0) AS misconducts ' ..
+                                        'FROM police_callout_agents WHERE character_id=@id', p,
+                                        function(drows)
+                                            local d0 = drows and drows[1]
+                                            stats.callout_killed      = d0 and tonumber(d0.killed) or 0
+                                            stats.callout_misconducts = d0 and tonumber(d0.misconducts) or 0
+                                            loadRangeThen(stats)
+                                        end
+                                    )
+                                end)
+                            else
+                                loadRangeThen(nil)
+                            end
                         end)
                     end)
                 end)
@@ -2599,7 +2970,7 @@ readHandlers.getAgentFile = function(player, depName, grade, data, reply)
             if mrows and mrows[1] then
                 loadAll(mrows[1])
             else
-                GenerateMatricule(function(m)
+                GenerateMatricule(depName, function(m)
                     MySQL.Async.execute('INSERT INTO mdt_agent_meta (identifier, character_id, department, matricule) VALUES (@id,@charId,@dep,@m) ON DUPLICATE KEY UPDATE matricule=matricule', {
                         ['@id'] = identifier, ['@charId'] = characterId, ['@dep'] = depName, ['@m'] = m,
                     }, function()
@@ -2633,11 +3004,12 @@ LSLegacy.Events.Register('mdt:saveCareer', function(data)
     local identifier = type(data.identifier) == 'string' and data.identifier or nil
     if not characterId or not identifier then return end
     local entries = type(data.entries) == 'table' and data.entries or {}
+    local changedBy = CharName(player)
     for _, e in ipairs(entries) do
         local gi = tonumber(e.grade)
         if gi then
-            MySQL.Async.execute('INSERT INTO mdt_agent_career (identifier, character_id, grade_index, start_date, end_date) VALUES (@ident,@id,@gi,@s,@e) ON DUPLICATE KEY UPDATE start_date=@s, end_date=@e', {
-                ['@ident'] = identifier, ['@id'] = characterId, ['@gi'] = gi, ['@s'] = SafeText(e.start, 20), ['@e'] = SafeText(e.endDate, 20),
+            MySQL.Async.execute('INSERT INTO mdt_agent_career (identifier, character_id, grade_index, start_date, end_date, changed_by) VALUES (@ident,@id,@gi,@s,@e,@by) ON DUPLICATE KEY UPDATE start_date=@s, end_date=@e, changed_by=@by', {
+                ['@ident'] = identifier, ['@id'] = characterId, ['@gi'] = gi, ['@s'] = SafeText(e.start, 20), ['@e'] = SafeText(e.endDate, 20), ['@by'] = changedBy,
             })
         end
     end
@@ -2645,6 +3017,9 @@ LSLegacy.Events.Register('mdt:saveCareer', function(data)
 end)
 
 -- Affectations
+-- Une affectation "en cours" (sans date de fin) représente l'unité actuelle
+-- de l'agent, utilisée à la prise de service : elle est validée contre la
+-- grille du grade et ferme automatiquement l'affectation en cours précédente.
 LSLegacy.Events.Register('mdt:addAssignment', function(data)
     local src = source
     local player, depName = Can(src, 'manage_personnel')
@@ -2653,10 +3028,189 @@ LSLegacy.Events.Register('mdt:addAssignment', function(data)
     local identifier = type(data.identifier) == 'string' and data.identifier or nil
     if not characterId or not identifier then return end
     local code = SafeText(data.code, 80)
-    if code == '' then return Result(src, false, "Code d'affectation requis.") end
-    MySQL.Async.insert('INSERT INTO mdt_agent_assignments (identifier, character_id, code, start_date, end_date) VALUES (@ident,@id,@code,@s,@e)', {
-        ['@ident'] = identifier, ['@id'] = characterId, ['@code'] = code, ['@s'] = SafeText(data.start_date, 20), ['@e'] = SafeText(data.end_date, 20),
-    }, function() Result(src, true, 'Affectation ajoutée.', { view = 'agent', id = characterId }) end)
+    if code == '' then return Result(src, false, 'Unité requise.') end
+    local startDate = SafeText(data.start_date, 20)
+    local endDate    = SafeText(data.end_date, 20)
+
+    local function insert()
+        MySQL.Async.insert('INSERT INTO mdt_agent_assignments (identifier, character_id, code, start_date, end_date) VALUES (@ident,@id,@code,@s,@e)', {
+            ['@ident'] = identifier, ['@id'] = characterId, ['@code'] = code, ['@s'] = startDate, ['@e'] = endDate,
+        }, function()
+            Result(src, true, 'Affectation ajoutée.', { view = 'agent', id = characterId })
+            local targetSrc = GetOnlineSourceByCharacterId(characterId)
+            if targetSrc then
+                LSLegacy.Events.SendToClient('notify', targetSrc, LSLegacy.MDT.GetDepartment(depName).label,
+                    'Vous êtes désormais affecté(e) à : ' .. GetUnitLabel(depName, code) .. '.', 'info', 8000)
+            end
+        end)
+    end
+
+    if endDate ~= '' then
+        -- Entrée historique (dates closes) : simple ajout, pas de validation live.
+        return insert()
+    end
+
+    MySQL.Async.fetchScalar('SELECT job_grade FROM players WHERE `boutique-id`=@id LIMIT 1', { ['@id'] = characterId }, function(grade)
+        local locked = GetLockedUnit(depName, tonumber(grade) or 0)
+        if locked and locked ~= code then
+            return Result(src, false, "Ce grade ne peut être affecté qu'à : " .. GetUnitLabel(depName, locked) .. '.')
+        end
+        MySQL.Async.execute("UPDATE mdt_agent_assignments SET end_date=@today WHERE character_id=@id AND end_date=''", {
+            ['@today'] = startDate, ['@id'] = characterId,
+        }, function() insert() end)
+    end)
+end)
+
+-- Promotion / rétrogradation réelle depuis la fiche agent : ferme l'entrée
+-- de carrière du grade courant, en ouvre une pour le nouveau grade, et
+-- applique le vrai changement de grade (LSLegacy.Jobs.SetJobGrade) — la
+-- cible doit être connectée, comme pour le menu admin.
+LSLegacy.Events.Register('mdt:promoteAgent', function(data)
+    local src = source
+    local player, depName, callerGrade = Can(src, 'manage_personnel')
+    if not player or type(data) ~= 'table' then return end
+    local characterId = tonumber(data.character_id)
+    local newGrade    = tonumber(data.grade)
+    if not characterId or not newGrade then return end
+    if not LSLegacy.MDT.GetRankData(depName, newGrade) then return Result(src, false, 'Grade invalide.') end
+    -- Ne jamais permettre d'atteindre ou dépasser son propre grade (empêche
+    -- l'auto-promotion et l'accès à admin_mdt via un supérieur complice).
+    if newGrade >= (tonumber(callerGrade) or 0) then
+        return Result(src, false, 'Vous ne pouvez pas attribuer un grade égal ou supérieur au vôtre.')
+    end
+    if characterId == player["boutique-id"] then
+        return Result(src, false, 'Vous ne pouvez pas modifier votre propre grade.')
+    end
+
+    local targetSrc = GetOnlineSourceByCharacterId(characterId)
+    if not targetSrc then return Result(src, false, "L'agent doit être connecté pour être promu/rétrogradé depuis le MDT.") end
+    local tp = LSLegacy.Players.Get(targetSrc)
+    if not tp then return Result(src, false, 'Agent introuvable.') end
+
+    local oldGrade = tonumber(tp.job_grade) or 0
+    if oldGrade == newGrade then return Result(src, false, 'Déjà à ce grade.') end
+
+    local today = os.date('%Y-%m-%d')
+    local changedBy = CharName(player)
+    MySQL.Async.execute("UPDATE mdt_agent_career SET end_date=@today WHERE character_id=@id AND grade_index=@old AND end_date=''", {
+        ['@today'] = today, ['@id'] = characterId, ['@old'] = oldGrade,
+    })
+    MySQL.Async.execute("INSERT INTO mdt_agent_career (identifier, character_id, grade_index, start_date, end_date, changed_by) VALUES (@ident,@id,@gi,@s,'',@by) ON DUPLICATE KEY UPDATE start_date=@s, end_date='', changed_by=@by", {
+        ['@ident'] = tp.identifier, ['@id'] = characterId, ['@gi'] = newGrade, ['@s'] = today, ['@by'] = changedBy,
+    })
+
+    LSLegacy.Jobs.SetJobGrade(tp, newGrade)
+
+    local gradeLabel = LSLegacy.MDT.GetGradeLabel(depName, newGrade)
+    LSLegacy.Events.SendToClient('notify', targetSrc, LSLegacy.MDT.GetDepartment(depName).label,
+        'Vous êtes désormais ' .. gradeLabel .. '.', 'success', 8000)
+
+    MdtLog('Changement de grade', ('**%s** → %s (par %s)'):format(CharName(tp), gradeLabel, changedBy))
+
+    Result(src, true, 'Grade mis à jour.', { view = 'agent', id = characterId })
+end)
+
+-- Recrutement d'une nouvelle recrue depuis l'onglet Effectifs : assigne le
+-- job police + le grade choisi à un joueur proche non-policier, sur le même
+-- modèle de sécurité que promoteAgent (cible connectée, grade strictement
+-- inférieur à celui du recruteur, tout revalidé serveur).
+LSLegacy.Events.Register('mdt:recruitAgent', function(data)
+    local src = source
+    local player, depName, callerGrade = Can(src, 'recruit_personnel')
+    if not player or type(data) ~= 'table' then return end
+    local targetSrc = tonumber(data.source)
+    local newGrade   = tonumber(data.grade)
+    local unit       = SafeText(data.unit, 80)
+    if not targetSrc or not newGrade or unit == '' then return end
+    if not LSLegacy.MDT.GetRankData(depName, newGrade) then return Result(src, false, 'Grade invalide.') end
+    if newGrade >= (tonumber(callerGrade) or 0) then
+        return Result(src, false, 'Vous ne pouvez pas recruter à un grade égal ou supérieur au vôtre.')
+    end
+
+    -- Revalidation de la proximité : jamais confiance dans la liste envoyée
+    -- au moment de l'ouverture du formulaire, la cible a pu bouger depuis.
+    local myPed = GetPlayerPed(src)
+    local targetPed = GetPlayerPed(targetSrc)
+    if myPed == 0 or targetPed == 0 then return Result(src, false, 'Cible introuvable.') end
+    local radius = (Config.MDT.Limits and Config.MDT.Limits.RecruitRadius) or 10.0
+    if #(GetEntityCoords(myPed) - GetEntityCoords(targetPed)) > radius then
+        return Result(src, false, 'La personne doit rester à proximité pour être recrutée.')
+    end
+
+    local tp = LSLegacy.Players.Get(targetSrc)
+    if not tp then return Result(src, false, 'Agent introuvable.') end
+    local dep = LSLegacy.MDT.GetDepartment(depName)
+    local jobsSet = {}
+    for _, j in ipairs(dep.jobs or {}) do jobsSet[j] = true end
+    if jobsSet[tp.job] then return Result(src, false, 'Cette personne fait déjà partie du service.') end
+
+    -- Unité limitée à celles autorisées pour le grade choisi.
+    local rank = LSLegacy.MDT.GetRankData(depName, newGrade)
+    local unitOk = false
+    for _, u in ipairs(rank and rank.units or {}) do if u == unit then unitOk = true break end end
+    if not unitOk then return Result(src, false, 'Unité invalide pour ce grade.') end
+
+    local characterId = tp["boutique-id"]
+    local today = os.date('%Y-%m-%d')
+    local changedBy = CharName(player)
+
+    -- Même job que le recruteur (et non le nom du département : un
+    -- département peut regrouper plusieurs jobs, ex. police + shérif).
+    LSLegacy.Jobs.SetJob(tp, player.job)
+    LSLegacy.Jobs.SetJobGrade(tp, newGrade) -- déclenche lslegacy:jobGradeChanged (verrouille l'unité si le grade n'en propose qu'une)
+
+    MySQL.Async.execute("INSERT INTO mdt_agent_career (identifier, character_id, grade_index, start_date, end_date, changed_by) VALUES (@ident,@id,@gi,@s,'',@by) ON DUPLICATE KEY UPDATE start_date=@s, end_date='', changed_by=@by", {
+        ['@ident'] = tp.identifier, ['@id'] = characterId, ['@gi'] = newGrade, ['@s'] = today, ['@by'] = changedBy,
+    })
+
+    -- Grade libre sur plusieurs unités (jobGradeChanged ne verrouille rien
+    -- dans ce cas) : on affecte explicitement l'unité choisie au formulaire.
+    if not GetLockedUnit(depName, newGrade) then
+        MySQL.Async.execute("UPDATE mdt_agent_assignments SET end_date=@today WHERE character_id=@id AND end_date=''", {
+            ['@today'] = today, ['@id'] = characterId,
+        }, function()
+            MySQL.Async.insert('INSERT INTO mdt_agent_assignments (identifier, character_id, code, start_date, end_date) VALUES (@ident,@id,@code,@s,@e)', {
+                ['@ident'] = tp.identifier, ['@id'] = characterId, ['@code'] = unit, ['@s'] = today, ['@e'] = '',
+            })
+        end)
+    end
+
+    local gradeLabel = LSLegacy.MDT.GetGradeLabel(depName, newGrade)
+    LSLegacy.Events.SendToClient('notify', targetSrc, dep.label,
+        ('Vous avez été recruté(e) au sein de %s en tant que %s.'):format(dep.label, gradeLabel), 'success', 8000)
+
+    Result(src, true, 'Recrutement effectué.', { view = 'agent', id = characterId })
+end)
+
+-- Réaction générique à tout changement de grade (menu admin, commande,
+-- promotion MDT ci-dessus...) : si le nouveau grade verrouille une unité
+-- (ex. Policier Adjoint → Police Secours), on réaffecte automatiquement.
+AddEventHandler('lslegacy:jobGradeChanged', function(src, job, oldGrade, newGrade)
+    local depName = LSLegacy.MDT.GetDepartmentForJob(job)
+    if not depName then return end
+    local locked = GetLockedUnit(depName, newGrade)
+    if not locked then return end
+
+    local p = LSLegacy.Players.Get(src)
+    if not p then return end
+    local characterId = p["boutique-id"]
+    local identifier   = p.identifier
+    local today = os.date('%Y-%m-%d')
+
+    MySQL.Async.fetchAll("SELECT code FROM mdt_agent_assignments WHERE character_id=@id AND end_date='' ORDER BY id DESC LIMIT 1", { ['@id'] = characterId }, function(rows)
+        local current = rows and rows[1]
+        if current and current.code == locked then return end
+
+        MySQL.Async.execute("UPDATE mdt_agent_assignments SET end_date=@today WHERE character_id=@id AND end_date=''", {
+            ['@today'] = today, ['@id'] = characterId,
+        })
+        MySQL.Async.insert('INSERT INTO mdt_agent_assignments (identifier, character_id, code, start_date, end_date) VALUES (@ident,@id,@code,@s,@e)', {
+            ['@ident'] = identifier, ['@id'] = characterId, ['@code'] = locked, ['@s'] = today, ['@e'] = '',
+        })
+
+        LSLegacy.Events.SendToClient('notify', src, LSLegacy.MDT.GetDepartment(depName).label,
+            'Changement de grade : vous êtes réaffecté(e) à ' .. GetUnitLabel(depName, locked) .. '.', 'warning', 8000)
+    end)
 end)
 
 LSLegacy.Events.Register('mdt:updateAssignment', function(data)

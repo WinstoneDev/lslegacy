@@ -1,10 +1,11 @@
 -- Indexée sur (character_id, company) : un personnage ne peut être employé que d'une seule
 -- entreprise à la fois, mais la clé composite prépare le terrain pour un futur changement d'employeur.
 local rateLimits = {
-    ['atelier:onDuty'] = 10, ['atelier:offDuty'] = 10, ['atelier:spawnVehicle'] = 15,
+    ['atelier:onDuty'] = 10, ['atelier:offDuty'] = 10,
     ['atelier:requestDiagnostic'] = 20, ['atelier:requestStock'] = 20, ['atelier:takePart'] = 15,
     ['atelier:dropPart'] = 20, ['atelier:restockStock'] = 15, ['atelier:repairComponent'] = 15,
-    ['atelier:requestInvoice'] = 15, ['atelier:finalizeInvoice'] = 10,
+    ['atelier:requestInvoice'] = 15, ['atelier:finalizeInvoice'] = 10, ['atelier:requestTuningCheckout'] = 20,
+    ['atelier:reportUsage'] = 6,
 }
 for eventName, limit in pairs(rateLimits) do
     LSLegacy.Security.RegisterRateLimit(eventName, limit)
@@ -67,36 +68,6 @@ LSLegacy.Events.Register('atelier:offDuty', function()
     LSLegacy.Atelier.Agents[src] = nil
 
     LSLegacy.Events.SendToClient('atelier:dutyResult', src, { success = true, onDuty = false })
-end)
-
--- SPAWN VÉHICULE (dépanneuse)
-
-LSLegacy.Events.Register('atelier:spawnVehicle', function(data)
-    local src = source
-    local ok, companyId = LSLegacy.Atelier.CanAct(src)
-    if not ok then return end
-    if not data or not data.model then return end
-
-    local company = Config.Atelier.Companies[companyId]
-    local minGrade = tonumber(data.grade) or 0
-
-    -- Revalidation serveur : le modèle doit exister dans la config de CETTE entreprise, jamais faire confiance au grade client.
-    local found = false
-    for _, veh in ipairs((company.vehicles and company.vehicles.tow) or {}) do
-        if veh.model == data.model then
-            found = true
-            minGrade = veh.grade
-            break
-        end
-    end
-    if not found then return end
-
-    if LSLegacy.Atelier.GetGrade(src) < minGrade then
-        LSLegacy.Atelier.Notify(src, 'Votre grade est insuffisant pour ce véhicule.', 'error')
-        return
-    end
-
-    LSLegacy.Events.SendToClient('atelier:spawnVehicleClient', src, { model = data.model })
 end)
 
 -- Nettoyage à la déconnexion

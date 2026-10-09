@@ -52,8 +52,10 @@ html, body {
     /* Fenêtre légèrement agrandie : plus de lignes visibles dans les
        listes/tableaux sans défiler, tout en restant raisonnable sur un
        écran 1080p (les vw/vh + plafonds gardent l'ensemble responsive). */
-    width: 84vw; height: 86vh;
-    max-width: 1560px; max-height: 940px;
+    width: 94vw; height: 94vh;
+    max-width: 1860px; max-height: 1020px;
+    min-width: 900px; min-height: 500px;
+    position: relative;
     background: var(--mdt-bg);
     border: 1px solid var(--mdt-border);
     border-radius: 16px;
@@ -66,6 +68,23 @@ html, body {
 }
 @keyframes mdt-pop { from { transform: scale(0.97); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
+/* Poignée de redimensionnement : coin bas-droit, cliquer-glisser pour
+   étirer la fenêtre (voir mdt.js initResize). */
+.mdt-resize-handle {
+    position: absolute; right: 0; bottom: 0;
+    width: 18px; height: 18px;
+    cursor: nwse-resize;
+    z-index: 5;
+}
+.mdt-resize-handle::after {
+    content: ''; position: absolute; right: 4px; bottom: 4px;
+    width: 9px; height: 9px;
+    border-right: 2px solid var(--mdt-border);
+    border-bottom: 2px solid var(--mdt-border);
+    opacity: .7;
+}
+.mdt-resize-handle:hover::after { border-color: var(--mdt-blue); opacity: 1; }
+
 /* ── En-tête ─────────────────────────────────────────────────── */
 .mdt-header {
     display: flex; align-items: center; gap: 18px;
@@ -75,6 +94,7 @@ html, body {
 }
 .mdt-brand { display: flex; align-items: center; gap: 14px; flex: 1; }
 .mdt-logo { font-size: 30px; filter: drop-shadow(0 2px 4px rgba(0,0,0,.5)); }
+.mdt-logo-img { display: block; height: 40px; width: auto; max-width: 160px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,.5)); }
 .mdt-title h1 { font-size: 18px; font-weight: 700; letter-spacing: .3px; }
 .mdt-subtitle { font-size: 11px; color: var(--mdt-text-dim); text-transform: uppercase; letter-spacing: 2px; }
 
@@ -210,7 +230,7 @@ html, body {
 .mdt-badge-gray   { background: rgba(147,164,196,.14); color: var(--mdt-text-dim); }
 
 /* Estampille d'origine d'une pièce du dossier commun aux forces de
-   l'ordre (Police / Gendarmerie). Volontairement discrète : elle qualifie
+   l'ordre (Police / Sheriff). Volontairement discrète : elle qualifie
    une signature déjà affichée, elle ne doit pas la concurrencer. */
 .mdt-dep-badge {
     display: inline-block; margin-left: 6px; vertical-align: middle;
@@ -234,6 +254,13 @@ html, body {
 }
 .mdt-pill:hover { color: var(--mdt-text); }
 .mdt-pill.active { background: var(--mdt-blue); border-color: var(--mdt-blue); color: #fff; }
+
+.co-unit-row { cursor: pointer; }
+.co-unit-row.active { border-color: var(--mdt-blue); background: rgba(27, 79, 134, .12); }
+
+.cic-member { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 4px 0; font-size: 13px; }
+.cic-dispatch { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.cic-dispatch select { min-width: 160px; }
 
 /* État vide */
 .mdt-empty { text-align: center; color: var(--mdt-text-dim); padding: 40px 20px; font-size: 14px; }
@@ -271,12 +298,18 @@ html, body {
 .mdt-modal-header {
     display: flex; align-items: center; justify-content: space-between;
     padding: 16px 20px; border-bottom: 1px solid var(--mdt-border);
+    cursor: move; user-select: none;
 }
 .mdt-modal-header h3 { font-size: 16px; }
 .mdt-modal-close { background: none; border: none; color: var(--mdt-text-dim); font-size: 18px; cursor: pointer; }
 .mdt-modal-close:hover { color: var(--mdt-text); }
 .mdt-modal-body { padding: 20px; }
 .mdt-modal-footer { padding: 14px 20px; border-top: 1px solid var(--mdt-border); display: flex; gap: 10px; justify-content: flex-end; }
+
+/* Variante large : rédaction de rapport, plus confortable à relire/éditer. */
+.mdt-modal-lg { width: 900px; max-width: 94vw; max-height: 90vh; }
+.mdt-modal-lg .co-report-textarea,
+.mdt-modal-lg #co-report-text { min-height: 55vh; }
 
 /* ── Toasts ──────────────────────────────────────────────────── */
 .mdt-toasts { position: fixed; bottom: 24px; right: 24px; display: flex; flex-direction: column; gap: 10px; z-index: 60; }

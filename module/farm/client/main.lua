@@ -13,9 +13,13 @@ local function SpawnStaticPed(coords, model, heading, options)
     RequestModel(hash)
     local t = 0
     while not HasModelLoaded(hash) and t < 100 do Wait(10); t = t + 1 end
-    if not HasModelLoaded(hash) then return end
+    if not HasModelLoaded(hash) then
+        print(('[farm][debug] echec chargement modele %s (hash %s) apres %d ms'):format(model, hash, t * 10))
+        return
+    end
 
     local ped = CreatePed(4, hash, coords.x, coords.y, coords.z - 1.0, heading or 0.0, false, true)
+    print(('[farm][debug] ped cree model=%s exists=%s coords=%.2f,%.2f,%.2f'):format(model, tostring(DoesEntityExist(ped)), coords.x, coords.y, coords.z))
     SetEntityInvincible(ped, true)
     SetBlockingOfNonTemporaryEvents(ped, true)
     FreezeEntityPosition(ped, true)
@@ -31,19 +35,6 @@ local function RandomPointInRadius(center, radius)
     local angle = math.random() * 2 * math.pi
     local dist  = math.random() * radius
     return vector3(center.x + math.cos(angle) * dist, center.y + math.sin(angle) * dist, center.z)
-end
-
-local function RandomPointAround(center, minDist, maxDist)
-    local angle = math.random() * 2 * math.pi
-    local dist  = minDist + math.random() * (maxDist - minDist)
-    return vector3(center.x + math.cos(angle) * dist, center.y + math.sin(angle) * dist, center.z)
-end
-
--- Littoral uniquement (mouette) : eau proche du niveau du sol du joueur, pas juste présente sur la carte. Native client-only, d'où la délégation au client.
-local function IsNearWater(coords)
-    local found, waterZ = GetWaterHeight(coords.x, coords.y, coords.z)
-    if not found then return false end
-    return math.abs(coords.z - waterZ) < 25.0
 end
 
 local SpawnedAnimals = {} -- entités qu'on a nous-mêmes créées, pour le nettoyage à l'arrêt de la ressource
@@ -92,19 +83,6 @@ LSLegacy.Events.Register('farm:spawnZoneAnimal', function(data)
     if not data then return end
     local ped   = SpawnAnimal(data.model, RandomPointInRadius(data.coords, data.radius))
     local netId = ped and EnsureNetworked(ped) or nil
-    LSLegacy.Events.SendToServer('farm:animalSpawned', { reqId = data.reqId, netId = netId })
-end)
-
-LSLegacy.Events.Register('farm:spawnAmbientAnimal', function(data)
-    if not data then return end
-    local netId
-
-    if not data.requiresWater or IsNearWater(GetEntityCoords(PlayerPedId())) then
-        local playerCoords = GetEntityCoords(PlayerPedId())
-        local ped = SpawnAnimal(data.model, RandomPointAround(playerCoords, Config.Farm.HuntSpawn.ambientSpawnMin, Config.Farm.HuntSpawn.ambientSpawnMax))
-        netId = ped and EnsureNetworked(ped) or nil
-    end
-
     LSLegacy.Events.SendToServer('farm:animalSpawned', { reqId = data.reqId, netId = netId })
 end)
 
@@ -209,26 +187,53 @@ local function AddFarmBlip(coords, sprite, color, scale, label)
     BeginTextCommandSetBlipName('STRING')
     AddTextComponentString(label)
     EndTextCommandSetBlipName(blip)
+    return blip
 end
 
-local function CreateBlips()
+local MetierOrder = { 'chasseur', 'mineur', 'bucheron', 'chauffeur_citerne', 'transporteur_avicole', 'preparateur_avicole', 'pecheur' }
+local SelectedMetier = nil
+local InService = false
+local MetierBlips = {}
+
+local function ClearMetierBlips()
+    for _, b in ipairs(MetierBlips) do RemoveBlip(b) end
+    MetierBlips = {}
+end
+
+local function AddMetierBlip(...)
+    table.insert(MetierBlips, AddFarmBlip(...))
+end
+
+local function SetMetierBlips(metier, inService)
+    ClearMetierBlips()
     for _, activity in pairs(Config.Farm.Activities) do
-        for _, node in ipairs(activity.nodes or {}) do
-            AddFarmBlip(node.coords, activity.blipSprite, activity.blipColor, Config.Farm.NodeBlipScale, activity.label .. ' — Récolte')
+        if activity.metier == nil or (inService and activity.metier == metier) then
+            for _, node in ipairs(activity.nodes or {}) do
+                AddMetierBlip(node.coords, activity.blipSprite, activity.blipColor, Config.Farm.NodeBlipScale, activity.label .. ' — Récolte')
+            end
+            if activity.sellPoint then
+                AddMetierBlip(activity.processing.coords, activity.blipSprite, activity.blipColor, Config.Farm.ProcessingBlipScale, activity.label .. ' — Traitement')
+                AddMetierBlip(activity.sellPoint, activity.blipSprite, activity.blipColor, Config.Farm.ProcessingBlipScale, activity.label .. ' — Vente')
+            elseif activity.processing then
+                AddMetierBlip(activity.processing.coords, activity.blipSprite, activity.blipColor, Config.Farm.ProcessingBlipScale, activity.label .. ' — Traitement / Revente')
+            end
         end
-        if activity.sellPoint then
-            AddFarmBlip(activity.processing.coords, activity.blipSprite, activity.blipColor, Config.Farm.ProcessingBlipScale, activity.label .. ' — Traitement')
-            AddFarmBlip(activity.sellPoint, activity.blipSprite, activity.blipColor, Config.Farm.ProcessingBlipScale, activity.label .. ' — Vente')
-        else
-            AddFarmBlip(activity.processing.coords, activity.blipSprite, activity.blipColor, Config.Farm.ProcessingBlipScale, activity.label .. ' — Traitement / Revente')
+    end
+
+    if not metier then return end
+    local m = Config.Farm.Metiers[metier]
+    for _, c in ipairs(m.blipCoords or {}) do
+        AddMetierBlip(c, m.blip.sprite, m.blip.color, m.blip.scale, m.blip.label)
+    end
+    if inService and metier == 'chasseur' then
+        for _, sp in ipairs(Config.Farm.Activities.chasseur.species) do
+            if sp.rawItem and sp.spawnZones then
+                local bc = Config.Farm.GunLoan.blips[sp.label]
+                AddMetierBlip(sp.spawnZones[1].coords, bc.sprite, bc.color, bc.scale, bc.label)
+            end
         end
     end
 end
-
-CreateThread(function()
-    Wait(2000)
-    CreateBlips()
-end)
 
 -- Minijeu générique (barre + appui touche, identique à Mécanicien), réutilisé pour la récolte et le traitement.
 local function DrawMinigameBar(pos, zoneStart, zoneEnd)
@@ -585,12 +590,35 @@ LSLegacy.Events.Register('farm:shopStockResult', function(stock)
         }
     end
 
+    -- Sous-produits bruts (viande, graisse_animale, tripes, abats, sang) et ingrédients resto (craftRecipes
+    -- sans `publicShop`) ne sont pas proposés ici : ils restent internes au boucher, achetables uniquement
+    -- via son PNJ (voir OpenButcherShop).
     for _, activity in pairs(Config.Farm.Activities) do
-        for _, entry in ipairs(activity.directSellItems or {}) do AddShopOption(entry) end
+        for _, entry in ipairs(activity.directSellItems or {}) do
+            if entry.buyPrice then AddShopOption(entry) end
+        end
         for _, entry in ipairs(activity.processedItems or {}) do AddShopOption(entry) end
-        if activity.multiSellItems then
-            for _, ms in ipairs(activity.multiSellItems) do
-                for _, entry in ipairs(ms.outputs) do AddShopOption(entry) end
+    end
+
+    -- Recettes marquées `publicShop = true` (ex: sac de pierre du mineur) : pas de stock propre, le
+    -- serveur consomme leurs `inputs` à l'achat (voir farm:buyShopItem) — toujours proposées, la
+    -- disponibilité réelle est vérifiée côté serveur, pas ici (même logique que OpenButcherShop).
+    for _, activity in pairs(Config.Farm.Activities) do
+        for _, recipe in ipairs(activity.craftRecipes or {}) do
+            if recipe.publicShop and not seen[recipe.output.item] then
+                seen[recipe.output.item] = true
+                local itemLabel = Config.Items[recipe.output.item] and Config.Items[recipe.output.item].label or recipe.output.item
+                options[#options + 1] = {
+                    title = itemLabel,
+                    description = recipe.output.buyPrice .. '$ / unité',
+                    icon = 'fa-solid fa-cart-shopping',
+                    onSelect = function()
+                        local qtyStr = LSLegacy.KeyboardInput('Quantité à acheter', 4)
+                        local amount = tonumber(qtyStr)
+                        if not amount or amount <= 0 then return end
+                        LSLegacy.Events.SendToServer('farm:buyShopItem', { item = recipe.output.item, amount = math.floor(amount) })
+                    end,
+                }
             end
         end
     end
@@ -598,6 +626,32 @@ LSLegacy.Events.Register('farm:shopStockResult', function(stock)
     lib.registerContext({ id = 'farm_shop', title = 'Boutique — Minéraux', options = options })
     lib.showContext('farm_shop')
 end)
+
+-- Boutique du boucher : uniquement les produits finis (craftRecipes), jamais les sous-produits bruts des carcasses.
+-- Pas de round-trip serveur nécessaire pour lister : le serveur vérifie/consomme les intrants à l'achat (`farm:buyResult` renvoie une rupture de stock si les intrants manquent).
+local function OpenButcherShop(activityKey)
+    local activity = Config.Farm.Activities[activityKey]
+    if not activity or not activity.craftRecipes then return end
+
+    local options = {}
+    for _, recipe in ipairs(activity.craftRecipes) do
+        local itemLabel = Config.Items[recipe.output.item] and Config.Items[recipe.output.item].label or recipe.output.item
+        options[#options + 1] = {
+            title = itemLabel,
+            description = recipe.output.buyPrice .. '$ / unité',
+            icon = 'fa-solid fa-cart-shopping',
+            onSelect = function()
+                local qtyStr = LSLegacy.KeyboardInput('Quantité à acheter', 4)
+                local amount = tonumber(qtyStr)
+                if not amount or amount <= 0 then return end
+                LSLegacy.Events.SendToServer('farm:buyShopItem', { item = recipe.output.item, amount = math.floor(amount) })
+            end,
+        }
+    end
+
+    lib.registerContext({ id = 'farm_butcher_shop_' .. activityKey, title = activity.label .. ' — Acheter', options = options })
+    lib.showContext('farm_butcher_shop_' .. activityKey)
+end
 
 LSLegacy.Events.Register('farm:buyResult', function(data)
     if not data then return end
@@ -656,7 +710,12 @@ if Config.Farm.ShopBuyPoint then
     })
 end
 
+CreateThread(function()
+print(('[farm][debug] boucle PNJ demarree, %d activites'):format((function() local n=0 for _ in pairs(Config.Farm.Activities) do n=n+1 end return n end)()))
 for activityKey, activity in pairs(Config.Farm.Activities) do
+    if activity.processingNpc then
+        print(('[farm][debug] activite=%s processingNpc.model=%s coords=%s'):format(activityKey, tostring(activity.processingNpc.model), tostring(activity.processing and activity.processing.coords)))
+    end
     -- Nœuds de récolte fixes
     for nodeIndex, node in ipairs(activity.nodes or {}) do
         exports.ox_target:addBoxZone({
@@ -776,11 +835,23 @@ for activityKey, activity in pairs(Config.Farm.Activities) do
     }
 
     if activity.processingNpc and not activity.sellPoint then
-        -- Même PNJ pour traiter (si applicable) ET vendre : les options
+        -- Même PNJ pour traiter (si applicable), vendre ET acheter (si `craftRecipes` défini) : les options
         -- s'attachent ensemble, un seul PNJ à spawn.
         local combined = {}
         for _, o in ipairs(processOptions or {}) do combined[#combined + 1] = o end
-        for _, o in ipairs(sellOptions) do combined[#combined + 1] = o end
+        for _, o in ipairs(sellOptions) do
+            combined[#combined + 1] = { name = o.name, icon = o.icon, label = 'Vendre', distance = o.distance, canInteract = o.canInteract, onSelect = o.onSelect }
+        end
+        if activity.craftRecipes then
+            combined[#combined + 1] = {
+                name = 'farm_buy_' .. activityKey,
+                icon = 'fa-solid fa-cart-shopping',
+                label = 'Acheter',
+                distance = Config.Farm.ZoneDistance,
+                canInteract = function() return not Farm.Busy end,
+                onSelect = function() OpenButcherShop(activityKey) end,
+            }
+        end
         SpawnStaticPed(activity.processing.coords, activity.processingNpc.model, activity.processingNpc.heading, combined)
     else
         if activity.processingNpc then
@@ -821,3 +892,215 @@ for activityKey, activity in pairs(Config.Farm.Activities) do
         })
     end
 end
+end)
+
+-- ── Garde-chasse : prêt de fusil contre caution ─────────────────────────
+local GL = Config.Farm.GunLoan
+local GunLoanState = { active = false, model = nil, name = nil, ped = nil }
+
+local function GunLoanOptions()
+    return {
+        {
+            name = 'farm_gunloan_start',
+            icon = 'fa-solid fa-crosshairs',
+            label = ('Prendre mon service de chasseur (caution %d$)'):format(GL.deposit),
+            distance = Config.Farm.ZoneDistance,
+            canInteract = function() return SelectedMetier == 'chasseur' and not InService end,
+            onSelect = function() LSLegacy.Events.SendToServer('farm:metier:startService', { metier = 'chasseur' }) end,
+        },
+        {
+            name = 'farm_gunloan_ammo',
+            icon = 'fa-solid fa-box',
+            label = ('Acheter une boîte de munitions (%d$)'):format(GL.ammoBoxPrice),
+            distance = Config.Farm.ZoneDistance,
+            canInteract = function() return GunLoanState.active end,
+            onSelect = function() LSLegacy.Events.SendToServer('farm:gunLoan:buyAmmo') end,
+        },
+        EndServiceOption('chasseur'),
+    }
+end
+
+local function SpawnGunRanger(model)
+    if GunLoanState.ped and DoesEntityExist(GunLoanState.ped) then
+        exports.ox_target:removeLocalEntity(GunLoanState.ped)
+        DeleteEntity(GunLoanState.ped)
+    end
+    GunLoanState.ped = SpawnStaticPed(GL.coords, model, GL.heading, GunLoanOptions())
+end
+
+LSLegacy.Events.Register('farm:gunLoan:state', function(data)
+    if not data then return end
+    GunLoanState.active = data.active == true
+    if data.model ~= GunLoanState.model then
+        GunLoanState.model = data.model
+        GunLoanState.name = data.name
+        SpawnGunRanger(data.model)
+    end
+end)
+
+LSLegacy.Events.Register('farm:gunLoan:forceRemoveWeapon', function(weapon)
+    RemoveWeaponFromPed(PlayerPedId(), GetHashKey(weapon))
+end)
+
+LSLegacy.Events.Register('farm:gunLoan:alert', function(data)
+    if not data or not data.coords then return end
+    Notify('Vol d\'arme de chasse signalé aux forces de l\'ordre.', 'error')
+    SetNewWaypoint(data.coords.x, data.coords.y)
+end)
+
+CreateThread(function()
+    Wait(2000)
+    LSLegacy.Events.SendToServer('farm:gunLoan:requestState')
+    while true do
+        Wait(300000)
+        LSLegacy.Events.SendToServer('farm:gunLoan:requestState')
+    end
+end)
+
+
+-- ── PNJ qui délivrent un outil (Walter : pioche, Cole : hache) ────────
+local function StartServiceOption(metier)
+    return {
+        name = 'farm_startservice_' .. metier,
+        icon = 'fa-solid fa-user-check',
+        label = 'Prendre mon service',
+        distance = Config.Farm.ZoneDistance,
+        canInteract = function() return SelectedMetier == metier and not InService end,
+        onSelect = function() LSLegacy.Events.SendToServer('farm:metier:startService', { metier = metier }) end,
+    }
+end
+
+function EndServiceOption(metier)
+    return {
+        name = 'farm_endservice_' .. metier,
+        icon = 'fa-solid fa-user-slash',
+        label = 'Terminer mon service',
+        distance = Config.Farm.ZoneDistance,
+        canInteract = function() return SelectedMetier == metier and InService end,
+        onSelect = function() LSLegacy.Events.SendToServer('farm:metier:endService', { metier = metier }) end,
+    }
+end
+
+local function SpawnToolPnj(cfg, label, metier)
+    SpawnStaticPed(cfg.coords, cfg.model, cfg.heading, {
+        StartServiceOption(metier),
+        {
+            name = 'farm_tool_request_' .. cfg.item,
+            icon = 'fa-solid fa-hammer',
+            label = ('Demander à nouveau %s (sinon %d$)'):format(label, cfg.price),
+            distance = Config.Farm.ZoneDistance,
+            canInteract = function() return InService and SelectedMetier == metier end,
+            onSelect = function() LSLegacy.Events.SendToServer('farm:tool:request', { item = cfg.item }) end,
+        },
+        {
+            name = 'farm_tool_return_' .. cfg.item,
+            icon = 'fa-solid fa-rotate-left',
+            label = ('Rendre %s'):format(label),
+            distance = Config.Farm.ZoneDistance,
+            canInteract = function() return InService and SelectedMetier == metier end,
+            onSelect = function() LSLegacy.Events.SendToServer('farm:tool:return', { item = cfg.item }) end,
+        },
+        EndServiceOption(metier),
+    })
+end
+
+SpawnToolPnj(Config.Farm.Pickaxe, 'une pioche', 'mineur')
+SpawnToolPnj(Config.Farm.Hatchet, 'une hache', 'bucheron')
+
+LSLegacy.Events.Register('farm:tool:forceRemove', function(item)
+    if item == Config.Farm.Pickaxe.item then
+        UnequipHeldTool(true)
+    else
+        RemoveWeaponFromPed(PlayerPedId(), GetHashKey(item))
+    end
+end)
+
+-- ── Agence d'intérim : choix du métier ────────────────────────────────
+local AG = Config.Farm.Agency
+local MetierRefusalText = 'Pour faire ce métier, inscrivez-vous à l\'agence d\'intérim (Kelly Chambers).'
+
+local function OpenAgencyMenu()
+    local options = {}
+    for _, key in ipairs(MetierOrder) do
+        local m = Config.Farm.Metiers[key]
+        options[#options + 1] = {
+            title = m.label .. (SelectedMetier == key and ' (actuel)' or ''),
+            icon = 'fa-solid fa-hard-hat',
+            onSelect = function() LSLegacy.Events.SendToServer('farm:metier:select', { metier = key }) end,
+        }
+    end
+    lib.registerContext({ id = 'farm_agency', title = AG.name .. ' — Agence d\'intérim', options = options })
+    lib.showContext('farm_agency')
+end
+
+SpawnStaticPed(AG.coords, AG.model, AG.heading, {
+    {
+        name = 'farm_agency',
+        icon = 'fa-solid fa-briefcase',
+        label = 'Choisir un métier d\'intérim',
+        distance = Config.Farm.ZoneDistance,
+        canInteract = function() return not Farm.Busy and not InService end,
+        onSelect = OpenAgencyMenu,
+    },
+})
+
+-- Métiers sans PNJ d'outil : pêcheur et abattoir
+for key, m in pairs(Config.Farm.Metiers) do
+    if m.pnj then
+        SpawnStaticPed(m.pnj.coords, m.pnj.model, m.pnj.heading, {
+            StartServiceOption(key),
+            EndServiceOption(key),
+            {
+                name = 'farm_metier_info_' .. key,
+                icon = 'fa-solid fa-comments',
+                label = 'Se renseigner',
+                distance = Config.Farm.ZoneDistance,
+                canInteract = function() return true end,
+                onSelect = function()
+                    if SelectedMetier == key then
+                        Notify('Ce métier n\'est pas encore disponible.', 'info')
+                    else
+                        Notify(MetierRefusalText, 'error')
+                    end
+                end,
+            },
+        })
+    end
+end
+
+LSLegacy.Events.Register('farm:metier:state', function(data)
+    SelectedMetier = data and data.metier or nil
+    InService = data and data.inService or false
+    SetMetierBlips(SelectedMetier, InService)
+    if SelectedMetier and not InService then
+        local c = Config.Farm.Metiers[SelectedMetier].blipCoords[1]
+        SetNewWaypoint(c.x, c.y)
+    end
+end)
+
+CreateThread(function()
+    Wait(2000)
+    AddFarmBlip(AG.coords, AG.blip.sprite, AG.blip.color, AG.blip.scale, AG.blip.label)
+    for _, m in pairs(Config.Farm.Marchands) do
+        for _, c in ipairs(m.blipCoords or {}) do
+            AddFarmBlip(c, m.blip.sprite, m.blip.color, m.blip.scale, m.blip.label)
+        end
+    end
+    if Config.Farm.Marchands.poissonnier.blip then
+        local pc = Config.Farm.Marchands.poissonnier.pnj.coords
+        AddFarmBlip(pc, Config.Farm.Marchands.poissonnier.blip.sprite, Config.Farm.Marchands.poissonnier.blip.color, Config.Farm.Marchands.poissonnier.blip.scale, Config.Farm.Marchands.poissonnier.blip.label)
+    end
+    LSLegacy.Events.SendToServer('farm:metier:requestState')
+end)
+
+local PoissonnierCfg = Config.Farm.Marchands.poissonnier
+SpawnStaticPed(PoissonnierCfg.pnj.coords, PoissonnierCfg.pnj.model, PoissonnierCfg.pnj.heading, {
+    {
+        name = 'farm_poissonnier_info',
+        icon = 'fa-solid fa-fish',
+        label = 'Voir les filets du jour',
+        distance = Config.Farm.ZoneDistance,
+        canInteract = function() return not Farm.Busy end,
+        onSelect = function() Notify('Le catalogue du poissonnier est en cours de mise en place.', 'info') end,
+    },
+})

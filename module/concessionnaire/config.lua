@@ -6,51 +6,121 @@
 
 Config.Concessionnaire = {}
 
--- ── PNJ vendeur (Premium Deluxe Motorsport) ─────────────────────────
-Config.Concessionnaire.Seller = {
-    model   = 'a_m_y_business_01',      -- modèle du ped vendeur (achat + occasions)
-    coords  = vector3(-56.33, -1098.41, 26.42),
-    heading = 24.6,
+-- ── Sites (un concessionnaire physique = un site) ─────────────────────
+-- Chaque site a son propre PNJ vendeur, PNJ revente, spot de preview,
+-- point de livraison, blip et essai (test-drive). Le catalogue, les
+-- couleurs, les prix, la revente/occasion, etc. restent partagés entre
+-- tous les sites (définis plus bas dans ce fichier).
+Config.Concessionnaire.Sites = {
+    {
+        id    = 'sud',
+        label = 'Concessionnaire',
+
+        -- PNJ vendeur (achat + occasions)
+        Seller = {
+            model   = 'a_m_y_business_01',
+            coords  = vector3(-1000.918701, -1503.019775, 5.774414),
+            heading = 121.88976287842,
+        },
+
+        -- PNJ dédié à la revente
+        ResaleSeller = {
+            model   = 'a_m_y_business_01',
+            coords  = vector3(-987.204407, -1484.518677, 5.572144),
+            heading = 121.88976287842,
+        },
+
+        -- Spot de prévisualisation : le véhicule sélectionné y apparaît avant l'achat.
+        Preview = {
+            coords  = vector3(-1008.276917, -1509.850586, 5.774414),
+            heading = 121.88976287842,
+        },
+
+        -- Point de livraison (sortie du concessionnaire, sur la voie)
+        Delivery = {
+            coords  = vector3(-989.960449, -1497.797852, 5.572144),
+            heading = 306.14172363281,
+        },
+
+        -- Blip carte
+        Blip = {
+            coords = vector3(-1000.918701, -1503.019775, 5.774414),
+            sprite = 326,
+            color  = 46,
+            scale  = 0.9,
+            label  = 'Concessionnaire',
+            short  = true,
+        },
+
+        -- Essai (test-drive)
+        TestDrive = {
+            enabled        = true,
+            duration       = 60,                                                          -- secondes
+            spawn          = vector4(-993.085693, -1491.982422, 5.572144, 303.30709838867),
+            boundaryCenter = vector3(-993.085693, -1491.982422, 5.572144),                 -- centre de la zone autorisée
+            boundaryRadius = 1000.0,                                                       -- au-delà : essai interrompu
+        },
+    },
+    {
+        id    = 'nord',
+        label = 'Concessionnaire Paleto',
+
+        -- PNJ vendeur (achat + occasions)
+        Seller = {
+            model   = 'a_m_y_business_01',
+            coords  = vector3(-233.881317, 6217.463867, 31.942139),
+            heading = 130.39370727539,
+        },
+
+        -- PNJ dédié à la revente
+        ResaleSeller = {
+            model   = 'a_m_y_business_01',
+            coords  = vector3(-228.448349, 6241.121094, 31.487183),
+            heading = 133.22834777832,
+        },
+
+        -- Spot de prévisualisation : le véhicule sélectionné y apparaît avant l'achat.
+        Preview = {
+            coords  = vector3(-236.980225, 6213.362793, 31.942139),
+            heading = 223.93701171875,
+        },
+
+        -- Point de livraison (sortie du concessionnaire, sur la voie)
+        Delivery = {
+            coords  = vector3(-211.991211, 6245.960449, 32.026367),
+            heading = 45.354328155518,
+        },
+
+        -- Blip carte
+        Blip = {
+            coords = vector3(-233.881317, 6217.463867, 31.942139),
+            sprite = 326,
+            color  = 46,
+            scale  = 0.9,
+            label  = 'Concessionnaire Paleto',
+            short  = true,
+        },
+
+        -- Essai (test-drive)
+        TestDrive = {
+            enabled        = true,
+            duration       = 60,
+            spawn          = vector4(-241.068130, 6252.949219, 31.487183, 223.93701171875),
+            boundaryCenter = vector3(-241.068130, 6252.949219, 31.487183),
+            boundaryRadius = 1000.0,
+        },
+    },
 }
 
--- ── PNJ dédié à la revente ───────────────────────────────────────────
-Config.Concessionnaire.ResaleSeller = {
-    model   = 'a_m_y_business_01',
-    coords  = vector3(-27.68, -1091.38, 26.42),
-    heading = 66.1,
-}
-
--- ── Spot de prévisualisation (plateau d'exposition intérieur PDM) ─────
--- Le véhicule sélectionné apparaît ici pour être vu avant l'achat.
-Config.Concessionnaire.Preview = {
-    coords  = vector3(-46.86, -1095.6, 26.44),
-    heading = 90.0,
-}
-
--- ── Point de livraison (sortie du concessionnaire, sur la voie) ───────
-Config.Concessionnaire.Delivery = {
-    coords  = vector3(-30.0, -1092.6, 26.42),
-    heading = 240.0,
-}
-
--- ── Zone sans trafic PNJ (UNIQUEMENT l'intérieur du bâtiment) ─────────
+-- ── Zone sans trafic PNJ (UNIQUEMENT l'intérieur du bâtiment, site Sud) ─
 -- Box couvrant l'emprise du showroom. Les véhicules ambiants qui s'y
 -- trouvent sont retirés ; la rue autour n'est PAS affectée.
 -- Épargnés : l'aperçu, tout véhicule "mission", tout véhicule occupé
 -- par un joueur.  center = centre de la box · size = dimensions (x,y,z).
+-- Sans objet pour les autres sites (mapping custom sans trafic ambiant).
 Config.Concessionnaire.NoTraffic = {
     center = vector3(-47.0, -1097.0, 26.4),
     size   = vector3(30.0, 30.0, 8.0),
-}
-
--- ── Blip carte ───────────────────────────────────────────────────────
-Config.Concessionnaire.Blip = {
-    coords = vector3(-56.33, -1098.41, 26.42),
-    sprite = 326,
-    color  = 46,
-    scale  = 0.9,
-    label  = 'Concessionnaire',
-    short  = true,
 }
 
 -- ── Moyens de paiement autorisés ─────────────────────────────────────
@@ -576,6 +646,13 @@ Config.Concessionnaire.Catalog = {
 -- ── Remise d'une clé à l'achat (module keyhanger) ────────────────────
 Config.Concessionnaire.GiveKey = true
 
+-- ── Achat pour l'entreprise (chefs de job) ───────────────────────────
+-- Un agent qui porte la carte entreprise de son job (module/society, créée
+-- par le chef à la banque) peut basculer « Achat entreprise » sur la fiche
+-- véhicule : paiement obligatoire avec cette carte (débit du compte
+-- entreprise), véhicule au job (owned_vehicles.job), rangé dans ses garages.
+Config.Concessionnaire.JobPurchase = { enabled = true }
+
 -- ── Plaque personnalisée (payante) ───────────────────────────────────
 Config.Concessionnaire.CustomPlate = {
     enabled   = true,
@@ -602,15 +679,6 @@ Config.Concessionnaire.Colors = {
     { label = 'Orange',  id = 38  },
     { label = 'Violet',  id = 71  },
     { label = 'Or',      id = 90  },
-}
-
--- ── Essai (test-drive) ───────────────────────────────────────────────
-Config.Concessionnaire.TestDrive = {
-    enabled        = true,
-    duration       = 60,                             -- secondes
-    spawn          = vector4(-20.0, -1084.0, 26.6, 300.0),
-    boundaryCenter = vector3(-47.0, -1097.0, 26.4),  -- centre de la zone autorisée
-    boundaryRadius = 500.0,                           -- au-delà : essai interrompu
 }
 
 -- ── Revente au concessionnaire (reprise) ─────────────────────────────

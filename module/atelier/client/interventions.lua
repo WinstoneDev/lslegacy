@@ -78,6 +78,18 @@ local function CanRepair()
     return Atelier.IsOnDuty() and LSLegacy.Atelier.HasPermission(Atelier.GetCompanyId(), Atelier.GetGrade(), 'repair_mechanical')
 end
 
+-- Mécanique/pneus doivent être pris en main (item usable, cf. client/inventory.lua)
+-- avant de pouvoir cibler le véhicule à l'ALT — même exigence que la carrosserie.
+local function HeldPartCoversComponent(componentId)
+    local heldPart = Atelier.GetHeldPart()
+    local part = heldPart and Config.Atelier.Parts[heldPart]
+    if not part then return false end
+    for _, id in ipairs(part.repairs) do
+        if id == componentId then return true end
+    end
+    return false
+end
+
 local function StartRepair(veh, componentId)
     if HasCooldown('repair') then Notify(Lang.Atelier.action_cooldown, 'error') return end
     SetCooldown('repair')
@@ -96,9 +108,52 @@ local function StartRepair(veh, componentId)
     end)
 end
 
+-- SetVehicleEngineHealth/SetVehicleBodyHealth/SetVehicleUndriveable/SetVehicleDeformationFixed/
+-- SetVehicleTyreFixed n'existent que côté client (le serveur crashe dessus, "attempt to call a
+-- nil value") : le mécano les applique lui-même une fois la réparation confirmée par le serveur.
 LSLegacy.Events.Register('atelier:repairResult', function(data)
     if not data then return end
     Notify(data.success and Lang.Atelier.repair_done or Lang.Atelier.repair_failed, data.success and 'success' or 'error')
+    if not data.success or not data.vehNet then return end
+
+    local entity = NetworkGetEntityFromNetworkId(data.vehNet)
+    if not DoesEntityExist(entity) then return end
+
+    local category, def = LSLegacy.Atelier.FindComponent(data.componentId)
+    if not category then return end
+
+    if data.componentId == 'moteur' then
+        SetVehicleEngineHealth(entity, 1000.0)
+        SetVehicleUndriveable(entity, false)
+    elseif data.componentId == 'carrosserie_generale' then
+        SetVehicleBodyHealth(entity, 1000.0)
+        SetVehicleDeformationFixed(entity)
+    elseif def.wheelIndex then
+        SetVehicleTyreFixed(entity, def.wheelIndex)
+    end
+
+    -- Zone de déformation entièrement réparée (toutes les pièces qui la
+    -- partagent sont à 100%, cf. server/vehicles.lua) : efface le cabossage
+    -- visuel à cet endroit précis, en préservant le carburant (SetVehicleDamage
+    -- n'y touche pas mais on reste prudent, même précaution que client/tuning.lua).
+    if data.zoneFixed and data.zoneFixed.offset then
+        local fuelLevel = GetVehicleFuelLevel(entity)
+        NetworkRequestControlOfEntity(entity)
+        local off = data.zoneFixed.offset
+        SetVehicleDamage(entity, off.x, off.y, off.z, 0.0, 100.0, true)
+        if _G.SetSyncedFuelLevel then
+            SetSyncedFuelLevel(entity, fuelLevel)
+        else
+            SetVehicleFuelLevel(entity, fuelLevel)
+        end
+
+        -- La sauvegarde immédiate de persistent_vehicles a été sautée côté
+        -- serveur (RepairComponent) pour ne pas capturer l'ancien cabossage :
+        -- on la redéclenche nous-mêmes maintenant que le natif est appliqué.
+        if LSLegacy.AP and LSLegacy.AP.ReportVehicleStatus then
+            LSLegacy.AP.ReportVehicleStatus(entity)
+        end
+    end
 end)
 
 -- Pose d'une pièce portée en main (carrosserie), déclenché par client/inventory.lua sur la touche E.
@@ -169,7 +224,7 @@ for componentId, label in pairs(MECHANICAL_LABELS) do
         icon = 'fa-solid fa-screwdriver-wrench',
         label = label,
         distance = 3.0,
-        canInteract = CanRepair,
+        canInteract = function() return CanRepair() and HeldPartCoversComponent(componentId) end,
         onSelect = function(data) StartRepair(data.entity, componentId) end,
     }
 end
@@ -179,14 +234,30 @@ for id, def in pairs(LSLegacy.Atelier.Components.tyres) do
     TYRE_COMPONENT_BY_WHEEL[def.wheelIndex] = id
 end
 
+-- Noms d'os standards GTA pour les 4 roues (véhicules à 2 essieux, cas
+-- couvert par LSLegacy.Atelier.Components.tyres). Sert uniquement à choisir
+-- la roue crevée la plus proche du point visé par ox_target.
+local WHEEL_BONES = { [0] = 'wheel_lf', [1] = 'wheel_rf', [4] = 'wheel_lr', [5] = 'wheel_rr' }
+
 mechanicalOptions[#mechanicalOptions + 1] = {
     name = 'atelier_change_tyre', icon = 'fa-solid fa-circle-dot', label = 'Changer un pneu',
-    distance = 3.0, canInteract = CanRepair,
+    distance = 3.0, canInteract = function() return CanRepair() and Atelier.GetHeldPart() == 'piece_pneu' end,
     onSelect = function(data)
         local veh = data.entity
-        local burstWheel = nil
+        local aimPos = data.coords and vector3(data.coords.x, data.coords.y, data.coords.z) or GetEntityCoords(veh)
+
+        local burstWheel, burstDist = nil, nil
         for wheelIndex in pairs(TYRE_COMPONENT_BY_WHEEL) do
-            if IsVehicleTyreBurst(veh, wheelIndex, false) then burstWheel = wheelIndex break end
+            if IsVehicleTyreBurst(veh, wheelIndex, false) then
+                local bone    = WHEEL_BONES[wheelIndex]
+                local boneIdx = bone and GetEntityBoneIndexByName(veh, bone) or -1
+                local wheelPos = boneIdx ~= -1 and GetWorldPositionOfEntityBone(veh, boneIdx) or GetEntityCoords(veh)
+                local dist = #(aimPos - wheelPos)
+                if not burstDist or dist < burstDist then
+                    burstDist  = dist
+                    burstWheel = wheelIndex
+                end
+            end
         end
         if not burstWheel then Notify('Aucun pneu à changer.', 'warning') return end
         StartRepair(veh, TYRE_COMPONENT_BY_WHEEL[burstWheel])
@@ -194,3 +265,28 @@ mechanicalOptions[#mechanicalOptions + 1] = {
 }
 
 exports.ox_target:addGlobalVehicle(mechanicalOptions)
+
+-- Usure des pièces mécaniques non-natives (freins, transmission, suspension,
+-- embrayage, radiateur) : rapportée au serveur par tranches de conduite réelle
+-- (moteur allumé, joueur au volant) — cf. server/vehicles.lua -> ApplyMechanicalWear.
+local drivenSeconds = 0
+CreateThread(function()
+    local lastTick = GetGameTimer()
+    while true do
+        Wait(1000)
+        local now = GetGameTimer()
+        local elapsed = (now - lastTick) / 1000.0
+        lastTick = now
+
+        local ped = PlayerPedId()
+        local veh = GetVehiclePedIsIn(ped, false)
+        if veh ~= 0 and GetPedInVehicleSeat(veh, -1) == ped and GetIsVehicleEngineRunning(veh) then
+            drivenSeconds = drivenSeconds + elapsed
+            if drivenSeconds >= Config.Atelier.Wear.reportIntervalSeconds then
+                local plate = GetVehicleNumberPlateText(veh):upper()
+                LSLegacy.Events.SendToServer('atelier:reportUsage', { plate = plate, seconds = math.floor(drivenSeconds) })
+                drivenSeconds = 0
+            end
+        end
+    end
+end)

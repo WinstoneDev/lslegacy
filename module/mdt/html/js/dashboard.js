@@ -1,5 +1,5 @@
 /* ════════════════════════════════════════════════════════════════
-   MDT — Tableau de bord des forces de l'ordre (police, gendarmerie)
+   MDT — Tableau de bord des forces de l'ordre (police, shérif)
    ────────────────────────────────────────────────────────────────
    Chargé APRÈS mdt.js et medical.js, dont il ne modifie rien : il
    s'enregistre dans window.MDT_RENDERERS et réutilise les helpers
@@ -268,7 +268,7 @@ async function renderLeoDashboard() {
 /* ════════════════════════════════════════════════════════════════
    Enregistrement dans le point d'extension de mdt.js
 
-   medical.js (chargé avant) a déjà posé son propre dashboard SAMU sur
+   medical.js (chargé avant) a déjà posé son propre dashboard EMS sur
    le même id d'onglet. On le mémorise et on le rappelle pour les
    départements médicaux : chaque métier garde ainsi sa vue sans que
    l'ordre de chargement des fichiers ne décide du gagnant.
@@ -278,7 +278,7 @@ async function renderLeoDashboard() {
     window.MDT_RENDERERS = Object.assign(window.MDT_RENDERERS || {}, {
         dashboard: function () {
             const dep = state.payload && state.payload.department;
-            if (dep === 'samu' && typeof previous === 'function') return previous();
+            if (dep === 'ems' && typeof previous === 'function') return previous();
             return renderLeoDashboard();
         },
     });

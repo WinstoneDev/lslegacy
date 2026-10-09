@@ -13,7 +13,7 @@ end
 
 local function CanInvestigate()
     if not LSLegacy.MDT.IsLocalLeoOnDuty() then return false end
-    return LSLegacy.MDT.HasPermission('police', Police.GetGrade(), 'view_evidence')
+    return LSLegacy.MDT.LocalHasPermission('view_evidence')
 end
 
 -- Animation d'investigation
@@ -119,7 +119,7 @@ Investigation.SecureScene = function()
     if not CanInvestigate() then
         Notify(Lang.Police.inv_kit_required, 'error') return
     end
-    if not LSLegacy.MDT.HasPermission('police', Police.GetGrade(), 'manage_evidence') then
+    if not LSLegacy.MDT.LocalHasPermission('manage_evidence') then
         Notify(Lang.Police.grade_required, 'error') return
     end
 

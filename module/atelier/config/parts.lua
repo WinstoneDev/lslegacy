@@ -15,14 +15,18 @@ Config.Atelier.Parts = {
     piece_vitre                     = { repairs = { 'vitres' },                                                carried = true, price = 90 },
     piece_phare                       = { repairs = { 'phares' },                                                carried = true, price = 70 },
 
-    -- Mécanique / pneus (consommées directement depuis l'inventaire, non portées)
-    piece_pneu               = { repairs = { 'pneu_avg', 'pneu_avd', 'pneu_arg', 'pneu_ard' }, carried = false, price = 80 },
-    piece_moteur               = { repairs = { 'moteur' },       carried = false, price = 250 },
-    piece_freins                 = { repairs = { 'freins' },       carried = false, price = 150 },
-    piece_transmission             = { repairs = { 'transmission' }, carried = false, price = 220 },
-    piece_suspension                  = { repairs = { 'suspension' },   carried = false, price = 180 },
-    piece_embrayage                     = { repairs = { 'embrayage' },    carried = false, price = 170 },
-    piece_radiateur                       = { repairs = { 'radiateur' },    carried = false, price = 140 },
+    -- Mécanique / pneus : portées en main (item usable) avant de pouvoir cibler le
+    -- véhicule à l'ALT (module/atelier/client/interventions.lua). `useTarget`
+    -- désactive le raccourci [E] "poser" (client/inventory.lua) réservé à la
+    -- carrosserie : ces pièces exigent le menu ALT pour choisir le bon composant
+    -- (ex: le bon pneu crevé), le [E] appliquerait toujours le premier de la liste.
+    piece_pneu               = { repairs = { 'pneu_avg', 'pneu_avd', 'pneu_arg', 'pneu_ard' }, carried = true, useTarget = true, price = 80 },
+    piece_moteur               = { repairs = { 'moteur' },       carried = true, useTarget = true, price = 250 },
+    piece_freins                 = { repairs = { 'freins' },       carried = true, useTarget = true, price = 150 },
+    piece_transmission             = { repairs = { 'transmission' }, carried = true, useTarget = true, price = 220 },
+    piece_suspension                  = { repairs = { 'suspension' },   carried = true, useTarget = true, price = 180 },
+    piece_embrayage                     = { repairs = { 'embrayage' },    carried = true, useTarget = true, price = 170 },
+    piece_radiateur                       = { repairs = { 'radiateur' },    carried = true, useTarget = true, price = 140 },
 }
 
 -- Poids maximal du stock de chaque garage (DataStore atelier_<company>).

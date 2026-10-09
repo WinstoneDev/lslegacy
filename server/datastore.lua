@@ -109,7 +109,13 @@ LSLegacy.DataStore.GetInventoryWeight = function(inventory)
     local weight = 0
 
     for key, value in pairs(inventory) do
-        weight = weight + Config.Items[value.name].weight * value.count
+        -- def peut être nil : les items d'une ressource externe (restaurants)
+        -- disparaissent du registre quand celle-ci est arrêtée, alors qu'ils
+        -- restent stockés en base.
+        local def = Config.Items[value.name]
+        if def then
+            weight = weight + def.weight * value.count
+        end
     end
     return weight
 end
@@ -251,7 +257,8 @@ LSLegacy.DataStore.GetInventoryItem = function(datastore, item)
         end
     end
     if count ~= 0 then
-        return {count = count, label = Config.Items[item].label, uniqueId = data.uniqueId, data = data.data}
+        local def = Config.Items[item]
+        return {count = count, label = def and def.label or item, uniqueId = data.uniqueId, data = data.data}
     else
         return nil
     end
@@ -273,6 +280,13 @@ LSLegacy.DataStore.AddItemInInventory = function(datastore, item, quantity, newL
     if not quantity then return end
     local exist = false
     local source = source
+
+    -- Péremption (module/foodapi) : le mode dépend du conteneur — frigo
+    -- professionnel (figé), frigo domestique (ralenti) ou simple stockage.
+    if LSLegacy.Perishable and LSLegacy.Perishable.Is and LSLegacy.Perishable.Is(item) then
+        data = LSLegacy.Perishable.Stamp(item, data,
+            LSLegacy.Perishable.ModeForDataStore(datastore.name, datastore.type))
+    end
     if LSLegacy.Inventory.DoesItemExists(item) then
         if LSLegacy.DataStore.CanStoreItem(datastore, item, quantity) then
             local inventory = datastore.inventory
@@ -321,7 +335,8 @@ LSLegacy.DataStore.RemoveItemInInventory = function(datastore, item, quantity, i
     if not quantity then return end
     local source = source
     local inventory = datastore.inventory
-    local label = itemLabel or Config.Items[item].label
+    local def = Config.Items[item]
+    local label = itemLabel or (def and def.label) or item
     local removed = false
 
     for k, v in pairs(inventory) do

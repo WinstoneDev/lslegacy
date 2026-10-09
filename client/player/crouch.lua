@@ -15,13 +15,21 @@ local function SetCrouched(ped, state)
 end
 
 RegisterCommand('lslegacy_crouch', function()
-    -- Le menu émotes (module/emotes) réutilise la touche X pour annuler une
-    -- animation en cours : si une émote est active, X l'annule au lieu
-    -- d'accroupir le joueur.
+    -- X est réutilisé par d'autres actions (annuler une émote, se relever
+    -- assis, annuler une action de callout, annuler une progress bar
+    -- ox_lib) : on leur laisse la priorité plutôt que de crouch.
     if LSLegacy.Emotes and LSLegacy.Emotes.HasActiveAnimation and LSLegacy.Emotes.HasActiveAnimation() then
         LSLegacy.Emotes.CancelActiveAnimation()
         return
     end
+    if LSLegacy.Sit and LSLegacy.Sit.IsSitting and LSLegacy.Sit.IsSitting() then return end
+    if LSLegacy.Needs and LSLegacy.Needs.IsEating and LSLegacy.Needs.IsEating() then return end
+    if Atelier and Atelier.GetHeldPart and Atelier.GetHeldPart() then
+        Atelier.DropHeldPart()
+        return
+    end
+    if ActionBusy then return end
+    if lib and lib.progressActive and lib.progressActive() then return end
 
     local ped = PlayerPedId()
     if IsPedInAnyVehicle(ped, false) or IsEntityDead(ped) or IsPedRagdoll(ped) or not IsPedOnFoot(ped) then return end

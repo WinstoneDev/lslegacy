@@ -24,11 +24,11 @@ window.BankViews.atm = function (root) {
             <div>
                 <div class="bank-hero-label">Compte n°${account.id}</div>
                 <div class="bank-hero-amount">${fmtMoney(account.amountMoney)}</div>
-                <div class="bank-hero-iban">IBAN ${esc(account.iban)}</div>
+                <div class="bank-hero-iban">IBAN ${ibanHtml(account.iban)}</div>
             </div>
         </div>
 
-        ${cfg ? `<div style="font-size:11.5px;color:var(--bank-text-dim);margin-bottom:18px;">Il reste ${fmtMoney(Math.max(0, (cfg.withdrawal_ceiling || 0) - (Number(account.withdrawal_spent) || 0)))} de plafond retrait sur la période en cours (sur ${fmtMoney(cfg.withdrawal_ceiling)}).</div>` : ''}
+        ${account.society ? `<div style="font-size:11.5px;color:var(--bank-text-dim);margin-bottom:18px;">Compte entreprise : aucun plafond de retrait.</div>` : cfg ? `<div style="font-size:11.5px;color:var(--bank-text-dim);margin-bottom:18px;">Il reste ${fmtMoney(Math.max(0, (cfg.withdrawal_ceiling || 0) - (Number(account.withdrawal_spent) || 0)))} de plafond retrait sur la période en cours (sur ${fmtMoney(cfg.withdrawal_ceiling)}).</div>` : ''}
 
         <div class="bank-section-title">Déposer des espèces</div>
         <div class="bank-card">

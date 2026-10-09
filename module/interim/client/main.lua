@@ -42,22 +42,13 @@ local function SpawnPed()
             icon = 'fa-solid fa-right-from-bracket',
             label = 'Terminer le service',
             distance = CFG.Actions.interactionRange,
-            canInteract = function() return Interim.OnDuty end,
-            onSelect = function() LSLegacy.Events.SendToServer('interim:endDuty') end,
+            canInteract = function() return true end,
+            onSelect = function()
+                LSLegacy.Events.SendToServer('interim:endDuty')
+                LSLegacy.Events.SendToServer('farm:metier:endService', { metier = 'chauffeur_citerne' })
+            end,
         },
     })
-end
-
-local function CreateBlip()
-    local c = CFG.Ped.coords
-    local b = AddBlipForCoord(c.x, c.y, c.z)
-    SetBlipSprite(b, 318)
-    SetBlipColour(b, 5)
-    SetBlipScale(b, 0.8)
-    SetBlipAsShortRange(b, true)
-    BeginTextCommandSetBlipName('STRING')
-    AddTextComponentSubstringPlayerName('Intérim — Essence')
-    EndTextCommandSetBlipName(b)
 end
 
 -- État envoyé par le serveur (source de vérité). NB : un seul LSLegacy.Events.Register par nom d'event est exécuté dans le resource — c'est ici que syncState est réellement traité, et on délègue l'affichage du blip citerne à Interim.ShowTankPoint (posé par refuel.lua) pour éviter un second enregistrement mort.
@@ -102,7 +93,6 @@ end)
 CreateThread(function()
     Wait(1000)
     SpawnPed()
-    CreateBlip()
 end)
 
 AddEventHandler('onResourceStop', function(res)

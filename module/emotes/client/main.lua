@@ -277,6 +277,13 @@ local function StopShared()
     if Shared.active then
         ClearPedTasksImmediately(ped)
     end
+    -- item.attachTo (cf. PlaySharedLocal) attache le ped via
+    -- AttachEntityToEntity mais rien ne le détachait jamais à la fin de
+    -- l'émote : le joueur restait collé à son partenaire. DetachEntity est
+    -- un no-op sûr si le ped n'était pas attaché.
+    if DoesEntityExist(ped) then
+        DetachEntity(ped, true, true)
+    end
     Shared.partner, Shared.active = nil, nil
 end
 
@@ -499,6 +506,7 @@ end)
 -- Commande /e <id> — jouer une émote directement par son identifiant
 
 RegisterCommand('e', function(_source, args)
+    if LSLegacy.Injury and LSLegacy.Injury.IsIncapacitated and LSLegacy.Injury.IsIncapacitated() then return end
     local id = args[1]
     if not id then
         LSLegacy.ShowNotification("Emotes", "Utilisation : /e id_emote", "error")
@@ -692,6 +700,7 @@ function EmotesMenu:Toggle()
 end
 
 Keys.Register("F3", "F3", "Ouvrir le menu des émotes", function()
+    if LSLegacy.Injury and LSLegacy.Injury.IsIncapacitated and LSLegacy.Injury.IsIncapacitated() then return end
     EmotesMenu:Toggle()
 end)
 
@@ -713,5 +722,17 @@ RegisterCommand('lslegacy_emotes_favorite', function()
         ToggleFavorite(category, entry)
     end
 end, false)
+
+-- Annulation de l'émotion en cours (solo ou à deux) — touche dédiée,
+-- rebindable depuis les paramètres du jeu (Paramètres → Touches → FiveM).
+-- Existe en plus du raccourci X/accroupissement (client/player/crouch.lua),
+-- qui reste fonctionnel mais n'apparaît dans les touches que comme
+-- "S'accroupir".
+RegisterCommand('lslegacy_emotes_cancel', function()
+    if LSLegacy.Emotes and LSLegacy.Emotes.HasActiveAnimation and LSLegacy.Emotes.HasActiveAnimation() then
+        LSLegacy.Emotes.CancelActiveAnimation()
+    end
+end, false)
+RegisterKeyMapping('lslegacy_emotes_cancel', "Annuler l'émotion en cours", 'keyboard', 'BACKSPACE')
 
 RegisterKeyMapping('lslegacy_emotes_favorite', 'Ajouter/retirer des favoris (menu émotes)', 'keyboard', 'F4')

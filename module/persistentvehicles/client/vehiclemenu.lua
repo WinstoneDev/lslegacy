@@ -334,6 +334,7 @@ CreateThread(function()
 end)
 
 Keys.Register("F5", "F5", "Ouvrir le menu de gestion du véhicule", function()
+    if LSLegacy.Injury and LSLegacy.Injury.IsIncapacitated and LSLegacy.Injury.IsIncapacitated() then return end
     -- Rafraîchit juste avant l'ouverture (plutôt qu'en continu) pour éviter le clignotement du menu affiché.
     local vehicle = GetVehiclePedIsIn(PlayerPedId(), false)
     if vehicle ~= 0 then

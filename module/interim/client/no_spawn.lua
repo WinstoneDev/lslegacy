@@ -33,8 +33,15 @@ local function ClearAmbientPedsAround(coords, radius)
         if DoesEntityExist(ped) and not IsPedAPlayer(ped) and not IsEntityAMissionEntity(ped)
             and LSLegacy.Validate.Distance(GetEntityCoords(ped), coords, radius)
         then
-            SetEntityAsMissionEntity(ped, true, true)
-            DeletePed(ped)
+            -- Un PNJ au volant d'un véhicule mission (trafic custom, épargné par
+            -- ClearAmbientVehiclesAround) ne doit pas être supprimé seul : le
+            -- véhicule resterait comme épave sans conducteur à côté du joueur.
+            local vehicle = GetVehiclePedIsIn(ped, false)
+            local drivingProtectedVehicle = vehicle ~= 0 and IsEntityAMissionEntity(vehicle)
+            if not drivingProtectedVehicle then
+                SetEntityAsMissionEntity(ped, true, true)
+                DeletePed(ped)
+            end
         end
     end
 end

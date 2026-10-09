@@ -9,7 +9,9 @@ LSLegacy.Security.RegisterRateLimit('creatorperso:setIdentity', 20)
 -- entrer en collision avec celui d'un autre joueur connecté.
 LSLegacy.Events.Register("creatorperso:setBucket", function(enter)
     local _src = source
-    SetPlayerRoutingBucket(_src, enter and (10000 + _src) or 0)
+    local bucket = enter and (10000 + _src) or 0
+    SetPlayerRoutingBucket(_src, bucket)
+    LSLegacy.Pickup.SyncBucket(_src, bucket)
 end)
 
 -- ─── Sauvegarde fiable (retry jusqu'à confirmation en BDD) ──────────────────
@@ -72,7 +74,7 @@ end)
 -- ─── Identité ────────────────────────────────────────────────────────────────
 -- Rejette toute valeur contenant des caractères dangereux pour du HTML/JS
 -- (ces champs sont réaffichés tels quels dans d'autres modules NUI : MDT,
--- police, gendarmerie, banque...), et borne strictement les longueurs et
+-- police, shérif, banque...), et borne strictement les longueurs et
 -- plages numériques.
 local FORBIDDEN_CHARS_PATTERN = "[<>&\"'`]"
 
